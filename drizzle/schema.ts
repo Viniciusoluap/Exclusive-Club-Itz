@@ -1,17 +1,10 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, bigint } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
  */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -25,4 +18,55 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Allowed clients table - stores emails authorized to make reservations
+ */
+export const allowedClients = mysqlTable("allowed_clients", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  name: text("name").notNull(),
+  phone: varchar("phone", { length: 20 }),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AllowedClient = typeof allowedClients.$inferSelect;
+export type InsertAllowedClient = typeof allowedClients.$inferInsert;
+
+/**
+ * Vessels table - stores information about boats and jetskis
+ */
+export const vessels = mysqlTable("vessels", {
+  id: int("id").autoincrement().primaryKey(),
+  name: text("name").notNull(),
+  type: mysqlEnum("type", ["lancha", "jetski"]).notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  capacity: int("capacity"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Vessel = typeof vessels.$inferSelect;
+export type InsertVessel = typeof vessels.$inferInsert;
+
+/**
+ * Bookings table - stores reservation information
+ */
+export const bookings = mysqlTable("bookings", {
+  id: int("id").autoincrement().primaryKey(),
+  clientEmail: varchar("client_email", { length: 320 }).notNull(),
+  clientName: text("client_name").notNull(),
+  vesselId: int("vessel_id").notNull(),
+  vesselName: text("vessel_name").notNull(),
+  bookingDate: bigint("booking_date", { mode: "number" }).notNull(), // UTC timestamp in milliseconds
+  status: mysqlEnum("status", ["pending", "confirmed", "used", "cancelled"]).default("confirmed").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Booking = typeof bookings.$inferSelect;
+export type InsertBooking = typeof bookings.$inferInsert;

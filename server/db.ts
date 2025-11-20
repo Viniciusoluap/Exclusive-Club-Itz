@@ -1,11 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, allowedClients, InsertAllowedClient, vessels, InsertVessel, bookings, InsertBooking } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -89,4 +88,151 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Allowed Clients
+export async function getAllowedClients() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(allowedClients).orderBy(desc(allowedClients.createdAt));
+}
+
+export async function getActiveAllowedClients() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(allowedClients).where(eq(allowedClients.isActive, true));
+}
+
+export async function getAllowedClientByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(allowedClients).where(eq(allowedClients.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createAllowedClient(client: InsertAllowedClient) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(allowedClients).values(client);
+  return result;
+}
+
+export async function updateAllowedClient(id: number, data: Partial<InsertAllowedClient>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(allowedClients).set(data).where(eq(allowedClients.id, id));
+}
+
+export async function deleteAllowedClient(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(allowedClients).where(eq(allowedClients.id, id));
+}
+
+// Vessels
+export async function getVessels() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(vessels).orderBy(desc(vessels.createdAt));
+}
+
+export async function getActiveVessels() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(vessels).where(eq(vessels.isActive, true));
+}
+
+export async function getVesselById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(vessels).where(eq(vessels.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createVessel(vessel: InsertVessel) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(vessels).values(vessel);
+  return result;
+}
+
+export async function updateVessel(id: number, data: Partial<InsertVessel>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(vessels).set(data).where(eq(vessels.id, id));
+}
+
+export async function deleteVessel(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(vessels).where(eq(vessels.id, id));
+}
+
+// Bookings
+export async function getBookings() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(bookings).orderBy(desc(bookings.bookingDate));
+}
+
+export async function getBookingsByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(bookings).where(eq(bookings.clientEmail, email)).orderBy(desc(bookings.bookingDate));
+}
+
+export async function getActiveBookingsByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(bookings)
+    .where(
+      and(
+        eq(bookings.clientEmail, email),
+        eq(bookings.status, "confirmed")
+      )
+    )
+    .orderBy(desc(bookings.bookingDate));
+}
+
+export async function getBookingsByDateRange(startDate: number, endDate: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(bookings)
+    .where(
+      and(
+        gte(bookings.bookingDate, startDate),
+        lte(bookings.bookingDate, endDate)
+      )
+    )
+    .orderBy(bookings.bookingDate);
+}
+
+export async function getBookingsByVesselAndDate(vesselId: number, date: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(bookings)
+    .where(
+      and(
+        eq(bookings.vesselId, vesselId),
+        eq(bookings.bookingDate, date),
+        eq(bookings.status, "confirmed")
+      )
+    );
+}
+
+export async function createBooking(booking: InsertBooking) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(bookings).values(booking);
+  return result;
+}
+
+export async function updateBooking(id: number, data: Partial<InsertBooking>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(bookings).set(data).where(eq(bookings.id, id));
+}
+
+export async function deleteBooking(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(bookings).where(eq(bookings.id, id));
+}
