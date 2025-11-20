@@ -167,7 +167,7 @@ export default function Home() {
             <Card className="overflow-hidden hover:shadow-xl transition-shadow">
               <div className="aspect-video relative">
                 <img
-                  src="/images/jetski-1.png"
+                  src="/images/jetski-seadoo.jpg"
                   alt="Jetski Seadoo"
                   className="w-full h-full object-cover"
                 />
@@ -184,7 +184,7 @@ export default function Home() {
             <Card className="overflow-hidden hover:shadow-xl transition-shadow">
               <div className="aspect-video relative">
                 <img
-                  src="/images/jetski-2.png"
+                  src="/images/focker-215.jpg"
                   alt="Lancha Focker"
                   className="w-full h-full object-cover"
                 />

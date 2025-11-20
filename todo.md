@@ -54,3 +54,9 @@
 - [x] Criar guia de uso para administrador
 - [x] Criar guia de uso para clientes
 - [x] Preparar checkpoint final
+
+## Correções Urgentes
+- [x] Corrigir problema de login
+- [x] Corrigir problema de agendamento
+- [x] Corrigir imagens das embarcações na página inicial
+- [x] Testar fluxo completo após correções
