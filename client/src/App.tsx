@@ -9,7 +9,6 @@ import Reservas from "./pages/Reservas";
 import AccessDenied from "./pages/AccessDenied";
 import Admin from "./pages/Admin";
 import AdminMaintenance from "./pages/AdminMaintenance";
-import AdminEmails from "./pages/AdminEmails";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -20,7 +19,6 @@ function Router() {
       <Route path={"/acesso-negado"} component={AccessDenied} />
       <Route path={"/admin"} component={Admin} />
       <Route path={"/admin/manutencao"} component={AdminMaintenance} />
-      <Route path={"/admin/emails"} component={AdminEmails} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Check, Loader2, Plus, Ship, Trash2, UserPlus, Users, X, Settings, Mail } from "lucide-react";
+import { Check, Loader2, Plus, Ship, Trash2, UserPlus, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -223,7 +223,7 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+          <TabsList className="grid w-full grid-cols-3 max-w-md">
             <TabsTrigger value="clients">
               <Users className="h-4 w-4 mr-2" />
               Clientes
@@ -233,10 +233,6 @@ export default function Admin() {
               Embarcações
             </TabsTrigger>
             <TabsTrigger value="bookings">Reservas</TabsTrigger>
-            <TabsTrigger value="maintenance">
-              <Settings className="h-4 w-4 mr-2" />
-              Manutenção
-            </TabsTrigger>
           </TabsList>
 
           {/* Clients Tab */}
@@ -487,47 +483,6 @@ export default function Admin() {
                     Nenhuma reserva encontrada
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Maintenance Tab */}
-          <TabsContent value="maintenance" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Calendário de Manutenção</CardTitle>
-                <CardDescription>
-                  Gerencie períodos de manutenção das embarcações
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-muted-foreground">
-                  Acesse o calendário completo de manutenção para agendar períodos de bloqueio,
-                  visualizar manutenções programadas e gerenciar o status de cada embarcação.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Link href="/admin/manutencao">
-                    <Button className="w-full sm:w-auto">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Calendário de Manutenção
-                    </Button>
-                  </Link>
-                  <Link href="/admin/emails">
-                    <Button variant="outline" className="w-full sm:w-auto">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Sistema de Emails
-                    </Button>
-                  </Link>
-                </div>
-                <div className="mt-6 p-4 bg-muted rounded-lg">
-                  <h4 className="font-semibold mb-2">Funcionalidades:</h4>
-                  <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li>• Agendar períodos de manutenção para cada embarcação</li>
-                    <li>• Bloqueio automático de reservas durante manutenção</li>
-                    <li>• Acompanhar status: Agendada, Em Andamento, Concluída</li>
-                    <li>• Editar ou cancelar manutenções programadas</li>
-                  </ul>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
