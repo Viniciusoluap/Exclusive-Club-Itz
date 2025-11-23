@@ -11,6 +11,7 @@ import Galeria from "./pages/Galeria";
 import Reservas from "./pages/Reservas";
 import AccessDenied from "./pages/AccessDenied";
 import Admin from "./pages/Admin";
+import VesselInfo from "./pages/VesselInfo";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -20,6 +21,7 @@ function Router() {
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/galeria"} component={Galeria} />
       <Route path={"/reservas"} component={Reservas} />
+      <Route path={"/embarcacoes"} component={VesselInfo} />
       <Route path={"/acesso-negado"} component={AccessDenied} />
       <Route path={"/admin"} component={Admin} />
       <Route path={"/404"} component={NotFound} />

@@ -3,7 +3,12 @@
  * 
  * Usa OpenWeatherMap API (gratuita até 1000 chamadas/dia)
  * Para usar, adicione OPENWEATHER_API_KEY nas variáveis de ambiente
+ * 
+ * Coordenadas de Imperatriz-MA: -5.5242, -47.4919
  */
+
+const IMPERATRIZ_LAT = -5.5242;
+const IMPERATRIZ_LON = -47.4919;
 
 export interface WeatherData {
   temperature: number;
@@ -11,13 +16,23 @@ export interface WeatherData {
   humidity: number;
   windSpeed: number;
   icon: string;
+  rainProbability: number; // 0-100
+  rainVolume?: number; // mm
+  tempMin: number;
+  tempMax: number;
+}
+
+export interface WeatherAlert {
+  hasAlert: boolean;
+  message?: string;
+  severity?: "low" | "medium" | "high";
 }
 
 /**
  * Busca previsão do tempo para uma data específica
- * Coordenadas padrão: Brasília, DF
+ * Coordenadas padrão: Imperatriz, MA
  */
-export async function getWeatherForecast(date: Date, lat: number = -15.7942, lon: number = -47.8822): Promise<WeatherData | null> {
+export async function getWeatherForecast(date: Date, lat: number = IMPERATRIZ_LAT, lon: number = IMPERATRIZ_LON): Promise<WeatherData | null> {
   const apiKey = process.env.OPENWEATHER_API_KEY;
   
   if (!apiKey) {
@@ -52,12 +67,20 @@ export async function getWeatherForecast(date: Date, lat: number = -15.7942, lon
       }
     }
     
+    // Calcular probabilidade de chuva (pop = probability of precipitation)
+    const rainProbability = Math.round((closestForecast.pop || 0) * 100);
+    const rainVolume = closestForecast.rain?.["3h"] || 0;
+
     return {
       temperature: Math.round(closestForecast.main.temp),
       description: closestForecast.weather[0].description,
       humidity: closestForecast.main.humidity,
       windSpeed: Math.round(closestForecast.wind.speed * 3.6), // m/s para km/h
       icon: closestForecast.weather[0].icon,
+      rainProbability,
+      rainVolume: rainVolume > 0 ? rainVolume : undefined,
+      tempMin: Math.round(closestForecast.main.temp_min),
+      tempMax: Math.round(closestForecast.main.temp_max),
     };
   } catch (error) {
     console.error('[Weather] Erro ao buscar previsão:', error);
@@ -91,4 +114,76 @@ export function getWeatherEmoji(icon: string): string {
   };
   
   return iconMap[icon] || '🌤️';
+}
+
+
+/**
+ * Verifica se há alertas meteorológicos para a data
+ */
+export async function checkWeatherAlerts(date: Date): Promise<WeatherAlert> {
+  const weather = await getWeatherForecast(date);
+  
+  if (!weather) {
+    return { hasAlert: false };
+  }
+
+  // Alerta de chuva forte (>80%)
+  if (weather.rainProbability >= 80) {
+    return {
+      hasAlert: true,
+      severity: "high",
+      message: `⛈️ ALERTA: Alta probabilidade de chuva (${weather.rainProbability}%) em ${new Date(date).toLocaleDateString("pt-BR")}. Recomendamos reagendar sua reserva.`,
+    };
+  }
+
+  // Alerta de chuva moderada (60-79%)
+  if (weather.rainProbability >= 60) {
+    return {
+      hasAlert: true,
+      severity: "medium",
+      message: `🌧️ ATENÇÃO: Probabilidade moderada de chuva (${weather.rainProbability}%) em ${new Date(date).toLocaleDateString("pt-BR")}. Fique atento à previsão.`,
+    };
+  }
+
+  // Alerta de vento forte (>25 km/h)
+  if (weather.windSpeed > 25) {
+    return {
+      hasAlert: true,
+      severity: "medium",
+      message: `💨 ATENÇÃO: Ventos fortes previstos (${weather.windSpeed} km/h) em ${new Date(date).toLocaleDateString("pt-BR")}. Navegação pode ser desconfortável.`,
+    };
+  }
+
+  return { hasAlert: false };
+}
+
+/**
+ * Formata dados do tempo para exibição em email
+ */
+export function formatWeatherForEmail(weather: WeatherData): string {
+  const emoji = getWeatherEmoji(weather.icon);
+  
+  return `
+${emoji} **Previsão do Tempo**
+
+🌡️ Temperatura: ${weather.temperature}°C (Min: ${weather.tempMin}°C / Max: ${weather.tempMax}°C)
+☁️ Condição: ${weather.description}
+💧 Umidade: ${weather.humidity}%
+💨 Vento: ${weather.windSpeed} km/h
+🌧️ Probabilidade de chuva: ${weather.rainProbability}%
+${weather.rainVolume ? `💦 Volume esperado: ${weather.rainVolume}mm` : ""}
+
+${weather.rainProbability >= 80 ? "⛈️ **ATENÇÃO:** Alta probabilidade de chuva. Considere reagendar." : ""}
+${weather.windSpeed > 25 ? "💨 **ATENÇÃO:** Ventos fortes previstos. Navegação pode ser desconfortável." : ""}
+  `.trim();
+}
+
+/**
+ * Verifica se as condições são favoráveis para navegação
+ */
+export function isWeatherFavorable(weather: WeatherData): boolean {
+  return (
+    weather.rainProbability < 60 &&
+    weather.windSpeed <= 25
+  );
 }

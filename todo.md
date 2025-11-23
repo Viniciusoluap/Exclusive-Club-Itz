@@ -74,3 +74,39 @@
 3. Atualizar favicon no painel de gerenciamento
 4. Testar fluxo completo com clientes reais
 5. Coletar feedback dos cotistas
+
+
+## 🆕 Novas Implementações Solicitadas
+
+### Responsividade Mobile
+- [x] Corrigir menu de navegação para aparecer em modo vertical (portrait)
+- [x] Implementar menu hambúrguer responsivo para telas pequenas
+- [x] Testar navegação em diferentes tamanhos de tela mobile
+
+### Edição de Fotos
+- [ ] Melhorar 16 fotos da galeria com edição profissional
+- [ ] Ajustar contraste, saturação e nitidez mantendo originalidade
+- [ ] Substituir fotos antigas pelas editadas
+
+### Informações Detalhadas das Embarcações
+- [x] Adicionar especificações técnicas completas (Focker 215 150HP)
+- [x] Adicionar especificações técnicas completas (Sea-Doo GTI SE 130HP)
+- [x] Criar mini manual de segurança para clientes
+- [x] Criar checklist pré-navegação
+- [x] Página dedicada com abas para cada embarcação e manual de segurança
+- [ ] Incluir checklist no email de confirmação de reserva
+
+### Sistema de Clima e Alertas
+- [x] Integrar previsão do tempo (OpenWeatherMap API)
+- [x] Criar funções de alerta meteorológico
+- [x] Endpoints tRPC para previsão e alertas
+- [x] Testes unitários do sistema de clima
+- [ ] Integrar previsão na página de reservas (UI)
+- [ ] Configurar cron job para email automático às 08:00
+- [ ] Sistema de envio de emails com previsão
+
+### Calendário de Manutenção (Admin)
+- [ ] Criar interface de calendário de manutenções
+- [ ] Implementar bloqueio automático de datas em manutenção
+- [ ] Adicionar CRUD de manutenções programadas
+- [ ] Integrar com sistema de reservas para bloquear datas
