@@ -93,8 +93,27 @@ export default function Dashboard() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.upcomingBookings || 0}</div>
-              <p className="text-xs text-muted-foreground">Agendadas</p>
+              {stats?.nextBooking ? (
+                <div className="space-y-1">
+                  <div className="text-lg font-bold">
+                    {stats.nextBooking.vesselName}
+                    {stats.nextBooking.quotaNumber && ` #${stats.nextBooking.quotaNumber}`}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(stats.nextBooking.bookingDate).toLocaleDateString('pt-BR', {
+                      weekday: 'short',
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <div className="text-2xl font-bold">{stats?.upcomingBookings || 0}</div>
+                  <p className="text-xs text-muted-foreground">Agendadas</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

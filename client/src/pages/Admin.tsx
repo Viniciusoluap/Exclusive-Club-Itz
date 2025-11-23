@@ -303,7 +303,11 @@ export default function Admin() {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
-    const dateTimestamp = new Date(bookingForm.bookingDate).getTime();
+    // Normalizar para meia-noite no fuso horário local
+    const [year, month, day] = bookingForm.bookingDate.split('-').map(Number);
+    const localDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const dateTimestamp = localDate.getTime();
+    
     createBookingForClient.mutate({
       clientEmail: bookingForm.clientEmail,
       vesselId: bookingForm.vesselId,
