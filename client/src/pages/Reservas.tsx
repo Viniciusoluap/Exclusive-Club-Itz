@@ -1,6 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { MobileMenu } from "@/components/MobileMenu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -11,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { WeatherWidget } from "@/components/WeatherWidget";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Loader2, Ship, X } from "lucide-react";
@@ -220,7 +218,7 @@ export default function Reservas() {
                 <span className="text-lg font-bold text-primary">Exclusive Club</span>
               </a>
             </Link>
-            <div className="hidden md:flex items-center gap-4">
+            <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground hidden sm:inline">
                 Olá, {user?.name}
               </span>
@@ -237,13 +235,6 @@ export default function Reservas() {
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Sair
               </Button>
-            </div>
-            <div className="md:hidden">
-              <MobileMenu
-                isAuthenticated={isAuthenticated}
-                userRole={user?.role}
-                onLogout={handleLogout}
-              />
             </div>
           </div>
         </div>
@@ -467,10 +458,6 @@ export default function Reservas() {
                 {vessels?.find((v) => v.id === selectedVessel)?.name}
               </p>
             </div>
-
-            {selectedDate && (
-              <WeatherWidget date={selectedDate} />
-            )}
 
             <div>
               <label className="text-sm font-medium mb-2 block">

@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "db8a1a2a-c0f6-4830-8452-054790dc32ad",
-  "prevId": "366152eb-ced4-4cb1-a0a0-83b8a9a053d8",
+  "id": "28243298-1a5e-4817-926c-491f55723b21",
+  "prevId": "fe8e0897-fedb-43a6-8c13-48d57e96794b",
   "tables": {
     "allowed_clients": {
       "name": "allowed_clients",
@@ -191,13 +191,6 @@
         },
         "vessel_id": {
           "name": "vessel_id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "quota_number": {
-          "name": "quota_number",
           "type": "int",
           "primaryKey": false,
           "notNull": true,

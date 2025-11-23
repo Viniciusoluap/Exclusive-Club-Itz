@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "e6667b8f-a061-4452-974e-01f5a9ca1d38",
-  "prevId": "db8a1a2a-c0f6-4830-8452-054790dc32ad",
+  "id": "75e2dc30-6411-4ab9-98b3-c0635e7e6bc5",
+  "prevId": "28243298-1a5e-4817-926c-491f55723b21",
   "tables": {
     "allowed_clients": {
       "name": "allowed_clients",
@@ -241,90 +241,6 @@
       "compositePrimaryKeys": {
         "client_quotas_id": {
           "name": "client_quotas_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "maintenances": {
-      "name": "maintenances",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "vessel_id": {
-          "name": "vessel_id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "vessel_name": {
-          "name": "vessel_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "start_date": {
-          "name": "start_date",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "end_date": {
-          "name": "end_date",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "enum('scheduled','in_progress','completed','cancelled')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'scheduled'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "onUpdate": true,
-          "default": "(now())"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "maintenances_id": {
-          "name": "maintenances_id",
           "columns": [
             "id"
           ]
