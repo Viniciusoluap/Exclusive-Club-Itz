@@ -11,6 +11,7 @@ import Galeria from "./pages/Galeria";
 import Reservas from "./pages/Reservas";
 import AccessDenied from "./pages/AccessDenied";
 import Admin from "./pages/Admin";
+import AdminManutencao from "./pages/AdminManutencao";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -22,6 +23,7 @@ function Router() {
       <Route path={"/reservas"} component={Reservas} />
       <Route path={"/acesso-negado"} component={AccessDenied} />
       <Route path={"/admin"} component={Admin} />
+      <Route path={"/admin/manutencao"} component={AdminManutencao} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

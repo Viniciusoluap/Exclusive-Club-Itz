@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { MobileMenu } from "@/components/MobileMenu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_LOGO, getLoginUrl } from "@/const";
@@ -63,15 +64,7 @@ export default function Home() {
               )}
             </nav>
             <div className="md:hidden">
-              {isAuthenticated ? (
-                <Link href="/reservas">
-                  <Button size="sm">Reservas</Button>
-                </Link>
-              ) : (
-                <Button size="sm" asChild>
-                  <a href={getLoginUrl()}>Entrar</a>
-                </Button>
-              )}
+              <MobileMenu />
             </div>
           </div>
         </div>
