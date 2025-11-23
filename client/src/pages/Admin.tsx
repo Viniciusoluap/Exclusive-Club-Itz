@@ -42,8 +42,7 @@ export default function Admin() {
     email: "", 
     name: "", 
     phone: "",
-    quotaType: "full" as "full" | "half",
-    quotaCount: "1"
+    quotas: [] as Array<{ vesselId: number, quotaNumber: number, quotaType: "full" | "half" }>
   });
 
   // Vessel Management State
@@ -74,7 +73,7 @@ export default function Admin() {
       toast.success("Cliente adicionado com sucesso!");
       utils.allowedClients.list.invalidate();
       setShowClientDialog(false);
-      setClientForm({ email: "", name: "", phone: "", quotaType: "full", quotaCount: "1" });
+      setClientForm({ email: "", name: "", phone: "", quotas: [] });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -123,29 +122,19 @@ export default function Admin() {
     },
   });
 
-  const toggleVesselStatus = trpc.vessels.update.useMutation({
+  const updateBookingStatus = trpc.bookings.update.useMutation({
     onSuccess: () => {
       toast.success("Status atualizado!");
-      utils.vessels.listAll.invalidate();
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const markAsUsed = trpc.bookings.markAsUsed.useMutation({
-    onSuccess: () => {
-      toast.success("Reserva marcada como utilizada!");
       utils.bookings.listAll.invalidate();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(error.message);
     },
   });
 
   const deleteBooking = trpc.bookings.delete.useMutation({
     onSuccess: () => {
-      toast.success("Reserva excluída com sucesso!");
+      toast.success("Reserva removida com sucesso!");
       utils.bookings.listAll.invalidate();
     },
     onError: (error) => {
@@ -154,33 +143,43 @@ export default function Admin() {
   });
 
   const handleCreateClient = () => {
-    if (!clientForm.email || !clientForm.name) {
-      toast.error("Preencha os campos obrigatórios");
+    if (!clientForm.email || !clientForm.name || clientForm.quotas.length === 0) {
+      toast.error("Preencha todos os campos obrigatórios");
       return;
     }
-    createClient.mutate({
-      email: clientForm.email,
-      name: clientForm.name,
-      phone: clientForm.phone || undefined,
-      quotaType: clientForm.quotaType,
-      quotaCount: parseInt(clientForm.quotaCount) || 1,
-    });
+    createClient.mutate(clientForm);
   };
 
   const handleCreateVessel = () => {
-    if (!vesselForm.name) {
-      toast.error("Preencha o nome da embarcação");
+    if (!vesselForm.name || !vesselForm.type) {
+      toast.error("Preencha todos os campos obrigatórios");
       return;
     }
     createVessel.mutate({
-      ...vesselForm,
+      name: vesselForm.name,
+      type: vesselForm.type,
+      description: vesselForm.description || undefined,
       capacity: vesselForm.capacity ? parseInt(vesselForm.capacity) : undefined,
+    });
+  };
+
+  const addQuota = (vesselId: number, quotaNumber: number, quotaType: "full" | "half") => {
+    setClientForm({
+      ...clientForm,
+      quotas: [...clientForm.quotas, { vesselId, quotaNumber, quotaType }]
+    });
+  };
+
+  const removeQuota = (index: number) => {
+    setClientForm({
+      ...clientForm,
+      quotas: clientForm.quotas.filter((_, i) => i !== index)
     });
   };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -188,12 +187,12 @@ export default function Admin() {
 
   if (!isAuthenticated || user?.role !== "admin") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <Card className="max-w-md w-full mx-4">
+      <div className="flex items-center justify-center min-h-screen bg-muted/30 p-4">
+        <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Acesso Restrito</CardTitle>
             <CardDescription>
-              Apenas administradores podem acessar esta página.
+              Esta página é acessível apenas para administradores.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -218,11 +217,9 @@ export default function Admin() {
       <header className="bg-background border-b sticky top-0 z-40">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link href="/">
-              <a className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10" />
-                <span className="text-lg font-bold text-primary">Exclusive Club Admin</span>
-              </a>
+            <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10" />
+              <span className="text-lg font-bold text-primary">Exclusive Club Admin</span>
             </Link>
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground hidden sm:inline">
@@ -296,14 +293,16 @@ export default function Admin() {
                             <div className="text-sm text-muted-foreground">{client.phone}</div>
                           )}
                           <div className="text-sm font-medium text-primary mt-1">
-                            {client.quotaCount} {client.quotaType === "full" ? "Cota(s) Inteira(s)" : "Meia(s) Cota(s)"} 
-                            {" • "}
-                            {client.quotaType === "full" ? client.quotaCount * 2 : client.quotaCount} reserva(s) simultânea(s)
+                            {client.quotas?.map((q: any) => (
+                              <span key={q.id} className="mr-2">
+                                {vessels?.find(v => v.id === q.vesselId)?.name} #{q.quotaNumber} ({q.quotaType === "full" ? "Inteira" : "Meia"})
+                              </span>
+                            ))}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
-                            variant={client.isActive ? "default" : "outline"}
+                            variant={client.isActive ? "outline" : "default"}
                             size="sm"
                             onClick={() =>
                               toggleClientStatus.mutate({
@@ -312,20 +311,10 @@ export default function Admin() {
                               })
                             }
                           >
-                            {client.isActive ? (
-                              <>
-                                <Check className="h-4 w-4 mr-1" />
-                                Ativo
-                              </>
-                            ) : (
-                              <>
-                                <X className="h-4 w-4 mr-1" />
-                                Inativo
-                              </>
-                            )}
+                            {client.isActive ? "Desativar" : "Ativar"}
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="destructive"
                             size="sm"
                             onClick={() => {
                               if (confirm("Tem certeza que deseja remover este cliente?")) {
@@ -333,16 +322,16 @@ export default function Admin() {
                               }
                             }}
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
+                  <p className="text-center text-muted-foreground py-8">
                     Nenhum cliente cadastrado
-                  </div>
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -369,58 +358,41 @@ export default function Admin() {
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
                 ) : vessels && vessels.length > 0 ? (
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
                     {vessels.map((vessel) => (
-                      <Card key={vessel.id}>
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <CardTitle className="text-lg">{vessel.name}</CardTitle>
-                              <CardDescription>
-                                {vessel.type === "lancha" ? "Lancha" : "Jetski"}
-                                {vessel.capacity && ` • ${vessel.capacity} pessoas`}
-                              </CardDescription>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                if (confirm("Tem certeza que deseja remover esta embarcação?")) {
-                                  deleteVessel.mutate({ id: vessel.id });
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                      <div
+                        key={vessel.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div className="flex-1">
+                          <div className="font-semibold">{vessel.name}</div>
+                          <div className="text-sm text-muted-foreground capitalize">
+                            {vessel.type}
                           </div>
-                        </CardHeader>
-                        <CardContent>
                           {vessel.description && (
-                            <p className="text-sm text-muted-foreground mb-4">
+                            <div className="text-sm text-muted-foreground">
                               {vessel.description}
-                            </p>
+                            </div>
                           )}
-                          <Button
-                            variant={vessel.isActive ? "default" : "outline"}
-                            size="sm"
-                            className="w-full"
-                            onClick={() =>
-                              toggleVesselStatus.mutate({
-                                id: vessel.id,
-                                isActive: !vessel.isActive,
-                              })
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm("Tem certeza que deseja remover esta embarcação?")) {
+                              deleteVessel.mutate({ id: vessel.id });
                             }
-                          >
-                            {vessel.isActive ? "Ativa" : "Inativa"}
-                          </Button>
-                        </CardContent>
-                      </Card>
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
+                  <p className="text-center text-muted-foreground py-8">
                     Nenhuma embarcação cadastrada
-                  </div>
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -431,7 +403,7 @@ export default function Admin() {
             <Card>
               <CardHeader>
                 <CardTitle>Todas as Reservas</CardTitle>
-                <CardDescription>Visualize e gerencie todas as reservas do sistema</CardDescription>
+                <CardDescription>Gerencie todas as reservas do sistema</CardDescription>
               </CardHeader>
               <CardContent>
                 {bookingsLoading ? (
@@ -446,72 +418,64 @@ export default function Admin() {
                         className="flex items-center justify-between p-4 border rounded-lg"
                       >
                         <div className="flex-1">
-                          <div className="font-semibold">{booking.vesselName}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Cliente: {booking.clientName} ({booking.clientEmail})
+                          <div className="font-semibold">{booking.clientName}</div>
+                          <div className="text-sm text-muted-foreground">{booking.clientEmail}</div>
+                          <div className="text-sm">
+                            {booking.vesselName} -{" "}
+                            {new Date(booking.bookingDate).toLocaleDateString("pt-BR")}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            Data:{" "}
-                            {new Date(booking.bookingDate).toLocaleDateString("pt-BR", {
-                              weekday: "long",
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                          </div>
-                          {booking.notes && (
-                            <div className="text-sm text-muted-foreground mt-1">
-                              Obs: {booking.notes}
-                            </div>
-                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${
                               booking.status === "confirmed"
-                                ? "bg-green-100 text-green-700"
+                                ? "bg-green-100 text-green-800"
                                 : booking.status === "used"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-gray-100 text-gray-700"
+                                ? "bg-blue-100 text-blue-800"
+                                : booking.status === "cancelled"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
                             }`}
                           >
                             {booking.status === "confirmed"
                               ? "Confirmada"
                               : booking.status === "used"
                               ? "Utilizada"
-                              : "Cancelada"}
+                              : booking.status === "cancelled"
+                              ? "Cancelada"
+                              : "Pendente"}
                           </span>
                           {booking.status === "confirmed" && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => markAsUsed.mutate({ id: booking.id })}
-                              >
-                                <Check className="h-4 w-4 mr-1" />
-                                Marcar Usada
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  if (confirm("Tem certeza que deseja excluir esta reserva?")) {
-                                    deleteBooking.mutate({ id: booking.id });
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                updateBookingStatus.mutate({
+                                  id: booking.id,
+                                  status: "used",
+                                })
+                              }
+                            >
+                              Marcar como Usada
+                            </Button>
                           )}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm("Tem certeza que deseja remover esta reserva?")) {
+                                deleteBooking.mutate({ id: booking.id });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Nenhuma reserva encontrada
-                  </div>
+                  <p className="text-center text-muted-foreground py-8">Nenhuma reserva encontrada</p>
                 )}
               </CardContent>
             </Card>
@@ -521,12 +485,10 @@ export default function Admin() {
 
       {/* Add Client Dialog */}
       <Dialog open={showClientDialog} onOpenChange={setShowClientDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Adicionar Cliente Autorizado</DialogTitle>
-            <DialogDescription>
-              Cadastre um novo email autorizado a fazer reservas
-            </DialogDescription>
+            <DialogTitle>Adicionar Cliente</DialogTitle>
+            <DialogDescription>Cadastre um novo cliente autorizado</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -536,7 +498,7 @@ export default function Admin() {
                 type="email"
                 value={clientForm.email}
                 onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
-                placeholder="cliente@email.com"
+                placeholder="cliente@example.com"
               />
             </div>
             <div>
@@ -545,7 +507,7 @@ export default function Admin() {
                 id="name"
                 value={clientForm.name}
                 onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
-                placeholder="Nome do cliente"
+                placeholder="Nome completo"
               />
             </div>
             <div>
@@ -558,36 +520,54 @@ export default function Admin() {
               />
             </div>
             <div>
-              <Label htmlFor="quotaTypeSelect">Tipo de Cota *</Label>
-              <Select
-                value={`${clientForm.quotaType}-${clientForm.quotaCount}`}
-                onValueChange={(value) => {
-                  const [type, count] = value.split('-');
-                  setClientForm({ 
-                    ...clientForm, 
-                    quotaType: type as "full" | "half",
-                    quotaCount: count
-                  });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo de cota" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="full-1">1 Cota Inteira (2 reservas simultâneas)</SelectItem>
-                  <SelectItem value="full-2">2 Cotas Inteiras (4 reservas simultâneas)</SelectItem>
-                  <SelectItem value="full-3">3 Cotas Inteiras (6 reservas simultâneas)</SelectItem>
-                  <SelectItem value="half-1">1 Meia Cota (1 reserva por vez)</SelectItem>
-                  <SelectItem value="half-2">2 Meias Cotas (2 reservas simultâneas)</SelectItem>
-                  <SelectItem value="half-3">3 Meias Cotas (3 reservas simultâneas)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                {clientForm.quotaType === "full" 
-                  ? `${parseInt(clientForm.quotaCount || "1") * 2} reserva(s) simultânea(s) no total`
-                  : `${parseInt(clientForm.quotaCount || "1")} reserva(s) simultânea(s) no total`
-                }
-              </p>
+              <Label>Cotas *</Label>
+              <div className="space-y-2 mt-2">
+                {clientForm.quotas.map((quota, index) => (
+                  <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                    <span className="flex-1 text-sm">
+                      {vessels?.find(v => v.id === quota.vesselId)?.name} - Cota #{quota.quotaNumber} ({quota.quotaType === "full" ? "Inteira" : "Meia"})
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeQuota(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                
+                <div className="border rounded p-3 space-y-3">
+                  <div className="font-medium">Adicionar Cota</div>
+                  {vessels?.filter(v => v.isActive).map((vessel) => (
+                    <div key={vessel.id} className="space-y-2">
+                      <div className="text-sm font-medium">{vessel.name}</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {Array.from({ length: vessel.type === "lancha" ? 7 : 6 }, (_, i) => i + 1).map((num) => (
+                          <div key={num} className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => addQuota(vessel.id, num, "full")}
+                            >
+                              #{num} Inteira
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => addQuota(vessel.id, num, "half")}
+                            >
+                              #{num} Meia
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -633,7 +613,7 @@ export default function Admin() {
                   setVesselForm({ ...vesselForm, type: value })
                 }
               >
-                <SelectTrigger id="vessel-type">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -643,23 +623,22 @@ export default function Admin() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="vessel-capacity">Capacidade (pessoas)</Label>
-              <Input
-                id="vessel-capacity"
-                type="number"
-                value={vesselForm.capacity}
-                onChange={(e) => setVesselForm({ ...vesselForm, capacity: e.target.value })}
-                placeholder="Ex: 7"
-              />
-            </div>
-            <div>
               <Label htmlFor="vessel-description">Descrição</Label>
               <Textarea
                 id="vessel-description"
                 value={vesselForm.description}
                 onChange={(e) => setVesselForm({ ...vesselForm, description: e.target.value })}
-                placeholder="Descrição da embarcação..."
-                rows={3}
+                placeholder="Descrição da embarcação"
+              />
+            </div>
+            <div>
+              <Label htmlFor="vessel-capacity">Capacidade</Label>
+              <Input
+                id="vessel-capacity"
+                type="number"
+                value={vesselForm.capacity}
+                onChange={(e) => setVesselForm({ ...vesselForm, capacity: e.target.value })}
+                placeholder="Número de pessoas"
               />
             </div>
           </div>

@@ -1,16 +1,31 @@
-# Project TODO - Ajustes Solicitados
+# Project TODO - Sistema de Cotas Numeradas
 
-## 🔧 Ajustes Urgentes
-- [x] Adicionar botão de Logout no menu/header
-- [x] Restringir acesso ao painel Admin apenas para o owner (vinicius@manus.im)
-- [x] Clientes comuns devem ver apenas "Minhas Reservas", não "Admin"
-- [x] Adicionar campo de seleção de "Tipo de Cota Pré-existente" no cadastro de cliente
-- [x] Testar logout funcionando
-- [x] Testar restrição de acesso admin
-- [x] Testar seleção de tipo de cota
+## 📊 Estrutura de Cotas
+- Lancha: 7 cotas numeradas (1 a 7)
+- Jetski: 6 cotas numeradas (1 a 6)
+- Cada cota pode ser: Inteira (2 reservas simultâneas) ou Meia (1 reserva)
 
-## ✅ Concluído Anteriormente
-- [x] Sistema de cotas implementado
-- [x] Bug de terças-feiras corrigido
-- [x] Sistema de notificações por email
-- [x] Tutorial didático de acesso ao painel admin
+## 🗄️ Banco de Dados
+- [x] Adicionar campo `quotaNumber` na tabela `client_quotas`
+- [x] Adicionar validação de range (1-7 para lancha, 1-6 para jetski)
+- [x] Migrar dados existentes
+
+## 🔄 Backend
+- [x] Atualizar procedures para incluir quotaNumber
+- [x] Adicionar validação de quotaNumber no create/update
+- [x] Atualizar queries para retornar quotaNumber
+
+## 🎨 Frontend - Admin
+- [x] Adicionar seleção de número de cota no formulário
+- [x] Mostrar número da cota na lista de clientes
+- [x] Permitir edição de número de cota
+
+## 📝 Cadastro de Clientes
+- [x] Receber lista de clientes do usuário
+- [x] Cadastrar clientes automaticamente no banco (16 clientes)
+- [x] Validar dados antes de inserir
+
+## ✅ Testes
+- [x] Testar cadastro com número de cota
+- [x] Testar validação de ranges
+- [x] Testar reservas com novo sistema
