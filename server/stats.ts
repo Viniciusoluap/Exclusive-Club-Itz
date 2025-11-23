@@ -79,6 +79,12 @@ export interface AdminStats {
   totalClients: number;
   totalVessels: number;
   upcomingBookings: number;
+  nextBooking: {
+    vesselName: string;
+    quotaNumber: number | null;
+    clientName: string;
+    bookingDate: number;
+  } | null;
   occupancyRate: { vesselName: string; rate: number }[];
   topClients: { clientName: string; bookingCount: number }[];
 }
@@ -134,11 +140,36 @@ export async function getAdminStats(): Promise<AdminStats> {
     .slice(0, 5)
     .map(c => ({ clientName: c.name, bookingCount: c.count }));
   
+  // Próxima reserva mais recente
+  let nextBooking: AdminStats['nextBooking'] = null;
+  if (upcoming.length > 0) {
+    const sortedUpcoming = upcoming.sort((a: any, b: any) => a.bookingDate - b.bookingDate);
+    const next = sortedUpcoming[0];
+    
+    // Buscar quota number do cliente para esta embarcação
+    const client = clients.find((c: any) => c.email === next.clientEmail);
+    let quotaNumber: number | null = null;
+    if (client && client.quotas) {
+      const quota = client.quotas.find((q: any) => q.vesselId === next.vesselId);
+      if (quota) {
+        quotaNumber = quota.quotaNumber;
+      }
+    }
+    
+    nextBooking = {
+      vesselName: next.vesselName,
+      quotaNumber,
+      clientName: next.clientName,
+      bookingDate: next.bookingDate,
+    };
+  }
+  
   return {
     totalBookings: allBookings.length,
     totalClients: clients.length,
     totalVessels: vessels.length,
     upcomingBookings: upcoming.length,
+    nextBooking,
     occupancyRate,
     topClients,
   };

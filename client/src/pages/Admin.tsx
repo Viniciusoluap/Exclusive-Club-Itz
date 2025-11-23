@@ -74,11 +74,31 @@ function ReportsTab() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Próximas Reservas</CardTitle>
+            <CardTitle className="text-sm font-medium">Próxima Reserva</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.upcomingBookings || 0}</div>
+            {stats?.nextBooking ? (
+              <div className="space-y-1">
+                <div className="text-lg font-bold">
+                  {stats.nextBooking.vesselName}
+                  {stats.nextBooking.quotaNumber && ` #${stats.nextBooking.quotaNumber}`}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {stats.nextBooking.clientName}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {new Date(stats.nextBooking.bookingDate).toLocaleDateString('pt-BR', {
+                    weekday: 'short',
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-2xl font-bold text-muted-foreground">Nenhuma</div>
+            )}
           </CardContent>
         </Card>
       </div>
