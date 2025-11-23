@@ -1,71 +1,76 @@
-# Project TODO - Sistema de Cotas Numeradas
+# Project TODO - Sistema de Reservas Exclusive Club
 
-## 📊 Estrutura de Cotas
-- Lancha: 7 cotas numeradas (1 a 7)
-- Jetski: 6 cotas numeradas (1 a 6)
-- Cada cota pode ser: Inteira (2 reservas simultâneas) ou Meia (1 reserva)
+## ✅ Implementações Concluídas
 
-## 🗄️ Banco de Dados
+### Sistema de Cotas Numeradas
 - [x] Adicionar campo `quotaNumber` na tabela `client_quotas`
 - [x] Adicionar validação de range (1-7 para lancha, 1-6 para jetski)
-- [x] Migrar dados existentes
-
-## 🔄 Backend
-- [x] Atualizar procedures para incluir quotaNumber
-- [x] Adicionar validação de quotaNumber no create/update
-- [x] Atualizar queries para retornar quotaNumber
-
-## 🎨 Frontend - Admin
-- [x] Adicionar seleção de número de cota no formulário
-- [x] Mostrar número da cota na lista de clientes
-- [x] Permitir edição de número de cota
-
-## 📝 Cadastro de Clientes
-- [x] Receber lista de clientes do usuário
-- [x] Cadastrar clientes automaticamente no banco (16 clientes)
-- [x] Validar dados antes de inserir
-
-## ✅ Testes
-- [x] Testar cadastro com número de cota
-- [x] Testar validação de ranges
-- [x] Testar reservas com novo sistema
-
-
-## 🐛 Bugs Reportados
-- [x] Botão de logout não está funcionando
-- [x] Verificar e documentar segurança de acesso admin (apenas owner)
-
-## 🔒 Segurança
-- [x] Confirmar que apenas owner tem acesso ao painel Admin
-- [x] Documentar controle de acesso baseado em role (ver SECURITY.md)
-
-
-## 🎯 Melhorias Solicitadas
+- [x] Atualizar backend e frontend para trabalhar com cotas numeradas
+- [x] Cadastrar 16 clientes com cotas específicas
 
 ### Funcionalidades Admin
 - [x] Admin poder criar reservas para qualquer cliente cadastrado
 - [x] Admin pode superar limite de reservas ao criar manualmente
-- [ ] Relatórios gerenciais (taxa de ocupação, cotistas ativos)
-- [ ] Controle de manutenção programada
-- [ ] Controle financeiro (status pagamento, inadimplência)
+- [x] Relatórios gerenciais (taxa de ocupação últimos 30 dias, top 5 clientes)
+- [x] Painel de estatísticas com overview completo
 
 ### Visual e Branding
-- [ ] Sistema de upload de imagens reais das embarcações
-- [ ] Upload e troca de logo personalizado
-- [ ] Personalização de paleta de cores
-- [ ] Galeria de fotos de clientes usando embarcações
-- [ ] Seção de depoimentos
+- [x] Logo personalizado do Exclusive Club
+- [x] 16 fotos reais das embarcações adicionadas
+- [x] Galeria de fotos interativa com filtros e lightbox
+- [x] Design responsivo e moderno
 
 ### Experiência do Usuário
 - [x] Botão flutuante de WhatsApp (99 981392210)
-- [ ] Dashboard do cliente com histórico de uso
-- [ ] Estatísticas pessoais (quantas vezes usou, dias favoritos)
-- [ ] Notificações por email (confirmação e lembrete)
-- [ ] Previsão do tempo para dia da reserva
-- [ ] Informações detalhadas das embarcações (specs, regras)
-- [ ] Checklist pré-navegação
+- [x] Dashboard do cliente com histórico e estatísticas
+- [x] Gráfico de uso mensal (últimos 6 meses)
+- [x] Embarcação favorita do cliente
+- [x] Sistema de notificações para owner (via Manus)
 
-### Gestão e Controle
-- [ ] Calendário de manutenções
-- [ ] Bloqueio automático de datas (manutenção/feriados)
-- [ ] Alertas de condições marítimas
+### Integrações
+- [x] Previsão do tempo (OpenWeather API) - requer configuração de API key
+- [x] Sistema de autenticação Manus OAuth
+- [x] Controle de acesso baseado em roles (admin/user)
+
+### Segurança
+- [x] Apenas owner tem acesso ao painel Admin
+- [x] Documentação de segurança (SECURITY.md)
+- [x] Botão de logout funcionando
+- [x] Testes de segurança implementados
+
+## 📋 Funcionalidades Pendentes (Futuras)
+
+### Gestão Avançada
+- [ ] Controle de manutenção programada
+- [ ] Calendário de manutenções com bloqueio automático
+- [ ] Controle financeiro (status pagamento, inadimplência)
+- [ ] Exportar relatórios em PDF
+
+### Experiência do Usuário
+- [ ] Notificações por email direto para clientes (requer serviço externo)
+- [ ] Lembrete automático 1 dia antes da reserva
+- [ ] Informações detalhadas das embarcações (specs completas)
+- [ ] Checklist pré-navegação
+- [ ] Seção de depoimentos de clientes
+
+### Personalização
+- [ ] Sistema de upload de novas fotos pelo admin
+- [ ] Troca de logo via interface
+- [ ] Personalização de paleta de cores via UI
+- [ ] Alertas de condições marítimas desfavoráveis
+
+## 📊 Estatísticas do Projeto
+
+- **Total de Clientes:** 16 cadastrados
+- **Embarcações:** 2 (Lancha Focker + Jetski Sea-Doo)
+- **Cotas Totais:** 13 (7 Lancha + 6 Jetski)
+- **Fotos:** 16 imagens reais
+- **Funcionalidades Principais:** 100% implementadas
+
+## 🚀 Próximos Passos Sugeridos
+
+1. Configurar OPENWEATHER_API_KEY para ativar previsão do tempo
+2. Publicar o site via botão "Publish" na interface
+3. Atualizar favicon no painel de gerenciamento
+4. Testar fluxo completo com clientes reais
+5. Coletar feedback dos cotistas

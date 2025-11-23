@@ -6,6 +6,8 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { notifyNewBooking, notifyBookingCancellation, notifyBookingUsed } from "./_core/emailNotification";
 import * as db from "./db";
+import * as stats from "./stats";
+import * as weather from "./weather";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -519,6 +521,33 @@ export const appRouter = router({
         await db.deleteBooking(input.id);
         return { success: true };
       }),
+  }),
+
+  // Weather
+  weather: router({
+    forecast: publicProcedure
+      .input(z.object({ date: z.number() })) // Unix timestamp
+      .query(async ({ input }) => {
+        const date = new Date(input.date);
+        const forecast = await weather.getWeatherForecast(date);
+        return forecast ? {
+          ...forecast,
+          emoji: weather.getWeatherEmoji(forecast.icon),
+        } : null;
+      }),
+  }),
+
+  // Statistics
+  stats: router({
+    client: allowedClientProcedure.query(async ({ ctx }) => {
+      if (!ctx.user.email) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Email não encontrado' });
+      }
+      return await stats.getClientStats(ctx.user.email);
+    }),
+    admin: adminProcedure.query(async () => {
+      return await stats.getAdminStats();
+    }),
   }),
 });
 
