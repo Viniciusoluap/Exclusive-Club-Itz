@@ -392,6 +392,56 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // Create booking for any client (admin only, no limits)
+    createForClient: adminProcedure
+      .input(z.object({
+        clientEmail: z.string().email(),
+        vesselId: z.number(),
+        bookingDate: z.number(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Get client info
+        const client = await db.getAllowedClientByEmail(input.clientEmail);
+        if (!client) {
+          throw new TRPCError({ 
+            code: 'NOT_FOUND', 
+            message: 'Cliente não encontrado na lista de autorizados' 
+          });
+        }
+
+        // Check if vessel exists
+        const vessel = await db.getVesselById(input.vesselId);
+        if (!vessel) {
+          throw new TRPCError({ 
+            code: 'NOT_FOUND', 
+            message: 'Embarcação não encontrada' 
+          });
+        }
+
+        // Check if vessel is already booked for this date
+        const existingBookings = await db.getBookingsByVesselAndDate(input.vesselId, input.bookingDate);
+        if (existingBookings.length > 0) {
+          throw new TRPCError({ 
+            code: 'CONFLICT', 
+            message: 'Esta embarcação já está reservada para esta data' 
+          });
+        }
+
+        // Admin can create booking without quota limits
+        await db.createBooking({
+          clientEmail: input.clientEmail,
+          clientName: client.name,
+          vesselId: input.vesselId,
+          vesselName: vessel.name,
+          bookingDate: input.bookingDate,
+          status: 'confirmed',
+          notes: input.notes,
+        });
+
+        return { success: true };
+      }),
+
     // Cancel booking
     cancel: allowedClientProcedure
       .input(z.object({ id: z.number() }))
