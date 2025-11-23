@@ -18,7 +18,12 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 
 export default function Reservas() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/';
+  };
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedVessel, setSelectedVessel] = useState<number | null>(null);
@@ -218,11 +223,19 @@ export default function Reservas() {
               <span className="text-sm text-muted-foreground hidden sm:inline">
                 Olá, {user?.name}
               </span>
+              {user?.role === "admin" && (
+                <Link href="/admin">
+                  <Button variant="outline" size="sm">Admin</Button>
+                </Link>
+              )}
               <Link href="/">
                 <Button variant="outline" size="sm">
                   Voltar ao Início
                 </Button>
               </Link>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                Sair
+              </Button>
             </div>
           </div>
         </div>

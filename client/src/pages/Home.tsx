@@ -6,7 +6,12 @@ import { Anchor, Calendar, Ship, Waves } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Home() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/';
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -38,6 +43,7 @@ export default function Home() {
                   <Link href="/reservas">
                     <Button>Minhas Reservas</Button>
                   </Link>
+                  <Button variant="ghost" onClick={handleLogout}>Sair</Button>
                 </>
               ) : (
                 <Button asChild>

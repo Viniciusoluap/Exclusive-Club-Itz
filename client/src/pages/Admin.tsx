@@ -28,7 +28,12 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 
 export default function Admin() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/';
+  };
   const utils = trpc.useUtils();
 
   // Client Management State
@@ -221,13 +226,21 @@ export default function Admin() {
             </Link>
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground hidden sm:inline">
-                Admin: {user?.name}
+                Olá, {user?.name}
               </span>
+              <Link href="/reservas">
+                <Button variant="outline" size="sm">
+                  Minhas Reservas
+                </Button>
+              </Link>
               <Link href="/">
                 <Button variant="outline" size="sm">
                   Voltar ao Site
                 </Button>
               </Link>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                Sair
+              </Button>
             </div>
           </div>
         </div>
@@ -545,33 +558,33 @@ export default function Admin() {
               />
             </div>
             <div>
-              <Label htmlFor="quotaType">Tipo de Cota *</Label>
+              <Label htmlFor="quotaTypeSelect">Tipo de Cota *</Label>
               <Select
-                value={clientForm.quotaType}
-                onValueChange={(value: "full" | "half") => setClientForm({ ...clientForm, quotaType: value })}
+                value={`${clientForm.quotaType}-${clientForm.quotaCount}`}
+                onValueChange={(value) => {
+                  const [type, count] = value.split('-');
+                  setClientForm({ 
+                    ...clientForm, 
+                    quotaType: type as "full" | "half",
+                    quotaCount: count
+                  });
+                }}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecione o tipo de cota" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="full">Cota Inteira (2 reservas simultâneas)</SelectItem>
-                  <SelectItem value="half">Meia Cota (1 reserva simultânea)</SelectItem>
+                  <SelectItem value="full-1">1 Cota Inteira (2 reservas simultâneas)</SelectItem>
+                  <SelectItem value="full-2">2 Cotas Inteiras (4 reservas simultâneas)</SelectItem>
+                  <SelectItem value="full-3">3 Cotas Inteiras (6 reservas simultâneas)</SelectItem>
+                  <SelectItem value="half-1">1 Meia Cota (1 reserva por vez)</SelectItem>
+                  <SelectItem value="half-2">2 Meias Cotas (2 reservas simultâneas)</SelectItem>
+                  <SelectItem value="half-3">3 Meias Cotas (3 reservas simultâneas)</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div>
-              <Label htmlFor="quotaCount">Quantidade de Cotas *</Label>
-              <Input
-                id="quotaCount"
-                type="number"
-                min="1"
-                value={clientForm.quotaCount}
-                onChange={(e) => setClientForm({ ...clientForm, quotaCount: e.target.value })}
-                placeholder="1"
-              />
               <p className="text-xs text-muted-foreground mt-1">
                 {clientForm.quotaType === "full" 
-                  ? `${parseInt(clientForm.quotaCount || "1") * 2} reservas simultâneas no total`
+                  ? `${parseInt(clientForm.quotaCount || "1") * 2} reserva(s) simultânea(s) no total`
                   : `${parseInt(clientForm.quotaCount || "1")} reserva(s) simultânea(s) no total`
                 }
               </p>

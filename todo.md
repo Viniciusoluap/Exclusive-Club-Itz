@@ -1,17 +1,16 @@
-# Project TODO - Sistema de Notificações
+# Project TODO - Ajustes Solicitados
 
-## 📧 Sistema de Notificações por Email
-- [x] Criar helper de envio de email usando API built-in do Manus
-- [x] Notificar admin quando nova reserva for criada
-- [x] Notificar admin quando reserva for cancelada
-- [x] Notificar cliente quando sua reserva for confirmada
-- [x] Notificar cliente quando sua reserva for cancelada
-- [x] Notificar admin quando reserva for marcada como "usada"
-- [x] Adicionar templates de email personalizados
-- [x] Testar envio de notificações
+## 🔧 Ajustes Urgentes
+- [x] Adicionar botão de Logout no menu/header
+- [x] Restringir acesso ao painel Admin apenas para o owner (vinicius@manus.im)
+- [x] Clientes comuns devem ver apenas "Minhas Reservas", não "Admin"
+- [x] Adicionar campo de seleção de "Tipo de Cota Pré-existente" no cadastro de cliente
+- [x] Testar logout funcionando
+- [x] Testar restrição de acesso admin
+- [x] Testar seleção de tipo de cota
 
 ## ✅ Concluído Anteriormente
 - [x] Sistema de cotas implementado
 - [x] Bug de terças-feiras corrigido
-- [x] Painel admin com gestão de clientes e embarcações
-- [x] Sistema de reservas funcionando
+- [x] Sistema de notificações por email
+- [x] Tutorial didático de acesso ao painel admin
