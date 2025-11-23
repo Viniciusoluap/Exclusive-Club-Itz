@@ -417,7 +417,7 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+          <TabsList className="grid w-full grid-cols-5 max-w-3xl">
             <TabsTrigger value="clients">
               <Users className="h-4 w-4 mr-2" />
               Clientes
@@ -427,6 +427,10 @@ export default function Admin() {
               Embarcações
             </TabsTrigger>
             <TabsTrigger value="bookings">Reservas</TabsTrigger>
+            <TabsTrigger value="maintenance">
+              <Settings className="h-4 w-4 mr-2" />
+              Manutenção
+            </TabsTrigger>
             <TabsTrigger value="reports">
               <BarChart3 className="h-4 w-4 mr-2" />
               Relatórios
@@ -659,6 +663,32 @@ export default function Admin() {
                 ) : (
                   <p className="text-center text-muted-foreground py-8">Nenhuma reserva encontrada</p>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Maintenance Tab */}
+          <TabsContent value="maintenance" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Calendário de Manutenção</CardTitle>
+                <CardDescription>
+                  Gerencie os períodos de manutenção das embarcações. Reservas são bloqueadas automaticamente durante estes períodos.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <Settings className="h-12 w-12 text-muted-foreground" />
+                  <p className="text-muted-foreground text-center">
+                    Acesse a página completa de manutenção para gerenciar os períodos
+                  </p>
+                  <Button asChild>
+                    <Link href="/admin/manutencao">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Abrir Calendário de Manutenção
+                    </Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
