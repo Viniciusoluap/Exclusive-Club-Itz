@@ -74,26 +74,32 @@ function ReportsTab() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Próxima Reserva</CardTitle>
+            <CardTitle className="text-sm font-medium">Próximas Reservas</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {stats?.nextBooking ? (
-              <div className="space-y-1">
-                <div className="text-lg font-bold">
-                  {stats.nextBooking.vesselName}
-                  {stats.nextBooking.quotaNumber && ` #${stats.nextBooking.quotaNumber}`}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {stats.nextBooking.clientName}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {new Date(stats.nextBooking.bookingDate).toLocaleDateString('pt-BR', {
+            {stats?.nextBookings && stats.nextBookings.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground mb-2">
+                  {new Date(stats.nextBookings[0].bookingDate).toLocaleDateString('pt-BR', {
                     weekday: 'short',
                     day: '2-digit',
                     month: 'short',
                     year: 'numeric'
                   })}
+                </div>
+                <div className="space-y-1.5 max-h-24 overflow-y-auto">
+                  {stats.nextBookings.map((booking, index) => (
+                    <div key={index} className="text-sm">
+                      <div className="font-semibold">
+                        {booking.vesselName}
+                        {booking.quotaNumber && ` #${booking.quotaNumber}`}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {booking.clientName}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : (

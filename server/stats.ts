@@ -9,11 +9,11 @@ export interface ClientStats {
   upcomingBookings: number;
   completedBookings: number;
   cancelledBookings: number;
-  nextBooking: {
+  nextBookings: Array<{
     vesselName: string;
     quotaNumber: number | null;
     bookingDate: number;
-  } | null;
+  }>;
   favoriteVessel: string | null;
   monthlyUsage: { month: string; count: number }[];
 }
@@ -69,27 +69,43 @@ export async function getClientStats(clientEmail: string): Promise<ClientStats> 
     });
   }
   
-  // Próxima reserva mais recente
-  let nextBooking: ClientStats['nextBooking'] = null;
+  // Todas as reservas do próximo dia
+  const nextBookings: ClientStats['nextBookings'] = [];
   if (upcoming.length > 0) {
     const sortedUpcoming = upcoming.sort((a, b) => a.bookingDate - b.bookingDate);
-    const next = sortedUpcoming[0];
+    const nextDate = sortedUpcoming[0].bookingDate;
     
-    // Buscar quota number do cliente para esta embarcação
+    // Normalizar data para meia-noite
+    const nextDateNormalized = new Date(nextDate);
+    nextDateNormalized.setHours(0, 0, 0, 0);
+    const nextDateTimestamp = nextDateNormalized.getTime();
+    
+    // Buscar todas as reservas do mesmo dia
+    const bookingsOnNextDate = sortedUpcoming.filter((b: any) => {
+      const bookingDateNormalized = new Date(b.bookingDate);
+      bookingDateNormalized.setHours(0, 0, 0, 0);
+      return bookingDateNormalized.getTime() === nextDateTimestamp;
+    });
+    
+    // Buscar quotas do cliente
     const quotas = await db.getClientQuotasByEmail(clientEmail);
-    let quotaNumber: number | null = null;
-    if (quotas.length > 0) {
-      const quota = quotas.find((q: any) => q.vesselId === next.vesselId);
-      if (quota) {
-        quotaNumber = quota.quotaNumber;
-      }
-    }
     
-    nextBooking = {
-      vesselName: next.vesselName,
-      quotaNumber,
-      bookingDate: next.bookingDate,
-    };
+    // Montar array com informações de cada reserva
+    for (const booking of bookingsOnNextDate) {
+      let quotaNumber: number | null = null;
+      if (quotas.length > 0) {
+        const quota = quotas.find((q: any) => q.vesselId === booking.vesselId);
+        if (quota) {
+          quotaNumber = quota.quotaNumber;
+        }
+      }
+      
+      nextBookings.push({
+        vesselName: booking.vesselName,
+        quotaNumber,
+        bookingDate: booking.bookingDate,
+      });
+    }
   }
   
   return {
@@ -97,7 +113,7 @@ export async function getClientStats(clientEmail: string): Promise<ClientStats> 
     upcomingBookings: upcoming.length,
     completedBookings: completed.length,
     cancelledBookings: cancelled.length,
-    nextBooking,
+    nextBookings,
     favoriteVessel,
     monthlyUsage,
   };
@@ -108,12 +124,12 @@ export interface AdminStats {
   totalClients: number;
   totalVessels: number;
   upcomingBookings: number;
-  nextBooking: {
+  nextBookings: Array<{
     vesselName: string;
     quotaNumber: number | null;
     clientName: string;
     bookingDate: number;
-  } | null;
+  }>;
   occupancyRate: { vesselName: string; rate: number }[];
   topClients: { clientName: string; bookingCount: number }[];
 }
@@ -169,28 +185,42 @@ export async function getAdminStats(): Promise<AdminStats> {
     .slice(0, 5)
     .map(c => ({ clientName: c.name, bookingCount: c.count }));
   
-  // Próxima reserva mais recente
-  let nextBooking: AdminStats['nextBooking'] = null;
+  // Todas as reservas do próximo dia
+  const nextBookings: AdminStats['nextBookings'] = [];
   if (upcoming.length > 0) {
     const sortedUpcoming = upcoming.sort((a: any, b: any) => a.bookingDate - b.bookingDate);
-    const next = sortedUpcoming[0];
+    const nextDate = sortedUpcoming[0].bookingDate;
     
-    // Buscar quota number do cliente para esta embarcação
-    const client = clients.find((c: any) => c.email === next.clientEmail);
-    let quotaNumber: number | null = null;
-    if (client && client.quotas) {
-      const quota = client.quotas.find((q: any) => q.vesselId === next.vesselId);
-      if (quota) {
-        quotaNumber = quota.quotaNumber;
+    // Normalizar data para meia-noite
+    const nextDateNormalized = new Date(nextDate);
+    nextDateNormalized.setHours(0, 0, 0, 0);
+    const nextDateTimestamp = nextDateNormalized.getTime();
+    
+    // Buscar todas as reservas do mesmo dia
+    const bookingsOnNextDate = sortedUpcoming.filter((b: any) => {
+      const bookingDateNormalized = new Date(b.bookingDate);
+      bookingDateNormalized.setHours(0, 0, 0, 0);
+      return bookingDateNormalized.getTime() === nextDateTimestamp;
+    });
+    
+    // Montar array com informações de cada reserva
+    for (const booking of bookingsOnNextDate) {
+      const client = clients.find((c: any) => c.email === booking.clientEmail);
+      let quotaNumber: number | null = null;
+      if (client && client.quotas) {
+        const quota = client.quotas.find((q: any) => q.vesselId === booking.vesselId);
+        if (quota) {
+          quotaNumber = quota.quotaNumber;
+        }
       }
+      
+      nextBookings.push({
+        vesselName: booking.vesselName,
+        quotaNumber,
+        clientName: booking.clientName,
+        bookingDate: booking.bookingDate,
+      });
     }
-    
-    nextBooking = {
-      vesselName: next.vesselName,
-      quotaNumber,
-      clientName: next.clientName,
-      bookingDate: next.bookingDate,
-    };
   }
   
   return {
@@ -198,7 +228,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     totalClients: clients.length,
     totalVessels: vessels.length,
     upcomingBookings: upcoming.length,
-    nextBooking,
+    nextBookings,
     occupancyRate,
     topClients,
   };
