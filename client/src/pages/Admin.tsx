@@ -30,9 +30,8 @@ import { toast } from "sonner";
 export default function Admin() {
   const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/';
+  const handleLogout = async () => {
+    await logout();
   };
   const utils = trpc.useUtils();
 

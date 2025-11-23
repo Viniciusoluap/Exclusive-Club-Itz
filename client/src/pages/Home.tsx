@@ -8,9 +8,8 @@ import { Link } from "wouter";
 export default function Home() {
   const { user, isAuthenticated, logout } = useAuth();
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/';
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
