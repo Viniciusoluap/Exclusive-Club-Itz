@@ -74,3 +74,22 @@
 - [x] Atualizar frontend do painel admin para listar todas as reservas
 - [x] Atualizar frontend do painel do cliente para listar todas as reservas
 - [ ] Testar com cliente que tem múltiplas cotas no mesmo dia
+
+## Novas Funcionalidades (23/11/2025 - 20:10)
+
+### Filtrar Calendários por Cotas do Cliente
+- [x] Modificar página de Reservas para buscar cotas do cliente logado
+- [x] Exibir apenas calendários de embarcações que o cliente possui cota
+- [x] Se cliente tem só Jetski → mostrar só Jetski
+- [x] Se cliente tem só Lancha → mostrar só Lancha
+- [x] Se cliente tem ambos → mostrar ambos
+- [ ] Testar com diferentes combinações de cotas
+
+### Aviso de Cancelamento Automático em Manutenção
+- [x] Criar endpoint backend para verificar conflitos de manutenção
+- [x] Buscar reservas ativas no período selecionado
+- [x] Adicionar dialog de confirmação no painel de manutenção
+- [x] Mostrar lista de reservas que serão canceladas
+- [x] Exibir: cliente, embarcação, data de cada reserva afetada
+- [x] Confirmar antes de criar manutenção
+- [ ] Testar criação de manutenção com e sem conflitos

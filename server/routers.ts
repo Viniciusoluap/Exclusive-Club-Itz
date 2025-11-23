@@ -571,6 +571,46 @@ export const appRouter = router({
         return await db.getMaintenancesByVesselId(input.vesselId);
       }),
 
+    checkConflicts: adminProcedure
+      .input(z.object({
+        vesselId: z.number(),
+        startDate: z.number(),
+        endDate: z.number(),
+      }))
+      .query(async ({ input }) => {
+        // Buscar reservas ativas no período
+        const allBookings = await db.getAllBookings();
+        
+        // Normalizar datas para meia-noite
+        const startNormalized = new Date(input.startDate);
+        startNormalized.setHours(0, 0, 0, 0);
+        const endNormalized = new Date(input.endDate);
+        endNormalized.setHours(23, 59, 59, 999);
+        
+        const conflictingBookings = allBookings.filter((booking: any) => {
+          // Apenas reservas confirmadas da embarcação selecionada
+          if (booking.vesselId !== input.vesselId) return false;
+          if (booking.status === 'cancelled' || booking.status === 'used') return false;
+          
+          // Verificar se a data da reserva está no período de manutenção
+          const bookingDate = new Date(booking.bookingDate);
+          bookingDate.setHours(0, 0, 0, 0);
+          
+          return bookingDate >= startNormalized && bookingDate <= endNormalized;
+        });
+        
+        return {
+          hasConflicts: conflictingBookings.length > 0,
+          conflictingBookings: conflictingBookings.map((b: any) => ({
+            id: b.id,
+            clientName: b.clientName,
+            clientEmail: b.clientEmail,
+            vesselName: b.vesselName,
+            bookingDate: b.bookingDate,
+          })),
+        };
+      }),
+
     create: adminProcedure
       .input(z.object({
         vesselId: z.number(),
