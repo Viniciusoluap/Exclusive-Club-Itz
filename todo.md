@@ -99,4 +99,4 @@
 ### Aba de Manutenção Ausente
 - [x] Adicionar aba "Manutenção" no menu de navegação do painel admin
 - [x] Posicionar entre "Embarcações" e "Reservas" ou após "Reservas"
-- [ ] Testar navegação para /admin/manutencao
+- [x] Testar navegação para /admin/manutencao

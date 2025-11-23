@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Check, Loader2, Plus, Ship, Trash2, TrendingUp, UserPlus, Users, X } from "lucide-react";
+import { BarChart3, Calendar, Check, Loader2, Plus, Settings, Ship, Trash2, TrendingUp, UserPlus, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
