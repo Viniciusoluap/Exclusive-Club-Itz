@@ -4,9 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { Anchor, Calendar, Ship, Waves } from "lucide-react";
 import { Link } from "wouter";
+import { MobileMenu } from "@/components/MobileMenu";
 
 export default function Home() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -22,9 +27,23 @@ export default function Home() {
               <a href="#home" className="text-foreground hover:text-primary transition-colors">
                 Home
               </a>
-              <a href="#embarcacoes" className="text-foreground hover:text-primary transition-colors">
-                Embarcações
-              </a>
+              <Link href="/embarcacoes">
+                <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
+                  Embarcações
+                </span>
+              </Link>
+              <Link href="/galeria">
+                <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
+                  Galeria
+                </span>
+              </Link>
+              {isAuthenticated && (
+                <Link href="/dashboard">
+                  <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
+                    Dashboard
+                  </span>
+                </Link>
+              )}
               <a href="#sobre" className="text-foreground hover:text-primary transition-colors">
                 Sobre Nós
               </a>
@@ -38,6 +57,7 @@ export default function Home() {
                   <Link href="/reservas">
                     <Button>Minhas Reservas</Button>
                   </Link>
+                  <Button variant="ghost" onClick={handleLogout}>Sair</Button>
                 </>
               ) : (
                 <Button asChild>
@@ -46,15 +66,11 @@ export default function Home() {
               )}
             </nav>
             <div className="md:hidden">
-              {isAuthenticated ? (
-                <Link href="/reservas">
-                  <Button size="sm">Reservas</Button>
-                </Link>
-              ) : (
-                <Button size="sm" asChild>
-                  <a href={getLoginUrl()}>Entrar</a>
-                </Button>
-              )}
+              <MobileMenu
+                isAuthenticated={isAuthenticated}
+                userRole={user?.role}
+                onLogout={handleLogout}
+              />
             </div>
           </div>
         </div>

@@ -89,22 +89,3 @@ export const clientQuotas = mysqlTable("client_quotas", {
 
 export type ClientQuota = typeof clientQuotas.$inferSelect;
 export type InsertClientQuota = typeof clientQuotas.$inferInsert;
-
-/**
- * Maintenance table - stores scheduled maintenance periods for vessels
- * Blocks bookings during maintenance periods
- */
-export const maintenances = mysqlTable("maintenances", {
-  id: int("id").autoincrement().primaryKey(),
-  vesselId: int("vessel_id").notNull(), // references vessels.id
-  vesselName: text("vessel_name").notNull(),
-  startDate: bigint("start_date", { mode: "number" }).notNull(), // UTC timestamp in milliseconds
-  endDate: bigint("end_date", { mode: "number" }).notNull(), // UTC timestamp in milliseconds
-  description: text("description").notNull(),
-  status: mysqlEnum("status", ["scheduled", "in_progress", "completed", "cancelled"]).default("scheduled").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-
-export type Maintenance = typeof maintenances.$inferSelect;
-export type InsertMaintenance = typeof maintenances.$inferInsert;

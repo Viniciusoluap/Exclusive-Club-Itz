@@ -1,11 +1,14 @@
 /**
- * Weather service using OpenWeatherMap API
- * Location: Imperatriz, MA, Brazil (-5.5264, -47.4820)
+ * Serviço de previsão do tempo
+ * 
+ * Usa OpenWeatherMap API (gratuita até 1000 chamadas/dia)
+ * Para usar, adicione OPENWEATHER_API_KEY nas variáveis de ambiente
+ * 
+ * Coordenadas de Imperatriz-MA: -5.5242, -47.4919
  */
 
-const IMPERATRIZ_LAT = -5.5264;
-const IMPERATRIZ_LON = -47.4820;
-const API_BASE_URL = "https://api.openweathermap.org/data/2.5";
+const IMPERATRIZ_LAT = -5.5242;
+const IMPERATRIZ_LON = -47.4919;
 
 export interface WeatherData {
   temperature: number;
@@ -13,79 +16,106 @@ export interface WeatherData {
   humidity: number;
   windSpeed: number;
   icon: string;
-  rainProbability: number;
-  rainVolume?: number;
+  rainProbability: number; // 0-100
+  rainVolume?: number; // mm
   tempMin: number;
   tempMax: number;
-  emoji?: string;
 }
 
 export interface WeatherAlert {
   hasAlert: boolean;
-  severity?: "low" | "medium" | "high";
   message?: string;
+  severity?: "low" | "medium" | "high";
 }
 
 /**
  * Busca previsão do tempo para uma data específica
+ * Coordenadas padrão: Imperatriz, MA
  */
-export async function getWeatherForecast(date: Date): Promise<WeatherData | null> {
+export async function getWeatherForecast(date: Date, lat: number = IMPERATRIZ_LAT, lon: number = IMPERATRIZ_LON): Promise<WeatherData | null> {
   const apiKey = process.env.OPENWEATHER_API_KEY;
   
   if (!apiKey) {
-    console.warn("[Weather] OPENWEATHER_API_KEY not configured");
+    console.warn('[Weather] OPENWEATHER_API_KEY não configurada');
     return null;
   }
-
+  
   try {
-    // Usa forecast API para previsões futuras (até 5 dias)
-    const url = `${API_BASE_URL}/forecast?lat=${IMPERATRIZ_LAT}&lon=${IMPERATRIZ_LON}&appid=${apiKey}&units=metric&lang=pt_br`;
-    
-    const response = await fetch(url);
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=pt_br`
+    );
     
     if (!response.ok) {
-      console.error(`[Weather] API error: ${response.status} ${response.statusText}`);
+      console.error('[Weather] Erro ao buscar previsão:', response.statusText);
       return null;
     }
-
+    
     const data = await response.json();
     
-    // Encontra a previsão mais próxima da data solicitada
+    // Encontrar previsão mais próxima da data solicitada
     const targetTime = date.getTime();
     let closestForecast = data.list[0];
-    let minDiff = Math.abs(closestForecast.dt * 1000 - targetTime);
-
+    let minDiff = Math.abs(new Date(closestForecast.dt * 1000).getTime() - targetTime);
+    
     for (const forecast of data.list) {
-      const diff = Math.abs(forecast.dt * 1000 - targetTime);
+      const forecastTime = new Date(forecast.dt * 1000).getTime();
+      const diff = Math.abs(forecastTime - targetTime);
+      
       if (diff < minDiff) {
         minDiff = diff;
         closestForecast = forecast;
       }
     }
-
-    const weather = closestForecast.weather[0];
-    const main = closestForecast.main;
-    const wind = closestForecast.wind;
-    const rain = closestForecast.rain || {};
-    const pop = closestForecast.pop || 0; // Probability of precipitation
+    
+    // Calcular probabilidade de chuva (pop = probability of precipitation)
+    const rainProbability = Math.round((closestForecast.pop || 0) * 100);
+    const rainVolume = closestForecast.rain?.["3h"] || 0;
 
     return {
-      temperature: Math.round(main.temp),
-      description: weather.description,
-      humidity: main.humidity,
-      windSpeed: Math.round(wind.speed * 3.6), // m/s to km/h
-      icon: weather.icon,
-      rainProbability: Math.round(pop * 100),
-      rainVolume: rain["3h"] ? Math.round(rain["3h"]) : undefined,
-      tempMin: Math.round(main.temp_min),
-      tempMax: Math.round(main.temp_max),
-      emoji: getWeatherEmoji(weather.icon),
+      temperature: Math.round(closestForecast.main.temp),
+      description: closestForecast.weather[0].description,
+      humidity: closestForecast.main.humidity,
+      windSpeed: Math.round(closestForecast.wind.speed * 3.6), // m/s para km/h
+      icon: closestForecast.weather[0].icon,
+      rainProbability,
+      rainVolume: rainVolume > 0 ? rainVolume : undefined,
+      tempMin: Math.round(closestForecast.main.temp_min),
+      tempMax: Math.round(closestForecast.main.temp_max),
     };
   } catch (error) {
-    console.error("[Weather] Error fetching forecast:", error);
+    console.error('[Weather] Erro ao buscar previsão:', error);
     return null;
   }
 }
+
+/**
+ * Retorna ícone emoji baseado no código do OpenWeather
+ */
+export function getWeatherEmoji(icon: string): string {
+  const iconMap: Record<string, string> = {
+    '01d': '☀️', // clear sky day
+    '01n': '🌙', // clear sky night
+    '02d': '⛅', // few clouds day
+    '02n': '☁️', // few clouds night
+    '03d': '☁️', // scattered clouds
+    '03n': '☁️',
+    '04d': '☁️', // broken clouds
+    '04n': '☁️',
+    '09d': '🌧️', // shower rain
+    '09n': '🌧️',
+    '10d': '🌦️', // rain day
+    '10n': '🌧️', // rain night
+    '11d': '⛈️', // thunderstorm
+    '11n': '⛈️',
+    '13d': '❄️', // snow
+    '13n': '❄️',
+    '50d': '🌫️', // mist
+    '50n': '🌫️',
+  };
+  
+  return iconMap[icon] || '🌤️';
+}
+
 
 /**
  * Verifica se há alertas meteorológicos para a data
@@ -133,62 +163,27 @@ export async function checkWeatherAlerts(date: Date): Promise<WeatherAlert> {
 export function formatWeatherForEmail(weather: WeatherData): string {
   const emoji = getWeatherEmoji(weather.icon);
   
-  let formatted = `
+  return `
 ${emoji} **Previsão do Tempo**
 
 🌡️ Temperatura: ${weather.temperature}°C (Min: ${weather.tempMin}°C / Max: ${weather.tempMax}°C)
 ☁️ Condição: ${weather.description}
 💧 Umidade: ${weather.humidity}%
 💨 Vento: ${weather.windSpeed} km/h
-🌧️ Probabilidade de chuva: ${weather.rainProbability}%`;
+🌧️ Probabilidade de chuva: ${weather.rainProbability}%
+${weather.rainVolume ? `💦 Volume esperado: ${weather.rainVolume}mm` : ""}
 
-  if (weather.rainVolume) {
-    formatted += `\n💦 Volume esperado: ${weather.rainVolume}mm`;
-  }
-
-  // Adiciona alertas
-  if (weather.rainProbability >= 60) {
-    formatted += `\n\n⚠️ **ATENÇÃO:** Alta probabilidade de chuva. Considere reagendar se possível.`;
-  }
-
-  if (weather.windSpeed > 25) {
-    formatted += `\n\n💨 **ATENÇÃO:** Ventos fortes previstos. Navegação pode ser desconfortável.`;
-  }
-
-  return formatted;
+${weather.rainProbability >= 80 ? "⛈️ **ATENÇÃO:** Alta probabilidade de chuva. Considere reagendar." : ""}
+${weather.windSpeed > 25 ? "💨 **ATENÇÃO:** Ventos fortes previstos. Navegação pode ser desconfortável." : ""}
+  `.trim();
 }
 
 /**
- * Verifica se as condições meteorológicas são favoráveis para navegação
+ * Verifica se as condições são favoráveis para navegação
  */
 export function isWeatherFavorable(weather: WeatherData): boolean {
-  return weather.rainProbability < 60 && weather.windSpeed <= 25;
-}
-
-/**
- * Retorna emoji baseado no código do ícone do OpenWeatherMap
- */
-export function getWeatherEmoji(iconCode: string): string {
-  const emojiMap: Record<string, string> = {
-    "01d": "☀️", // clear sky day
-    "01n": "🌙", // clear sky night
-    "02d": "🌤️", // few clouds day
-    "02n": "☁️", // few clouds night
-    "03d": "☁️", // scattered clouds
-    "03n": "☁️",
-    "04d": "☁️", // broken clouds
-    "04n": "☁️",
-    "09d": "🌧️", // shower rain
-    "09n": "🌧️",
-    "10d": "🌦️", // rain day
-    "10n": "🌧️", // rain night
-    "11d": "⛈️", // thunderstorm
-    "11n": "⛈️",
-    "13d": "❄️", // snow
-    "13n": "❄️",
-    "50d": "🌫️", // mist
-    "50n": "🌫️",
-  };
-
-  return emojiMap[iconCode] || "🌤️";
+  return (
+    weather.rainProbability < 60 &&
+    weather.windSpeed <= 25
+  );
 }
