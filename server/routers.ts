@@ -535,6 +535,14 @@ export const appRouter = router({
           emoji: weather.getWeatherEmoji(forecast.icon),
         } : null;
       }),
+    
+    alerts: publicProcedure
+      .input(z.object({ date: z.number() })) // Unix timestamp
+      .query(async ({ input }) => {
+        const date = new Date(input.date);
+        const alert = await weather.checkWeatherAlerts(date);
+        return alert;
+      }),
   }),
 
   // Statistics

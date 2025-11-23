@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { Anchor, Calendar, Ship, Waves } from "lucide-react";
 import { Link } from "wouter";
+import { MobileMenu } from "@/components/MobileMenu";
 
 export default function Home() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -26,9 +27,11 @@ export default function Home() {
               <a href="#home" className="text-foreground hover:text-primary transition-colors">
                 Home
               </a>
-              <a href="#embarcacoes" className="text-foreground hover:text-primary transition-colors">
-                Embarcações
-              </a>
+              <Link href="/embarcacoes">
+                <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
+                  Embarcações
+                </span>
+              </Link>
               <Link href="/galeria">
                 <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
                   Galeria
@@ -63,15 +66,11 @@ export default function Home() {
               )}
             </nav>
             <div className="md:hidden">
-              {isAuthenticated ? (
-                <Link href="/reservas">
-                  <Button size="sm">Reservas</Button>
-                </Link>
-              ) : (
-                <Button size="sm" asChild>
-                  <a href={getLoginUrl()}>Entrar</a>
-                </Button>
-              )}
+              <MobileMenu
+                isAuthenticated={isAuthenticated}
+                userRole={user?.role}
+                onLogout={handleLogout}
+              />
             </div>
           </div>
         </div>

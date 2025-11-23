@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { MobileMenu } from "@/components/MobileMenu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -218,7 +219,7 @@ export default function Reservas() {
                 <span className="text-lg font-bold text-primary">Exclusive Club</span>
               </a>
             </Link>
-            <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-4">
               <span className="text-sm text-muted-foreground hidden sm:inline">
                 Olá, {user?.name}
               </span>
@@ -235,6 +236,13 @@ export default function Reservas() {
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Sair
               </Button>
+            </div>
+            <div className="md:hidden">
+              <MobileMenu
+                isAuthenticated={isAuthenticated}
+                userRole={user?.role}
+                onLogout={handleLogout}
+              />
             </div>
           </div>
         </div>

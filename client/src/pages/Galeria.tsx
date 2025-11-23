@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
-import { APP_LOGO, APP_TITLE } from "@/const";
+import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { MobileMenu } from "@/components/MobileMenu";
 
 interface Photo {
   id: number;
@@ -54,20 +56,34 @@ export default function Galeria() {
     }
   };
 
+  const { user, isAuthenticated, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-cyan-50 to-white">
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto flex h-16 items-center justify-between">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <a href="/" className="flex items-center gap-2">
             <img src={APP_LOGO} alt={APP_TITLE} className="h-10 w-10 rounded-full object-cover" />
             <span className="text-xl font-bold text-cyan-700">{APP_TITLE}</span>
           </a>
-          <nav className="flex gap-6">
+          <nav className="hidden md:flex gap-6">
             <a href="/" className="text-gray-700 hover:text-cyan-600 transition-colors">Home</a>
             <a href="/galeria" className="text-cyan-600 font-semibold">Galeria</a>
+            <a href="/dashboard" className="text-gray-700 hover:text-cyan-600 transition-colors">Dashboard</a>
             <a href="/reservas" className="text-gray-700 hover:text-cyan-600 transition-colors">Minhas Reservas</a>
           </nav>
+          <div className="md:hidden">
+            <MobileMenu
+              isAuthenticated={isAuthenticated}
+              userRole={user?.role}
+              onLogout={handleLogout}
+            />
+          </div>
         </div>
       </header>
 
