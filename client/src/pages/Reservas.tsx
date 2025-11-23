@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { WeatherWidget } from "@/components/WeatherWidget";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Loader2, Ship, X } from "lucide-react";
@@ -466,6 +467,10 @@ export default function Reservas() {
                 {vessels?.find((v) => v.id === selectedVessel)?.name}
               </p>
             </div>
+
+            {selectedDate && (
+              <WeatherWidget date={selectedDate} />
+            )}
 
             <div>
               <label className="text-sm font-medium mb-2 block">
