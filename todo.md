@@ -57,7 +57,7 @@
 - [ ] Seção de depoimentos
 
 ### Experiência do Usuário
-- [ ] Botão flutuante de WhatsApp
+- [x] Botão flutuante de WhatsApp (99 981392210)
 - [ ] Dashboard do cliente com histórico de uso
 - [ ] Estatísticas pessoais (quantas vezes usou, dias favoritos)
 - [ ] Notificações por email (confirmação e lembrete)
