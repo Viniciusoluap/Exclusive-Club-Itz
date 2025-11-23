@@ -29,3 +29,15 @@
 - [x] Verificar bloqueio de reservas em datas com manutenção
 - [x] Executar testes automatizados
 - [ ] Garantir que nada foi quebrado
+
+## Bugs Reportados (23/11/2025)
+
+### Taxa de Ocupação
+- [x] Corrigir cálculo da taxa de ocupação (mostrando 0% mesmo com reservas confirmadas)
+- [x] Verificar query de estatísticas no backend
+- [x] Testar cálculo com dados reais
+
+### Calendário de Reservas
+- [x] Corrigir visualização de datas já reservadas (não estão ficando vermelhas)
+- [x] Verificar função isDateBooked no frontend
+- [x] Testar bloqueio visual de datas reservadas

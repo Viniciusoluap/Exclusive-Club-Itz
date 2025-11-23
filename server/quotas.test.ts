@@ -48,9 +48,10 @@ describe("Sistema de Cotas - Limites", () => {
     const vessels = await caller.vessels.listAll();
     const lancha = vessels.find(v => v.type === "lancha");
     
+    const uniqueEmail = `testmonday${Date.now()}@example.com`;
     await caller.allowedClients.create({
       name: "Test Client Monday",
-      email: "testmonday@example.com",
+      email: uniqueEmail,
       phone: "99999999999",
       quotas: [{
         vesselId: lancha!.id,
@@ -66,7 +67,7 @@ describe("Sistema de Cotas - Limites", () => {
     // Admin pode tentar criar reserva, mas segunda-feira deve ser bloqueada
     await expect(
       caller.bookings.createForClient({
-        clientEmail: "testmonday@example.com",
+        clientEmail: uniqueEmail,
         vesselId: lancha!.id,
         bookingDate: mondayTimestamp,
         notes: "Teste segunda-feira",

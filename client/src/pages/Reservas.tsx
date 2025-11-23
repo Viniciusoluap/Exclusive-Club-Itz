@@ -145,12 +145,21 @@ export default function Reservas() {
   const isDateBooked = (date: Date | null, vesselId: number): boolean => {
     if (!date || !monthBookings) return false;
 
-    const dateTimestamp = date.getTime();
+    // Normalizar data para meia-noite para comparação
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(0, 0, 0, 0);
+    const dateTimestamp = normalizedDate.getTime();
+
     return monthBookings.some(
-      (booking) =>
-        booking.vesselId === vesselId &&
-        booking.bookingDate === dateTimestamp &&
-        booking.status === "confirmed"
+      (booking) => {
+        // Normalizar bookingDate também
+        const bookingNormalized = new Date(booking.bookingDate);
+        bookingNormalized.setHours(0, 0, 0, 0);
+        
+        return booking.vesselId === vesselId &&
+          bookingNormalized.getTime() === dateTimestamp &&
+          booking.status === "confirmed";
+      }
     );
   };
 
