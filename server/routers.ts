@@ -60,15 +60,55 @@ export const appRouter = router({
         email: z.string().email(),
         name: z.string().min(1),
         phone: z.string().optional(),
-        quotaType: z.enum(["full", "half"]).default("full"),
-        quotaCount: z.number().min(1).default(1),
+        quotas: z.array(z.object({
+          vesselId: z.number(),
+          quotaNumber: z.number().min(1).max(7), // 1-7 para lancha, 1-6 para jetski
+          quotaType: z.enum(["full", "half"]),
+        })),
       }))
       .mutation(async ({ input }) => {
         const existing = await db.getAllowedClientByEmail(input.email);
         if (existing) {
           throw new TRPCError({ code: 'CONFLICT', message: 'Email já cadastrado' });
         }
-        await db.createAllowedClient(input);
+        
+        // Validate quota numbers based on vessel type
+        for (const quota of input.quotas) {
+          const vessel = await db.getVesselById(quota.vesselId);
+          if (!vessel) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Embarcação não encontrada' });
+          }
+          
+          const maxQuota = vessel.type === 'lancha' ? 7 : 6;
+          if (quota.quotaNumber < 1 || quota.quotaNumber > maxQuota) {
+            throw new TRPCError({ 
+              code: 'BAD_REQUEST', 
+              message: `Número de cota inválido para ${vessel.type}. Permitido: 1-${maxQuota}` 
+            });
+          }
+        }
+        
+        // Create client
+        const result = await db.createAllowedClient({
+          email: input.email,
+          name: input.name,
+          phone: input.phone,
+        });
+        
+        // Get the created client ID
+        const client = await db.getAllowedClientByEmail(input.email);
+        if (!client) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+        
+        // Create quotas
+        for (const quota of input.quotas) {
+          await db.createClientQuota({
+            clientId: client.id,
+            vesselId: quota.vesselId,
+            quotaNumber: quota.quotaNumber,
+            quotaType: quota.quotaType,
+          });
+        }
+        
         return { success: true };
       }),
 
@@ -78,13 +118,35 @@ export const appRouter = router({
         email: z.string().email().optional(),
         name: z.string().min(1).optional(),
         phone: z.string().optional(),
-        quotaType: z.enum(["full", "half"]).optional(),
-        quotaCount: z.number().min(1).optional(),
         isActive: z.boolean().optional(),
+        quotas: z.array(z.object({
+          vesselId: z.number(),
+          quotaNumber: z.number().min(1).max(7),
+          quotaType: z.enum(["full", "half"]),
+        })).optional(),
       }))
       .mutation(async ({ input }) => {
-        const { id, ...data } = input;
+        const { id, quotas, ...data } = input;
+        
+        // Update client basic info
         await db.updateAllowedClient(id, data);
+        
+        // Update quotas if provided
+        if (quotas) {
+          // Delete existing quotas
+          await db.deleteClientQuotasByClientId(id);
+          
+          // Create new quotas
+          for (const quota of quotas) {
+            await db.createClientQuota({
+              clientId: id,
+              vesselId: quota.vesselId,
+              quotaNumber: quota.quotaNumber,
+              quotaType: quota.quotaType,
+            });
+          }
+        }
+        
         return { success: true };
       }),
 
@@ -153,21 +215,57 @@ export const appRouter = router({
       return await db.getBookingsByEmail(ctx.user.email);
     }),
 
-    // Get user's quota information
-    myQuota: allowedClientProcedure.query(async ({ ctx }) => {
+    // Get user's quota information by vessel
+    myQuota: allowedClientProcedure
+      .input(z.object({
+        vesselId: z.number().optional(),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        if (!ctx.user.email) {
+          throw new TRPCError({ code: 'UNAUTHORIZED' });
+        }
+        
+        const client = await db.getAllowedClientByEmail(ctx.user.email);
+        if (!client) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+        }
+        
+        // If no vessel specified, return all quotas
+        if (!input?.vesselId) {
+          const allQuotas = await db.getClientQuotasByClientId(client.id);
+          let maxBookings = 0;
+          for (const quota of allQuotas) {
+            maxBookings += quota.quotaType === 'full' ? 2 : 1;
+          }
+          return {
+            quotas: allQuotas,
+            maxBookings,
+            hasQuota: allQuotas.length > 0,
+          };
+        }
+        
+        // Get quotas for this vessel
+        const quotas = await db.getClientQuotaByVessel(client.id, input.vesselId);
+        
+        // Calculate max bookings: full = 2 per quota, half = 1 per quota
+        let maxBookings = 0;
+        for (const quota of quotas) {
+          maxBookings += quota.quotaType === 'full' ? 2 : 1;
+        }
+        
+        return {
+          quotas,
+          maxBookings,
+          hasQuota: quotas.length > 0,
+        };
+      }),
+    
+    // Get all user's quotas
+    myQuotas: allowedClientProcedure.query(async ({ ctx }) => {
       if (!ctx.user.email) {
         throw new TRPCError({ code: 'UNAUTHORIZED' });
       }
-      const client = await db.getAllowedClientByEmail(ctx.user.email);
-      if (!client) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
-      }
-      const maxBookings = client.quotaType === 'full' ? client.quotaCount * 2 : client.quotaCount * 1;
-      return {
-        quotaType: client.quotaType,
-        quotaCount: client.quotaCount,
-        maxBookings,
-      };
+      return await db.getClientQuotasByEmail(ctx.user.email);
     }),
 
     // Get all bookings (admin only)
@@ -236,7 +334,7 @@ export const appRouter = router({
           });
         }
 
-        // Check user's quota and active bookings
+        // Check user's quota for this specific vessel
         const client = await db.getAllowedClientByEmail(ctx.user.email);
         if (!client) {
           throw new TRPCError({ 
@@ -245,19 +343,29 @@ export const appRouter = router({
           });
         }
 
-        // Calculate max bookings based on quota type and count
-        // Full quota: 2 bookings per quota
-        // Half quota: 1 booking per quota
-        const maxBookings = client.quotaType === 'full' 
-          ? client.quotaCount * 2 
-          : client.quotaCount * 1;
+        // Get quotas for this vessel
+        const quotas = await db.getClientQuotaByVessel(client.id, input.vesselId);
+        if (quotas.length === 0) {
+          throw new TRPCError({ 
+            code: 'FORBIDDEN', 
+            message: `Você não possui cota para esta embarcação (${vessel.name}). Entre em contato com o administrador.` 
+          });
+        }
 
-        const activeBookings = await db.getActiveBookingsByEmail(ctx.user.email);
-        if (activeBookings.length >= maxBookings) {
-          const quotaText = client.quotaType === 'full' ? 'cota(s) inteira(s)' : 'meia(s) cota(s)';
+        // Calculate max bookings for this vessel: full = 2 per quota, half = 1 per quota
+        let maxBookingsForVessel = 0;
+        for (const quota of quotas) {
+          maxBookingsForVessel += quota.quotaType === 'full' ? 2 : 1;
+        }
+
+        // Count active bookings for this vessel only
+        const allActiveBookings = await db.getActiveBookingsByEmail(ctx.user.email);
+        const activeBookingsForVessel = allActiveBookings.filter(b => b.vesselId === input.vesselId);
+        
+        if (activeBookingsForVessel.length >= maxBookingsForVessel) {
           throw new TRPCError({ 
             code: 'BAD_REQUEST', 
-            message: `Você já atingiu o limite de ${maxBookings} reserva(s) simultânea(s) para suas ${client.quotaCount} ${quotaText}. Utilize uma reserva para liberar um novo agendamento.` 
+            message: `Você já atingiu o limite de ${maxBookingsForVessel} reserva(s) simultânea(s) para ${vessel.name}. Utilize uma reserva para liberar um novo agendamento.` 
           });
         }
 

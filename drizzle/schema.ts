@@ -26,8 +26,6 @@ export const allowedClients = mysqlTable("allowed_clients", {
   email: varchar("email", { length: 320 }).notNull().unique(),
   name: text("name").notNull(),
   phone: varchar("phone", { length: 20 }),
-  quotaType: mysqlEnum("quota_type", ["full", "half"]).default("full").notNull(), // full = 2 reservas, half = 1 reserva
-  quotaCount: int("quota_count").default(1).notNull(), // número de cotas que o cliente possui
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
@@ -72,3 +70,22 @@ export const bookings = mysqlTable("bookings", {
 
 export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = typeof bookings.$inferInsert;
+
+/**
+ * Client Quotas table - stores quota allocations per vessel for each client
+ * A client can have multiple quotas for different vessels
+ * Example: 1 full quota for lancha + 1 half quota for jetski
+ */
+export const clientQuotas = mysqlTable("client_quotas", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("client_id").notNull(), // references allowed_clients.id
+  vesselId: int("vessel_id").notNull(), // references vessels.id
+  quotaNumber: int("quota_number").notNull(), // Número da cota (1-7 para lancha, 1-6 para jetski)
+  quotaType: mysqlEnum("quota_type", ["full", "half"]).notNull(), // full = 2 reservas, half = 1 reserva
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ClientQuota = typeof clientQuotas.$inferSelect;
+export type InsertClientQuota = typeof clientQuotas.$inferInsert;
