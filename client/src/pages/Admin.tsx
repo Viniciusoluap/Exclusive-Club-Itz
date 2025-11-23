@@ -22,147 +22,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Check, Loader2, Plus, Ship, Trash2, TrendingUp, UserPlus, Users, X } from "lucide-react";
+import { Check, Loader2, Plus, Ship, Trash2, UserPlus, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 
-function ReportsTab() {
-  const { data: stats, isLoading } = trpc.stats.admin.useQuery();
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Reservas</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalBookings || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalClients || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Embarcações</CardTitle>
-            <Ship className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalVessels || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Próximas Reservas</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.upcomingBookings || 0}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Occupancy Rate */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Taxa de Ocupação (30 dias)</CardTitle>
-          <CardDescription>Percentual de dias com reservas por embarcação</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {stats?.occupancyRate.map((vessel, idx) => (
-              <div key={idx} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{vessel.vesselName}</span>
-                  <span className="text-muted-foreground">{vessel.rate}%</span>
-                </div>
-                <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{ width: `${vessel.rate}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Top Clients */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Top 5 Clientes</CardTitle>
-          <CardDescription>Clientes com mais reservas</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {stats?.topClients.map((client, idx) => (
-              <div key={idx} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm">
-                    {idx + 1}
-                  </div>
-                  <span className="font-medium">{client.clientName}</span>
-                </div>
-                <span className="text-muted-foreground">{client.bookingCount} reservas</span>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
 export default function Admin() {
-  const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
-  };
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const utils = trpc.useUtils();
 
   // Client Management State
   const [showClientDialog, setShowClientDialog] = useState(false);
-  const [clientForm, setClientForm] = useState({ 
-    email: "", 
-    name: "", 
-    phone: "",
-    quotas: [] as Array<{ vesselId: number, quotaNumber: number, quotaType: "full" | "half" }>
-  });
+  const [clientForm, setClientForm] = useState({ email: "", name: "", phone: "" });
 
   // Vessel Management State
   const [showVesselDialog, setShowVesselDialog] = useState(false);
-  
-  // Booking Management State
-  const [showBookingDialog, setShowBookingDialog] = useState(false);
-  const [bookingForm, setBookingForm] = useState({
-    clientEmail: "",
-    vesselId: 0,
-    bookingDate: "",
-    notes: "",
-  });
   const [vesselForm, setVesselForm] = useState({
     name: "",
     type: "lancha" as "lancha" | "jetski",
@@ -189,7 +63,7 @@ export default function Admin() {
       toast.success("Cliente adicionado com sucesso!");
       utils.allowedClients.list.invalidate();
       setShowClientDialog(false);
-      setClientForm({ email: "", name: "", phone: "", quotas: [] });
+      setClientForm({ email: "", name: "", phone: "" });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -238,19 +112,19 @@ export default function Admin() {
     },
   });
 
-  const updateBookingStatus = trpc.bookings.update.useMutation({
+  const toggleVesselStatus = trpc.vessels.update.useMutation({
     onSuccess: () => {
       toast.success("Status atualizado!");
-      utils.bookings.listAll.invalidate();
+      utils.vessels.listAll.invalidate();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast.error(error.message);
     },
   });
 
-  const deleteBooking = trpc.bookings.delete.useMutation({
+  const markAsUsed = trpc.bookings.markAsUsed.useMutation({
     onSuccess: () => {
-      toast.success("Reserva removida com sucesso!");
+      toast.success("Reserva marcada como utilizada!");
       utils.bookings.listAll.invalidate();
     },
     onError: (error) => {
@@ -258,11 +132,9 @@ export default function Admin() {
     },
   });
 
-  const createBookingForClient = trpc.bookings.createForClient.useMutation({
+  const deleteBooking = trpc.bookings.delete.useMutation({
     onSuccess: () => {
-      toast.success("Reserva criada com sucesso!");
-      setShowBookingDialog(false);
-      setBookingForm({ clientEmail: "", vesselId: 0, bookingDate: "", notes: "" });
+      toast.success("Reserva excluída com sucesso!");
       utils.bookings.listAll.invalidate();
     },
     onError: (error) => {
@@ -271,57 +143,27 @@ export default function Admin() {
   });
 
   const handleCreateClient = () => {
-    if (!clientForm.email || !clientForm.name || clientForm.quotas.length === 0) {
-      toast.error("Preencha todos os campos obrigatórios");
+    if (!clientForm.email || !clientForm.name) {
+      toast.error("Preencha os campos obrigatórios");
       return;
     }
     createClient.mutate(clientForm);
   };
 
-  const handleCreateBooking = () => {
-    if (!bookingForm.clientEmail || !bookingForm.vesselId || !bookingForm.bookingDate) {
-      toast.error("Preencha todos os campos obrigatórios");
-      return;
-    }
-    const dateTimestamp = new Date(bookingForm.bookingDate).getTime();
-    createBookingForClient.mutate({
-      clientEmail: bookingForm.clientEmail,
-      vesselId: bookingForm.vesselId,
-      bookingDate: dateTimestamp,
-      notes: bookingForm.notes || undefined,
-    });
-  };
-
   const handleCreateVessel = () => {
-    if (!vesselForm.name || !vesselForm.type) {
-      toast.error("Preencha todos os campos obrigatórios");
+    if (!vesselForm.name) {
+      toast.error("Preencha o nome da embarcação");
       return;
     }
     createVessel.mutate({
-      name: vesselForm.name,
-      type: vesselForm.type,
-      description: vesselForm.description || undefined,
+      ...vesselForm,
       capacity: vesselForm.capacity ? parseInt(vesselForm.capacity) : undefined,
-    });
-  };
-
-  const addQuota = (vesselId: number, quotaNumber: number, quotaType: "full" | "half") => {
-    setClientForm({
-      ...clientForm,
-      quotas: [...clientForm.quotas, { vesselId, quotaNumber, quotaType }]
-    });
-  };
-
-  const removeQuota = (index: number) => {
-    setClientForm({
-      ...clientForm,
-      quotas: clientForm.quotas.filter((_, i) => i !== index)
     });
   };
 
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -329,12 +171,12 @@ export default function Admin() {
 
   if (!isAuthenticated || user?.role !== "admin") {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-muted/30 p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <Card className="max-w-md w-full mx-4">
           <CardHeader>
             <CardTitle>Acesso Restrito</CardTitle>
             <CardDescription>
-              Esta página é acessível apenas para administradores.
+              Apenas administradores podem acessar esta página.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -359,27 +201,21 @@ export default function Admin() {
       <header className="bg-background border-b sticky top-0 z-40">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10" />
-              <span className="text-lg font-bold text-primary">Exclusive Club Admin</span>
+            <Link href="/">
+              <a className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10" />
+                <span className="text-lg font-bold text-primary">Exclusive Club Admin</span>
+              </a>
             </Link>
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground hidden sm:inline">
-                Olá, {user?.name}
+                Admin: {user?.name}
               </span>
-              <Link href="/reservas">
-                <Button variant="outline" size="sm">
-                  Minhas Reservas
-                </Button>
-              </Link>
               <Link href="/">
                 <Button variant="outline" size="sm">
                   Voltar ao Site
                 </Button>
               </Link>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                Sair
-              </Button>
             </div>
           </div>
         </div>
@@ -387,7 +223,7 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+          <TabsList className="grid w-full grid-cols-3 max-w-md">
             <TabsTrigger value="clients">
               <Users className="h-4 w-4 mr-2" />
               Clientes
@@ -397,10 +233,6 @@ export default function Admin() {
               Embarcações
             </TabsTrigger>
             <TabsTrigger value="bookings">Reservas</TabsTrigger>
-            <TabsTrigger value="reports">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Relatórios
-            </TabsTrigger>
           </TabsList>
 
           {/* Clients Tab */}
@@ -438,17 +270,10 @@ export default function Admin() {
                           {client.phone && (
                             <div className="text-sm text-muted-foreground">{client.phone}</div>
                           )}
-                          <div className="text-sm font-medium text-primary mt-1">
-                            {client.quotas?.map((q: any) => (
-                              <span key={q.id} className="mr-2">
-                                {vessels?.find(v => v.id === q.vesselId)?.name} #{q.quotaNumber} ({q.quotaType === "full" ? "Inteira" : "Meia"})
-                              </span>
-                            ))}
-                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
-                            variant={client.isActive ? "outline" : "default"}
+                            variant={client.isActive ? "default" : "outline"}
                             size="sm"
                             onClick={() =>
                               toggleClientStatus.mutate({
@@ -457,10 +282,20 @@ export default function Admin() {
                               })
                             }
                           >
-                            {client.isActive ? "Desativar" : "Ativar"}
+                            {client.isActive ? (
+                              <>
+                                <Check className="h-4 w-4 mr-1" />
+                                Ativo
+                              </>
+                            ) : (
+                              <>
+                                <X className="h-4 w-4 mr-1" />
+                                Inativo
+                              </>
+                            )}
                           </Button>
                           <Button
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
                             onClick={() => {
                               if (confirm("Tem certeza que deseja remover este cliente?")) {
@@ -468,16 +303,16 @@ export default function Admin() {
                               }
                             }}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-muted-foreground py-8">
+                  <div className="text-center py-8 text-muted-foreground">
                     Nenhum cliente cadastrado
-                  </p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -504,41 +339,58 @@ export default function Admin() {
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
                 ) : vessels && vessels.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="grid gap-4 md:grid-cols-2">
                     {vessels.map((vessel) => (
-                      <div
-                        key={vessel.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <div className="font-semibold">{vessel.name}</div>
-                          <div className="text-sm text-muted-foreground capitalize">
-                            {vessel.type}
-                          </div>
-                          {vessel.description && (
-                            <div className="text-sm text-muted-foreground">
-                              {vessel.description}
+                      <Card key={vessel.id}>
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-lg">{vessel.name}</CardTitle>
+                              <CardDescription>
+                                {vessel.type === "lancha" ? "Lancha" : "Jetski"}
+                                {vessel.capacity && ` • ${vessel.capacity} pessoas`}
+                              </CardDescription>
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm("Tem certeza que deseja remover esta embarcação?")) {
+                                  deleteVessel.mutate({ id: vessel.id });
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {vessel.description && (
+                            <p className="text-sm text-muted-foreground mb-4">
+                              {vessel.description}
+                            </p>
                           )}
-                        </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm("Tem certeza que deseja remover esta embarcação?")) {
-                              deleteVessel.mutate({ id: vessel.id });
+                          <Button
+                            variant={vessel.isActive ? "default" : "outline"}
+                            size="sm"
+                            className="w-full"
+                            onClick={() =>
+                              toggleVesselStatus.mutate({
+                                id: vessel.id,
+                                isActive: !vessel.isActive,
+                              })
                             }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                          >
+                            {vessel.isActive ? "Ativa" : "Inativa"}
+                          </Button>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-muted-foreground py-8">
+                  <div className="text-center py-8 text-muted-foreground">
                     Nenhuma embarcação cadastrada
-                  </p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -547,15 +399,9 @@ export default function Admin() {
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-4">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Todas as Reservas</CardTitle>
-                  <CardDescription>Gerencie todas as reservas do sistema</CardDescription>
-                </div>
-                <Button onClick={() => setShowBookingDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar Reserva
-                </Button>
+              <CardHeader>
+                <CardTitle>Todas as Reservas</CardTitle>
+                <CardDescription>Visualize e gerencie todas as reservas do sistema</CardDescription>
               </CardHeader>
               <CardContent>
                 {bookingsLoading ? (
@@ -570,82 +416,87 @@ export default function Admin() {
                         className="flex items-center justify-between p-4 border rounded-lg"
                       >
                         <div className="flex-1">
-                          <div className="font-semibold">{booking.clientName}</div>
-                          <div className="text-sm text-muted-foreground">{booking.clientEmail}</div>
-                          <div className="text-sm">
-                            {booking.vesselName} -{" "}
-                            {new Date(booking.bookingDate).toLocaleDateString("pt-BR")}
+                          <div className="font-semibold">{booking.vesselName}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Cliente: {booking.clientName} ({booking.clientEmail})
                           </div>
+                          <div className="text-sm text-muted-foreground">
+                            Data:{" "}
+                            {new Date(booking.bookingDate).toLocaleDateString("pt-BR", {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
+                          </div>
+                          {booking.notes && (
+                            <div className="text-sm text-muted-foreground mt-1">
+                              Obs: {booking.notes}
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${
                               booking.status === "confirmed"
-                                ? "bg-green-100 text-green-800"
+                                ? "bg-green-100 text-green-700"
                                 : booking.status === "used"
-                                ? "bg-blue-100 text-blue-800"
-                                : booking.status === "cancelled"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-gray-100 text-gray-800"
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-gray-100 text-gray-700"
                             }`}
                           >
                             {booking.status === "confirmed"
                               ? "Confirmada"
                               : booking.status === "used"
                               ? "Utilizada"
-                              : booking.status === "cancelled"
-                              ? "Cancelada"
-                              : "Pendente"}
+                              : "Cancelada"}
                           </span>
                           {booking.status === "confirmed" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                updateBookingStatus.mutate({
-                                  id: booking.id,
-                                  status: "used",
-                                })
-                              }
-                            >
-                              Marcar como Usada
-                            </Button>
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => markAsUsed.mutate({ id: booking.id })}
+                              >
+                                <Check className="h-4 w-4 mr-1" />
+                                Marcar Usada
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm("Tem certeza que deseja excluir esta reserva?")) {
+                                    deleteBooking.mutate({ id: booking.id });
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </>
                           )}
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => {
-                              if (confirm("Tem certeza que deseja remover esta reserva?")) {
-                                deleteBooking.mutate({ id: booking.id });
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-muted-foreground py-8">Nenhuma reserva encontrada</p>
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhuma reserva encontrada
+                  </div>
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Reports Tab */}
-          <TabsContent value="reports" className="space-y-4">
-            <ReportsTab />
           </TabsContent>
         </Tabs>
       </div>
 
       {/* Add Client Dialog */}
       <Dialog open={showClientDialog} onOpenChange={setShowClientDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar Cliente</DialogTitle>
-            <DialogDescription>Cadastre um novo cliente autorizado</DialogDescription>
+            <DialogTitle>Adicionar Cliente Autorizado</DialogTitle>
+            <DialogDescription>
+              Cadastre um novo email autorizado a fazer reservas
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -655,7 +506,7 @@ export default function Admin() {
                 type="email"
                 value={clientForm.email}
                 onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
-                placeholder="cliente@example.com"
+                placeholder="cliente@email.com"
               />
             </div>
             <div>
@@ -664,7 +515,7 @@ export default function Admin() {
                 id="name"
                 value={clientForm.name}
                 onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
-                placeholder="Nome completo"
+                placeholder="Nome do cliente"
               />
             </div>
             <div>
@@ -675,56 +526,6 @@ export default function Admin() {
                 onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
                 placeholder="(99) 99999-9999"
               />
-            </div>
-            <div>
-              <Label>Cotas *</Label>
-              <div className="space-y-2 mt-2">
-                {clientForm.quotas.map((quota, index) => (
-                  <div key={index} className="flex items-center gap-2 p-2 border rounded">
-                    <span className="flex-1 text-sm">
-                      {vessels?.find(v => v.id === quota.vesselId)?.name} - Cota #{quota.quotaNumber} ({quota.quotaType === "full" ? "Inteira" : "Meia"})
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeQuota(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                
-                <div className="border rounded p-3 space-y-3">
-                  <div className="font-medium">Adicionar Cota</div>
-                  {vessels?.filter(v => v.isActive).map((vessel) => (
-                    <div key={vessel.id} className="space-y-2">
-                      <div className="text-sm font-medium">{vessel.name}</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {Array.from({ length: vessel.type === "lancha" ? 7 : 6 }, (_, i) => i + 1).map((num) => (
-                          <div key={num} className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => addQuota(vessel.id, num, "full")}
-                            >
-                              #{num} Inteira
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => addQuota(vessel.id, num, "half")}
-                            >
-                              #{num} Meia
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
           <DialogFooter>
@@ -770,7 +571,7 @@ export default function Admin() {
                   setVesselForm({ ...vesselForm, type: value })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger id="vessel-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -780,22 +581,23 @@ export default function Admin() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="vessel-description">Descrição</Label>
-              <Textarea
-                id="vessel-description"
-                value={vesselForm.description}
-                onChange={(e) => setVesselForm({ ...vesselForm, description: e.target.value })}
-                placeholder="Descrição da embarcação"
-              />
-            </div>
-            <div>
-              <Label htmlFor="vessel-capacity">Capacidade</Label>
+              <Label htmlFor="vessel-capacity">Capacidade (pessoas)</Label>
               <Input
                 id="vessel-capacity"
                 type="number"
                 value={vesselForm.capacity}
                 onChange={(e) => setVesselForm({ ...vesselForm, capacity: e.target.value })}
-                placeholder="Número de pessoas"
+                placeholder="Ex: 7"
+              />
+            </div>
+            <div>
+              <Label htmlFor="vessel-description">Descrição</Label>
+              <Textarea
+                id="vessel-description"
+                value={vesselForm.description}
+                onChange={(e) => setVesselForm({ ...vesselForm, description: e.target.value })}
+                placeholder="Descrição da embarcação..."
+                rows={3}
               />
             </div>
           </div>
@@ -811,90 +613,6 @@ export default function Admin() {
                 </>
               ) : (
                 "Adicionar"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Booking Dialog */}
-      <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Criar Reserva para Cliente</DialogTitle>
-            <DialogDescription>
-              Como admin, você pode criar reservas para qualquer cliente sem limite
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="booking-client">Cliente *</Label>
-              <Select
-                value={bookingForm.clientEmail}
-                onValueChange={(value) => setBookingForm({ ...bookingForm, clientEmail: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients?.map((client) => (
-                    <SelectItem key={client.id} value={client.email}>
-                      {client.name} ({client.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="booking-vessel">Embarcação *</Label>
-              <Select
-                value={bookingForm.vesselId.toString()}
-                onValueChange={(value) => setBookingForm({ ...bookingForm, vesselId: parseInt(value) })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma embarcação" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vessels?.filter(v => v.isActive).map((vessel) => (
-                    <SelectItem key={vessel.id} value={vessel.id.toString()}>
-                      {vessel.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="booking-date">Data *</Label>
-              <Input
-                id="booking-date"
-                type="date"
-                value={bookingForm.bookingDate}
-                onChange={(e) => setBookingForm({ ...bookingForm, bookingDate: e.target.value })}
-                min={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-            <div>
-              <Label htmlFor="booking-notes">Observações</Label>
-              <Textarea
-                id="booking-notes"
-                value={bookingForm.notes}
-                onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
-                placeholder="Observações sobre a reserva"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowBookingDialog(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCreateBooking} disabled={createBookingForClient.isPending}>
-              {createBookingForClient.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Criando...
-                </>
-              ) : (
-                "Criar Reserva"
               )}
             </Button>
           </DialogFooter>

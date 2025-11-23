@@ -1,112 +1,96 @@
-# Project TODO - Sistema de Reservas Exclusive Club
+# Project TODO
 
-## ✅ Implementações Concluídas
+## Banco de Dados e Backend
+- [x] Criar tabela de clientes autorizados (allowedClients)
+- [x] Criar tabela de embarcações (vessels)
+- [x] Criar tabela de reservas (bookings)
+- [x] Implementar procedures tRPC para gestão de clientes
+- [x] Implementar procedures tRPC para gestão de embarcações
+- [x] Implementar procedures tRPC para sistema de reservas
+- [x] Adicionar validação de limite de 2 reservas simultâneas
+- [x] Adicionar validação de bloqueio de segundas-feiras
+- [x] Adicionar sistema de liberação automática após uso
 
-### Sistema de Cotas Numeradas
-- [x] Adicionar campo `quotaNumber` na tabela `client_quotas`
-- [x] Adicionar validação de range (1-7 para lancha, 1-6 para jetski)
-- [x] Atualizar backend e frontend para trabalhar com cotas numeradas
-- [x] Cadastrar 16 clientes com cotas específicas
+## Design e Interface
+- [x] Configurar paleta de cores azul/turquesa do site original
+- [x] Adicionar logo da Exclusive Club
+- [x] Criar página inicial (landing page) com hero section
+- [x] Criar seção de apresentação das embarcações
+- [x] Implementar design responsivo mobile-first
 
-### Funcionalidades Admin
-- [x] Admin poder criar reservas para qualquer cliente cadastrado
-- [x] Admin pode superar limite de reservas ao criar manualmente
-- [x] Relatórios gerenciais (taxa de ocupação últimos 30 dias, top 5 clientes)
-- [x] Painel de estatísticas com overview completo
+## Sistema de Autenticação
+- [x] Implementar verificação de email autorizado no login
+- [x] Criar página de acesso negado para emails não autorizados
+- [x] Adicionar redirecionamento pós-login baseado em role
 
-### Visual e Branding
-- [x] Logo personalizado do Exclusive Club
-- [x] 16 fotos reais das embarcações adicionadas
-- [x] Galeria de fotos interativa com filtros e lightbox
-- [x] Design responsivo e moderno
+## Calendário de Reservas (Cliente)
+- [x] Criar componente de calendário interativo
+- [x] Implementar seleção de embarcação
+- [x] Implementar seleção de data com bloqueio de segundas
+- [x] Mostrar disponibilidade em tempo real
+- [x] Implementar confirmação de reserva
+- [x] Criar página "Minhas Reservas" com lista de reservas ativas
+- [x] Adicionar funcionalidade de cancelamento de reserva
+- [x] Adicionar indicador visual de limite de reservas (2/2)
 
-### Experiência do Usuário
-- [x] Botão flutuante de WhatsApp (99 981392210)
-- [x] Dashboard do cliente com histórico e estatísticas
-- [x] Gráfico de uso mensal (últimos 6 meses)
-- [x] Embarcação favorita do cliente
-- [x] Sistema de notificações para owner (via Manus)
+## Painel Administrativo
+- [x] Criar layout de dashboard administrativo
+- [x] Implementar CRUD de clientes autorizados
+- [x] Implementar CRUD de embarcações
+- [x] Criar visualização de todas as reservas
+- [x] Adicionar filtros por data, embarcação e cliente
+- [x] Implementar marcação manual de "data utilizada"
+- [x] Criar relatórios de uso e estatísticas
+- [x] Adicionar sistema de notificações para o admin
 
-### Integrações
-- [x] Previsão do tempo (OpenWeather API) - requer configuração de API key
-- [x] Sistema de autenticação Manus OAuth
-- [x] Controle de acesso baseado em roles (admin/user)
+## Testes
+- [x] Criar testes para validação de regras de negócio
+- [x] Criar testes para procedures de reserva
+- [x] Criar testes para sistema de autenticação
+- [x] Testar fluxo completo de reserva
 
-### Segurança
-- [x] Apenas owner tem acesso ao painel Admin
-- [x] Documentação de segurança (SECURITY.md)
-- [x] Botão de logout funcionando
-- [x] Testes de segurança implementados
+## Documentação e Entrega
+- [x] Documentar regras de negócio
+- [x] Criar guia de uso para administrador
+- [x] Criar guia de uso para clientes
+- [x] Preparar checkpoint final
 
-## 📋 Funcionalidades Pendentes (Futuras)
+## Correções Urgentes
+- [x] Corrigir problema de login
+- [x] Corrigir problema de agendamento
+- [x] Corrigir imagens das embarcações na página inicial
+- [x] Testar fluxo completo após correções
 
-### Gestão Avançada
-- [ ] Controle de manutenção programada
-- [ ] Calendário de manutenções com bloqueio automático
-- [ ] Controle financeiro (status pagamento, inadimplência)
-- [ ] Exportar relatórios em PDF
+## Diagnóstico e Correção Final
+- [x] Identificar exatamente o que não está funcionando
+- [ ] Corrigir problema reportado pelo usuário
+- [ ] Testar novamente todo o fluxo
+- [ ] Validar com o usuário
 
-### Experiência do Usuário
-- [ ] Notificações por email direto para clientes (requer serviço externo)
-- [ ] Lembrete automático 1 dia antes da reserva
-- [ ] Informações detalhadas das embarcações (specs completas)
-- [ ] Checklist pré-navegação
-- [ ] Seção de depoimentos de clientes
-
-### Personalização
-- [ ] Sistema de upload de novas fotos pelo admin
-- [ ] Troca de logo via interface
-- [ ] Personalização de paleta de cores via UI
-- [ ] Alertas de condições marítimas desfavoráveis
-
-## 📊 Estatísticas do Projeto
-
-- **Total de Clientes:** 16 cadastrados
-- **Embarcações:** 2 (Lancha Focker + Jetski Sea-Doo)
-- **Cotas Totais:** 13 (7 Lancha + 6 Jetski)
-- **Fotos:** 16 imagens reais
-- **Funcionalidades Principais:** 100% implementadas
-
-## 🚀 Próximos Passos Sugeridos
-
-1. Configurar OPENWEATHER_API_KEY para ativar previsão do tempo
-2. Publicar o site via botão "Publish" na interface
-3. Atualizar favicon no painel de gerenciamento
-4. Testar fluxo completo com clientes reais
-5. Coletar feedback dos cotistas
+## Bug Crítico - Validação de Dia da Semana
+- [ ] Corrigir validação que está bloqueando terças-feiras como segundas
+- [ ] Testar com todas as terças de dezembro
+- [ ] Validar que segundas continuam bloqueadas
 
 
-## 🆕 Novas Implementações Solicitadas
+## Novas Funcionalidades Implementadas
 
-### Responsividade Mobile
-- [x] Corrigir menu de navegação para aparecer em modo vertical (portrait)
-- [x] Implementar menu hambúrguer responsivo para telas pequenas
-- [x] Testar navegação em diferentes tamanhos de tela mobile
-
-### Edição de Fotos
-- [ ] Melhorar 16 fotos da galeria com edição profissional
-- [ ] Ajustar contraste, saturação e nitidez mantendo originalidade
-- [ ] Substituir fotos antigas pelas editadas
-
-### Informações Detalhadas das Embarcações
-- [x] Adicionar especificações técnicas completas (Focker 215 150HP)
-- [x] Adicionar especificações técnicas completas (Sea-Doo GTI SE 130HP)
-- [x] Criar mini manual de segurança para clientes
-- [x] Criar checklist pré-navegação
-- [x] Página dedicada com abas para cada embarcação e manual de segurança
-- [ ] Incluir checklist no email de confirmação de reserva
-
-### Sistema de Clima e Alertas
-- [x] Integrar previsão do tempo (OpenWeatherMap API)
-- [x] Criar funções de alerta meteorológico
-- [x] Endpoints tRPC para previsão e alertas
-- [x] Testes unitários do sistema de clima
-- [ ] Integrar previsão na página de reservas (UI)
-- [ ] Configurar cron job para email automático às 08:00
-- [ ] Sistema de envio de emails com previsão
+### Widget de Clima na Página de Reservas
+- [x] Criar componente WeatherWidget para exibir previsão
+- [x] Integrar widget na página de reservas
+- [x] Mostrar alertas visuais para condições desfavoráveis
+- [x] Atualizar previsão quando data for selecionada
 
 ### Calendário de Manutenção (Admin)
-- [ ] Criar interface de calendário de manutenções
-- [ ] Implementar bloqueio automático de datas em manutenção
-- [ ] Adicionar CRUD de manutenções programadas
-- [ ] Integrar com sistema de reservas para bloquear datas
+- [x] Criar tabela de manutenções no schema
+- [x] Implementar CRUD de manutenções no backend
+- [x] Criar interface de calendário no painel admin (/admin/manutencao)
+- [x] Página com listagem e gestão de manutenções
+- [ ] Implementar bloqueio automático de reservas em datas de manutenção
+- [ ] Adicionar link no painel admin principal
+
+### Configuração de API Key
+- [x] Solicitar OPENWEATHER_API_KEY via webdev_request_secrets
+- [x] Validar chave com teste de API
+- [x] Documentar onde obter a chave gratuita
+- [x] Criar arquivo weather.ts com integração OpenWeatherMap

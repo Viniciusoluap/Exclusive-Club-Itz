@@ -1,6 +1,6 @@
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, allowedClients, InsertAllowedClient, vessels, InsertVessel, bookings, InsertBooking, clientQuotas, InsertClientQuota } from "../drizzle/schema";
+import { InsertUser, users, allowedClients, InsertAllowedClient, vessels, InsertVessel, bookings, InsertBooking, clientQuotas, InsertClientQuota, maintenances, InsertMaintenance } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -92,17 +92,7 @@ export async function getUserByOpenId(openId: string) {
 export async function getAllowedClients() {
   const db = await getDb();
   if (!db) return [];
-  const clients = await db.select().from(allowedClients).orderBy(desc(allowedClients.createdAt));
-  
-  // Fetch quotas for each client
-  const clientsWithQuotas = await Promise.all(
-    clients.map(async (client) => {
-      const quotas = await getClientQuotasByClientId(client.id);
-      return { ...client, quotas };
-    })
-  );
-  
-  return clientsWithQuotas;
+  return await db.select().from(allowedClients).orderBy(desc(allowedClients.createdAt));
 }
 
 export async function getActiveAllowedClients() {
@@ -247,52 +237,77 @@ export async function deleteBooking(id: number) {
   await db.delete(bookings).where(eq(bookings.id, id));
 }
 
-// Client Quotas
-export async function getClientQuotasByClientId(clientId: number) {
+// Maintenances
+export async function getAllMaintenances() {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(clientQuotas)
-    .where(and(eq(clientQuotas.clientId, clientId), eq(clientQuotas.isActive, true)));
+  return await db.select().from(maintenances).orderBy(desc(maintenances.startDate));
 }
 
-export async function getClientQuotasByEmail(email: string) {
+export async function getMaintenanceById(id: number) {
   const db = await getDb();
-  if (!db) return [];
-  
-  const client = await getAllowedClientByEmail(email);
-  if (!client) return [];
-  
-  return await getClientQuotasByClientId(client.id);
+  if (!db) return undefined;
+  const result = await db.select().from(maintenances).where(eq(maintenances.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getClientQuotaByVessel(clientId: number, vesselId: number) {
+export async function getMaintenancesByVessel(vesselId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(clientQuotas)
+  return await db.select().from(maintenances)
+    .where(eq(maintenances.vesselId, vesselId))
+    .orderBy(desc(maintenances.startDate));
+}
+
+export async function getMaintenancesByDateRange(startDate: number, endDate: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(maintenances)
     .where(
       and(
-        eq(clientQuotas.clientId, clientId),
-        eq(clientQuotas.vesselId, vesselId),
-        eq(clientQuotas.isActive, true)
+        gte(maintenances.endDate, startDate),
+        lte(maintenances.startDate, endDate)
       )
-    );
+    )
+    .orderBy(maintenances.startDate);
 }
 
-export async function createClientQuota(quota: InsertClientQuota) {
+export async function createMaintenance(maintenance: InsertMaintenance) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(clientQuotas).values(quota);
-  return result;
+  const result = await db.insert(maintenances).values(maintenance);
+  return result[0].insertId;
 }
 
-export async function deleteClientQuota(id: number) {
+export async function updateMaintenance(id: number, data: Partial<InsertMaintenance>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(clientQuotas).where(eq(clientQuotas.id, id));
+  await db.update(maintenances).set(data).where(eq(maintenances.id, id));
 }
 
-export async function deleteClientQuotasByClientId(clientId: number) {
+export async function deleteMaintenance(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(clientQuotas).where(eq(clientQuotas.clientId, clientId));
+  await db.delete(maintenances).where(eq(maintenances.id, id));
+}
+
+/**
+ * Verifica se há manutenção programada para uma embarcação em uma data específica
+ */
+export async function hasMaintenanceOnDate(vesselId: number, date: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const result = await db.select().from(maintenances)
+    .where(
+      and(
+        eq(maintenances.vesselId, vesselId),
+        lte(maintenances.startDate, date),
+        gte(maintenances.endDate, date),
+        eq(maintenances.status, "scheduled")
+      )
+    )
+    .limit(1);
+  
+  return result.length > 0;
 }
