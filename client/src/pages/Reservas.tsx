@@ -20,9 +20,8 @@ import { toast } from "sonner";
 export default function Reservas() {
   const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/';
+  const handleLogout = async () => {
+    await logout();
   };
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);

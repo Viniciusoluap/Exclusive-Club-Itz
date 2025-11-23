@@ -29,3 +29,12 @@
 - [x] Testar cadastro com número de cota
 - [x] Testar validação de ranges
 - [x] Testar reservas com novo sistema
+
+
+## 🐛 Bugs Reportados
+- [x] Botão de logout não está funcionando
+- [x] Verificar e documentar segurança de acesso admin (apenas owner)
+
+## 🔒 Segurança
+- [x] Confirmar que apenas owner tem acesso ao painel Admin
+- [x] Documentar controle de acesso baseado em role (ver SECURITY.md)
