@@ -28,6 +28,8 @@ export default function AdminManutencao() {
   const [, setLocation] = useLocation();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [conflictingBookings, setConflictingBookings] = useState<any[]>([]);
   const [selectedVesselId, setSelectedVesselId] = useState<number | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -95,7 +97,7 @@ export default function AdminManutencao() {
     setStatus("scheduled");
   };
 
-  const handleCreateMaintenance = () => {
+  const handleCreateMaintenance = async () => {
     if (!selectedVesselId || !startDate || !endDate) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
@@ -109,6 +111,33 @@ export default function AdminManutencao() {
       return;
     }
 
+    // Verificar conflitos antes de criar
+    try {
+      const conflicts = await utils.client.maintenances.checkConflicts.query({
+        vesselId: selectedVesselId,
+        startDate: startTimestamp,
+        endDate: endTimestamp,
+      });
+
+      if (conflicts.hasConflicts) {
+        // Mostrar dialog de confirmação com lista de reservas
+        setConflictingBookings(conflicts.conflictingBookings);
+        setShowConflictDialog(true);
+      } else {
+        // Sem conflitos, criar diretamente
+        confirmCreateMaintenance();
+      }
+    } catch (error) {
+      toast.error("Erro ao verificar conflitos");
+    }
+  };
+
+  const confirmCreateMaintenance = () => {
+    if (!selectedVesselId || !startDate || !endDate) return;
+
+    const startTimestamp = new Date(startDate).getTime();
+    const endTimestamp = new Date(endDate).getTime();
+
     createMaintenance.mutate({
       vesselId: selectedVesselId,
       startDate: startTimestamp,
@@ -116,6 +145,7 @@ export default function AdminManutencao() {
       description: description || undefined,
       status,
     });
+    setShowConflictDialog(false);
   };
 
   const handleDelete = (id: number) => {
@@ -344,6 +374,66 @@ export default function AdminManutencao() {
                 </>
               ) : (
                 "Criar Manutenção"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmação de Conflitos */}
+      <Dialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Atenção: Reservas Conflitantes</DialogTitle>
+            <DialogDescription>
+              O período selecionado possui reservas ativas que serão automaticamente canceladas.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border p-4 bg-muted/50">
+              <h4 className="font-semibold mb-3 text-sm">Reservas que serão canceladas:</h4>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {conflictingBookings.map((booking, index) => (
+                  <div key={index} className="flex items-start justify-between p-3 bg-background rounded border">
+                    <div className="space-y-1">
+                      <div className="font-medium text-sm">{booking.clientName}</div>
+                      <div className="text-xs text-muted-foreground">{booking.clientEmail}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {booking.vesselName} •{" "}
+                        {new Date(booking.bookingDate).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              Total de reservas afetadas: <strong>{conflictingBookings.length}</strong>
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConflictDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmCreateMaintenance}
+              disabled={createMaintenance.isPending}
+            >
+              {createMaintenance.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Criando...
+                </>
+              ) : (
+                "Confirmar e Cancelar Reservas"
               )}
             </Button>
           </DialogFooter>

@@ -383,7 +383,13 @@ export default function Reservas() {
               </div>
             ) : vessels && vessels.length > 0 ? (
               <div className="space-y-8">
-                {vessels.map((vessel) => (
+                {vessels
+                  .filter((vessel) => {
+                    // Filtrar apenas embarcações que o cliente possui cota
+                    if (!quotaInfo?.quotas) return false;
+                    return quotaInfo.quotas.some((q) => q.vesselId === vessel.id);
+                  })
+                  .map((vessel) => (
                   <div key={vessel.id} className="space-y-4">
                     <div className="flex items-center gap-3 pb-2 border-b">
                       <Ship className="h-5 w-5 text-primary" />
