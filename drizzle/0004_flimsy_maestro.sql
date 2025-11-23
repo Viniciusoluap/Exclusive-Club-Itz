@@ -1,1 +1,0 @@
-ALTER TABLE `client_quotas` ADD `quota_number` int NOT NULL;
