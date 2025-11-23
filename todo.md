@@ -65,3 +65,12 @@
 - [x] Incluir informações: data, embarcação, cota
 - [x] Atualizar card "Próximas Reservas" na página Minhas Reservas
 - [ ] Testar visualização no painel do cliente
+
+## Melhoria - Card de Próximas Reservas (23/11/2025)
+
+### Mostrar Todas as Reservas do Próximo Dia
+- [x] Modificar backend AdminStats para retornar array de reservas do próximo dia
+- [x] Modificar backend ClientStats para retornar array de reservas do próximo dia
+- [x] Atualizar frontend do painel admin para listar todas as reservas
+- [x] Atualizar frontend do painel do cliente para listar todas as reservas
+- [ ] Testar com cliente que tem múltiplas cotas no mesmo dia
