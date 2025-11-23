@@ -6,6 +6,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import WhatsAppButton from "./components/WhatsAppButton";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
+import Galeria from "./pages/Galeria";
 import Reservas from "./pages/Reservas";
 import AccessDenied from "./pages/AccessDenied";
 import Admin from "./pages/Admin";
@@ -15,6 +17,8 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/dashboard"} component={Dashboard} />
+      <Route path={"/galeria"} component={Galeria} />
       <Route path={"/reservas"} component={Reservas} />
       <Route path={"/acesso-negado"} component={AccessDenied} />
       <Route path={"/admin"} component={Admin} />

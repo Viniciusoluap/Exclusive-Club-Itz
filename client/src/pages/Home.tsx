@@ -29,6 +29,18 @@ export default function Home() {
               <a href="#embarcacoes" className="text-foreground hover:text-primary transition-colors">
                 Embarcações
               </a>
+              <Link href="/galeria">
+                <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
+                  Galeria
+                </span>
+              </Link>
+              {isAuthenticated && (
+                <Link href="/dashboard">
+                  <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
+                    Dashboard
+                  </span>
+                </Link>
+              )}
               <a href="#sobre" className="text-foreground hover:text-primary transition-colors">
                 Sobre Nós
               </a>
