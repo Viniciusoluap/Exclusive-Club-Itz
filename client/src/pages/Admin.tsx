@@ -46,6 +46,15 @@ export default function Admin() {
 
   // Vessel Management State
   const [showVesselDialog, setShowVesselDialog] = useState(false);
+  
+  // Booking Management State
+  const [showBookingDialog, setShowBookingDialog] = useState(false);
+  const [bookingForm, setBookingForm] = useState({
+    clientEmail: "",
+    vesselId: 0,
+    bookingDate: "",
+    notes: "",
+  });
   const [vesselForm, setVesselForm] = useState({
     name: "",
     type: "lancha" as "lancha" | "jetski",
@@ -141,12 +150,38 @@ export default function Admin() {
     },
   });
 
+  const createBookingForClient = trpc.bookings.createForClient.useMutation({
+    onSuccess: () => {
+      toast.success("Reserva criada com sucesso!");
+      setShowBookingDialog(false);
+      setBookingForm({ clientEmail: "", vesselId: 0, bookingDate: "", notes: "" });
+      utils.bookings.listAll.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   const handleCreateClient = () => {
     if (!clientForm.email || !clientForm.name || clientForm.quotas.length === 0) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
     createClient.mutate(clientForm);
+  };
+
+  const handleCreateBooking = () => {
+    if (!bookingForm.clientEmail || !bookingForm.vesselId || !bookingForm.bookingDate) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+    const dateTimestamp = new Date(bookingForm.bookingDate).getTime();
+    createBookingForClient.mutate({
+      clientEmail: bookingForm.clientEmail,
+      vesselId: bookingForm.vesselId,
+      bookingDate: dateTimestamp,
+      notes: bookingForm.notes || undefined,
+    });
   };
 
   const handleCreateVessel = () => {
@@ -400,9 +435,15 @@ export default function Admin() {
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Todas as Reservas</CardTitle>
-                <CardDescription>Gerencie todas as reservas do sistema</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Todas as Reservas</CardTitle>
+                  <CardDescription>Gerencie todas as reservas do sistema</CardDescription>
+                </div>
+                <Button onClick={() => setShowBookingDialog(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Reserva
+                </Button>
               </CardHeader>
               <CardContent>
                 {bookingsLoading ? (
@@ -653,6 +694,90 @@ export default function Admin() {
                 </>
               ) : (
                 "Adicionar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Booking Dialog */}
+      <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Criar Reserva para Cliente</DialogTitle>
+            <DialogDescription>
+              Como admin, você pode criar reservas para qualquer cliente sem limite
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="booking-client">Cliente *</Label>
+              <Select
+                value={bookingForm.clientEmail}
+                onValueChange={(value) => setBookingForm({ ...bookingForm, clientEmail: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients?.map((client) => (
+                    <SelectItem key={client.id} value={client.email}>
+                      {client.name} ({client.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="booking-vessel">Embarcação *</Label>
+              <Select
+                value={bookingForm.vesselId.toString()}
+                onValueChange={(value) => setBookingForm({ ...bookingForm, vesselId: parseInt(value) })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma embarcação" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vessels?.filter(v => v.isActive).map((vessel) => (
+                    <SelectItem key={vessel.id} value={vessel.id.toString()}>
+                      {vessel.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="booking-date">Data *</Label>
+              <Input
+                id="booking-date"
+                type="date"
+                value={bookingForm.bookingDate}
+                onChange={(e) => setBookingForm({ ...bookingForm, bookingDate: e.target.value })}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div>
+              <Label htmlFor="booking-notes">Observações</Label>
+              <Textarea
+                id="booking-notes"
+                value={bookingForm.notes}
+                onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
+                placeholder="Observações sobre a reserva"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBookingDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateBooking} disabled={createBookingForClient.isPending}>
+              {createBookingForClient.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Criando...
+                </>
+              ) : (
+                "Criar Reserva"
               )}
             </Button>
           </DialogFooter>

@@ -38,3 +38,34 @@
 ## 🔒 Segurança
 - [x] Confirmar que apenas owner tem acesso ao painel Admin
 - [x] Documentar controle de acesso baseado em role (ver SECURITY.md)
+
+
+## 🎯 Melhorias Solicitadas
+
+### Funcionalidades Admin
+- [x] Admin poder criar reservas para qualquer cliente cadastrado
+- [x] Admin pode superar limite de reservas ao criar manualmente
+- [ ] Relatórios gerenciais (taxa de ocupação, cotistas ativos)
+- [ ] Controle de manutenção programada
+- [ ] Controle financeiro (status pagamento, inadimplência)
+
+### Visual e Branding
+- [ ] Sistema de upload de imagens reais das embarcações
+- [ ] Upload e troca de logo personalizado
+- [ ] Personalização de paleta de cores
+- [ ] Galeria de fotos de clientes usando embarcações
+- [ ] Seção de depoimentos
+
+### Experiência do Usuário
+- [ ] Botão flutuante de WhatsApp
+- [ ] Dashboard do cliente com histórico de uso
+- [ ] Estatísticas pessoais (quantas vezes usou, dias favoritos)
+- [ ] Notificações por email (confirmação e lembrete)
+- [ ] Previsão do tempo para dia da reserva
+- [ ] Informações detalhadas das embarcações (specs, regras)
+- [ ] Checklist pré-navegação
+
+### Gestão e Controle
+- [ ] Calendário de manutenções
+- [ ] Bloqueio automático de datas (manutenção/feriados)
+- [ ] Alertas de condições marítimas
