@@ -401,6 +401,65 @@ export const appRouter = router({
         return result;
       }),
   }),
+
+  // Reviews endpoints
+  reviews: router({
+    // Listar avaliações aprovadas (público)
+    listApproved: publicProcedure.query(async () => {
+      return await db.getApprovedReviews();
+    }),
+
+    // Listar todas as avaliações (admin)
+    listAll: adminProcedure.query(async () => {
+      return await db.getAllReviews();
+    }),
+
+    // Criar avaliação (cliente autenticado)
+    create: allowedClientProcedure
+      .input(z.object({
+        bookingId: z.number(),
+        vesselId: z.number(),
+        vesselName: z.string(),
+        rating: z.number().min(1).max(5),
+        comment: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Verificar se já existe avaliação para esta reserva
+        const existing = await db.getReviewByBooking(input.bookingId);
+        if (existing) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Você já avaliou esta reserva' });
+        }
+
+        await db.createReview({
+          bookingId: input.bookingId,
+          clientEmail: ctx.user.email!,
+          clientName: ctx.user.name || 'Cliente',
+          vesselId: input.vesselId,
+          vesselName: input.vesselName,
+          rating: input.rating,
+          comment: input.comment,
+          isApproved: false, // Requer aprovação do admin
+        });
+
+        return { success: true };
+      }),
+
+    // Aprovar avaliação (admin)
+    approve: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.approveReview(input.id);
+        return { success: true };
+      }),
+
+    // Deletar avaliação (admin)
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteReview(input.id);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

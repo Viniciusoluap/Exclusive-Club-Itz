@@ -1,6 +1,6 @@
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, allowedClients, InsertAllowedClient, vessels, InsertVessel, bookings, InsertBooking, clientQuotas, InsertClientQuota, maintenances, InsertMaintenance } from "../drizzle/schema";
+import { InsertUser, users, allowedClients, InsertAllowedClient, vessels, InsertVessel, bookings, InsertBooking, clientQuotas, InsertClientQuota, maintenances, InsertMaintenance, reviews, InsertReview } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -382,4 +382,72 @@ export async function hasMaintenanceOnDate(vesselId: number, date: number): Prom
     .limit(1);
 
   return result.length > 0;
+}
+
+
+// ========== Review Functions ==========
+
+export async function createReview(review: InsertReview) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(reviews).values(review);
+  return result;
+}
+
+export async function getAllReviews() {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(reviews).orderBy(desc(reviews.createdAt));
+}
+
+export async function getApprovedReviews() {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(reviews)
+    .where(eq(reviews.isApproved, true))
+    .orderBy(desc(reviews.createdAt));
+}
+
+export async function getReviewsByVessel(vesselId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(reviews)
+    .where(and(eq(reviews.vesselId, vesselId), eq(reviews.isApproved, true)))
+    .orderBy(desc(reviews.createdAt));
+}
+
+export async function getReviewByBooking(bookingId: number) {
+  const db = await getDb();
+  if (!db) return null;
+
+  const result = await db.select().from(reviews)
+    .where(eq(reviews.bookingId, bookingId))
+    .limit(1);
+  
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function updateReview(id: number, updates: Partial<InsertReview>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(reviews).set(updates).where(eq(reviews.id, id));
+}
+
+export async function deleteReview(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.delete(reviews).where(eq(reviews.id, id));
+}
+
+export async function approveReview(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(reviews).set({ isApproved: true }).where(eq(reviews.id, id));
 }

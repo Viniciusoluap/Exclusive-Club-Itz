@@ -60,12 +60,12 @@ export function MobileMenu({ isAuthenticated, userRole, onLogout }: MobileMenuPr
               </span>
             </Link>
             {isAuthenticated && (
-              <Link href="/dashboard">
+              <Link href="/minhas-reservas">
                 <span
                   className="text-lg text-foreground hover:text-primary transition-colors cursor-pointer py-2 block"
                   onClick={closeMenu}
                 >
-                  Dashboard
+                  Minhas Reservas
                 </span>
               </Link>
             )}
@@ -92,7 +92,7 @@ export function MobileMenu({ isAuthenticated, userRole, onLogout }: MobileMenuPr
                 )}
                 <Link href="/reservas">
                   <Button className="w-full" onClick={closeMenu}>
-                    Minhas Reservas
+                    Fazer Reserva
                   </Button>
                 </Link>
                 <Button
