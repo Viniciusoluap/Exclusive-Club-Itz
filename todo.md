@@ -93,3 +93,10 @@
 - [x] Exibir: cliente, embarcação, data de cada reserva afetada
 - [x] Confirmar antes de criar manutenção
 - [ ] Testar criação de manutenção com e sem conflitos
+
+## Bug - Menu Admin (23/11/2025 - 20:31)
+
+### Aba de Manutenção Ausente
+- [x] Adicionar aba "Manutenção" no menu de navegação do painel admin
+- [x] Posicionar entre "Embarcações" e "Reservas" ou após "Reservas"
+- [ ] Testar navegação para /admin/manutencao
