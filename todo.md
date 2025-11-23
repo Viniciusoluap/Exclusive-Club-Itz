@@ -41,3 +41,11 @@
 - [x] Corrigir visualização de datas já reservadas (não estão ficando vermelhas)
 - [x] Verificar função isDateBooked no frontend
 - [x] Testar bloqueio visual de datas reservadas
+
+## Nova Feature - Dashboard Admin (23/11/2025)
+
+### Próxima Reserva Detalhada
+- [x] Modificar backend stats para retornar próxima reserva mais recente
+- [x] Incluir informações: embarcação, cota, cliente, data
+- [x] Atualizar frontend do card "Próximas Reservas" para mostrar detalhes
+- [x] Testar visualização no dashboard admin
