@@ -5,6 +5,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import * as db from "./db";
+import * as emailService from "./emailService";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -205,6 +206,15 @@ export const appRouter = router({
           });
         }
 
+        // Check if vessel has scheduled maintenance on this date
+        const hasMaintenance = await db.hasMaintenanceOnDate(input.vesselId, input.bookingDate);
+        if (hasMaintenance) {
+          throw new TRPCError({ 
+            code: 'CONFLICT', 
+            message: 'Esta embarcação está em manutenção nesta data. Por favor, escolha outra data.' 
+          });
+        }
+
         // Check if vessel is already booked for this date
         const existingBookings = await db.getBookingsByVesselAndDate(input.vesselId, input.bookingDate);
         if (existingBookings.length > 0) {
@@ -365,6 +375,30 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await db.deleteMaintenance(input.id);
         return { success: true };
+      }),
+  }),
+
+  // Email Service (Admin only)
+  emails: router({
+    // Envia emails com previsão do tempo para reservas de hoje
+    sendDailyWeather: adminProcedure
+      .mutation(async () => {
+        const result = await emailService.sendDailyWeatherEmails();
+        return result;
+      }),
+
+    // Verifica alertas de chuva para próximos 5 dias
+    checkRainAlerts: adminProcedure
+      .mutation(async () => {
+        const result = await emailService.checkRainAlerts();
+        return result;
+      }),
+
+    // Envia lembretes para reservas de amanhã
+    sendTomorrowReminders: adminProcedure
+      .mutation(async () => {
+        const result = await emailService.sendTomorrowReminders();
+        return result;
       }),
   }),
 });
