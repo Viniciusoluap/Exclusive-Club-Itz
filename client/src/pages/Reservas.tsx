@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { MobileMenu } from "@/components/MobileMenu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -18,7 +19,11 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 
 export default function Reservas() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+  };
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedVessel, setSelectedVessel] = useState<number | null>(null);
@@ -32,6 +37,12 @@ export default function Reservas() {
 
   // Fetch user's bookings
   const { data: myBookings, isLoading: bookingsLoading } = trpc.bookings.myBookings.useQuery(
+    undefined,
+    { enabled: isAuthenticated }
+  );
+
+  // Fetch user's quota information
+  const { data: quotaInfo } = trpc.bookings.myQuota.useQuery(
     undefined,
     { enabled: isAuthenticated }
   );
@@ -168,6 +179,8 @@ export default function Reservas() {
     return myBookings?.filter((b) => b.status === "confirmed").length || 0;
   }, [myBookings]);
 
+  const maxBookings = quotaInfo?.maxBookings || 2;
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -206,15 +219,30 @@ export default function Reservas() {
                 <span className="text-lg font-bold text-primary">Exclusive Club</span>
               </a>
             </Link>
-            <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-4">
               <span className="text-sm text-muted-foreground hidden sm:inline">
                 Olá, {user?.name}
               </span>
+              {user?.role === "admin" && (
+                <Link href="/admin">
+                  <Button variant="outline" size="sm">Admin</Button>
+                </Link>
+              )}
               <Link href="/">
                 <Button variant="outline" size="sm">
                   Voltar ao Início
                 </Button>
               </Link>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                Sair
+              </Button>
+            </div>
+            <div className="md:hidden">
+              <MobileMenu
+                isAuthenticated={isAuthenticated}
+                userRole={user?.role}
+                onLogout={handleLogout}
+              />
             </div>
           </div>
         </div>
@@ -228,11 +256,11 @@ export default function Reservas() {
               <div>
                 <CardTitle>Minhas Reservas</CardTitle>
                 <CardDescription>
-                  Você possui {activeBookingsCount} de 2 reservas ativas
+                  Você possui {activeBookingsCount} de {maxBookings} reservas ativas
                 </CardDescription>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-bold text-primary">{activeBookingsCount}/2</div>
+                <div className="text-3xl font-bold text-primary">{activeBookingsCount}/{maxBookings}</div>
                 <div className="text-sm text-muted-foreground">Reservas Ativas</div>
               </div>
             </div>
