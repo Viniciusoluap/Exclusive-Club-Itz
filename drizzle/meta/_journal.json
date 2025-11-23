@@ -36,6 +36,13 @@
       "when": 1763928415514,
       "tag": "0004_square_doomsday",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1763929305362,
+      "tag": "0005_flowery_hellcat",
+      "breakpoints": true
     }
   ]
 }

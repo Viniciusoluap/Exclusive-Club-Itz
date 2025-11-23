@@ -107,3 +107,23 @@ export const maintenances = mysqlTable("maintenances", {
 
 export type Maintenance = typeof maintenances.$inferSelect;
 export type InsertMaintenance = typeof maintenances.$inferInsert;
+
+/**
+ * Reviews table - stores customer reviews after using vessels
+ */
+export const reviews = mysqlTable("reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("booking_id").notNull(), // references bookings.id
+  clientEmail: varchar("client_email", { length: 320 }).notNull(),
+  clientName: text("client_name").notNull(),
+  vesselId: int("vessel_id").notNull(),
+  vesselName: text("vessel_name").notNull(),
+  rating: int("rating").notNull(), // 1-5 stars
+  comment: text("comment"),
+  isApproved: boolean("is_approved").default(false).notNull(), // Admin approval
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Review = typeof reviews.$inferSelect;
+export type InsertReview = typeof reviews.$inferInsert;

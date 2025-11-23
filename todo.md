@@ -22,7 +22,18 @@
 - [ ] Testar envio de emails
 
 ### Edição de Fotos da Galeria
-- [ ] Editar foto 1 (IMG_9049)
+- [x] Editar todas as 14 fotos da galeria profissionalmente
+- [x] Aplicar ajustes de contraste (+20%), saturação (+15%), nitidez
+- [x] Manter originalidade das fotos
+- [x] Substituir fotos no projeto
+
+### Sistema de Avaliações Pós-Uso
+- [x] Criar tabela reviews no schema
+- [x] Implementar CRUD de avaliações no backend
+- [x] Criar interface para clientes avaliarem (/minhas-reservas)
+- [x] Exibir avaliações na página inicial (ReviewsSection)
+- [x] Adicionar sistema de estrelas (1-5)
+- [x] Sistema de aprovação admin
 - [ ] Editar foto 2 (IMG_9050)
 - [ ] Editar foto 3 (IMG_9051)
 - [ ] Editar foto 4 (IMG_9052)
