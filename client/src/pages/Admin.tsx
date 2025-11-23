@@ -33,7 +33,13 @@ export default function Admin() {
 
   // Client Management State
   const [showClientDialog, setShowClientDialog] = useState(false);
-  const [clientForm, setClientForm] = useState({ email: "", name: "", phone: "" });
+  const [clientForm, setClientForm] = useState({ 
+    email: "", 
+    name: "", 
+    phone: "",
+    quotaType: "full" as "full" | "half",
+    quotaCount: "1"
+  });
 
   // Vessel Management State
   const [showVesselDialog, setShowVesselDialog] = useState(false);
@@ -63,7 +69,7 @@ export default function Admin() {
       toast.success("Cliente adicionado com sucesso!");
       utils.allowedClients.list.invalidate();
       setShowClientDialog(false);
-      setClientForm({ email: "", name: "", phone: "" });
+      setClientForm({ email: "", name: "", phone: "", quotaType: "full", quotaCount: "1" });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -147,7 +153,13 @@ export default function Admin() {
       toast.error("Preencha os campos obrigatórios");
       return;
     }
-    createClient.mutate(clientForm);
+    createClient.mutate({
+      email: clientForm.email,
+      name: clientForm.name,
+      phone: clientForm.phone || undefined,
+      quotaType: clientForm.quotaType,
+      quotaCount: parseInt(clientForm.quotaCount) || 1,
+    });
   };
 
   const handleCreateVessel = () => {
@@ -270,6 +282,11 @@ export default function Admin() {
                           {client.phone && (
                             <div className="text-sm text-muted-foreground">{client.phone}</div>
                           )}
+                          <div className="text-sm font-medium text-primary mt-1">
+                            {client.quotaCount} {client.quotaType === "full" ? "Cota(s) Inteira(s)" : "Meia(s) Cota(s)"} 
+                            {" • "}
+                            {client.quotaType === "full" ? client.quotaCount * 2 : client.quotaCount} reserva(s) simultânea(s)
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
@@ -526,6 +543,38 @@ export default function Admin() {
                 onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
                 placeholder="(99) 99999-9999"
               />
+            </div>
+            <div>
+              <Label htmlFor="quotaType">Tipo de Cota *</Label>
+              <Select
+                value={clientForm.quotaType}
+                onValueChange={(value: "full" | "half") => setClientForm({ ...clientForm, quotaType: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Cota Inteira (2 reservas simultâneas)</SelectItem>
+                  <SelectItem value="half">Meia Cota (1 reserva simultânea)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="quotaCount">Quantidade de Cotas *</Label>
+              <Input
+                id="quotaCount"
+                type="number"
+                min="1"
+                value={clientForm.quotaCount}
+                onChange={(e) => setClientForm({ ...clientForm, quotaCount: e.target.value })}
+                placeholder="1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {clientForm.quotaType === "full" 
+                  ? `${parseInt(clientForm.quotaCount || "1") * 2} reservas simultâneas no total`
+                  : `${parseInt(clientForm.quotaCount || "1")} reserva(s) simultânea(s) no total`
+                }
+              </p>
             </div>
           </div>
           <DialogFooter>

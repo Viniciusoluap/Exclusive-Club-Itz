@@ -59,6 +59,8 @@ export const appRouter = router({
         email: z.string().email(),
         name: z.string().min(1),
         phone: z.string().optional(),
+        quotaType: z.enum(["full", "half"]).default("full"),
+        quotaCount: z.number().min(1).default(1),
       }))
       .mutation(async ({ input }) => {
         const existing = await db.getAllowedClientByEmail(input.email);
@@ -75,6 +77,8 @@ export const appRouter = router({
         email: z.string().email().optional(),
         name: z.string().min(1).optional(),
         phone: z.string().optional(),
+        quotaType: z.enum(["full", "half"]).optional(),
+        quotaCount: z.number().min(1).optional(),
         isActive: z.boolean().optional(),
       }))
       .mutation(async ({ input }) => {
@@ -148,6 +152,23 @@ export const appRouter = router({
       return await db.getBookingsByEmail(ctx.user.email);
     }),
 
+    // Get user's quota information
+    myQuota: allowedClientProcedure.query(async ({ ctx }) => {
+      if (!ctx.user.email) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' });
+      }
+      const client = await db.getAllowedClientByEmail(ctx.user.email);
+      if (!client) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Cliente não encontrado' });
+      }
+      const maxBookings = client.quotaType === 'full' ? client.quotaCount * 2 : client.quotaCount * 1;
+      return {
+        quotaType: client.quotaType,
+        quotaCount: client.quotaCount,
+        maxBookings,
+      };
+    }),
+
     // Get all bookings (admin only)
     listAll: adminProcedure.query(async () => {
       return await db.getBookings();
@@ -176,8 +197,10 @@ export const appRouter = router({
         }
 
         // Check if date is a Monday (0 = Sunday, 1 = Monday)
+        // Use UTC to avoid timezone issues
         const date = new Date(input.bookingDate);
-        if (date.getDay() === 1) {
+        const dayOfWeek = date.getUTCDay();
+        if (dayOfWeek === 1) {
           throw new TRPCError({ 
             code: 'BAD_REQUEST', 
             message: 'Reservas não são permitidas às segundas-feiras' 
@@ -212,12 +235,28 @@ export const appRouter = router({
           });
         }
 
-        // Check user's active bookings (max 2)
+        // Check user's quota and active bookings
+        const client = await db.getAllowedClientByEmail(ctx.user.email);
+        if (!client) {
+          throw new TRPCError({ 
+            code: 'UNAUTHORIZED', 
+            message: 'Cliente não autorizado' 
+          });
+        }
+
+        // Calculate max bookings based on quota type and count
+        // Full quota: 2 bookings per quota
+        // Half quota: 1 booking per quota
+        const maxBookings = client.quotaType === 'full' 
+          ? client.quotaCount * 2 
+          : client.quotaCount * 1;
+
         const activeBookings = await db.getActiveBookingsByEmail(ctx.user.email);
-        if (activeBookings.length >= 2) {
+        if (activeBookings.length >= maxBookings) {
+          const quotaText = client.quotaType === 'full' ? 'cota(s) inteira(s)' : 'meia(s) cota(s)';
           throw new TRPCError({ 
             code: 'BAD_REQUEST', 
-            message: 'Você já possui 2 reservas ativas. Utilize uma reserva para liberar um novo agendamento.' 
+            message: `Você já atingiu o limite de ${maxBookings} reserva(s) simultânea(s) para suas ${client.quotaCount} ${quotaText}. Utilize uma reserva para liberar um novo agendamento.` 
           });
         }
 
