@@ -4,8 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { Anchor, Calendar, Ship, Waves } from "lucide-react";
 import { Link } from "wouter";
-import { MobileMenu } from "@/components/MobileMenu";
-import { ReviewsSection } from "@/components/ReviewsSection";
 
 export default function Home() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -28,19 +26,19 @@ export default function Home() {
               <a href="#home" className="text-foreground hover:text-primary transition-colors">
                 Home
               </a>
-              <Link href="/embarcacoes">
-                <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
-                  Embarcações
-                </span>
-              </Link>
+              <a href="#embarcacoes" className="text-foreground hover:text-primary transition-colors">
+                Embarcações
+              </a>
               <Link href="/galeria">
                 <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
                   Galeria
                 </span>
               </Link>
               {isAuthenticated && (
-                <Link href="/minhas-reservas">
-                  <a className="text-foreground hover:text-primary transition-colors">Minhas Reservas</a>
+                <Link href="/dashboard">
+                  <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
+                    Dashboard
+                  </span>
                 </Link>
               )}
               <a href="#sobre" className="text-foreground hover:text-primary transition-colors">
@@ -65,11 +63,15 @@ export default function Home() {
               )}
             </nav>
             <div className="md:hidden">
-              <MobileMenu
-                isAuthenticated={isAuthenticated}
-                userRole={user?.role}
-                onLogout={handleLogout}
-              />
+              {isAuthenticated ? (
+                <Link href="/reservas">
+                  <Button size="sm">Reservas</Button>
+                </Link>
+              ) : (
+                <Button size="sm" asChild>
+                  <a href={getLoginUrl()}>Entrar</a>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -265,9 +267,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
-      {/* Reviews Section */}
-      <ReviewsSection />
 
       {/* Footer */}
       <footer className="bg-foreground/5 py-12 border-t">

@@ -3,26 +3,25 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import WhatsAppButton from "./components/WhatsAppButton";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Dashboard from "./pages/Dashboard";
+import Galeria from "./pages/Galeria";
 import Reservas from "./pages/Reservas";
 import AccessDenied from "./pages/AccessDenied";
 import Admin from "./pages/Admin";
-import AdminMaintenance from "./pages/AdminMaintenance";
-import AdminEmails from "./pages/AdminEmails";
-import MinhasReservas from "./pages/MinhasReservas";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/dashboard"} component={Dashboard} />
+      <Route path={"/galeria"} component={Galeria} />
       <Route path={"/reservas"} component={Reservas} />
       <Route path={"/acesso-negado"} component={AccessDenied} />
       <Route path={"/admin"} component={Admin} />
-      <Route path={"/admin/manutencao"} component={AdminMaintenance} />
-      <Route path={"/admin/emails"} component={AdminEmails} />
-      <Route path={"/minhas-reservas"} component={MinhasReservas} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -45,6 +44,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
+          <WhatsAppButton />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

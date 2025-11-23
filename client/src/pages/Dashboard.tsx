@@ -1,6 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { MobileMenu } from "@/components/MobileMenu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
@@ -8,11 +7,7 @@ import { Anchor, BarChart3, Calendar, Ship, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Dashboard() {
-  const { user, loading, isAuthenticated, logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
-  };
+  const { user, loading, isAuthenticated } = useAuth();
   const { data: stats, isLoading: statsLoading } = trpc.stats.client.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -59,7 +54,7 @@ export default function Dashboard() {
                 <span className="font-bold text-xl text-gray-900">{APP_TITLE}</span>
               </div>
             </Link>
-            <nav className="hidden md:flex items-center gap-4">
+            <nav className="flex items-center gap-4">
               <Link href="/reservas">
                 <Button variant="ghost">Minhas Reservas</Button>
               </Link>
@@ -68,13 +63,6 @@ export default function Dashboard() {
               </Link>
               <span className="text-sm text-gray-600">{user?.name}</span>
             </nav>
-            <div className="md:hidden">
-              <MobileMenu
-                isAuthenticated={isAuthenticated}
-                userRole={user?.role}
-                onLogout={handleLogout}
-              />
-            </div>
           </div>
         </div>
       </header>
