@@ -100,11 +100,11 @@ export async function getAdminStats(): Promise<AdminStats> {
   const now = Date.now();
   const upcoming = allBookings.filter((b: any) => b.bookingDate > now && b.status !== 'cancelled');
   
-  // Taxa de ocupação por embarcação (últimos 30 dias)
-  const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+  // Taxa de ocupação por embarcação (próximos 30 dias)
+  const thirtyDaysFromNow = now + (30 * 24 * 60 * 60 * 1000);
   const recentBookings = allBookings.filter((b: any) => 
-    b.bookingDate >= thirtyDaysAgo && 
-    b.bookingDate <= now &&
+    b.bookingDate >= now && 
+    b.bookingDate <= thirtyDaysFromNow &&
     b.status !== 'cancelled'
   );
   
