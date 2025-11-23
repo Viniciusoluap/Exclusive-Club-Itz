@@ -41,16 +41,33 @@ describe("Sistema de Cotas - Limites", () => {
   });
 
   it("deve bloquear reservas em segundas-feiras", async () => {
-    const ctx = createTestContext("vinicius@manus.im", "Vinicius Freitas");
+    const ctx = createTestContext("test@example.com", "Test User", "admin");
     const caller = appRouter.createCaller(ctx);
+
+    // Primeiro, criar um cliente de teste
+    const vessels = await caller.vessels.listAll();
+    const lancha = vessels.find(v => v.type === "lancha");
+    
+    await caller.allowedClients.create({
+      name: "Test Client Monday",
+      email: "testmonday@example.com",
+      phone: "99999999999",
+      quotas: [{
+        vesselId: lancha!.id,
+        quotaType: "full" as const,
+        quotaNumber: 1,
+      }],
+    });
 
     // Segunda-feira, 1 de dezembro de 2025
     const monday = new Date(2025, 11, 1); // Mês 11 = dezembro (0-indexed)
     const mondayTimestamp = monday.getTime();
 
+    // Admin pode tentar criar reserva, mas segunda-feira deve ser bloqueada
     await expect(
-      caller.bookings.create({
-        vesselId: 1,
+      caller.bookings.createForClient({
+        clientEmail: "testmonday@example.com",
+        vesselId: lancha!.id,
         bookingDate: mondayTimestamp,
         notes: "Teste segunda-feira",
       })

@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { WeatherWidget } from "@/components/WeatherWidget";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -178,7 +179,15 @@ export default function Reservas() {
     return myBookings?.filter((b) => b.status === "confirmed").length || 0;
   }, [myBookings]);
 
-  const maxBookings = quotaInfo?.maxBookings || 2;
+  // Calculate total max bookings across all vessels
+  const maxBookings = useMemo(() => {
+    if (!quotaInfo?.quotas) return 0;
+    let total = 0;
+    for (const quota of quotaInfo.quotas) {
+      total += quota.quotaType === 'full' ? 2 : 1;
+    }
+    return total;
+  }, [quotaInfo]);
 
   if (authLoading) {
     return (
@@ -458,6 +467,10 @@ export default function Reservas() {
                 {vessels?.find((v) => v.id === selectedVessel)?.name}
               </p>
             </div>
+
+            {selectedDate && (
+              <WeatherWidget date={selectedDate} />
+            )}
 
             <div>
               <label className="text-sm font-medium mb-2 block">

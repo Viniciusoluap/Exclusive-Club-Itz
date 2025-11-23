@@ -1,76 +1,24 @@
-# Project TODO - Sistema de Reservas Exclusive Club
+# TODO - Correções Urgentes
 
-## ✅ Implementações Concluídas
+## Problemas Críticos Reportados
 
-### Sistema de Cotas Numeradas
-- [x] Adicionar campo `quotaNumber` na tabela `client_quotas`
-- [x] Adicionar validação de range (1-7 para lancha, 1-6 para jetski)
-- [x] Atualizar backend e frontend para trabalhar com cotas numeradas
-- [x] Cadastrar 16 clientes com cotas específicas
+### Sistema de Cotas
+- [x] Implementar contador correto de reservas ativas por cliente
+- [x] Cota inteira = 2 reservas simultâneas por embarcação
+- [x] Meia cota = 1 reserva simultânea por embarcação
+- [x] Cliente pode ter múltiplas cotas (ex: 1 cota lancha + 1 cota jet = 4 datas total)
+- [x] Validar limite de reservas por tipo de cota e embarcação
 
-### Funcionalidades Admin
-- [x] Admin poder criar reservas para qualquer cliente cadastrado
-- [x] Admin pode superar limite de reservas ao criar manualmente
-- [x] Relatórios gerenciais (taxa de ocupação últimos 30 dias, top 5 clientes)
-- [x] Painel de estatísticas com overview completo
+### Endpoint Admin
+- [x] Criar endpoint bookings.createForClient para admin
+- [x] Permitir admin criar reservas para qualquer cliente
+- [x] Validar que apenas admin pode usar este endpoint
 
-### Visual e Branding
-- [x] Logo personalizado do Exclusive Club
-- [x] 16 fotos reais das embarcações adicionadas
-- [x] Galeria de fotos interativa com filtros e lightbox
-- [x] Design responsivo e moderno
+### Previsão do Tempo
+- [x] Corrigir carregamento da previsão do tempo
+- [x] Verificar integração com OpenWeatherMap API
+- [x] Tratar erros de API gracefully
 
-### Experiência do Usuário
-- [x] Botão flutuante de WhatsApp (99 981392210)
-- [x] Dashboard do cliente com histórico e estatísticas
-- [x] Gráfico de uso mensal (últimos 6 meses)
-- [x] Embarcação favorita do cliente
-- [x] Sistema de notificações para owner (via Manus)
-
-### Integrações
-- [x] Previsão do tempo (OpenWeather API) - requer configuração de API key
-- [x] Sistema de autenticação Manus OAuth
-- [x] Controle de acesso baseado em roles (admin/user)
-
-### Segurança
-- [x] Apenas owner tem acesso ao painel Admin
-- [x] Documentação de segurança (SECURITY.md)
-- [x] Botão de logout funcionando
-- [x] Testes de segurança implementados
-
-## 📋 Funcionalidades Pendentes (Futuras)
-
-### Gestão Avançada
-- [ ] Controle de manutenção programada
-- [ ] Calendário de manutenções com bloqueio automático
-- [ ] Controle financeiro (status pagamento, inadimplência)
-- [ ] Exportar relatórios em PDF
-
-### Experiência do Usuário
-- [ ] Notificações por email direto para clientes (requer serviço externo)
-- [ ] Lembrete automático 1 dia antes da reserva
-- [ ] Informações detalhadas das embarcações (specs completas)
-- [ ] Checklist pré-navegação
-- [ ] Seção de depoimentos de clientes
-
-### Personalização
-- [ ] Sistema de upload de novas fotos pelo admin
-- [ ] Troca de logo via interface
-- [ ] Personalização de paleta de cores via UI
-- [ ] Alertas de condições marítimas desfavoráveis
-
-## 📊 Estatísticas do Projeto
-
-- **Total de Clientes:** 16 cadastrados
-- **Embarcações:** 2 (Lancha Focker + Jetski Sea-Doo)
-- **Cotas Totais:** 13 (7 Lancha + 6 Jetski)
-- **Fotos:** 16 imagens reais
-- **Funcionalidades Principais:** 100% implementadas
-
-## 🚀 Próximos Passos Sugeridos
-
-1. Configurar OPENWEATHER_API_KEY para ativar previsão do tempo
-2. Publicar o site via botão "Publish" na interface
-3. Atualizar favicon no painel de gerenciamento
-4. Testar fluxo completo com clientes reais
-5. Coletar feedback dos cotistas
+### Testes
+- [x] Executar todos os testes
+- [x] Garantir que correções não quebram funcionalidades existentes
