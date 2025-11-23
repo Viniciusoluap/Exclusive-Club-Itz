@@ -9,6 +9,11 @@ export interface ClientStats {
   upcomingBookings: number;
   completedBookings: number;
   cancelledBookings: number;
+  nextBooking: {
+    vesselName: string;
+    quotaNumber: number | null;
+    bookingDate: number;
+  } | null;
   favoriteVessel: string | null;
   monthlyUsage: { month: string; count: number }[];
 }
@@ -64,11 +69,35 @@ export async function getClientStats(clientEmail: string): Promise<ClientStats> 
     });
   }
   
+  // Próxima reserva mais recente
+  let nextBooking: ClientStats['nextBooking'] = null;
+  if (upcoming.length > 0) {
+    const sortedUpcoming = upcoming.sort((a, b) => a.bookingDate - b.bookingDate);
+    const next = sortedUpcoming[0];
+    
+    // Buscar quota number do cliente para esta embarcação
+    const quotas = await db.getClientQuotasByEmail(clientEmail);
+    let quotaNumber: number | null = null;
+    if (quotas.length > 0) {
+      const quota = quotas.find((q: any) => q.vesselId === next.vesselId);
+      if (quota) {
+        quotaNumber = quota.quotaNumber;
+      }
+    }
+    
+    nextBooking = {
+      vesselName: next.vesselName,
+      quotaNumber,
+      bookingDate: next.bookingDate,
+    };
+  }
+  
   return {
     totalBookings: bookings.length,
     upcomingBookings: upcoming.length,
     completedBookings: completed.length,
     cancelledBookings: cancelled.length,
+    nextBooking,
     favoriteVessel,
     monthlyUsage,
   };

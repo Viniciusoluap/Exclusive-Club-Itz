@@ -49,3 +49,19 @@
 - [x] Incluir informações: embarcação, cota, cliente, data
 - [x] Atualizar frontend do card "Próximas Reservas" para mostrar detalhes
 - [x] Testar visualização no dashboard admin
+
+## Bug Crítico - Formulário Admin (23/11/2025)
+
+### Data de Reserva Um Dia Antes
+- [x] Corrigir bug de timezone no formulário de criação de reserva admin
+- [x] Data selecionada está sendo salva com um dia a menos
+- [x] Normalizar para meia-noite no fuso horário local
+- [ ] Testar criação de reserva admin e visualização no painel do cliente
+
+## Nova Feature - Painel do Cliente (23/11/2025)
+
+### Card de Próxima Reserva Detalhada
+- [x] Modificar backend para retornar próxima reserva do cliente logado
+- [x] Incluir informações: data, embarcação, cota
+- [x] Atualizar card "Próximas Reservas" na página Minhas Reservas
+- [ ] Testar visualização no painel do cliente
