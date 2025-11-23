@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { notifyNewBooking, notifyBookingCancellation, notifyBookingUsed } from "./_core/emailNotification";
 import * as db from "./db";
 
 // Admin-only procedure
@@ -271,6 +272,15 @@ export const appRouter = router({
           notes: input.notes,
         });
 
+        // Send notification to admin
+        await notifyNewBooking({
+          clientName: ctx.user.name,
+          clientEmail: ctx.user.email,
+          vesselName: vessel.name,
+          bookingDate: new Date(input.bookingDate),
+          notes: input.notes,
+        });
+
         return { success: true };
       }),
 
@@ -297,6 +307,15 @@ export const appRouter = router({
         }
 
         await db.updateBooking(input.id, { status: 'cancelled' });
+        
+        // Send notification to admin
+        await notifyBookingCancellation({
+          clientName: booking.clientName,
+          clientEmail: booking.clientEmail,
+          vesselName: booking.vesselName,
+          bookingDate: new Date(booking.bookingDate),
+        });
+        
         return { success: true };
       }),
 
@@ -304,7 +323,21 @@ export const appRouter = router({
     markAsUsed: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
+        // Get booking details before updating
+        const allBookings = await db.getBookings();
+        const booking = allBookings.find(b => b.id === input.id);
+        
         await db.updateBooking(input.id, { status: 'used' });
+        
+        // Send notification to admin if booking found
+        if (booking) {
+          await notifyBookingUsed({
+            clientName: booking.clientName,
+            vesselName: booking.vesselName,
+            bookingDate: new Date(booking.bookingDate),
+          });
+        }
+        
         return { success: true };
       }),
 
