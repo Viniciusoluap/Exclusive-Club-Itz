@@ -36,6 +36,12 @@ export default function Reservas() {
     { enabled: isAuthenticated }
   );
 
+  // Fetch user's quota information
+  const { data: quotaInfo } = trpc.bookings.myQuota.useQuery(
+    undefined,
+    { enabled: isAuthenticated }
+  );
+
   // Fetch bookings for current month
   const startOfMonth = useMemo(() => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -117,7 +123,7 @@ export default function Reservas() {
   const isDateDisabled = (date: Date | null): boolean => {
     if (!date) return true;
 
-    // Check if it's Monday (1)
+    // Check if it's Monday (1) - using local time since calendar shows local dates
     if (date.getDay() === 1) return true;
 
     // Check if it's in the past
@@ -167,6 +173,8 @@ export default function Reservas() {
   const activeBookingsCount = useMemo(() => {
     return myBookings?.filter((b) => b.status === "confirmed").length || 0;
   }, [myBookings]);
+
+  const maxBookings = quotaInfo?.maxBookings || 2;
 
   if (authLoading) {
     return (
@@ -228,11 +236,11 @@ export default function Reservas() {
               <div>
                 <CardTitle>Minhas Reservas</CardTitle>
                 <CardDescription>
-                  Você possui {activeBookingsCount} de 2 reservas ativas
+                  Você possui {activeBookingsCount} de {maxBookings} reservas ativas
                 </CardDescription>
               </div>
               <div className="text-right">
-                <div className="text-3xl font-bold text-primary">{activeBookingsCount}/2</div>
+                <div className="text-3xl font-bold text-primary">{activeBookingsCount}/{maxBookings}</div>
                 <div className="text-sm text-muted-foreground">Reservas Ativas</div>
               </div>
             </div>

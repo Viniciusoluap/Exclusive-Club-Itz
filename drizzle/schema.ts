@@ -26,6 +26,8 @@ export const allowedClients = mysqlTable("allowed_clients", {
   email: varchar("email", { length: 320 }).notNull().unique(),
   name: text("name").notNull(),
   phone: varchar("phone", { length: 20 }),
+  quotaType: mysqlEnum("quota_type", ["full", "half"]).default("full").notNull(), // full = 2 reservas, half = 1 reserva
+  quotaCount: int("quota_count").default(1).notNull(), // número de cotas que o cliente possui
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),

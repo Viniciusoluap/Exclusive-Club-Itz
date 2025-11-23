@@ -1,62 +1,80 @@
-# Project TODO
+# Project TODO - Melhorias Solicitadas
 
-## Banco de Dados e Backend
-- [x] Criar tabela de clientes autorizados (allowedClients)
-- [x] Criar tabela de embarcações (vessels)
-- [x] Criar tabela de reservas (bookings)
-- [x] Implementar procedures tRPC para gestão de clientes
-- [x] Implementar procedures tRPC para gestão de embarcações
-- [x] Implementar procedures tRPC para sistema de reservas
-- [x] Adicionar validação de limite de 2 reservas simultâneas
-- [x] Adicionar validação de bloqueio de segundas-feiras
-- [x] Adicionar sistema de liberação automática após uso
+## 🔴 PRIORIDADE ALTA - Sistema de Cotas
 
-## Design e Interface
-- [x] Configurar paleta de cores azul/turquesa do site original
-- [x] Adicionar logo da Exclusive Club
-- [x] Criar página inicial (landing page) com hero section
-- [x] Criar seção de apresentação das embarcações
-- [x] Implementar design responsivo mobile-first
+### Correção Crítica
+- [x] Corrigir bug de validação de terças-feiras (está bloqueando como segunda)
 
-## Sistema de Autenticação
-- [x] Implementar verificação de email autorizado no login
-- [x] Criar página de acesso negado para emails não autorizados
-- [x] Adicionar redirecionamento pós-login baseado em role
+### Sistema de Cotas e Frações
+- [x] Adicionar campo "quotaType" na tabela allowed_clients (full, half)
+- [x] Adicionar campo "quotaCount" na tabela allowed_clients (número de cotas)
+- [x] Atualizar lógica de limite de reservas baseado em cotas:
+  - Cota inteira: 2 reservas simultâneas por cota
+  - Meia cota: 1 reserva simultânea por meia cota
+  - Múltiplas cotas: somar limites (ex: 2 cotas = 4 reservas)
+- [x] Atualizar painel admin para cadastrar cotas ao adicionar cliente
+- [x] Atualizar interface de reservas para mostrar limite baseado em cotas
+- [x] Adicionar validação no backend para respeitar limites de cotas
 
-## Calendário de Reservas (Cliente)
-- [x] Criar componente de calendário interativo
-- [x] Implementar seleção de embarcação
-- [x] Implementar seleção de data com bloqueio de segundas
-- [x] Mostrar disponibilidade em tempo real
-- [x] Implementar confirmação de reserva
-- [x] Criar página "Minhas Reservas" com lista de reservas ativas
-- [x] Adicionar funcionalidade de cancelamento de reserva
-- [x] Adicionar indicador visual de limite de reservas (2/2)
+## 📧 Notificações
 
-## Painel Administrativo
-- [x] Criar layout de dashboard administrativo
-- [x] Implementar CRUD de clientes autorizados
-- [x] Implementar CRUD de embarcações
-- [x] Criar visualização de todas as reservas
-- [x] Adicionar filtros por data, embarcação e cliente
-- [x] Implementar marcação manual de "data utilizada"
-- [x] Criar relatórios de uso e estatísticas
-- [x] Adicionar sistema de notificações para o admin
+### Email
+- [ ] Configurar serviço de email (usando built-in notification API)
+- [ ] Notificar admin quando cliente fizer nova reserva
+- [ ] Notificar cliente quando reserva for confirmada
+- [ ] Notificar cliente quando reserva for cancelada
+- [ ] Notificar cliente 1 dia antes da data reservada
 
-## Testes
-- [x] Criar testes para validação de regras de negócio
-- [x] Criar testes para procedures de reserva
-- [x] Criar testes para sistema de autenticação
-- [x] Testar fluxo completo de reserva
+### WhatsApp
+- [ ] Pesquisar API de WhatsApp Business
+- [ ] Integrar notificações via WhatsApp
+- [ ] Enviar confirmação de reserva por WhatsApp
+- [ ] Enviar lembrete 1 dia antes por WhatsApp
 
-## Documentação e Entrega
-- [x] Documentar regras de negócio
-- [x] Criar guia de uso para administrador
-- [x] Criar guia de uso para clientes
-- [x] Preparar checkpoint final
+## 📊 Relatórios e Exportação
 
-## Correções Urgentes
-- [x] Corrigir problema de login
-- [x] Corrigir problema de agendamento
-- [x] Corrigir imagens das embarcações na página inicial
-- [x] Testar fluxo completo após correções
+### Exportação PDF
+- [ ] Criar relatório de reservas por período em PDF
+- [ ] Criar relatório de uso por cliente em PDF
+- [ ] Criar relatório de uso por embarcação em PDF
+- [ ] Adicionar gráficos e estatísticas nos relatórios
+
+### Exportação Excel
+- [ ] Criar exportação de reservas em Excel
+- [ ] Criar exportação de clientes em Excel
+- [ ] Criar exportação de estatísticas em Excel
+
+## 💳 Sistema de Pagamento
+
+### Integração Mercado Pago
+- [ ] Criar conta Mercado Pago para testes
+- [ ] Integrar SDK do Mercado Pago
+- [ ] Criar fluxo de pagamento para novas cotas
+- [ ] Criar fluxo de pagamento para renovação
+- [ ] Adicionar histórico de pagamentos no painel admin
+- [ ] Adicionar histórico de pagamentos para clientes
+
+## 🖼️ Galeria e Avaliações
+
+### Galeria de Fotos
+- [ ] Criar tabela de fotos das embarcações
+- [ ] Adicionar upload de múltiplas fotos no painel admin
+- [ ] Criar galeria na página de cada embarcação
+- [ ] Adicionar lightbox para visualização de fotos
+
+### Sistema de Avaliações
+- [ ] Criar tabela de avaliações (ratings)
+- [ ] Permitir cliente avaliar após usar embarcação
+- [ ] Mostrar média de avaliações nas embarcações
+- [ ] Adicionar comentários nas avaliações
+- [ ] Painel admin para moderar avaliações
+
+## ✅ Testes e Validação
+- [ ] Testar sistema de cotas com diferentes cenários
+- [ ] Testar notificações de email
+- [ ] Testar notificações de WhatsApp
+- [ ] Testar exportação de relatórios
+- [ ] Testar fluxo de pagamento
+- [ ] Testar galeria de fotos
+- [ ] Testar sistema de avaliações
+- [ ] Validar com usuário antes de finalizar
