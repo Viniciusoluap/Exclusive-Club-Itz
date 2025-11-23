@@ -65,6 +65,9 @@ export default function Reservas() {
     { enabled: isAuthenticated }
   );
 
+  // Fetch maintenances (public endpoint, no auth required)
+  const { data: allMaintenances } = trpc.maintenances.list.useQuery();
+
   // Create booking mutation
   const createBooking = trpc.bookings.create.useMutation({
     onSuccess: () => {
@@ -151,8 +154,21 @@ export default function Reservas() {
     );
   };
 
+  const isDateInMaintenance = (date: Date | null, vesselId: number): boolean => {
+    if (!date || !allMaintenances) return false;
+
+    const dateTimestamp = date.getTime();
+    return allMaintenances.some(
+      (maintenance: any) =>
+        maintenance.vesselId === vesselId &&
+        maintenance.startDate <= dateTimestamp &&
+        maintenance.endDate >= dateTimestamp &&
+        maintenance.status !== 'cancelled'
+    );
+  };
+
   const handleDateClick = (date: Date | null, vesselId: number) => {
-    if (!date || isDateDisabled(date) || isDateBooked(date, vesselId)) return;
+    if (!date || isDateDisabled(date) || isDateBooked(date, vesselId) || isDateInMaintenance(date, vesselId)) return;
 
     setSelectedDate(date);
     setSelectedVessel(vesselId);
@@ -391,24 +407,28 @@ export default function Reservas() {
                       {calendarDays.map((date, index) => {
                         const disabled = isDateDisabled(date);
                         const booked = date ? isDateBooked(date, vessel.id) : false;
+                        const inMaintenance = date ? isDateInMaintenance(date, vessel.id) : false;
                         const isMonday = date?.getDay() === 1;
 
                         return (
                           <button
                             key={index}
                             onClick={() => handleDateClick(date, vessel.id)}
-                            disabled={disabled || booked}
+                            disabled={disabled || booked || inMaintenance}
                             className={`
                               aspect-square p-2 rounded-lg text-sm font-medium transition-all
                               ${!date ? "invisible" : ""}
                               ${
                                 disabled
                                   ? "bg-muted text-muted-foreground cursor-not-allowed"
+                                  : inMaintenance
+                                  ? "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 cursor-not-allowed"
                                   : booked
                                   ? "bg-destructive/20 text-destructive cursor-not-allowed"
                                   : "bg-primary/10 hover:bg-primary hover:text-primary-foreground cursor-pointer"
                               }
                               ${isMonday ? "relative after:content-['🚫'] after:absolute after:top-0 after:right-0 after:text-xs" : ""}
+                              ${inMaintenance ? "relative after:content-['🔧'] after:absolute after:top-0 after:right-0 after:text-xs" : ""}
                             `}
                           >
                             {date?.getDate()}
@@ -426,6 +446,10 @@ export default function Reservas() {
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded bg-destructive/20 border border-destructive/30"></div>
                         <span className="text-muted-foreground">Reservado</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700"></div>
+                        <span className="text-muted-foreground">Manutenção 🔧</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-4 h-4 rounded bg-muted"></div>

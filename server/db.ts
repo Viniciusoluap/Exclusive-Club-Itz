@@ -1,6 +1,6 @@
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { and, desc, eq, gte, lte, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, allowedClients, InsertAllowedClient, vessels, InsertVessel, bookings, InsertBooking, clientQuotas, InsertClientQuota } from "../drizzle/schema";
+import { InsertUser, users, allowedClients, InsertAllowedClient, vessels, InsertVessel, bookings, InsertBooking, clientQuotas, InsertClientQuota, maintenances, InsertMaintenance } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -295,4 +295,61 @@ export async function deleteClientQuotasByClientId(clientId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(clientQuotas).where(eq(clientQuotas.clientId, clientId));
+}
+
+// Maintenances
+export async function getMaintenances() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(maintenances).orderBy(desc(maintenances.startDate));
+}
+
+export async function getMaintenanceById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(maintenances).where(eq(maintenances.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getMaintenancesByVesselId(vesselId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(maintenances)
+    .where(eq(maintenances.vesselId, vesselId))
+    .orderBy(desc(maintenances.startDate));
+}
+
+export async function getActiveMaintenancesByVesselAndDate(vesselId: number, date: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Check if date falls within any maintenance period
+  return await db.select().from(maintenances)
+    .where(
+      and(
+        eq(maintenances.vesselId, vesselId),
+        lte(maintenances.startDate, date),
+        gte(maintenances.endDate, date),
+        ne(maintenances.status, 'cancelled')
+      )
+    );
+}
+
+export async function createMaintenance(maintenance: InsertMaintenance) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(maintenances).values(maintenance);
+  return result;
+}
+
+export async function updateMaintenance(id: number, data: Partial<InsertMaintenance>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(maintenances).set(data).where(eq(maintenances.id, id));
+}
+
+export async function deleteMaintenance(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(maintenances).where(eq(maintenances.id, id));
 }

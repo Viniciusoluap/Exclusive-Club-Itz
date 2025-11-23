@@ -327,6 +327,16 @@ export const appRouter = router({
           });
         }
 
+        // Check if vessel is under maintenance for this date
+        const maintenances = await db.getActiveMaintenancesByVesselAndDate(input.vesselId, input.bookingDate);
+        if (maintenances.length > 0) {
+          const maintenance = maintenances[0];
+          throw new TRPCError({ 
+            code: 'CONFLICT', 
+            message: `Esta embarcação está em manutenção de ${new Date(maintenance.startDate).toLocaleDateString('pt-BR')} até ${new Date(maintenance.endDate).toLocaleDateString('pt-BR')}` 
+          });
+        }
+
         // Check if vessel is already booked for this date
         const existingBookings = await db.getBookingsByVesselAndDate(input.vesselId, input.bookingDate);
         if (existingBookings.length > 0) {
@@ -431,6 +441,16 @@ export const appRouter = router({
           });
         }
 
+        // Check if vessel is under maintenance for this date
+        const maintenances = await db.getActiveMaintenancesByVesselAndDate(input.vesselId, input.bookingDate);
+        if (maintenances.length > 0) {
+          const maintenance = maintenances[0];
+          throw new TRPCError({ 
+            code: 'CONFLICT', 
+            message: `Esta embarcação está em manutenção de ${new Date(maintenance.startDate).toLocaleDateString('pt-BR')} até ${new Date(maintenance.endDate).toLocaleDateString('pt-BR')}` 
+          });
+        }
+
         // Check if vessel is already booked for this date
         const existingBookings = await db.getBookingsByVesselAndDate(input.vesselId, input.bookingDate);
         if (existingBookings.length > 0) {
@@ -529,6 +549,98 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await db.deleteBooking(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // Maintenances (Admin only)
+  maintenances: router({
+    list: adminProcedure.query(async () => {
+      return await db.getMaintenances();
+    }),
+
+    getById: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getMaintenanceById(input.id);
+      }),
+
+    getByVessel: adminProcedure
+      .input(z.object({ vesselId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getMaintenancesByVesselId(input.vesselId);
+      }),
+
+    create: adminProcedure
+      .input(z.object({
+        vesselId: z.number(),
+        startDate: z.number(),
+        endDate: z.number(),
+        description: z.string().optional(),
+        status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Get vessel info
+        const vessel = await db.getVesselById(input.vesselId);
+        if (!vessel) {
+          throw new TRPCError({ 
+            code: 'NOT_FOUND', 
+            message: 'Embarcação não encontrada' 
+          });
+        }
+
+        // Validate dates
+        if (input.startDate >= input.endDate) {
+          throw new TRPCError({ 
+            code: 'BAD_REQUEST', 
+            message: 'Data de início deve ser anterior à data de término' 
+          });
+        }
+
+        await db.createMaintenance({
+          vesselId: input.vesselId,
+          vesselName: vessel.name,
+          startDate: input.startDate,
+          endDate: input.endDate,
+          description: input.description,
+          status: input.status || 'scheduled',
+        });
+
+        return { success: true };
+      }),
+
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        vesselId: z.number().optional(),
+        startDate: z.number().optional(),
+        endDate: z.number().optional(),
+        description: z.string().optional(),
+        status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        
+        // If vessel changed, update vessel name
+        if (data.vesselId) {
+          const vessel = await db.getVesselById(data.vesselId);
+          if (!vessel) {
+            throw new TRPCError({ 
+              code: 'NOT_FOUND', 
+              message: 'Embarcação não encontrada' 
+            });
+          }
+          (data as any).vesselName = vessel.name;
+        }
+
+        await db.updateMaintenance(id, data);
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteMaintenance(input.id);
         return { success: true };
       }),
   }),

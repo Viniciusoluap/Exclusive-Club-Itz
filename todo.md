@@ -1,24 +1,31 @@
-# TODO - Correções Urgentes
+# TODO - Novas Funcionalidades
 
-## Problemas Críticos Reportados
+## Funcionalidades Solicitadas
 
-### Sistema de Cotas
-- [x] Implementar contador correto de reservas ativas por cliente
-- [x] Cota inteira = 2 reservas simultâneas por embarcação
-- [x] Meia cota = 1 reserva simultânea por embarcação
-- [x] Cliente pode ter múltiplas cotas (ex: 1 cota lancha + 1 cota jet = 4 datas total)
-- [x] Validar limite de reservas por tipo de cota e embarcação
+### Menu Mobile Responsivo
+- [x] Criar componente de menu hambúrguer para mobile
+- [x] Implementar drawer/sidebar que abre ao clicar no hambúrguer
+- [x] Adaptar navegação existente para funcionar em modo mobile
+- [x] Testar responsividade em diferentes tamanhos de tela
 
-### Endpoint Admin
-- [x] Criar endpoint bookings.createForClient para admin
-- [x] Permitir admin criar reservas para qualquer cliente
-- [x] Validar que apenas admin pode usar este endpoint
+### Calendário de Manutenção (Admin)
+- [x] Criar página /admin/manutencao
+- [x] Implementar tabela de manutenções com CRUD completo
+- [x] Adicionar formulário para criar/editar manutenção
+- [x] Campos: embarcação, data início, data fim, descrição, status
+- [x] Interface intuitiva com dialogs
 
-### Previsão do Tempo
-- [x] Corrigir carregamento da previsão do tempo
-- [x] Verificar integração com OpenWeatherMap API
-- [x] Tratar erros de API gracefully
+### Bloqueio Automático de Reservas
+- [x] Verificar se já existe tabela maintenances no schema
+- [x] Criar endpoints tRPC para manutenções (se não existir)
+- [x] Integrar verificação de manutenção no calendário de reservas
+- [x] Bloquear datas em manutenção visualmente no calendário
+- [x] Impedir criação de reservas em datas com manutenção
+- [x] Adicionar mensagem informativa quando data está em manutenção
 
 ### Testes
-- [x] Executar todos os testes
-- [x] Garantir que correções não quebram funcionalidades existentes
+- [x] Testar menu mobile em diferentes dispositivos
+- [x] Testar CRUD de manutenções
+- [x] Verificar bloqueio de reservas em datas com manutenção
+- [x] Executar testes automatizados
+- [ ] Garantir que nada foi quebrado
