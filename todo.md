@@ -231,3 +231,21 @@
 - [x] Garantir que admin recebe notificação via Manus
 - [x] Garantir que clientes afetados recebem email
 - [x] Testar criação de manutenção completa
+
+
+## Bugs Reportados - Calendário e Emails (26/11/2025 - 20:30)
+
+### 1. Calendário não mostra datas em manutenção
+- [x] Investigar endpoint de disponibilidade
+- [x] Adicionar manutenções ao cálculo de indisponibilidade
+- [x] Testar visualização no calendário
+
+### 2. Emails de cancelamento por manutenção não enviados
+- [x] Verificar função notifyClientMaintenanceCancellation
+- [x] Testar envio de emails ao criar manutenção com conflitos
+- [x] Confirmar recebimento de emails pelos clientes
+
+### 3. Formalizar tom dos emails
+- [x] Revisar todos os templates de email
+- [x] Usar linguagem mais formal e profissional
+- [x] Manter clareza e objetividade

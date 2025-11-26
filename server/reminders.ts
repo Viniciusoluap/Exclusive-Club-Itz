@@ -54,17 +54,21 @@ export async function sendBookingReminder(booking: {
     minute: '2-digit',
   });
 
-  const subject = "🔔 Lembrete: Sua reserva é amanhã! - Exclusive Club";
+  const subject = "Lembrete de Reserva - Exclusive Club";
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-      <div style="background-color: #0891b2; padding: 20px; text-align: center;">
-        <h1 style="color: white; margin: 0;">🔔 Lembrete de Reserva</h1>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb;">
+      <div style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); padding: 40px 20px; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">Exclusive Club</h1>
       </div>
       
-      <div style="background-color: white; padding: 30px;">
-        <p style="font-size: 16px; color: #374151;">Olá <strong>${booking.clientName}</strong>,</p>
+      <div style="background-color: white; padding: 40px 30px; border-radius: 8px; margin: 20px;">
+        <h2 style="color: #0891b2; margin-top: 0;">Lembrete de Reserva</h2>
         
-        <p style="font-size: 16px; color: #374151;">Este é um lembrete de que sua reserva está agendada para <strong style="color: #0891b2;">amanhã</strong>!</p>
+        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${booking.clientName}</strong>,</p>
+        
+        <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+          Lembramos que sua reserva está confirmada para <strong style="color: #0891b2;">amanhã</strong>. Seguem os detalhes:
+        </p>
         
         <div style="background-color: #f0f9ff; padding: 20px; margin: 20px 0; border-left: 4px solid #0891b2;">
           <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data:</strong> ${dateStr}</p>
@@ -85,7 +89,9 @@ export async function sendBookingReminder(booking: {
           </ul>
         </div>
         
-        <p style="font-size: 16px; color: #374151;">Estamos ansiosos para recebê-lo(a)!</p>
+        <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+          Agradecemos a preferência e aguardamos sua presença.
+        </p>
         
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
         
@@ -95,7 +101,7 @@ export async function sendBookingReminder(booking: {
         </p>
         
         <p style="font-size: 12px; color: #9ca3af; text-align: center; margin-top: 20px;">
-          Em caso de dúvidas ou necessidade de cancelamento, entre em contato conosco o quanto antes.
+          Em caso de dúvidas ou necessidade de cancelamento, solicitamos que entre em contato com antecedência.
         </p>
       </div>
     </div>

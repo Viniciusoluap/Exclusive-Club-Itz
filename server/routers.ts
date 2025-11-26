@@ -581,6 +581,24 @@ export const appRouter = router({
 
   // Maintenances (Admin only)
   maintenances: router({
+    // Endpoint público para buscar manutenções ativas (para calendário)
+    getActive: publicProcedure
+      .input(z.object({
+        startDate: z.number(),
+        endDate: z.number(),
+      }))
+      .query(async ({ input }) => {
+        const allMaintenances = await db.getMaintenances();
+        
+        // Filtrar apenas manutenções ativas no período
+        return allMaintenances.filter((m: any) => {
+          if (m.status === 'cancelled' || m.status === 'completed') return false;
+          
+          // Verificar se há sobreposição de datas
+          return m.startDate <= input.endDate && m.endDate >= input.startDate;
+        });
+      }),
+
     list: adminProcedure.query(async () => {
       return await db.getMaintenances();
     }),
