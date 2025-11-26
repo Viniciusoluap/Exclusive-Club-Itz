@@ -13,7 +13,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Loader2, Ship, X } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Loader2, Ship, X, Pencil, Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -29,8 +30,22 @@ export default function Reservas() {
   const [selectedVessel, setSelectedVessel] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [showBookingDialog, setShowBookingDialog] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const utils = trpc.useUtils();
+  
+  // @ts-ignore
+  const updateName = trpc.auth.updateName.useMutation({
+    onSuccess: () => {
+      toast.success("Nome atualizado com sucesso!");
+      setIsEditingName(false);
+      utils.auth.me.invalidate();
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao atualizar nome");
+    },
+  });
 
   // Fetch vessels
   const { data: vessels, isLoading: vesselsLoading } = trpc.vessels.list.useQuery();
@@ -254,9 +269,57 @@ export default function Reservas() {
               </a>
             </Link>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground hidden sm:inline">
-                Olá, {user?.name}
-              </span>
+              {isEditingName ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Digite seu nome"
+                    className="h-8 w-48"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      if (newName.trim()) {
+                        updateName.mutate({ name: newName.trim() });
+                      }
+                    }}
+                    disabled={!newName.trim() || updateName.isPending}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      setIsEditingName(false);
+                      setNewName("");
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 hidden sm:flex">
+                  <span className="text-sm text-muted-foreground">
+                    Olá, {user?.name}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      setIsEditingName(true);
+                      setNewName(user?.name || "");
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               {user?.role === "admin" && (
                 <Link href="/admin">
                   <Button variant="outline" size="sm">Admin</Button>
