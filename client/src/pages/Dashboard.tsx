@@ -3,13 +3,31 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Anchor, BarChart3, Calendar, Ship, TrendingUp } from "lucide-react";
+import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X } from "lucide-react";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import { Link } from "wouter";
 
 export default function Dashboard() {
   const { user, loading, isAuthenticated } = useAuth();
   const { data: stats, isLoading: statsLoading } = trpc.stats.client.useQuery(undefined, {
     enabled: isAuthenticated,
+  });
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
+  const utils = trpc.useUtils();
+  
+  // @ts-ignore
+  const updateName = trpc.auth.updateName.useMutation({
+    onSuccess: () => {
+      toast.success("Nome atualizado com sucesso!");
+      setIsEditingName(false);
+      utils.auth.me.invalidate();
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao atualizar nome");
+    },
   });
 
   if (loading || statsLoading) {
@@ -61,7 +79,55 @@ export default function Dashboard() {
               <Link href="/galeria">
                 <Button variant="ghost">Galeria</Button>
               </Link>
-              <span className="text-sm text-gray-600">{user?.name}</span>
+              {isEditingName ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Digite seu nome"
+                    className="h-8 w-48"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      if (newName.trim()) {
+                        updateName.mutate({ name: newName.trim() });
+                      }
+                    }}
+                    disabled={!newName.trim() || updateName.isPending}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      setIsEditingName(false);
+                      setNewName("");
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">{user?.name}</span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      setIsEditingName(true);
+                      setNewName(user?.name || "");
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </nav>
           </div>
         </div>

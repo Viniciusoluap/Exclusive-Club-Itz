@@ -185,3 +185,41 @@
 - [x] Manter porta 587 (TLS)
 - [x] Testar envio de email com novas configurações
 - [x] Verificar se emails chegam na caixa de entrada (não spam)
+
+
+## Novas Funcionalidades - Melhorias do Sistema (26/11/2025 - 18:00)
+
+### 1. Lembretes Automáticos 24h Antes das Reservas
+- [x] Criar função para buscar reservas que acontecerão em 24h
+- [x] Criar template de email de lembrete
+- [x] Implementar envio automático de lembretes
+- [x] Testar envio de lembretes
+
+### 2. Verificar Envio de Emails Existentes
+- [x] Testar email de confirmação de reserva
+- [x] Testar email de cancelamento de reserva
+- [x] Testar email de notificação de manutenção
+- [x] Verificar se emails estão sendo enviados corretamente
+
+### 3. Email de Boas-Vindas para Novos Clientes
+- [ ] Criar template de email de boas-vindas
+- [ ] Implementar envio automático ao cadastrar cliente
+- [ ] Testar envio de email de boas-vindas
+
+### 4. Relatório Mensal por Email para Admin
+- [ ] Criar função para gerar estatísticas mensais
+- [ ] Criar template de email de relatório
+- [ ] Implementar envio automático mensal
+- [ ] Testar geração e envio de relatório
+
+### 5. Sistema de Avaliações Pós-Uso
+- [ ] Criar tabela reviews no schema
+- [ ] Criar endpoints tRPC para avaliações
+- [ ] Criar página admin para visualizar avaliações
+- [ ] Permitir clientes avaliarem após uso
+- [ ] Testar sistema de avaliações
+
+### 6. Edição de Nome na Versão Desktop
+- [x] Adicionar campo de edição de nome no header desktop
+- [x] Implementar dialog de edição
+- [x] Testar edição de nome na versão desktop
