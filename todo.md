@@ -126,3 +126,41 @@
 - [x] Permitir valores: 3, 4, 6, 7 ou outros conforme necessário
 - [x] Atualizar lógica de cálculo de disponibilidade para usar quotaCount
 - [x] Testar com diferentes quantidades de cotas
+
+## Bugs Críticos Reportados (26/11/2025 - 14:51) - TODOS RESOLVIDOS
+
+### 1. Cotas Ilimitadas no Cadastro de Cliente - RESOLVIDO
+- [x] Corrigir lógica de geração de botões de cotas no formulário de cliente
+- [x] Respeitar o campo quotaCount da embarcação
+- [x] Embarcação com 4 cotas deve mostrar apenas #1, #2, #3, #4 (inteira e meia)
+- [x] Testar com embarcações de 3, 4, 6 e 7 cotas
+
+### 2. Imagem Quebrada na Galeria - RESOLVIDO
+- [x] Investigar imagem "Jetski Sea-Doo - Vista frontal" que não carrega
+- [x] Remover imagem quebrada da galeria se não for possível corrigir
+- [x] Garantir que galeria funcione sem erros
+
+### 3. Edição de Nome do Usuário - RESOLVIDO
+- [x] Adicionar campo de edição de nome no perfil do usuário
+- [x] Criar endpoint backend para atualizar nome do usuário
+- [x] Permitir que usuário altere seu próprio nome (ex: "Marduqueu" → outro nome)
+- [x] Testar atualização de nome
+
+### 4. Emails de Confirmação Não Enviados - RESOLVIDO
+- [x] Implementar envio de email ao criar reserva (confirmação)
+- [x] Implementar envio de email ao cancelar reserva
+- [x] Implementar envio de email ao marcar reserva como usada
+- [x] Testar envio de emails para clientes
+
+### 5. Emails Caindo no Spam - MELHORADO
+- [x] Melhorar headers dos emails (From, Reply-To, etc.)
+- [x] Adicionar texto plano além do HTML
+- [x] Melhorar conteúdo para evitar filtros de spam
+- [x] Testar deliverability dos emails
+
+### 6. Notificações de Mudança de Status de Manutenção - RESOLVIDO
+- [x] Implementar envio de email ao mudar status de manutenção
+- [x] Notificar clientes afetados (com reservas no período)
+- [x] Notificar admin sobre mudança de status
+- [x] Testar com todas as transições de status (Agendada → Em Andamento → Concluída → Cancelada)
+
