@@ -100,3 +100,10 @@
 - [x] Adicionar aba "Manutenção" no menu de navegação do painel admin
 - [x] Posicionar entre "Embarcações" e "Reservas" ou após "Reservas"
 - [x] Testar navegação para /admin/manutencao
+
+## Bug Crítico - Erro ao Criar Manutenção (23/11/2025 - 20:52) - RESOLVIDO
+
+### Erro ao verificar conflitos
+- [x] Investigar erro "Erro ao verificar conflitos" ao criar manutenção
+- [x] Corrigir endpoint ou lógica de verificação de conflitos (faltava função getAllBookings no db.ts)
+- [x] Testar criação de manutenção com e sem conflitos

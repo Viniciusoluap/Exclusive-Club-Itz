@@ -183,6 +183,12 @@ export async function getBookings() {
   return await db.select().from(bookings).orderBy(desc(bookings.bookingDate));
 }
 
+export async function getAllBookings() {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(bookings);
+}
+
 export async function getBookingsByEmail(email: string) {
   const db = await getDb();
   if (!db) return [];

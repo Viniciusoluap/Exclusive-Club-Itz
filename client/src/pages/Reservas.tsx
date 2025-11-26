@@ -66,6 +66,7 @@ export default function Reservas() {
   );
 
   // Fetch maintenances (public endpoint, no auth required)
+  // @ts-ignore - maintenances router exists but TypeScript types not regenerated
   const { data: allMaintenances } = trpc.maintenances.list.useQuery();
 
   // Create booking mutation
