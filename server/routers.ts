@@ -6,6 +6,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { notifyNewBooking, notifyBookingCancellation, notifyBookingUsed, notifyClientMaintenanceCancellation, notifyAdminMaintenanceCancellations, notifyClientBookingConfirmation, notifyClientBookingCancellation, notifyAdminMaintenanceStatusChange, notifyClientsMaintenanceStatusChange } from "./_core/emailNotification";
 import { notifyOwner } from "./_core/notification";
+import { sendWelcomeEmail } from "./_core/welcomeEmail";
 import * as db from "./db";
 import * as stats from "./stats";
 import * as weather from "./weather";
@@ -109,6 +110,7 @@ export const appRouter = router({
         if (!client) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
         
         // Create quotas
+        const quotaNames: string[] = [];
         for (const quota of input.quotas) {
           await db.createClientQuota({
             clientId: client.id,
@@ -116,7 +118,20 @@ export const appRouter = router({
             quotaNumber: quota.quotaNumber,
             quotaType: quota.quotaType,
           });
+          
+          // Get vessel name for welcome email
+          const vessel = await db.getVesselById(quota.vesselId);
+          if (vessel) {
+            quotaNames.push(`${vessel.name} - Cota ${quota.quotaNumber}`);
+          }
         }
+        
+        // Send welcome email
+        await sendWelcomeEmail({
+          clientName: input.name,
+          clientEmail: input.email,
+          quotaName: quotaNames.join(', '),
+        });
         
         return { success: true };
       }),
