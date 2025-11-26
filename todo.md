@@ -164,3 +164,15 @@
 - [x] Notificar admin sobre mudança de status
 - [x] Testar com todas as transições de status (Agendada → Em Andamento → Concluída → Cancelada)
 
+
+## Implementação de Envio de Emails via SMTP (26/11/2025 - 16:15)
+
+### Configurar SMTP da Hostgator para envio real de emails
+- [x] Instalar biblioteca Nodemailer
+- [x] Criar serviço de envio de emails com configuração SMTP
+- [x] Configurar credenciais: mail.exclusiveclubitz.com:587
+- [x] Atualizar notificações de confirmação de reserva
+- [x] Atualizar notificações de cancelamento de reserva
+- [ ] Atualizar notificações de mudança de status de manutenção
+- [ ] Verificar credenciais SMTP no painel da Hostgator (erro 535 - autenticação)
+- [ ] Testar envio de emails após correção de credenciais
