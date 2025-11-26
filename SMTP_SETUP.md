@@ -1,19 +1,15 @@
 # Configuração de Emails SMTP - Exclusive Club
 
-## Status Atual
+## ✅ Status Atual: FUNCIONANDO
 
-⚠️ **ATENÇÃO:** O sistema de envio de emails via SMTP está configurado, mas apresentando erro de autenticação.
-
-**Erro atual:** `535 Incorrect authentication data`
-
-Isso significa que as credenciais SMTP fornecidas não estão sendo aceitas pelo servidor da Hostgator.
+O sistema de envio de emails via SMTP está **totalmente configurado e funcionando**!
 
 ---
 
-## Configurações Atuais
+## Configurações Finais (Testadas e Aprovadas)
 
 ```
-Servidor SMTP: mail.exclusiveclubitz.com
+Servidor SMTP: smtp.titan.email
 Porta: 587 (TLS)
 Email: atendimento@exclusiveclubitz.com
 Senha: Efficaz2010
@@ -21,51 +17,64 @@ Senha: Efficaz2010
 
 ---
 
-## Como Resolver
+## Emails Automáticos Implementados
 
-### 1. Verificar se o Email Existe
+O sistema agora envia emails automaticamente para:
 
-1. Acesse o painel da Hostgator: https://hostgator.com.br
-2. Faça login com: `paulovinicius92@hotmail.com`
-3. Vá em **Contas de Email** → **Gerenciar**
-4. Verifique se o email `atendimento@exclusiveclubitz.com` está criado
+### 1. ✅ Confirmação de Reserva
+Enviado para o cliente quando uma reserva é criada.
 
-### 2. Verificar/Resetar a Senha
+**Contém:**
+- Nome do cliente
+- Data da reserva (formatada em português)
+- Embarcação reservada
+- Número da cota
+- Observações (se houver)
 
-Se o email existe:
-1. No painel de **Contas de Email**, clique em **Alterar Senha**
-2. Defina uma nova senha forte
-3. Atualize a senha no arquivo `server/_core/emailService.ts`
+### 2. ❌ Cancelamento de Reserva
+Enviado para o cliente quando uma reserva é cancelada.
 
-### 3. Criar o Email (se não existir)
+**Contém:**
+- Nome do cliente
+- Data da reserva cancelada
+- Embarcação
+- Motivo do cancelamento (se houver)
 
-Se o email não existe:
-1. No painel da Hostgator, vá em **Contas de Email**
-2. Clique em **Criar Conta de Email**
-3. Preencha:
-   - Email: `atendimento`
-   - Domínio: `exclusiveclubitz.com`
-   - Senha: (escolha uma senha forte)
-4. Anote a senha e atualize no código
+### 3. 🔧 Manutenção de Embarcação
+Enviado para clientes afetados quando uma manutenção cancela suas reservas.
 
-### 4. Verificar Domínio
+**Contém:**
+- Informações da manutenção
+- Período de indisponibilidade
+- Reserva afetada
 
-1. Certifique-se de que o domínio `exclusiveclubitz.com` está ativo
-2. Verifique se os registros MX estão configurados corretamente
-3. Aguarde até 24h após criação do email para propagação DNS
+### 4. 📊 Notificações para Admin
+Continua sendo enviado via API do Manus para o owner do projeto.
 
 ---
 
-## Testando a Configuração
+## Design dos Emails
 
-Após corrigir as credenciais, execute o teste:
+Os emails foram desenvolvidos com:
+
+- ✅ **HTML responsivo** compatível com todos os clientes de email
+- ✅ **Cores da marca** (azul #0891b2)
+- ✅ **Formatação profissional** com headers, boxes e tipografia clara
+- ✅ **Versão texto** automática para clientes que não suportam HTML
+- ✅ **Otimização anti-spam** (headers corretos, conteúdo balanceado)
+
+---
+
+## Testando o Sistema
+
+Para testar o envio de emails manualmente:
 
 ```bash
 cd /home/ubuntu/exclusive-club-reservas
 pnpm tsx server/email-test.ts
 ```
 
-Se o teste passar, você verá:
+**Resultado esperado:**
 ```
 ✅ Email enviado com sucesso!
 📬 Verifique a caixa de entrada (e spam) do email de destino.
@@ -73,46 +82,79 @@ Se o teste passar, você verá:
 
 ---
 
-## Alternativas
+## Como os Emails São Enviados
 
-Se não conseguir configurar o SMTP da Hostgator, considere:
+### Automático (Produção)
 
-### 1. Gmail SMTP (Gratuito)
-- Servidor: smtp.gmail.com
-- Porta: 587
-- Requer "Senha de App" (não a senha normal)
-- Limite: 500 emails/dia
+Os emails são enviados automaticamente quando:
 
-### 2. SendGrid (Gratuito até 100 emails/dia)
-- Mais confiável para deliverability
-- Menos chance de cair no spam
-- API simples de integrar
+1. **Cliente faz uma reserva** → Email de confirmação
+2. **Cliente cancela reserva** → Email de cancelamento
+3. **Admin cria manutenção** → Emails para clientes afetados
+4. **Admin muda status de manutenção** → Emails de atualização
 
-### 3. AWS SES (Pago, mas barato)
-- $0.10 por 1000 emails
-- Excelente deliverability
-- Requer configuração de domínio
+### Manual (Teste)
+
+Execute o script de teste para enviar um email de verificação:
+```bash
+pnpm tsx server/email-test.ts
+```
 
 ---
 
-## Código Atual
+## Arquivos do Sistema de Email
 
-O sistema já está preparado para enviar emails. Os arquivos relevantes são:
+```
+server/_core/emailService.ts
+  └─ Configuração SMTP e função de envio
 
-- `server/_core/emailService.ts` - Configuração SMTP e função de envio
-- `server/_core/emailNotification.ts` - Templates de emails
-- `server/email-test.ts` - Script de teste
+server/_core/emailNotification.ts
+  └─ Templates e lógica de notificações
 
-Quando as credenciais estiverem corretas, os emails serão enviados automaticamente para:
-- ✅ Confirmação de reserva
-- ❌ Cancelamento de reserva
-- 🔧 Notificações de manutenção
+server/email-test.ts
+  └─ Script de teste manual
+```
 
 ---
 
-## Suporte
+## Solução de Problemas
 
-Se precisar de ajuda, entre em contato com o suporte da Hostgator:
-- Chat: https://www.hostgator.com.br/suporte
-- Telefone: 0800 591 9895
-- Email: suporte@hostgator.com.br
+### Email não chegou?
+
+1. **Verifique a pasta de spam/lixo eletrônico**
+2. **Aguarde alguns minutos** (pode haver delay)
+3. **Verifique os logs do servidor** para confirmar envio
+
+### Erro de autenticação?
+
+1. Confirme que o email existe no painel Titan Email
+2. Verifique se a senha está correta
+3. Teste fazer login manual no webmail
+
+### Emails caindo no spam?
+
+Os templates já foram otimizados para evitar spam, mas você pode:
+1. Adicionar o remetente aos contatos
+2. Configurar SPF/DKIM no DNS (avançado)
+3. Usar um serviço dedicado como SendGrid (opcional)
+
+---
+
+## Próximas Melhorias Sugeridas
+
+1. **Lembretes automáticos** 24h antes das reservas
+2. **Email de boas-vindas** para novos clientes cadastrados
+3. **Relatórios mensais** por email para o admin
+4. **Confirmação de leitura** para emails importantes
+
+---
+
+## Suporte Técnico
+
+**Titan Email:**
+- Painel: https://titan.email
+- Documentação: https://support.titan.email
+
+**Sistema Exclusive Club:**
+- Desenvolvido com Nodemailer
+- Configuração em: `server/_core/emailService.ts`
