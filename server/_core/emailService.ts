@@ -1,17 +1,17 @@
 import nodemailer from 'nodemailer';
 
 /**
- * Serviço de envio de emails via SMTP da Hostgator
+ * Serviço de envio de emails via SMTP Titan Email
  * 
  * Configurações:
- * - Servidor: mail.exclusiveclubitz.com
- * - Porta: 587 (TLS)
+ * - Servidor: smtp.titan.email
+ * - Porta: 587 (TLS) ou 465 (SSL)
  * - Email: atendimento@exclusiveclubitz.com
  */
 
 // Criar transportador SMTP
 const transporter = nodemailer.createTransport({
-  host: 'mail.exclusiveclubitz.com',
+  host: 'smtp.titan.email',
   port: 587,
   secure: false, // true para porta 465, false para outras portas
   auth: {
@@ -30,7 +30,7 @@ transporter.verify((error: any, success: any) => {
     console.warn('[Email Service] ⚠️ Aviso: Não foi possível verificar conexão SMTP');
     console.warn('[Email Service] Detalhes:', error.message || error);
     console.warn('[Email Service] O sistema continuará funcionando, mas emails podem falhar');
-    console.warn('[Email Service] Verifique as credenciais SMTP da Hostgator');
+    console.warn('[Email Service] Verifique as credenciais SMTP do Titan Email');
   } else {
     console.log('[Email Service] ✅ Servidor SMTP pronto para enviar emails');
   }
@@ -97,7 +97,7 @@ export async function sendTestEmail(toEmail: string): Promise<boolean> {
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
         <p style="color: #6b7280; font-size: 14px;">
           <strong>Configurações:</strong><br>
-          Servidor: mail.exclusiveclubitz.com<br>
+          Servidor: smtp.titan.email<br>
           Porta: 587 (TLS)<br>
           Remetente: atendimento@exclusiveclubitz.com
         </p>

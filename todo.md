@@ -176,3 +176,12 @@
 - [ ] Atualizar notificações de mudança de status de manutenção
 - [ ] Verificar credenciais SMTP no painel da Hostgator (erro 535 - autenticação)
 - [ ] Testar envio de emails após correção de credenciais
+
+
+## Correção de Configuração SMTP (26/11/2025 - 16:30)
+
+### Atualizar servidor SMTP para Titan Email
+- [x] Alterar host de mail.exclusiveclubitz.com para smtp.titan.email
+- [x] Manter porta 587 (TLS)
+- [x] Testar envio de email com novas configurações
+- [x] Verificar se emails chegam na caixa de entrada (não spam)
