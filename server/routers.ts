@@ -895,6 +895,90 @@ Nenhuma reserva foi afetada.
       return await stats.getAdminStats();
     }),
   }),
+
+  reviews: router({
+    create: allowedClientProcedure
+      .input(z.object({
+        bookingId: z.number(),
+        vesselId: z.number(),
+        vesselName: z.string(),
+        rating: z.number().min(1).max(5),
+        comment: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        
+        // Check if already reviewed
+        const existing = await db.execute({
+          sql: 'SELECT id FROM reviews WHERE booking_id = ?',
+          params: [input.bookingId],
+        }) as any[];
+        
+        if (existing.length > 0) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Você já avaliou esta reserva' });
+        }
+        
+        await db.execute({
+          sql: 'INSERT INTO reviews (booking_id, client_email, client_name, vessel_id, vessel_name, rating, comment) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          params: [
+            input.bookingId,
+            ctx.user.email || '',
+            ctx.user.name || '',
+            input.vesselId,
+            input.vesselName,
+            input.rating,
+            input.comment || null,
+          ],
+        });
+        
+        return { success: true };
+      }),
+    
+    listAll: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      
+      const result = await db.execute({
+        sql: 'SELECT * FROM reviews ORDER BY created_at DESC',
+        params: [],
+      }) as any[];
+      
+      return result;
+    }),
+    
+    listByVessel: publicProcedure
+      .input(z.object({ vesselId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return [];
+        
+        const result = await db.execute({
+          sql: 'SELECT * FROM reviews WHERE vessel_id = ? ORDER BY created_at DESC',
+          params: [input.vesselId],
+        }) as any[];
+        
+        return result;
+      }),
+    
+    stats: publicProcedure
+      .input(z.object({ vesselId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await getDb();
+        if (!db) return { averageRating: 0, totalReviews: 0 };
+        
+        const result = await db.execute({
+          sql: 'SELECT AVG(rating) as avgRating, COUNT(*) as total FROM reviews WHERE vessel_id = ?',
+          params: [input.vesselId],
+        }) as any[];
+        
+        const stats = result[0];
+        return {
+          averageRating: stats?.avgRating ? Math.round(stats.avgRating * 10) / 10 : 0,
+          totalReviews: stats?.total || 0,
+        };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
