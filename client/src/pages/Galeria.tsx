@@ -22,7 +22,6 @@ const photos: Photo[] = [
   
   // Fotos do Jetski
   { id: 9, src: "/images/vessels/IMG_0485.jpg", alt: "Jetski Sea-Doo - Em movimento", category: "jetski" },
-  { id: 10, src: "/images/vessels/IMG_8494.jpg", alt: "Jetski Sea-Doo - Vista frontal", category: "jetski" },
   { id: 11, src: "/images/vessels/IMG_8551.jpg", alt: "Jetski Sea-Doo - Na margem", category: "jetski" },
   { id: 12, src: "/images/vessels/IMG_8550.jpg", alt: "Jetski Sea-Doo - Vista lateral", category: "jetski" },
   { id: 13, src: "/images/vessels/IMG_8549.jpg", alt: "Jetski Sea-Doo - Detalhes", category: "jetski" },

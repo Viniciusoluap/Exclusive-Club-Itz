@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { notifyNewBooking, notifyBookingCancellation, notifyBookingUsed, notifyClientMaintenanceCancellation, notifyAdminMaintenanceCancellations } from "./_core/emailNotification";
+import { notifyNewBooking, notifyBookingCancellation, notifyBookingUsed, notifyClientMaintenanceCancellation, notifyAdminMaintenanceCancellations, notifyClientBookingConfirmation, notifyClientBookingCancellation, notifyAdminMaintenanceStatusChange, notifyClientsMaintenanceStatusChange } from "./_core/emailNotification";
 import * as db from "./db";
 import * as stats from "./stats";
 import * as weather from "./weather";
@@ -49,6 +49,12 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    updateName: protectedProcedure
+      .input(z.object({ name: z.string().min(1, "Nome é obrigatório") }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateUserName(ctx.user.id, input.name);
+        return { success: true };
+      }),
   }),
 
   // Allowed Clients Management (Admin only)
@@ -402,6 +408,15 @@ export const appRouter = router({
           bookingDate: new Date(input.bookingDate),
           notes: input.notes,
         });
+        
+        // Send confirmation email to client
+        await notifyClientBookingConfirmation({
+          clientName: ctx.user.name,
+          clientEmail: ctx.user.email,
+          vesselName: vessel.name,
+          bookingDate: new Date(input.bookingDate),
+          notes: input.notes,
+        });
 
         return { success: true };
       }),
@@ -502,6 +517,14 @@ export const appRouter = router({
         
         // Send notification to admin
         await notifyBookingCancellation({
+          clientName: booking.clientName,
+          clientEmail: booking.clientEmail,
+          vesselName: booking.vesselName,
+          bookingDate: new Date(booking.bookingDate),
+        });
+        
+        // Send cancellation email to client
+        await notifyClientBookingCancellation({
           clientName: booking.clientName,
           clientEmail: booking.clientEmail,
           vesselName: booking.vesselName,
@@ -725,6 +748,15 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
         
+        // Get current maintenance to check if status changed
+        const currentMaintenance = await db.getMaintenanceById(id);
+        if (!currentMaintenance) {
+          throw new TRPCError({ 
+            code: 'NOT_FOUND', 
+            message: 'Manutenção não encontrada' 
+          });
+        }
+        
         // If vessel changed, update vessel name
         if (data.vesselId) {
           const vessel = await db.getVesselById(data.vesselId);
@@ -738,6 +770,44 @@ export const appRouter = router({
         }
 
         await db.updateMaintenance(id, data);
+        
+        // If status changed, send notifications
+        if (data.status && data.status !== currentMaintenance.status) {
+          // Notify admin
+          await notifyAdminMaintenanceStatusChange({
+            vesselName: currentMaintenance.vesselName,
+            oldStatus: currentMaintenance.status,
+            newStatus: data.status,
+            startDate: new Date(currentMaintenance.startDate),
+            endDate: new Date(currentMaintenance.endDate),
+            description: currentMaintenance.description || undefined,
+          });
+          
+          // Get affected bookings (during maintenance period)
+          const allBookings = await db.getAllBookings();
+          const affectedBookings = allBookings.filter(b => 
+            b.vesselId === currentMaintenance.vesselId &&
+            b.status === 'confirmed' &&
+            new Date(b.bookingDate) >= new Date(currentMaintenance.startDate) &&
+            new Date(b.bookingDate) <= new Date(currentMaintenance.endDate)
+          );
+          
+          // Notify affected clients
+          if (affectedBookings.length > 0) {
+            await notifyClientsMaintenanceStatusChange({
+              vesselName: currentMaintenance.vesselName,
+              newStatus: data.status,
+              startDate: new Date(currentMaintenance.startDate),
+              endDate: new Date(currentMaintenance.endDate),
+              affectedClients: affectedBookings.map(b => ({
+                clientName: b.clientName,
+                clientEmail: b.clientEmail,
+                bookingDate: new Date(b.bookingDate),
+              })),
+            });
+          }
+        }
+        
         return { success: true };
       }),
 

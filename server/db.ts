@@ -359,3 +359,9 @@ export async function deleteMaintenance(id: number) {
   if (!db) throw new Error("Database not available");
   await db.delete(maintenances).where(eq(maintenances.id, id));
 }
+
+export async function updateUserName(userId: number, name: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ name }).where(eq(users.id, userId));
+}

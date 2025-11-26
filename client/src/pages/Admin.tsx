@@ -767,7 +767,8 @@ export default function Admin() {
                     <div key={vessel.id} className="space-y-2">
                       <div className="text-sm font-medium">{vessel.name}</div>
                       <div className="grid grid-cols-2 gap-2">
-                        {Array.from({ length: vessel.type === "lancha" ? 7 : 6 }, (_, i) => i + 1).map((num) => (
+                        {/* @ts-ignore */}
+                        {Array.from({ length: vessel.quotaCount || 6 }, (_, i) => i + 1).map((num) => (
                           <div key={num} className="flex gap-2">
                             <Button
                               variant="outline"

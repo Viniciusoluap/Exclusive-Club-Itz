@@ -7,15 +7,34 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { APP_LOGO, getLoginUrl } from "@/const";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Pencil, Check } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export function MobileMenu() {
   const [open, setOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const [location] = useLocation();
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
+  const utils = trpc.useUtils();
+  
+  // @ts-ignore
+  const updateName = trpc.auth.updateName.useMutation({
+    onSuccess: () => {
+      toast.success("Nome atualizado com sucesso!");
+      setIsEditingName(false);
+      utils.auth.me.invalidate();
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao atualizar nome");
+    },
+  });
 
   const handleLogout = async () => {
     await logout();
@@ -123,9 +142,57 @@ export function MobileMenu() {
 
           {isAuthenticated ? (
             <div className="space-y-2">
-              <div className="px-4 py-2 text-sm text-muted-foreground">
-                Olá, {user?.name?.split(" ")[0] || "Usuário"}
-              </div>
+              {isEditingName ? (
+                <div className="px-4 py-2 space-y-2">
+                  <Label htmlFor="edit-name">Novo Nome</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="edit-name"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="Digite seu nome"
+                      className="flex-1"
+                    />
+                    <Button
+                      size="icon"
+                      onClick={() => {
+                        if (newName.trim()) {
+                          updateName.mutate({ name: newName.trim() });
+                        }
+                      }}
+                      disabled={!newName.trim() || updateName.isPending}
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditingName(false);
+                        setNewName("");
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="px-4 py-2 flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Olá, {user?.name?.split(" ")[0] || "Usuário"}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => {
+                      setIsEditingName(true);
+                      setNewName(user?.name || "");
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <Button
                 variant="outline"
                 className="w-full justify-start text-lg h-12"
