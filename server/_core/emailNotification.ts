@@ -114,25 +114,31 @@ export async function notifyClientBookingConfirmation(data: BookingNotificationD
     day: 'numeric'
   });
 
-  const subject = "🎉 Reserva Confirmada - Exclusive Club";
+  const subject = "Confirmação de Reserva - Exclusive Club";
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-      <div style="background-color: #0891b2; padding: 20px; text-align: center;">
-        <h1 style="color: white; margin: 0;">🎉 Reserva Confirmada!</h1>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb;">
+      <div style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); padding: 40px 20px; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">Exclusive Club</h1>
       </div>
       
-      <div style="background-color: white; padding: 30px;">
-        <p style="font-size: 16px; color: #374151;">Olá <strong>${data.clientName}</strong>,</p>
+      <div style="background-color: white; padding: 40px 30px; border-radius: 8px; margin: 20px;">
+        <h2 style="color: #059669; margin-top: 0;">Reserva Confirmada</h2>
         
-        <p style="font-size: 16px; color: #374151;">Sua reserva foi <strong style="color: #059669;">confirmada com sucesso</strong>!</p>
+        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${data.clientName}</strong>,</p>
         
-        <div style="background-color: #f0f9ff; padding: 20px; margin: 20px 0; border-left: 4px solid #0891b2;">
-          <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data:</strong> ${dateStr}</p>
+        <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+          Confirmamos o recebimento de sua solicitação de reserva. Seguem os detalhes:
+        </p>
+        
+        <div style="background-color: #f0fdf4; border-left: 4px solid #059669; padding: 20px; margin: 25px 0; border-radius: 4px;">
+          <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data da Reserva:</strong> ${dateStr}</p>
           <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${data.vesselName}</p>
           ${data.notes ? `<p style="margin: 8px 0; color: #1f2937;"><strong>📝 Observações:</strong> ${data.notes}</p>` : ''}
         </div>
         
-        <p style="font-size: 16px; color: #374151;">Estamos ansiosos para proporcionar momentos inesquecíveis!</p>
+        <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+          Agradecemos a preferência e estamos à disposição para qualquer esclarecimento.
+        </p>
         
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
         
@@ -164,24 +170,30 @@ export async function notifyClientBookingCancellation(data: BookingCancellationD
     day: 'numeric'
   });
 
-  const subject = "⚠️ Reserva Cancelada - Exclusive Club";
+  const subject = "Cancelamento de Reserva - Exclusive Club";
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-      <div style="background-color: #dc2626; padding: 20px; text-align: center;">
-        <h1 style="color: white; margin: 0;">⚠️ Reserva Cancelada</h1>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb;">
+      <div style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); padding: 40px 20px; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">Exclusive Club</h1>
       </div>
       
-      <div style="background-color: white; padding: 30px;">
-        <p style="font-size: 16px; color: #374151;">Olá <strong>${data.clientName}</strong>,</p>
+      <div style="background-color: white; padding: 40px 30px; border-radius: 8px; margin: 20px;">
+        <h2 style="color: #dc2626; margin-top: 0;">Reserva Cancelada</h2>
         
-        <p style="font-size: 16px; color: #374151;">Informamos que sua reserva foi <strong style="color: #dc2626;">cancelada</strong>.</p>
+        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${data.clientName}</strong>,</p>
         
-        <div style="background-color: #fef2f2; padding: 20px; margin: 20px 0; border-left: 4px solid #dc2626;">
-          <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data:</strong> ${dateStr}</p>
+        <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+          Informamos que sua reserva foi cancelada conforme solicitado.
+        </p>
+        
+        <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin: 25px 0; border-radius: 4px;">
+          <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data da Reserva:</strong> ${dateStr}</p>
           <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${data.vesselName}</p>
         </div>
         
-        <p style="font-size: 16px; color: #374151;">Se precisar fazer uma nova reserva, acesse nosso sistema.</p>
+        <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+          Caso deseje realizar uma nova reserva, estamos à disposição através do nosso sistema.
+        </p>
         
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
         
@@ -216,7 +228,6 @@ export interface MaintenanceCancellationData {
  * Notifica cliente que sua reserva foi cancelada devido a manutenção
  */
 export async function notifyClientMaintenanceCancellation(data: MaintenanceCancellationData): Promise<boolean> {
-  // TODO: Implementar envio de email direto para o cliente
   const bookingDateStr = data.bookingDate.toLocaleDateString('pt-BR', {
     weekday: 'long',
     year: 'numeric',
@@ -227,13 +238,54 @@ export async function notifyClientMaintenanceCancellation(data: MaintenanceCance
   const maintenanceStartStr = data.maintenanceStartDate.toLocaleDateString('pt-BR');
   const maintenanceEndStr = data.maintenanceEndDate.toLocaleDateString('pt-BR');
   
-  console.log(`[Email] Notificação de cancelamento por manutenção seria enviada para ${data.clientEmail}`);
-  console.log(`Assunto: Reserva Cancelada - Manutenção Programada`);
-  console.log(`Corpo: Olá ${data.clientName}, sua reserva para ${data.vesselName} no dia ${bookingDateStr} foi cancelada devido a uma manutenção programada entre ${maintenanceStartStr} e ${maintenanceEndStr}.`);
-  if (data.maintenanceDescription) {
-    console.log(`Motivo: ${data.maintenanceDescription}`);
-  }
-  return true;
+  const subject = "Cancelamento de Reserva - Manutenção Programada - Exclusive Club";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb;">
+      <div style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); padding: 40px 20px; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">Exclusive Club</h1>
+      </div>
+      
+      <div style="background-color: white; padding: 40px 30px; border-radius: 8px; margin: 20px;">
+        <h2 style="color: #dc2626; margin-top: 0;">Reserva Cancelada</h2>
+        
+        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${data.clientName}</strong>,</p>
+        
+        <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+          Informamos que sua reserva foi <strong>cancelada automaticamente</strong> devido a uma manutenção programada.
+        </p>
+        
+        <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin: 25px 0; border-radius: 4px;">
+          <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data da Reserva:</strong> ${bookingDateStr}</p>
+          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${data.vesselName}</p>
+        </div>
+        
+        <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 25px 0; border-radius: 4px;">
+          <p style="margin: 8px 0; color: #1f2937;"><strong>🔧 Período de Manutenção:</strong></p>
+          <p style="margin: 8px 0; color: #1f2937;">${maintenanceStartStr} a ${maintenanceEndStr}</p>
+          ${data.maintenanceDescription ? `<p style="margin: 8px 0; color: #1f2937;"><strong>Motivo:</strong> ${data.maintenanceDescription}</p>` : ''}
+        </div>
+        
+        <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+          Pedimos desculpas pelo inconveniente. Você pode fazer uma nova reserva para outra data através do nosso sistema.
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+        
+        <p style="font-size: 14px; color: #6b7280; text-align: center;">
+          Atenciosamente,<br>
+          <strong>Equipe Exclusive Club</strong>
+        </p>
+      </div>
+    </div>
+  `;
+
+  console.log(`[Email] Enviando notificação de cancelamento por manutenção para ${data.clientEmail}`);
+  
+  return await sendEmail({
+    to: data.clientEmail,
+    subject,
+    html,
+  });
 }
 
 /**

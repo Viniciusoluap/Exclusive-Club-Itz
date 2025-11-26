@@ -80,9 +80,12 @@ export default function Reservas() {
     { enabled: isAuthenticated }
   );
 
-  // Fetch maintenances (public endpoint, no auth required)
+  // Fetch maintenances for current month (public endpoint)
   // @ts-ignore - maintenances router exists but TypeScript types not regenerated
-  const { data: allMaintenances } = trpc.maintenances.list.useQuery();
+  const { data: monthMaintenances } = trpc.maintenances.getActive.useQuery(
+    { startDate: startOfMonth, endDate: endOfMonth },
+    { enabled: true }
+  );
 
   // Create booking mutation
   const createBooking = trpc.bookings.create.useMutation({
@@ -180,10 +183,10 @@ export default function Reservas() {
   };
 
   const isDateInMaintenance = (date: Date | null, vesselId: number): boolean => {
-    if (!date || !allMaintenances) return false;
+    if (!date || !monthMaintenances) return false;
 
     const dateTimestamp = date.getTime();
-    return allMaintenances.some(
+    return monthMaintenances.some(
       (maintenance: any) =>
         maintenance.vesselId === vesselId &&
         maintenance.startDate <= dateTimestamp &&
