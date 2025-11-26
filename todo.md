@@ -107,3 +107,22 @@
 - [x] Investigar erro "Erro ao verificar conflitos" ao criar manutenção
 - [x] Corrigir endpoint ou lógica de verificação de conflitos (faltava função getAllBookings no db.ts)
 - [x] Testar criação de manutenção com e sem conflitos
+
+## Bug Crítico - Cancelamento de Reservas em Manutenção (26/11/2025) - RESOLVIDO
+
+### Reservas não estão sendo canceladas automaticamente
+- [x] Implementar cancelamento automático de reservas ao criar manutenção
+- [x] Atualizar status das reservas conflitantes para 'cancelled'
+- [x] Enviar email para clientes afetados informando cancelamento e motivo
+- [x] Enviar email para admin com lista de reservas canceladas
+- [x] Testar fluxo completo de criação de manutenção com cancelamentos
+
+## Nova Feature - Quantidade de Cotas por Embarcação (26/11/2025) - CONCLUÍDO
+
+### Campo de quantidade de cotas configurável
+- [x] Adicionar campo 'quotaCount' na tabela vessels do schema
+- [x] Migrar dados existentes (manter valores atuais: 6 para Jetski, 7 para Lancha)
+- [x] Adicionar campo no formulário de criação/edição de embarcações
+- [x] Permitir valores: 3, 4, 6, 7 ou outros conforme necessário
+- [x] Atualizar lógica de cálculo de disponibilidade para usar quotaCount
+- [x] Testar com diferentes quantidades de cotas

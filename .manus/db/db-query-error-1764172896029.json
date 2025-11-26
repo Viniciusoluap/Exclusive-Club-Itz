@@ -1,0 +1,8 @@
+{
+  "query": "SELECT b.id, b.booking_date, b.status, c.name, c.email, v.name as vessel_name\nFROM bookings b\nJOIN allowed_clients c ON b.client_id = c.id\nJOIN vessels v ON b.vessel_id = v.id\nWHERE v.name LIKE '%JETSKI%' AND b.booking_date >= '2025-11-29 00:00:00' AND b.booking_date < '2025-11-30 00:00:00'\nORDER BY b.booking_date;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT b.id, b.booking_date, b.status, c.name, c.email, v.name as vessel_name\nFROM bookings b\nJOIN allowed_clients c ON b.client_id = c.id\nJOIN vessels v ON b.vessel_id = v.id\nWHERE v.name LIKE '%JETSKI%' AND b.booking_date >= '2025-11-29 00:00:00' AND b.booking_date < '2025-11-30 00:00:00'\nORDER BY b.booking_date;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'b.client_id' in 'on clause'"
+  ]
+}

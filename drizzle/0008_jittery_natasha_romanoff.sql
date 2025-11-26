@@ -1,0 +1,1 @@
+ALTER TABLE `vessels` ADD `quota_count` int DEFAULT 6 NOT NULL;

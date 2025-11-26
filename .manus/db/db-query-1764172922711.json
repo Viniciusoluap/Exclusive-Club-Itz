@@ -1,0 +1,17 @@
+{
+  "query": "SELECT b.id, b.booking_date, b.status, b.client_email, b.vessel_name\nFROM bookings b\nWHERE b.vessel_name LIKE '%JETSKI%' AND FROM_UNIXTIME(b.booking_date/1000) >= '2025-11-29 00:00:00' AND FROM_UNIXTIME(b.booking_date/1000) < '2025-11-30 00:00:00'\nORDER BY b.booking_date;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT b.id, b.booking_date, b.status, b.client_email, b.vessel_name\nFROM bookings b\nWHERE b.vessel_name LIKE '%JETSKI%' AND FROM_UNIXTIME(b.booking_date/1000) >= '2025-11-29 00:00:00' AND FROM_UNIXTIME(b.booking_date/1000) < '2025-11-30 00:00:00'\nORDER BY b.booking_date;",
+  "rows": [
+    {
+      "id": "300007",
+      "booking_date": "1764385200000",
+      "status": "confirmed",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tbooking_date\tstatus\tclient_email\tvessel_name\n300007\t1764385200000\tconfirmed\tv6h2sw5vmn@privaterelay.appleid.com\tJETSKI SEADOO GTI SE 130HP\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

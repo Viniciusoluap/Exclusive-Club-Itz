@@ -44,6 +44,7 @@ export const vessels = mysqlTable("vessels", {
   description: text("description"),
   imageUrl: text("image_url"),
   capacity: int("capacity"),
+  quotaCount: int("quota_count").notNull().default(6), // Número de cotas disponíveis (3, 4, 6, 7, etc.)
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
