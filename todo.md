@@ -249,3 +249,27 @@
 - [x] Revisar todos os templates de email
 - [x] Usar linguagem mais formal e profissional
 - [x] Manter clareza e objetividade
+
+
+## Novas Funcionalidades - Fase 2 (26/11/2025 - 20:45)
+
+### 1. Email de Boas-Vindas Automático
+- [x] Criar template de email de boas-vindas
+- [x] Implementar envio ao cadastrar novo cliente
+- [x] Incluir explicação do sistema de cotas
+- [x] Incluir regras de uso (máximo 2 reservas, segundas bloqueadas)
+- [x] Testar envio de email
+
+### 2. Sistema de Avaliações Pós-Uso
+- [x] Criar tabela reviews no schema
+- [ ] Implementar endpoints tRPC (create, list, stats) - PENDENTE (complexidade técnica)
+- [ ] Criar interface para cliente avaliar (1-5 estrelas + comentário) - PENDENTE
+- [ ] Criar página admin para visualizar avaliações - PENDENTE
+- [ ] Mostrar estatísticas por embarcação - PENDENTE
+- [ ] Testar fluxo completo de avaliação - PENDENTE
+
+### 3. Automação de Lembretes Diários
+- [x] Criar script standalone para execução via cron
+- [x] Documentar comando cron
+- [x] Testar execução manual do script
+- [x] Validar envio de lembretes

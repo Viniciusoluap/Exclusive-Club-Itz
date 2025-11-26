@@ -64,6 +64,13 @@
       "when": 1764172508021,
       "tag": "0008_jittery_natasha_romanoff",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1764200232373,
+      "tag": "0009_lean_killmonger",
+      "breakpoints": true
     }
   ]
 }
