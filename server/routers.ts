@@ -5,6 +5,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { notifyNewBooking, notifyBookingCancellation, notifyBookingUsed, notifyClientMaintenanceCancellation, notifyAdminMaintenanceCancellations, notifyClientBookingConfirmation, notifyClientBookingCancellation, notifyAdminMaintenanceStatusChange, notifyClientsMaintenanceStatusChange } from "./_core/emailNotification";
+import { notifyOwner } from "./_core/notification";
 import * as db from "./db";
 import * as stats from "./stats";
 import * as weather from "./weather";
@@ -715,8 +716,9 @@ export const appRouter = router({
           });
         }
 
-        // Enviar notificação para admin
+        // Enviar notificação para admin (sempre, independente de cancelamentos)
         if (cancelledBookings.length > 0) {
+          // Notificar sobre reservas canceladas
           await notifyAdminMaintenanceCancellations({
             vesselName: vessel.name,
             maintenanceStartDate: new Date(input.startDate),
@@ -726,6 +728,21 @@ export const appRouter = router({
               clientEmail: b.clientEmail,
               bookingDate: new Date(b.bookingDate),
             })),
+          });
+        } else {
+          // Notificar sobre criação de manutenção sem conflitos
+          const startStr = new Date(input.startDate).toLocaleDateString('pt-BR');
+          const endStr = new Date(input.endDate).toLocaleDateString('pt-BR');
+          await notifyOwner({
+            title: "🔧 Nova Manutenção Agendada",
+            content: `
+**Embarcação:** ${vessel.name}
+**Período:** ${startStr} a ${endStr}
+**Descrição:** ${input.description || 'Sem descrição'}
+**Status:** ${input.status || 'scheduled'}
+
+Nenhuma reserva foi afetada.
+            `.trim()
           });
         }
 

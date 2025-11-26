@@ -223,3 +223,11 @@
 - [x] Adicionar campo de edição de nome no header desktop
 - [x] Implementar dialog de edição
 - [x] Testar edição de nome na versão desktop
+
+
+## Bug Reportado - Criação de Manutenção (26/11/2025 - 18:10)
+
+- [x] Corrigir notificações na criação de manutenção
+- [x] Garantir que admin recebe notificação via Manus
+- [x] Garantir que clientes afetados recebem email
+- [x] Testar criação de manutenção completa
