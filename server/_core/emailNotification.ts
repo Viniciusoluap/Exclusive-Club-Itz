@@ -1,4 +1,5 @@
 import { notifyOwner } from "./notification";
+import { sendEmail } from "./emailService";
 
 /**
  * Helper para enviar notificações por email usando a API built-in do Manus
@@ -113,37 +114,43 @@ export async function notifyClientBookingConfirmation(data: BookingNotificationD
     day: 'numeric'
   });
 
-  const title = `Reserva Confirmada - ${data.vesselName} - ${data.clientName}`;
-  const content = `
-DESTINATÁRIO: ${data.clientEmail}
-NOME: ${data.clientName}
+  const subject = "🎉 Reserva Confirmada - Exclusive Club";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+      <div style="background-color: #0891b2; padding: 20px; text-align: center;">
+        <h1 style="color: white; margin: 0;">🎉 Reserva Confirmada!</h1>
+      </div>
+      
+      <div style="background-color: white; padding: 30px;">
+        <p style="font-size: 16px; color: #374151;">Olá <strong>${data.clientName}</strong>,</p>
+        
+        <p style="font-size: 16px; color: #374151;">Sua reserva foi <strong style="color: #059669;">confirmada com sucesso</strong>!</p>
+        
+        <div style="background-color: #f0f9ff; padding: 20px; margin: 20px 0; border-left: 4px solid #0891b2;">
+          <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data:</strong> ${dateStr}</p>
+          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${data.vesselName}</p>
+          ${data.notes ? `<p style="margin: 8px 0; color: #1f2937;"><strong>📝 Observações:</strong> ${data.notes}</p>` : ''}
+        </div>
+        
+        <p style="font-size: 16px; color: #374151;">Estamos ansiosos para proporcionar momentos inesquecíveis!</p>
+        
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+        
+        <p style="font-size: 14px; color: #6b7280; text-align: center;">
+          Atenciosamente,<br>
+          <strong>Equipe Exclusive Club</strong>
+        </p>
+      </div>
+    </div>
+  `;
 
-========================================
-CONFIRMAÇÃO DE RESERVA
-Exclusive Club - Sistema de Reservas
-========================================
-
-Olá ${data.clientName},
-
-Sua reserva foi confirmada com sucesso.
-
-DETALHES DA RESERVA:
-- Embarcação: ${data.vesselName}
-- Data: ${dateStr}
-${data.notes ? `- Observações: ${data.notes}` : ''}
-
-Em caso de dúvidas, entre em contato conosco.
-
-Atenciosamente,
-Equipe Exclusive Club
-
-========================================
-Esta é uma mensagem automática.
-Por favor, não responda este email.
-========================================
-  `.trim();
-
-  return await notifyOwner({ title, content });
+  console.log(`[Email] Enviando confirmação de reserva para ${data.clientEmail}`);
+  
+  return await sendEmail({
+    to: data.clientEmail,
+    subject,
+    html,
+  });
 }
 
 /**
@@ -157,36 +164,42 @@ export async function notifyClientBookingCancellation(data: BookingCancellationD
     day: 'numeric'
   });
 
-  const title = `Reserva Cancelada - ${data.vesselName} - ${data.clientName}`;
-  const content = `
-DESTINATÁRIO: ${data.clientEmail}
-NOME: ${data.clientName}
+  const subject = "⚠️ Reserva Cancelada - Exclusive Club";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+      <div style="background-color: #dc2626; padding: 20px; text-align: center;">
+        <h1 style="color: white; margin: 0;">⚠️ Reserva Cancelada</h1>
+      </div>
+      
+      <div style="background-color: white; padding: 30px;">
+        <p style="font-size: 16px; color: #374151;">Olá <strong>${data.clientName}</strong>,</p>
+        
+        <p style="font-size: 16px; color: #374151;">Informamos que sua reserva foi <strong style="color: #dc2626;">cancelada</strong>.</p>
+        
+        <div style="background-color: #fef2f2; padding: 20px; margin: 20px 0; border-left: 4px solid #dc2626;">
+          <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data:</strong> ${dateStr}</p>
+          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${data.vesselName}</p>
+        </div>
+        
+        <p style="font-size: 16px; color: #374151;">Se precisar fazer uma nova reserva, acesse nosso sistema.</p>
+        
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+        
+        <p style="font-size: 14px; color: #6b7280; text-align: center;">
+          Atenciosamente,<br>
+          <strong>Equipe Exclusive Club</strong>
+        </p>
+      </div>
+    </div>
+  `;
 
-========================================
-CANCELAMENTO DE RESERVA
-Exclusive Club - Sistema de Reservas
-========================================
-
-Olá ${data.clientName},
-
-Sua reserva foi cancelada conforme solicitado.
-
-DETALHES DA RESERVA CANCELADA:
-- Embarcação: ${data.vesselName}
-- Data: ${dateStr}
-
-Se precisar fazer uma nova reserva, acesse nosso sistema.
-
-Atenciosamente,
-Equipe Exclusive Club
-
-========================================
-Esta é uma mensagem automática.
-Por favor, não responda este email.
-========================================
-  `.trim();
-
-  return await notifyOwner({ title, content });
+  console.log(`[Email] Enviando cancelamento de reserva para ${data.clientEmail}`);
+  
+  return await sendEmail({
+    to: data.clientEmail,
+    subject,
+    html,
+  });
 }
 
 export interface MaintenanceCancellationData {
