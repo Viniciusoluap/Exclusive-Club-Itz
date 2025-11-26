@@ -120,3 +120,73 @@ export async function notifyClientBookingCancellation(data: BookingCancellationD
   console.log(`[Email] Cancelamento de reserva seria enviado para ${data.clientEmail}`);
   return true;
 }
+
+export interface MaintenanceCancellationData {
+  clientName: string;
+  clientEmail: string;
+  vesselName: string;
+  bookingDate: Date;
+  maintenanceStartDate: Date;
+  maintenanceEndDate: Date;
+  maintenanceDescription?: string;
+}
+
+/**
+ * Notifica cliente que sua reserva foi cancelada devido a manutenção
+ */
+export async function notifyClientMaintenanceCancellation(data: MaintenanceCancellationData): Promise<boolean> {
+  // TODO: Implementar envio de email direto para o cliente
+  const bookingDateStr = data.bookingDate.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  
+  const maintenanceStartStr = data.maintenanceStartDate.toLocaleDateString('pt-BR');
+  const maintenanceEndStr = data.maintenanceEndDate.toLocaleDateString('pt-BR');
+  
+  console.log(`[Email] Notificação de cancelamento por manutenção seria enviada para ${data.clientEmail}`);
+  console.log(`Assunto: Reserva Cancelada - Manutenção Programada`);
+  console.log(`Corpo: Olá ${data.clientName}, sua reserva para ${data.vesselName} no dia ${bookingDateStr} foi cancelada devido a uma manutenção programada entre ${maintenanceStartStr} e ${maintenanceEndStr}.`);
+  if (data.maintenanceDescription) {
+    console.log(`Motivo: ${data.maintenanceDescription}`);
+  }
+  return true;
+}
+
+/**
+ * Notifica admin sobre reservas canceladas devido a manutenção
+ */
+export async function notifyAdminMaintenanceCancellations(data: {
+  vesselName: string;
+  maintenanceStartDate: Date;
+  maintenanceEndDate: Date;
+  cancelledBookings: Array<{
+    clientName: string;
+    clientEmail: string;
+    bookingDate: Date;
+  }>;
+}): Promise<boolean> {
+  const startStr = data.maintenanceStartDate.toLocaleDateString('pt-BR');
+  const endStr = data.maintenanceEndDate.toLocaleDateString('pt-BR');
+  
+  const bookingsList = data.cancelledBookings.map(b => {
+    const dateStr = b.bookingDate.toLocaleDateString('pt-BR');
+    return `- ${b.clientName} (${b.clientEmail}) - ${dateStr}`;
+  }).join('\n');
+
+  const title = "⚠️ Reservas Canceladas - Manutenção Criada";
+  const content = `
+**Embarcação:** ${data.vesselName}
+**Período de Manutenção:** ${startStr} a ${endStr}
+**Total de reservas canceladas:** ${data.cancelledBookings.length}
+
+**Reservas afetadas:**
+${bookingsList}
+
+Os clientes foram notificados sobre o cancelamento.
+  `.trim();
+
+  return await notifyOwner({ title, content });
+}

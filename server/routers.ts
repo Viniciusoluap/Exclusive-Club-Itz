@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { notifyNewBooking, notifyBookingCancellation, notifyBookingUsed } from "./_core/emailNotification";
+import { notifyNewBooking, notifyBookingCancellation, notifyBookingUsed, notifyClientMaintenanceCancellation, notifyAdminMaintenanceCancellations } from "./_core/emailNotification";
 import * as db from "./db";
 import * as stats from "./stats";
 import * as weather from "./weather";
@@ -177,6 +177,7 @@ export const appRouter = router({
         description: z.string().optional(),
         imageUrl: z.string().optional(),
         capacity: z.number().optional(),
+        quotaCount: z.number().min(1).max(10),
       }))
       .mutation(async ({ input }) => {
         await db.createVessel(input);
@@ -191,6 +192,7 @@ export const appRouter = router({
         description: z.string().optional(),
         imageUrl: z.string().optional(),
         capacity: z.number().optional(),
+        quotaCount: z.number().min(1).max(10).optional(),
         isActive: z.boolean().optional(),
       }))
       .mutation(async ({ input }) => {
@@ -637,6 +639,24 @@ export const appRouter = router({
           });
         }
 
+        // Buscar reservas conflitantes
+        const allBookings = await db.getAllBookings();
+        const startNormalized = new Date(input.startDate);
+        startNormalized.setHours(0, 0, 0, 0);
+        const endNormalized = new Date(input.endDate);
+        endNormalized.setHours(23, 59, 59, 999);
+        
+        const conflictingBookings = allBookings.filter((booking: any) => {
+          if (booking.vesselId !== input.vesselId) return false;
+          if (booking.status === 'cancelled' || booking.status === 'used') return false;
+          
+          const bookingDate = new Date(booking.bookingDate);
+          bookingDate.setHours(0, 0, 0, 0);
+          
+          return bookingDate >= startNormalized && bookingDate <= endNormalized;
+        });
+
+        // Criar manutenção
         await db.createMaintenance({
           vesselId: input.vesselId,
           vesselName: vessel.name,
@@ -646,7 +666,51 @@ export const appRouter = router({
           status: input.status || 'scheduled',
         });
 
-        return { success: true };
+        // Cancelar reservas conflitantes
+        const cancelledBookings = [];
+        for (const booking of conflictingBookings) {
+          await db.updateBooking(booking.id, { status: 'cancelled' });
+          cancelledBookings.push({
+            id: booking.id,
+            clientName: booking.clientName,
+            clientEmail: booking.clientEmail,
+            vesselName: booking.vesselName,
+            bookingDate: booking.bookingDate,
+          });
+        }
+
+        // Enviar notificações para clientes afetados
+        for (const booking of cancelledBookings) {
+          await notifyClientMaintenanceCancellation({
+            clientName: booking.clientName,
+            clientEmail: booking.clientEmail,
+            vesselName: booking.vesselName,
+            bookingDate: new Date(booking.bookingDate),
+            maintenanceStartDate: new Date(input.startDate),
+            maintenanceEndDate: new Date(input.endDate),
+            maintenanceDescription: input.description,
+          });
+        }
+
+        // Enviar notificação para admin
+        if (cancelledBookings.length > 0) {
+          await notifyAdminMaintenanceCancellations({
+            vesselName: vessel.name,
+            maintenanceStartDate: new Date(input.startDate),
+            maintenanceEndDate: new Date(input.endDate),
+            cancelledBookings: cancelledBookings.map(b => ({
+              clientName: b.clientName,
+              clientEmail: b.clientEmail,
+              bookingDate: new Date(b.bookingDate),
+            })),
+          });
+        }
+
+        return { 
+          success: true,
+          cancelledCount: cancelledBookings.length,
+          cancelledBookings 
+        };
       }),
 
     update: adminProcedure

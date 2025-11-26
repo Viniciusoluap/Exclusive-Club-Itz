@@ -194,6 +194,7 @@ export default function Admin() {
     type: "lancha" as "lancha" | "jetski",
     description: "",
     capacity: "",
+    quotaCount: "6",
   });
 
   // Fetch data
@@ -247,7 +248,7 @@ export default function Admin() {
       toast.success("Embarcação adicionada com sucesso!");
       utils.vessels.listAll.invalidate();
       setShowVesselDialog(false);
-      setVesselForm({ name: "", type: "lancha", description: "", capacity: "" });
+      setVesselForm({ name: "", type: "lancha", description: "", capacity: "", quotaCount: "6" });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -323,8 +324,13 @@ export default function Admin() {
   };
 
   const handleCreateVessel = () => {
-    if (!vesselForm.name || !vesselForm.type) {
+    if (!vesselForm.name || !vesselForm.type || !vesselForm.quotaCount) {
       toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+    const quotaCountNum = parseInt(vesselForm.quotaCount);
+    if (isNaN(quotaCountNum) || quotaCountNum < 1 || quotaCountNum > 10) {
+      toast.error("Quantidade de cotas deve ser entre 1 e 10");
       return;
     }
     createVessel.mutate({
@@ -332,7 +338,8 @@ export default function Admin() {
       type: vesselForm.type,
       description: vesselForm.description || undefined,
       capacity: vesselForm.capacity ? parseInt(vesselForm.capacity) : undefined,
-    });
+      quotaCount: quotaCountNum,
+    } as any);
   };
 
   const addQuota = (vesselId: number, quotaNumber: number, quotaType: "full" | "half") => {
@@ -857,6 +864,21 @@ export default function Admin() {
                 onChange={(e) => setVesselForm({ ...vesselForm, capacity: e.target.value })}
                 placeholder="Número de pessoas"
               />
+            </div>
+            <div>
+              <Label htmlFor="vessel-quota-count">Quantidade de Cotas *</Label>
+              <Input
+                id="vessel-quota-count"
+                type="number"
+                min="1"
+                max="10"
+                value={vesselForm.quotaCount}
+                onChange={(e) => setVesselForm({ ...vesselForm, quotaCount: e.target.value })}
+                placeholder="Ex: 3, 4, 6, 7"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Número de cotas disponíveis para esta embarcação
+              </p>
             </div>
           </div>
           <DialogFooter>
