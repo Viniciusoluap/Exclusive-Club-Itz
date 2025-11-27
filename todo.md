@@ -380,3 +380,40 @@
 - [x] Testar vínculo com reserva
 - [x] Testar relatórios
 - [x] Validar cálculos
+
+
+## Implementação Atual - Sistema de Vistorias (26/11/2025 - 22:00)
+
+### Endpoints e Backend
+- [x] Criar endpoints tRPC para vistorias (create, list, getByBooking, getByVessel)
+- [x] Armazenar dados do formulário em JSON
+- [x] Vincular à reserva e embarcação
+- [x] Registrar data, usuário que usou, responsável pela vistoria
+
+### Formulários Interativos
+- [x] Criar formulário de vistoria do Jet (12 campos de aprovação)
+- [x] Criar formulário de vistoria da Lancha (20 campos de aprovação)
+- [x] Campos: aprovado/reprovado + observações
+- [x] Incluir data da vistoria
+- [x] Incluir nome do usuário que usou a embarcação
+- [x] Validação de campos obrigatórios
+
+### Geração de Relatórios
+- [ ] Criar template HTML de relatório - PENDENTE (próxima fase)
+- [ ] Incluir todos os dados da vistoria - PENDENTE
+- [ ] Incluir fotos/assinaturas (se necessário) - PENDENTE
+- [ ] Gerar PDF do relatório - PENDENTE
+- [ ] Enviar por email ao admin - PENDENTE
+
+### Interface Admin
+- [x] Criar página de vistorias
+- [x] Listar vistorias realizadas
+- [x] Filtrar por embarcação e período (via endpoints)
+- [x] Visualizar detalhes de cada vistoria
+- [x] Botão para realizar nova vistoria
+
+### Testes
+- [x] Testar criação de vistoria
+- [ ] Testar geração de relatório - PENDENTE
+- [ ] Testar envio de email - PENDENTE
+- [x] Validar dados salvos
