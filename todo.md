@@ -527,3 +527,142 @@
 - [x] Atualizar select de reservas em Abastecimento
 - [x] Atualizar select de reservas em Vistorias
 - [x] Testar seleção de reservas antigas
+
+
+## Correções Solicitadas (26/11/2025 - 22:40)
+
+### 1. Calendário de Reservas - Filtro por Embarcações do Usuário
+- [ ] Modificar página de reservas para mostrar apenas calendários das embarcações que o usuário possui quota
+- [ ] Criar um calendário separado para cada embarcação do usuário
+- [ ] Adicionar legenda visual com cores:
+  * Disponível (verde)
+  * Indisponível/Reservado (vermelho)
+  * Manutenção (laranja)
+  * Não abrimos (cinza)
+- [ ] Aplicar cores correspondentes nos dias do calendário
+
+### 2. Redesign do Calendário Mobile/Web
+- [ ] Redesenhar calendário com layout mais clean e slim
+- [ ] Melhorar visualização mobile (responsivo)
+- [ ] Modernizar aparência geral do calendário
+- [ ] Garantir boa usabilidade tanto em mobile quanto web
+
+### 3. Menu Mobile
+- [ ] Corrigir menu lateral direito superior que não funciona no mobile
+- [ ] Testar funcionalidade do menu hamburguer em dispositivos móveis
+- [ ] Garantir que menu abre/fecha corretamente
+
+### 4. Dashboard do Cliente - Contador de Reservas
+- [ ] Voltar contador de reservas usado/total (ex: 2/2, 1/2, 0/2)
+- [ ] Calcular baseado em quotas do cliente
+- [ ] Exibir de forma clara e visível no dashboard
+- [ ] Atualizar em tempo real conforme reservas
+
+### 5. Dashboard do Cliente - Visualização e Cancelamento
+- [ ] Adicionar seção mostrando reservas ativas do cliente
+- [ ] Implementar botão de cancelamento para cada reserva
+- [ ] Adicionar confirmação antes de cancelar
+- [ ] Mostrar status da reserva (confirmada, cancelada, usada)
+
+### 6. Erro no Cadastro de Funcionários
+- [ ] Investigar erro SQL persistente no cadastro
+- [ ] Verificar todos os campos obrigatórios
+- [ ] Testar com diferentes combinações de dados
+- [ ] Corrigir definitivamente o problema
+
+### 7. Abastecimento - Exibição de Reservas Used
+- [ ] Modificar select para mostrar também reservas com status 'used'
+- [ ] Verificar se endpoint já retorna reservas used
+- [ ] Testar seleção de reservas já utilizadas
+
+### 8. Abastecimento - Taxa na Legenda
+- [ ] Adicionar informação da taxa de R$ 10 na interface
+- [ ] Exibir legenda explicativa sobre a taxa de abastecimento
+- [ ] Garantir clareza na apresentação dos valores
+
+### 9. Vistorias - Exibição de Reservas Used
+- [ ] Modificar select para mostrar também reservas com status 'used'
+- [ ] Testar seleção de reservas já utilizadas
+
+### 10. Vistorias - Questionário Completo
+- [ ] Buscar links do Google Forms fornecidos anteriormente
+- [ ] Replicar integralmente todos os campos do questionário
+- [ ] Garantir que nenhum campo está faltando
+- [ ] Validar com os formulários originais
+
+
+## ✅ CONCLUÍDO - 8 Etapas de Correções (26/11/2025 - 21:35)
+
+### ETAPA 1 - Calendário Filtrado por Embarcações do Usuário ✅
+- [x] Buscar quotas do cliente logado via endpoint myQuotas
+- [x] Filtrar apenas embarcações que o usuário possui
+- [x] Criar um calendário separado para cada embarcação
+- [x] Implementado com sucesso
+
+### ETAPA 2 - Legenda de Cores no Calendário ✅
+- [x] Adicionar legenda global (Disponível, Reservado, Manutenção, Não abrimos)
+- [x] Aplicar cores nos dias: Verde (disponível), Vermelho (reservado), Laranja (manutenção), Cinza (fechado)
+- [x] Função getDayStatus implementada
+- [x] Implementado com sucesso
+
+### ETAPA 3 - Redesign do Calendário Mobile/Web ✅
+- [x] Layout mais clean e slim (gaps reduzidos, padding otimizado)
+- [x] Cores vibrantes e modernas (bg-green-500, bg-red-500, bg-orange-500)
+- [x] Apenas número do dia (sem texto para economizar espaço)
+- [x] Efeitos hover e active para feedback visual
+- [x] Indicador pulsante no dia atual
+- [x] Header com gradiente sutil
+- [x] Touch-friendly para mobile
+- [x] Responsivo com breakpoints sm:
+- [x] Implementado com sucesso
+
+### ETAPA 4 - Correção do Menu Mobile ✅
+- [x] Menu mobile já funcionando corretamente com componente MobileMenu
+- [x] Removida duplicação de código
+- [x] Implementado com sucesso
+
+### ETAPA 5 - Dashboard com Contador de Reservas ✅
+- [x] Seção "Uso de Quotas por Embarcação" criada
+- [x] Contador X/Y mostrando reservas usadas / total de quotas
+- [x] Barra de progresso com cores (Verde < 75%, Laranja 75-99%, Vermelho 100%)
+- [x] Ícones visuais (CheckCircle verde ou XCircle vermelho)
+- [x] Mensagem informando quantas quotas restam
+- [x] Implementado com sucesso
+
+### ETAPA 6 - Visualização e Cancelamento de Reservas no Dashboard ✅
+- [x] Seção "Minhas Reservas Ativas" criada
+- [x] Lista de todas as reservas confirmadas
+- [x] Informações: embarcação, data completa, observações
+- [x] Botão "Cancelar" com confirmação
+- [x] Status visual (verde "Confirmada")
+- [x] Desabilita cancelamento para reservas passadas
+- [x] Feedback de loading durante cancelamento
+- [x] Atualização automática após cancelamento
+- [x] Implementado com sucesso
+
+### ETAPA 7 - Correção de Reservas Used em Abastecimento e Vistorias ✅
+- [x] Modificado endpoint getRecent para aceitar includeUsed: true
+- [x] Abastecimento mostra reservas com status 'used'
+- [x] Vistorias mostra reservas com status 'used'
+- [x] Adicionada exibição da taxa de R$ 10 na legenda dos registros
+- [x] Detalhamento: "Litros × Preço = Subtotal" + "Taxa: R$ 10,00" = Total
+- [x] Implementado com sucesso
+
+### ETAPA 8 - Questionário Completo de Vistorias ✅
+- [x] Questionário já estava completo com todos os campos
+- [x] JET: 12 campos (PINTURA/CASCO, LUZES, CARPETE, etc.)
+- [x] LANCHA: 22 campos (PINTURA/CASCO, LUZES, CARPETE, MOTOR, etc.)
+- [x] Campo de "Observações e Itens Reprovados" ao final
+- [x] Cada campo com opção APROVADO/REPROVADO
+- [x] Validação de todos os campos obrigatórios
+- [x] Implementado com sucesso
+
+### Testes Automatizados ✅
+- [x] 37 testes passando
+- [x] 1 teste skipado
+- [x] Nenhum erro crítico
+- [x] Sistema estável
+
+### Checkpoint Salvo ✅
+- [x] Todas as mudanças commitadas
+- [x] Pronto para entrega ao usuário
