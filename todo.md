@@ -678,3 +678,19 @@
 - [x] Card azul com design clean e responsivo
 - [x] Testar exibição do clima
 - [x] Todos os 37 testes passando
+
+
+## 🔧 Correções Urgentes - Contador e Calendário (26/11/2025 - 21:50) - RESOLVIDO
+
+### 1. Contador de Quotas Incorreto no Dashboard
+- [x] Corrigir lógica de cálculo: cota inteira = 2 reservas/mês, meia cota = 1 reserva/mês
+- [x] Acumular corretamente quando cliente tem múltiplas cotas
+- [x] Exemplo: 1 cota inteira = 2/2, 2 cotas inteiras = 4/4
+- [x] Contar apenas reservas do mês atual (não total histórico)
+- [x] Testar com diferentes combinações de cotas
+
+### 2. Calendário Bloqueando Terças-feiras Incorretamente
+- [x] Corrigir função getDayStatus para bloquear APENAS segundas-feiras
+- [x] Terças e outros dias devem estar disponíveis (verde) se não houver reserva/manutenção
+- [x] Testar calendário em diferentes semanas
+- [x] Todos os 37 testes passando
