@@ -732,3 +732,15 @@
 - [x] Confirmar que select está populando corretamente (código correto)
 - [x] Chamada do endpoint com includeUsed: true já implementada
 - [x] Código funcionando corretamente (problema era falta de dados 'used' no banco)
+
+
+## 🚨 BUG CRÍTICO - Cadastro de Clientes (27/11/2025 - 01:27) - RESOLVIDO
+
+### Erro de Validação de Email ao Adicionar Cliente
+- [x] Investigar validação de email no formulário de cadastro de clientes
+- [x] Verificar regex ou validação no frontend (AdminClients.tsx)
+- [x] Verificar validação no backend (endpoint clients.create)
+- [x] Corrigir validação para aceitar emails válidos (substituído z.string().email() por regex mais permissiva)
+- [x] Testar cadastro com diferentes formatos de email
+- [x] Garantir que emails válidos sejam aceitos
+- [x] Todos os 37 testes passando
