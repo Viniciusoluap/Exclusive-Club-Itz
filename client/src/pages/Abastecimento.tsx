@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Plus, Fuel, TrendingUp } from "lucide-react";
+import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Abastecimento() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -69,17 +70,25 @@ export default function Abastecimento() {
 
   return (
     <div className="container py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Abastecimento</h1>
-          <p className="text-muted-foreground mt-1">
-            Registre o abastecimento das embarcações após o uso
-          </p>
+      <div className="mb-6">
+        <Link href="/admin">
+          <Button variant="ghost" className="mb-4">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar
+          </Button>
+        </Link>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Abastecimento</h1>
+            <p className="text-muted-foreground mt-1">
+              Registre o abastecimento das embarcações após o uso
+            </p>
+          </div>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Registrar Abastecimento
+          </Button>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Registrar Abastecimento
-        </Button>
       </div>
 
       {/* Recent Fuel Records */}

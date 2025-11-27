@@ -1027,10 +1027,10 @@ Nenhuma reserva foi afetada.
 
         const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds) : null;
 
-        await db.execute({
-          sql: 'INSERT INTO employees (name, email, phone, vessel_ids, is_active) VALUES (?, ?, ?, ?, ?)',
-          params: [input.name, input.email, input.phone || null, vesselIdsJson, true],
-        });
+        await db.execute(
+          'INSERT INTO employees (name, email, phone, vessel_ids, is_active) VALUES (?, ?, ?, ?, ?)',
+          [input.name, input.email, input.phone || null, vesselIdsJson, true]
+        );
 
         return { success: true };
       }),
@@ -1039,10 +1039,9 @@ Nenhuma reserva foi afetada.
       const db = await import('./db').then(m => m.getDb());
       if (!db) return [];
 
-      const result = await db.execute({
-        sql: 'SELECT * FROM employees ORDER BY created_at DESC',
-        params: [],
-      }) as any[];
+      const result = await db.execute(
+        'SELECT * FROM employees ORDER BY created_at DESC'
+      ) as any[];
 
       return result.map((row: any) => ({
         ...row,

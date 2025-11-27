@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, UserCog } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, UserCog, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function Funcionarios() {
@@ -107,17 +108,25 @@ export default function Funcionarios() {
 
   return (
     <div className="container py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Funcionários</h1>
-          <p className="text-muted-foreground mt-1">
-            Gerencie funcionários com acesso limitado ao sistema
-          </p>
+      <div className="mb-6">
+        <Link href="/admin">
+          <Button variant="ghost" className="mb-4">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar
+          </Button>
+        </Link>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Funcionários</h1>
+            <p className="text-muted-foreground mt-1">
+              Gerencie funcionários com acesso limitado ao sistema
+            </p>
+          </div>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Funcionário
+          </Button>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Funcionário
-        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

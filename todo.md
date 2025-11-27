@@ -449,3 +449,47 @@
 - [x] Testar responsividade
 - [x] Validar todas as funcionalidades existentes
 - [x] 37 testes passando (100%)
+
+
+## Implementação Atual - Relatórios PDF de Vistorias (26/11/2025 - 22:30)
+
+### Instalação e Setup
+- [ ] Instalar biblioteca puppeteer para geração de PDF
+- [ ] Configurar puppeteer no servidor
+
+### Template HTML
+- [ ] Criar template HTML profissional
+- [ ] Incluir logo e branding do Exclusive Club
+- [ ] Formatar campos de aprovação/reprovação com ícones
+- [ ] Incluir data da vistoria e nome do usuário
+- [ ] Adicionar observações e assinatura
+
+### Geração de PDF
+- [ ] Criar função generateInspectionPDF
+- [ ] Renderizar template com dados da vistoria
+- [ ] Gerar PDF usando puppeteer
+- [ ] Salvar PDF temporariamente
+
+### Envio por Email
+- [ ] Criar template de email com PDF anexado
+- [ ] Enviar para admin automaticamente após vistoria
+- [ ] Incluir resumo no corpo do email
+
+### Testes
+- [ ] Testar geração de PDF do Jet
+- [ ] Testar geração de PDF da Lancha
+- [ ] Testar envio de email com anexo
+- [ ] Validar formatação do PDF
+
+
+## Bug - Cadastro de Funcionários (26/11/2025 - 22:35)
+- [ ] Corrigir erro "query.getSQL is not a function" no endpoint employees.create
+- [ ] Testar cadastro de funcionários
+
+
+## Bugs - Páginas Admin (26/11/2025 - 22:35)
+- [x] Corrigir erro "query.getSQL is not a function" no endpoint employees.create
+- [x] Adicionar botão de voltar na página de funcionários
+- [x] Adicionar botão de voltar na página de abastecimento
+- [x] Adicionar botão de voltar na página de vistorias
+- [x] Testar todas as páginas

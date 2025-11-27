@@ -9,7 +9,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Plus, ClipboardCheck, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Plus, ClipboardCheck, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 
 const JET_FIELDS = [
   "PINTURA / CASCO",
@@ -143,17 +144,25 @@ export default function Vistorias() {
 
   return (
     <div className="container py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Vistorias</h1>
-          <p className="text-muted-foreground mt-1">
-            Registre vistorias das embarcações antes e após o uso
-          </p>
+      <div className="mb-6">
+        <Link href="/admin">
+          <Button variant="ghost" className="mb-4">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar
+          </Button>
+        </Link>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Vistorias</h1>
+            <p className="text-muted-foreground mt-1">
+              Registre vistorias das embarcações antes e após o uso
+            </p>
+          </div>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nova Vistoria
+          </Button>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Vistoria
-        </Button>
       </div>
 
       {/* Recent Inspections */}
