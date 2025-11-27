@@ -756,3 +756,15 @@
 - [x] Testar com email real que está sendo rejeitado
 - [x] Garantir que validação funcione corretamente
 - [x] Todos os 37 testes passando
+
+
+## 🚨 BUG - Funcionário Cadastrado Não Aparece na Lista (27/11/2025 - 01:50) - RESOLVIDO
+
+### Funcionário cadastrado com sucesso mas não aparece na interface
+- [x] Investigar endpoint employees.list
+- [x] Verificar se funcionário foi salvo no banco de dados (confirmado: salvo corretamente)
+- [x] Verificar query SQL de listagem
+- [x] Verificar invalidate cache após criação
+- [x] Corrigir problema de listagem (MySQL retorna 1/0, frontend esperava true/false)
+- [x] Ajustado filtro para aceitar is_active === 1 ou is_active === true
+- [x] Testar cadastro e visualização
