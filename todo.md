@@ -296,3 +296,50 @@
 - [x] Documentar comandos de configuração
 - [x] Testar execução dos scripts
 - [x] Validar logs
+
+
+## Novas Funcionalidades - Fase 4 (26/11/2025 - 21:05)
+
+### 1. Sistema de Abastecimento (Admin Only)
+- [x] Criar tabela de abastecimentos no banco
+- [ ] Criar endpoints tRPC para registrar abastecimento - PENDENTE
+- [ ] Criar interface admin para registrar abastecimento pós-vistoria - PENDENTE
+- [ ] Vincular abastecimento à reserva e cobrar cliente - PENDENTE
+- [ ] Criar relatório de abastecimentos por embarcação - PENDENTE
+- [ ] Testar fluxo completo - PENDENTE
+
+### 2. Perfil de Funcionário
+- [x] Criar tabela de funcionários no banco
+- [ ] Criar role "employee" no sistema - PENDENTE
+- [ ] Criar página admin para cadastrar funcionários - PENDENTE
+- [ ] Implementar permissões específicas de funcionário - PENDENTE
+- [ ] Criar dashboard de funcionário com acesso limitado - PENDENTE
+- [ ] Testar login e permissões de funcionário - PENDENTE
+
+### 3. Sistema de Vistorias
+- [x] Analisar formulários do Google (Jet e Lancha)
+- [x] Criar tabela de vistorias no banco
+- [ ] Implementar formulário de vistoria do Jet - PENDENTE
+- [ ] Implementar formulário de vistoria da Lancha - PENDENTE
+- [ ] Gerar relatório PDF/HTML de vistoria - PENDENTE
+- [ ] Enviar relatório por email ao admin - PENDENTE
+- [ ] Testar fluxo completo de vistoria - PENDENTE
+
+### 4. Novo Layout de Reservas (Estilo Calendário)
+- [x] Analisar design do print fornecido
+- [ ] Redesenhar página de reservas estilo agenda - PENDENTE
+- [ ] Manter TODAS as funcionalidades atuais - PENDENTE
+- [ ] Testar responsividade mobile - PENDENTE
+- [ ] Validar com usuário - PENDENTE
+
+### Permissões de Funcionário (Acesso Limitado)
+**PODE acessar:**
+- Reservas futuras (após data atual)
+- Criar/visualizar manutenções
+- Ver relatórios de uso
+
+**NÃO PODE acessar:**
+- Clientes
+- Embarcações (cadastro/edição)
+- Reservas passadas
+- Configurações do sistema
