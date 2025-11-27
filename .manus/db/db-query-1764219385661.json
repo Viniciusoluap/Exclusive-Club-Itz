@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, name, email, is_active FROM employees ORDER BY created_at DESC LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, name, email, is_active FROM employees ORDER BY created_at DESC LIMIT 1",
+  "rows": [
+    {
+      "id": "1",
+      "name": "vitor",
+      "email": "atendimento@xn--prospectaconstruoes-lyb.com",
+      "is_active": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tis_active\n1\tvitor\tatendimento@xn--prospectaconstruoes-lyb.com\t1\n",
+  "stderr": "",
+  "execution_time_ms": 51
+}

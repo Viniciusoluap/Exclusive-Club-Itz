@@ -130,7 +130,7 @@ export default function Funcionarios() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {employees?.filter((e: any) => e.is_active).map((employee: any) => (
+        {employees?.filter((e: any) => e.is_active === true || e.is_active === 1).map((employee: any) => (
           <Card key={employee.id}>
             <CardHeader>
               <div className="flex items-start justify-between">
