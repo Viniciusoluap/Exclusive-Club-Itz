@@ -233,6 +233,38 @@ export const appRouter = router({
 
   // Bookings
   bookings: router({
+    // Get recent bookings for fuel registration (Admin only)
+    getRecent: adminProcedure
+      .input(z.object({ days: z.number().default(7) }))
+      .query(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - input.days);
+
+        const result = await db.execute(
+          `SELECT 
+            b.id,
+            b.vesselId,
+            b.startTime,
+            b.endTime,
+            b.status,
+            u.name as clientName,
+            u.email as clientEmail,
+            v.name as vesselName
+          FROM bookings b
+          JOIN users u ON b.userId = u.id
+          JOIN vessels v ON b.vesselId = v.id
+          WHERE b.status = 'confirmed'
+            AND b.endTime >= ?
+          ORDER BY b.endTime DESC`,
+          [cutoffDate.getTime()]
+        );
+
+        return result[0] as any[];
+      }),
+
     // Get user's own bookings
     myBookings: allowedClientProcedure.query(async ({ ctx }) => {
       if (!ctx.user.email) {
@@ -1080,6 +1112,146 @@ Nenhuma reserva foi afetada.
         });
 
         return { success: true };
+      }),
+  }),
+
+  // Fuel Records router - Admin only
+  fuelRecords: router({  
+    create: adminProcedure
+      .input(z.object({
+        bookingId: z.number(),
+        vesselId: z.number(),
+        liters: z.number().positive(),
+        pricePerLiter: z.number().positive(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const totalCost = input.liters * input.pricePerLiter;
+
+        await db.execute(
+          `INSERT INTO fuel_records (booking_id, vessel_id, liters, price_per_liter, total_cost, recorded_by, notes, recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+          [input.bookingId, input.vesselId, input.liters, input.pricePerLiter, totalCost, ctx.user.id, input.notes || null]
+        );
+
+        return { success: true, totalCost };
+      }),
+
+    list: adminProcedure
+      .input(z.object({
+        vesselId: z.number().optional(),
+        startDate: z.number().optional(),
+        endDate: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        let query = `
+          SELECT 
+            fr.*,
+            v.name as vessel_name,
+            b.startTime as booking_date,
+            u.name as client_name,
+            rec.name as recorded_by_name
+          FROM fuel_records fr
+          JOIN vessels v ON fr.vessel_id = v.id
+          JOIN bookings b ON fr.booking_id = b.id
+          JOIN users u ON b.userId = u.id
+          JOIN users rec ON fr.recorded_by = rec.id
+          WHERE 1=1
+        `;
+        const params: any[] = [];
+
+        if (input.vesselId) {
+          query += ' AND fr.vessel_id = ?';
+          params.push(input.vesselId);
+        }
+
+        if (input.startDate) {
+          query += ' AND fr.recorded_at >= FROM_UNIXTIME(?)';
+          params.push(input.startDate / 1000);
+        }
+
+        if (input.endDate) {
+          query += ' AND fr.recorded_at <= FROM_UNIXTIME(?)';
+          params.push(input.endDate / 1000);
+        }
+
+        query += ' ORDER BY fr.recorded_at DESC';
+
+        const result = await db.execute(query, params);
+        return result[0] as any[];
+      }),
+
+    getByBooking: adminProcedure
+      .input(z.object({ bookingId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const result = await db.execute(
+          `SELECT fr.*, u.name as recorded_by_name
+           FROM fuel_records fr
+           JOIN users u ON fr.recorded_by = u.id
+           WHERE fr.booking_id = ?
+           ORDER BY fr.recorded_at DESC`,
+          [input.bookingId]
+        );
+
+        return result[0] as any[];
+      }),
+
+    stats: adminProcedure
+      .input(z.object({
+        vesselId: z.number().optional(),
+        startDate: z.number().optional(),
+        endDate: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        let query = `
+          SELECT 
+            COUNT(*) as total_records,
+            SUM(liters) as total_liters,
+            SUM(total_cost) as total_cost,
+            AVG(liters) as avg_liters_per_refuel,
+            AVG(price_per_liter) as avg_price_per_liter
+          FROM fuel_records
+          WHERE 1=1
+        `;
+        const params: any[] = [];
+
+        if (input.vesselId) {
+          query += ' AND vessel_id = ?';
+          params.push(input.vesselId);
+        }
+
+        if (input.startDate) {
+          query += ' AND recorded_at >= FROM_UNIXTIME(?)';
+          params.push(input.startDate / 1000);
+        }
+
+        if (input.endDate) {
+          query += ' AND recorded_at <= FROM_UNIXTIME(?)';
+          params.push(input.endDate / 1000);
+        }
+
+        const result = await db.execute(query, params);
+        const stats = (result[0] as any[])[0];
+
+        return {
+          totalRecords: Number(stats.total_records) || 0,
+          totalLiters: Number(stats.total_liters) || 0,
+          totalCost: Number(stats.total_cost) || 0,
+          avgLitersPerRefuel: Number(stats.avg_liters_per_refuel) || 0,
+          avgPricePerLiter: Number(stats.avg_price_per_liter) || 0,
+        };
       }),
   }),
 });
