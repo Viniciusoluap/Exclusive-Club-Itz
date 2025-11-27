@@ -1254,6 +1254,115 @@ Nenhuma reserva foi afetada.
         };
       }),
   }),
+
+  // Inspections router - Admin only
+  inspections: router({
+    create: adminProcedure
+      .input(z.object({
+        bookingId: z.number(),
+        vesselId: z.number(),
+        vesselType: z.enum(['jet', 'lancha']),
+        inspectionDate: z.number(), // Unix timestamp
+        clientName: z.string(),
+        formData: z.record(z.any()), // JSON com todos os campos do formulário
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        await db.execute(
+          `INSERT INTO inspections (booking_id, vessel_id, vessel_type, inspection_date, client_name, form_data, notes, inspected_by, created_at)
+           VALUES (?, ?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, NOW())`,
+          [
+            input.bookingId,
+            input.vesselId,
+            input.vesselType,
+            input.inspectionDate / 1000,
+            input.clientName,
+            JSON.stringify(input.formData),
+            input.notes || null,
+            ctx.user.id
+          ]
+        );
+
+        // TODO: Gerar PDF e enviar email ao admin
+        return { success: true };
+      }),
+
+    list: adminProcedure
+      .input(z.object({
+        vesselId: z.number().optional(),
+        startDate: z.number().optional(),
+        endDate: z.number().optional(),
+      }))
+      .query(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        let query = `
+          SELECT 
+            i.*,
+            v.name as vessel_name,
+            b.startTime as booking_date,
+            u.name as inspected_by_name
+          FROM inspections i
+          JOIN vessels v ON i.vessel_id = v.id
+          JOIN bookings b ON i.booking_id = b.id
+          JOIN users u ON i.inspected_by = u.id
+          WHERE 1=1
+        `;
+        const params: any[] = [];
+
+        if (input.vesselId) {
+          query += ' AND i.vessel_id = ?';
+          params.push(input.vesselId);
+        }
+
+        if (input.startDate) {
+          query += ' AND i.inspection_date >= FROM_UNIXTIME(?)';
+          params.push(input.startDate / 1000);
+        }
+
+        if (input.endDate) {
+          query += ' AND i.inspection_date <= FROM_UNIXTIME(?)';
+          params.push(input.endDate / 1000);
+        }
+
+        query += ' ORDER BY i.inspection_date DESC';
+
+        const result = await db.execute(query, params);
+        const inspections = (result[0] as any[]).map(row => ({
+          ...row,
+          form_data: typeof row.form_data === 'string' ? JSON.parse(row.form_data) : row.form_data
+        }));
+
+        return inspections;
+      }),
+
+    getByBooking: adminProcedure
+      .input(z.object({ bookingId: z.number() }))
+      .query(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const result = await db.execute(
+          `SELECT i.*, u.name as inspected_by_name
+           FROM inspections i
+           JOIN users u ON i.inspected_by = u.id
+           WHERE i.booking_id = ?
+           ORDER BY i.inspection_date DESC`,
+          [input.bookingId]
+        );
+
+        const inspections = (result[0] as any[]).map(row => ({
+          ...row,
+          form_data: typeof row.form_data === 'string' ? JSON.parse(row.form_data) : row.form_data
+        }));
+
+        return inspections;
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
