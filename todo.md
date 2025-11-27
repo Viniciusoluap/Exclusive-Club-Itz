@@ -351,3 +351,32 @@
 - [x] Desabilitar envio real de emails nos testes automatizados
 - [x] Mockar função sendEmail para evitar bounces
 - [x] Validar que testes continuam passando sem enviar emails
+
+
+## Implementação Atual - Sistema de Abastecimento (26/11/2025 - 21:45)
+
+### Endpoints e Backend
+- [x] Criar endpoints tRPC para abastecimento (create, list, getByVessel, getByBooking)
+- [x] Vincular abastecimento à reserva (bookingId)
+- [x] Calcular valor total (litros × preço por litro)
+- [x] Registrar data, responsável, observações
+
+### Interface Admin
+- [x] Criar página/modal para registrar abastecimento
+- [x] Selecionar reserva recente (últimas 7 dias)
+- [x] Input: litros, preço por litro, observações
+- [x] Mostrar valor total calculado
+- [x] Confirmar e salvar
+
+### Relatórios
+- [x] Criar página de relatório de abastecimentos (integrado na página principal)
+- [x] Filtrar por embarcação e período (via endpoints)
+- [x] Mostrar: data, cliente, litros, valor, responsável
+- [x] Calcular totais (litros e valor) - endpoint stats
+- [ ] Exportar para PDF/Excel - PENDENTE (próxima fase)
+
+### Testes
+- [x] Testar registro de abastecimento
+- [x] Testar vínculo com reserva
+- [x] Testar relatórios
+- [x] Validar cálculos
