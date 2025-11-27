@@ -105,8 +105,16 @@ export default function AdminManutencao() {
   };
 
   const handleCreateMaintenance = async () => {
+    console.log('[DEBUG] handleCreateMaintenance called', { selectedVesselId, startDate, endDate, description, status });
+    
     if (!selectedVesselId || !startDate || !endDate) {
       toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+    
+    if (typeof selectedVesselId !== 'number' || selectedVesselId <= 0) {
+      toast.error("Selecione uma embarcação válida");
+      console.error('[ERROR] Invalid vesselId:', selectedVesselId);
       return;
     }
 
@@ -312,8 +320,13 @@ export default function AdminManutencao() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Embarcação *</label>
               <Select
-                value={selectedVesselId?.toString()}
-                onValueChange={(value) => setSelectedVesselId(parseInt(value))}
+                value={selectedVesselId?.toString() || ""}
+                onValueChange={(value) => {
+                  const parsed = parseInt(value);
+                  if (!isNaN(parsed) && parsed > 0) {
+                    setSelectedVesselId(parsed);
+                  }
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma embarcação" />

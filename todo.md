@@ -790,3 +790,13 @@
 - [x] Ajustar validação para usar vessel.quotaCount ao invés de tipo fixo
 - [x] Sistema agora aceita até 10 cotas para qualquer embarcação
 - [x] Testar cadastro de cliente
+
+
+## 🚨 BUG - Erro Persistente ao Criar Manutenção (27/11/2025 - 02:24)
+
+### vesselId incorreto (660002) e vesselName = NAVIO
+- [x] Investigar formulário de manutenção
+- [x] Adicionar validação rigorosa de vesselId no frontend
+- [x] Adicionar logs de debug
+- [x] Garantir que Select não aceite valores inválidos
+- [x] Aguardando teste do usuário para confirmar correção
