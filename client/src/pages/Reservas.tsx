@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, Loader2, Plus, X, Menu } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { MobileMenu } from "@/components/MobileMenu";
@@ -36,6 +36,20 @@ export default function Reservas() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedVessel, setSelectedVessel] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
+  const [weatherData, setWeatherData] = useState<any>(null);
+  
+  // Buscar previsão do tempo quando selecionar data
+  const { data: weather } = trpc.weather.forecast.useQuery(
+    { date: selectedDate?.getTime() || Date.now() },
+    { enabled: !!selectedDate }
+  );
+  
+  // Atualizar weatherData quando weather mudar
+  React.useEffect(() => {
+    if (weather) {
+      setWeatherData(weather);
+    }
+  }, [weather]);
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
@@ -434,6 +448,26 @@ export default function Reservas() {
                 {userVessels.find(v => v.id === selectedVessel)?.name}
               </p>
             </div>
+
+            {/* Weather Info */}
+            {weatherData && (
+              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Previsão do Tempo</p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 capitalize">{weatherData.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-3xl">{weatherData.emoji}</span>
+                    <span className="text-2xl font-bold text-blue-900 dark:text-blue-100">{weatherData.temperature}°C</span>
+                  </div>
+                </div>
+                <div className="mt-2 flex gap-4 text-xs text-blue-700 dark:text-blue-300">
+                  <span>💧 {weatherData.humidity}%</span>
+                  <span>💨 {weatherData.windSpeed} km/h</span>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-medium">Observações</label>

@@ -666,3 +666,15 @@
 ### Checkpoint Salvo ✅
 - [x] Todas as mudanças commitadas
 - [x] Pronto para entrega ao usuário
+
+
+## 🔧 Correção Urgente - Informação Meteorológica (26/11/2025 - 21:40) - RESOLVIDO
+
+### Restaurar Clima no Modal de Reserva
+- [x] Reintegrar chamada à API OpenWeather no modal de confirmação de reserva
+- [x] Exibir temperatura, condição meteorológica e ícone emoji
+- [x] Buscar previsão para a data selecionada
+- [x] Exibir umidade e velocidade do vento
+- [x] Card azul com design clean e responsivo
+- [x] Testar exibição do clima
+- [x] Todos os 37 testes passando
