@@ -705,3 +705,30 @@
 - [x] Corrigir query de inserção (removido created_at e updated_at da query)
 - [x] Testar cadastro com múltiplas embarcações
 - [x] Todos os 37 testes passando
+
+
+## 🚨 CHECKLIST COMPLETO DE CORREÇÕES CRÍTICAS (26/11/2025 - 22:00)
+
+### PROBLEMA 1 - Página de Reservas com Erro (ReferenceError: useMemo is not defined) - RESOLVIDO
+- [x] Corrigir import do React/useMemo na página Reservas.tsx
+- [x] Verificar se useMemo está sendo importado corretamente
+- [x] Testar carregamento da página sem erros
+
+### PROBLEMA 2 - Cadastro de Funcionários com Erro SQL (AINDA PERSISTE) - RESOLVIDO
+- [x] Investigar novo erro SQL no cadastro de funcionários
+- [x] Verificar estrutura exata da query INSERT
+- [x] Substituir SQL raw por Drizzle ORM insert
+- [x] Usar db.insert(employees).values() com defaults automáticos
+- [x] Testar cadastro com múltiplas embarcações
+
+### PROBLEMA 3 - Abastecimento não mostra reservas "used" - RESOLVIDO
+- [x] Verificar se endpoint está retornando reservas com status 'used' (já retorna confirmed OR used)
+- [x] Confirmar que select está populando corretamente (código correto)
+- [x] Chamada do endpoint com includeUsed: true já implementada
+- [x] Código funcionando corretamente (problema era falta de dados 'used' no banco)
+
+### PROBLEMA 4 - Vistorias não mostra reservas "used" - RESOLVIDO
+- [x] Verificar se endpoint está retornando reservas com status 'used' (já retorna confirmed OR used)
+- [x] Confirmar que select está populando corretamente (código correto)
+- [x] Chamada do endpoint com includeUsed: true já implementada
+- [x] Código funcionando corretamente (problema era falta de dados 'used' no banco)

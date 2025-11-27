@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, Loader2, Plus, X, Menu } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { MobileMenu } from "@/components/MobileMenu";

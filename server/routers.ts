@@ -1032,14 +1032,17 @@ Nenhuma reserva foi afetada.
       .mutation(async ({ input, ctx }) => {
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        const { employees } = await import('../drizzle/schema');
 
         const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds) : null;
 
-        await db.execute(
-          `INSERT INTO employees (name, email, phone, vessel_ids, is_active) 
-           VALUES (?, ?, ?, ?, ?)`,
-          [input.name, input.email, input.phone || null, vesselIdsJson, 1]
-        );
+        await db.insert(employees).values({
+          name: input.name,
+          email: input.email,
+          phone: input.phone || null,
+          vesselIds: vesselIdsJson,
+          isActive: true,
+        });
 
         return { success: true };
       }),
