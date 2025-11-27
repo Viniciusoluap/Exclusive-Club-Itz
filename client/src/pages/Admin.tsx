@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Calendar, Check, Loader2, Plus, Settings, Ship, Trash2, TrendingUp, UserPlus, Users, X } from "lucide-react";
+import { BarChart3, Calendar, Check, Loader2, Plus, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -438,6 +438,10 @@ export default function Admin() {
               <Settings className="h-4 w-4 mr-2" />
               Manutenção
             </TabsTrigger>
+            <TabsTrigger value="employees">
+              <UserCog className="h-4 w-4 mr-2" />
+              Funcionários
+            </TabsTrigger>
             <TabsTrigger value="reports">
               <BarChart3 className="h-4 w-4 mr-2" />
               Relatórios
@@ -693,6 +697,28 @@ export default function Admin() {
                     <Link href="/admin/manutencao">
                       <Calendar className="h-4 w-4 mr-2" />
                       Abrir Calendário de Manutenção
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Employees Tab */}
+          <TabsContent value="employees" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Funcionários</CardTitle>
+                <CardDescription>
+                  Gerencie funcionários com acesso limitado ao sistema (apenas reservas futuras, manutenções e relatórios).
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-center">
+                  <Button asChild>
+                    <Link href="/admin/funcionarios">
+                      <UserCog className="h-4 w-4 mr-2" />
+                      Gerenciar Funcionários
                     </Link>
                   </Button>
                 </div>

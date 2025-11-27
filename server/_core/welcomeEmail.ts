@@ -76,6 +76,12 @@ export async function sendWelcomeEmail(data: WelcomeEmailData): Promise<boolean>
 
   console.log(`[Email] Enviando boas-vindas para ${data.clientEmail}`);
   
+  // Skip sending emails in test environment to avoid bounce limits
+  if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
+    console.log('[Email] Skipped in test environment');
+    return true;
+  }
+  
   return await sendEmail({
     to: data.clientEmail,
     subject,
