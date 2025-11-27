@@ -694,3 +694,14 @@
 - [x] Terças e outros dias devem estar disponíveis (verde) se não houver reserva/manutenção
 - [x] Testar calendário em diferentes semanas
 - [x] Todos os 37 testes passando
+
+
+## 🔧 Correção - Erro SQL no Cadastro de Funcionários (26/11/2025 - 21:55) - RESOLVIDO
+
+### Problema
+- [x] Erro: "Failed query: INSERT INTO employees (name, email, phone, vessel_ids, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW()) params"
+- [x] Investigar schema da tabela employees
+- [x] Verificar se created_at e updated_at existem no schema (existem com defaultNow())
+- [x] Corrigir query de inserção (removido created_at e updated_at da query)
+- [x] Testar cadastro com múltiplas embarcações
+- [x] Todos os 37 testes passando
