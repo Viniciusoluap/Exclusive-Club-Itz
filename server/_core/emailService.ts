@@ -44,6 +44,11 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   text?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentType: string;
+  }>;
 }
 
 /**
@@ -60,6 +65,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
       subject: options.subject,
       html: options.html,
       text: options.text || options.html.replace(/<[^>]*>/g, ''), // Remove HTML tags para versão texto
+      attachments: options.attachments,
     });
 
     console.log('[Email Service] Email enviado com sucesso:', {

@@ -333,11 +333,30 @@ export async function sendInspectionReportEmail(
 
   const filename = `vistoria-${data.vesselName.replace(/\s+/g, '-')}-${new Date(data.inspectionDate).toISOString().split('T')[0]}.pdf`;
 
-  // Envia email com PDF anexado
-  // TODO: Implementar envio com anexo quando sendEmail suportar attachments
   console.log('[Inspection PDF] Relatório gerado:', filename);
-  console.log('[Inspection PDF] Enviando para admin...');
+  console.log('[Inspection PDF] Enviando email com PDF anexado para admin...');
   
-  // Por enquanto, apenas loga. Implementar envio real com nodemailer diretamente
-  return true;
+  // Enviar email com PDF anexado usando sendEmail com suporte a attachments
+  const adminEmail = process.env.ADMIN_EMAIL || 'atendimento@exclusiveclubitz.com';
+  
+  const success = await sendEmail({
+    to: adminEmail,
+    subject,
+    html: htmlBody,
+    attachments: [
+      {
+        filename,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }
+    ]
+  });
+  
+  if (success) {
+    console.log('[Inspection PDF] Email enviado com sucesso para:', adminEmail);
+  } else {
+    console.error('[Inspection PDF] Falha ao enviar email');
+  }
+  
+  return success;
 }
