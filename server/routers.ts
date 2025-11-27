@@ -979,6 +979,109 @@ Nenhuma reserva foi afetada.
         };
       }),
   }),
+
+  // Employees router - Admin only
+  employees: router({
+    create: adminProcedure
+      .input(z.object({
+        name: z.string().min(1),
+        email: z.string().email(),
+        phone: z.string().optional(),
+        vesselIds: z.array(z.number()).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds) : null;
+
+        await db.execute({
+          sql: 'INSERT INTO employees (name, email, phone, vessel_ids, is_active) VALUES (?, ?, ?, ?, ?)',
+          params: [input.name, input.email, input.phone || null, vesselIdsJson, true],
+        });
+
+        return { success: true };
+      }),
+
+    list: adminProcedure.query(async () => {
+      const db = await import('./db').then(m => m.getDb());
+      if (!db) return [];
+
+      const result = await db.execute({
+        sql: 'SELECT * FROM employees ORDER BY created_at DESC',
+        params: [],
+      }) as any[];
+
+      return result.map((row: any) => ({
+        ...row,
+        vesselIds: row.vessel_ids ? JSON.parse(row.vessel_ids) : [],
+      }));
+    }),
+
+    update: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+        vesselIds: z.array(z.number()).optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const updates: string[] = [];
+        const params: any[] = [];
+
+        if (input.name !== undefined) {
+          updates.push('name = ?');
+          params.push(input.name);
+        }
+        if (input.email !== undefined) {
+          updates.push('email = ?');
+          params.push(input.email);
+        }
+        if (input.phone !== undefined) {
+          updates.push('phone = ?');
+          params.push(input.phone);
+        }
+        if (input.vesselIds !== undefined) {
+          updates.push('vessel_ids = ?');
+          params.push(JSON.stringify(input.vesselIds));
+        }
+        if (input.isActive !== undefined) {
+          updates.push('is_active = ?');
+          params.push(input.isActive);
+        }
+
+        if (updates.length === 0) {
+          return { success: true };
+        }
+
+        params.push(input.id);
+        await db.execute({
+          sql: `UPDATE employees SET ${updates.join(', ')} WHERE id = ?`,
+          params,
+        });
+
+        return { success: true };
+      }),
+
+    delete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        await db.execute({
+          sql: 'UPDATE employees SET is_active = ? WHERE id = ?',
+          params: [false, input.id],
+        });
+
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -310,11 +310,13 @@
 
 ### 2. Perfil de Funcionário
 - [x] Criar tabela de funcionários no banco
-- [ ] Criar role "employee" no sistema - PENDENTE
-- [ ] Criar página admin para cadastrar funcionários - PENDENTE
-- [ ] Implementar permissões específicas de funcionário - PENDENTE
-- [ ] Criar dashboard de funcionário com acesso limitado - PENDENTE
-- [ ] Testar login e permissões de funcionário - PENDENTE
+- [x] Criar endpoints tRPC (create, list, update, delete)
+- [x] Criar página admin para cadastrar funcionários
+- [x] Adicionar tab de funcionários no painel admin
+- [ ] Criar role "employee" no sistema - PENDENTE (próxima fase)
+- [ ] Implementar permissões específicas de funcionário - PENDENTE (próxima fase)
+- [ ] Criar dashboard de funcionário com acesso limitado - PENDENTE (próxima fase)
+- [ ] Testar login e permissões de funcionário - PENDENTE (próxima fase)
 
 ### 3. Sistema de Vistorias
 - [x] Analisar formulários do Google (Jet e Lancha)
@@ -343,3 +345,9 @@
 - Embarcações (cadastro/edição)
 - Reservas passadas
 - Configurações do sistema
+
+
+## Correção Urgente - Testes de Email (26/11/2025 - 21:30)
+- [x] Desabilitar envio real de emails nos testes automatizados
+- [x] Mockar função sendEmail para evitar bounces
+- [x] Validar que testes continuam passando sem enviar emails
