@@ -19,7 +19,7 @@ export default function Abastecimento() {
   const [notes, setNotes] = useState("");
 
   const trpcAny = trpc as any;
-  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({}) || { data: [] }; // Busca todas as reservas
+  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ includeUsed: true }) || { data: [] }; // Busca todas as reservas incluindo usadas
   const { data: fuelRecords, refetch } = trpcAny.fuelRecords?.list.useQuery({}) || { data: [] };
   const { data: vessels } = trpc.vessels.list.useQuery();
 
@@ -125,8 +125,9 @@ export default function Abastecimento() {
                       <div className="text-2xl font-bold text-primary">
                         R$ {Number(record.total_cost).toFixed(2)}
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {Number(record.liters).toFixed(1)}L × R$ {Number(record.price_per_liter).toFixed(2)}
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        <div>{Number(record.liters).toFixed(1)}L × R$ {Number(record.price_per_liter).toFixed(2)} = R$ {(Number(record.liters) * Number(record.price_per_liter)).toFixed(2)}</div>
+                        <div>Taxa: R$ 10,00</div>
                       </div>
                     </div>
                   </div>

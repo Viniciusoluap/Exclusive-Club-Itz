@@ -60,7 +60,7 @@ export default function Vistorias() {
   const [notes, setNotes] = useState("");
 
   const trpcAny = trpc as any;
-  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({}) || { data: [] }; // Busca todas as reservas
+  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ includeUsed: true }) || { data: [] }; // Busca todas as reservas incluindo usadas
   const { data: inspections, refetch } = trpcAny.inspections?.list.useQuery({}) || { data: [] };
   const { data: vessels } = trpc.vessels.list.useQuery();
 

@@ -3,11 +3,219 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X } from "lucide-react";
+import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X, CheckCircle2, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import { useMemo } from "react";
+
+function ActiveBookingsSection() {
+  const { user } = useAuth();
+  const utils = trpc.useUtils();
+  
+  // Buscar reservas ativas do usuário
+  const { data: myBookings, isLoading } = trpc.bookings.myBookings.useQuery();
+  
+  // Buscar embarcações
+  const { data: vessels } = trpc.vessels.list.useQuery();
+  
+  // Mutation para cancelar reserva
+  const cancelBooking = trpc.bookings.cancel.useMutation({
+    onSuccess: () => {
+      toast.success("Reserva cancelada com sucesso!");
+      utils.bookings.myBookings.invalidate();
+      utils.stats.client.invalidate();
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao cancelar reserva");
+    },
+  });
+  
+  const handleCancelBooking = (bookingId: number) => {
+    if (window.confirm("Tem certeza que deseja cancelar esta reserva?")) {
+      cancelBooking.mutate({ id: bookingId });
+    }
+  };
+  
+  // Filtrar apenas reservas confirmadas (futuras)
+  const activeBookings = useMemo(() => {
+    if (!myBookings) return [];
+    return myBookings.filter((b: any) => b.status === 'confirmed');
+  }, [myBookings]);
+  
+  if (isLoading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+      </div>
+    );
+  }
+  
+  if (!activeBookings || activeBookings.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Você não possui reservas ativas no momento.
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-3">
+      {activeBookings.map((booking: any) => {
+        const vessel = vessels?.find(v => v.id === booking.vesselId);
+        const bookingDate = new Date(booking.bookingDate);
+        const isPast = bookingDate < new Date();
+        
+        return (
+          <div
+            key={booking.id}
+            className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+          >
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Ship className="h-4 w-4 text-primary" />
+                <span className="font-semibold">{vessel?.name || 'Embarcação'}</span>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <Calendar className="h-3 w-3 inline mr-1" />
+                {bookingDate.toLocaleDateString('pt-BR', {
+                  weekday: 'long',
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </div>
+              {booking.notes && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Obs: {booking.notes}
+                </div>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <div className="text-right mr-2">
+                <div className="text-xs font-semibold text-green-600">
+                  Confirmada
+                </div>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleCancelBooking(booking.id)}
+                disabled={cancelBooking.isPending || isPast}
+              >
+                {cancelBooking.isPending ? "Cancelando..." : "Cancelar"}
+              </Button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function QuotaUsageSection() {
+  const { user } = useAuth();
+  const trpcAny = trpc as any;
+  
+  // Buscar quotas do usuário
+  const { data: myQuotas } = trpcAny.bookings?.myQuotas.useQuery() || { data: [] };
+  
+  // Buscar reservas do usuário
+  const { data: myBookings } = trpc.bookings.myBookings.useQuery();
+  
+  // Buscar embarcações
+  const { data: vessels } = trpc.vessels.list.useQuery();
+  
+  // Calcular uso de quotas por embarcação
+  const quotaUsage = useMemo(() => {
+    if (!myQuotas || !myBookings || !vessels) return [];
+    
+    // Agrupar quotas por embarcação
+    const quotasByVessel: Record<number, any[]> = {};
+    myQuotas.forEach((quota: any) => {
+      if (!quotasByVessel[quota.vesselId]) {
+        quotasByVessel[quota.vesselId] = [];
+      }
+      quotasByVessel[quota.vesselId].push(quota);
+    });
+    
+    // Calcular uso para cada embarcação
+    return Object.entries(quotasByVessel).map(([vesselId, quotas]) => {
+      const vessel = vessels.find(v => v.id === parseInt(vesselId));
+      const totalQuotas = quotas.length;
+      
+      // Contar reservas confirmadas ou usadas desta embarcação
+      const usedBookings = myBookings.filter(
+        (b: any) => b.vesselId === parseInt(vesselId) && 
+        (b.status === 'confirmed' || b.status === 'used')
+      ).length;
+      
+      return {
+        vesselId: parseInt(vesselId),
+        vesselName: vessel?.name || 'Desconhecida',
+        total: totalQuotas,
+        used: usedBookings,
+        percentage: totalQuotas > 0 ? (usedBookings / totalQuotas) * 100 : 0,
+      };
+    });
+  }, [myQuotas, myBookings, vessels]);
+  
+  if (!quotaUsage || quotaUsage.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Você ainda não possui quotas cadastradas.
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-4">
+      {quotaUsage.map((quota) => (
+        <div key={quota.vesselId} className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Ship className="h-5 w-5 text-primary" />
+              <span className="font-semibold">{quota.vesselName}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold">
+                {quota.used}/{quota.total}
+              </span>
+              {quota.used >= quota.total ? (
+                <XCircle className="h-5 w-5 text-red-500" />
+              ) : (
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+              )}
+            </div>
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${
+                quota.percentage >= 100 
+                  ? 'bg-red-500' 
+                  : quota.percentage >= 75 
+                  ? 'bg-orange-500' 
+                  : 'bg-green-500'
+              }`}
+              style={{ width: `${Math.min(quota.percentage, 100)}%` }}
+            />
+          </div>
+          
+          <div className="text-xs text-muted-foreground">
+            {quota.used >= quota.total 
+              ? 'Todas as quotas utilizadas' 
+              : `${quota.total - quota.used} quota${quota.total - quota.used !== 1 ? 's' : ''} disponíve${quota.total - quota.used !== 1 ? 'is' : 'l'}`
+            }
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -212,6 +420,17 @@ export default function Dashboard() {
           </Card>
         </div>
 
+        {/* Quota Usage by Vessel */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Uso de Quotas por Embarcação</CardTitle>
+            <CardDescription>Acompanhe quantas reservas você já utilizou em cada embarcação</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <QuotaUsageSection />
+          </CardContent>
+        </Card>
+
         {/* Monthly Usage Chart */}
         <Card className="mb-8">
           <CardHeader>
@@ -237,6 +456,17 @@ export default function Dashboard() {
                 );
               })}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Active Bookings */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Minhas Reservas Ativas</CardTitle>
+            <CardDescription>Visualize e gerencie suas reservas confirmadas</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ActiveBookingsSection />
           </CardContent>
         </Card>
 
