@@ -60,7 +60,7 @@ export default function Vistorias() {
   const [notes, setNotes] = useState("");
 
   const trpcAny = trpc as any;
-  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ days: 7 }) || { data: [] };
+  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({}) || { data: [] }; // Busca todas as reservas
   const { data: inspections, refetch } = trpcAny.inspections?.list.useQuery({}) || { data: [] };
   const { data: vessels } = trpc.vessels.list.useQuery();
 
@@ -245,7 +245,7 @@ export default function Vistorias() {
                   onValueChange={handleBookingChange}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma reserva recente" />
+                    <SelectValue placeholder="Selecione uma reserva" />
                   </SelectTrigger>
                   <SelectContent>
                     {recentBookings?.map((booking: any) => {

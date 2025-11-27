@@ -505,3 +505,25 @@
 - [x] Integrar envio automático ao criar vistoria (endpoint inspections.create)
 - [x] Testar geração de PDF e envio de email
 - [x] Verificar recebimento do email com anexo pelo admin
+
+
+## Correções Solicitadas (26/11/2025 - 20:15)
+
+### 1. Erro no Cadastro de Funcionários
+- [x] Investigar erro SQL ao cadastrar funcionário
+- [x] Corrigir query INSERT com vessel_ids (adicionado created_at e updated_at)
+- [x] Testar cadastro de funcionário com múltiplas embarcações
+
+### 2. Taxa de Abastecimento
+- [x] Adicionar taxa fixa de R$ 10,00 ao valor total do abastecimento
+- [x] Exibir separadamente: "Taxa de Abastecimento e Aplicativo: R$ 10,00"
+- [x] Atualizar cálculo do valor total (litros × preço + R$ 10)
+- [x] Atualizar interface para mostrar subtotal e taxa separadamente
+- [x] Atualizar backend para incluir taxa no total_cost
+
+### 3. Seleção de Reservas em Abastecimento e Vistorias
+- [x] Modificar endpoint bookings.getRecent para aceitar parâmetro de dias opcional
+- [x] Permitir buscar TODAS as reservas (passadas e futuras)
+- [x] Atualizar select de reservas em Abastecimento
+- [x] Atualizar select de reservas em Vistorias
+- [x] Testar seleção de reservas antigas

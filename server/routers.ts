@@ -233,35 +233,43 @@ export const appRouter = router({
 
   // Bookings
   bookings: router({
-    // Get recent bookings for fuel registration (Admin only)
+    // Get recent bookings for fuel registration and inspections (Admin only)
     getRecent: adminProcedure
-      .input(z.object({ days: z.number().default(7) }))
+      .input(z.object({ 
+        days: z.number().optional(), // Se não fornecido, retorna todas
+        includeUsed: z.boolean().default(false) // Incluir reservas já usadas
+      }))
       .query(async ({ input }) => {
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - input.days);
+        let query = `SELECT 
+          b.id,
+          b.vesselId,
+          b.startTime,
+          b.endTime,
+          b.status,
+          u.name as clientName,
+          u.email as clientEmail,
+          v.name as vesselName
+        FROM bookings b
+        JOIN users u ON b.userId = u.id
+        JOIN vessels v ON b.vesselId = v.id
+        WHERE (b.status = 'confirmed' OR b.status = 'used')`;
+        
+        const params: any[] = [];
+        
+        // Se days for fornecido, filtra por período
+        if (input.days !== undefined) {
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - input.days);
+          query += ' AND b.endTime >= ?';
+          params.push(cutoffDate.getTime());
+        }
+        
+        query += ' ORDER BY b.endTime DESC';
 
-        const result = await db.execute(
-          `SELECT 
-            b.id,
-            b.vesselId,
-            b.startTime,
-            b.endTime,
-            b.status,
-            u.name as clientName,
-            u.email as clientEmail,
-            v.name as vesselName
-          FROM bookings b
-          JOIN users u ON b.userId = u.id
-          JOIN vessels v ON b.vesselId = v.id
-          WHERE b.status = 'confirmed'
-            AND b.endTime >= ?
-          ORDER BY b.endTime DESC`,
-          [cutoffDate.getTime()]
-        );
-
+        const result = await db.execute(query, params);
         return result[0] as any[];
       }),
 
@@ -1028,8 +1036,9 @@ Nenhuma reserva foi afetada.
         const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds) : null;
 
         await db.execute(
-          'INSERT INTO employees (name, email, phone, vessel_ids, is_active) VALUES (?, ?, ?, ?, ?)',
-          [input.name, input.email, input.phone || null, vesselIdsJson, true]
+          `INSERT INTO employees (name, email, phone, vessel_ids, is_active, created_at, updated_at) 
+           VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+          [input.name, input.email, input.phone || null, vesselIdsJson, 1]
         );
 
         return { success: true };
@@ -1128,7 +1137,9 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const totalCost = input.liters * input.pricePerLiter;
+        const SERVICE_FEE = 10.00; // Taxa de abastecimento e aplicativo
+        const fuelCost = input.liters * input.pricePerLiter;
+        const totalCost = fuelCost + SERVICE_FEE;
 
         await db.execute(
           `INSERT INTO fuel_records (booking_id, vessel_id, liters, price_per_liter, total_cost, recorded_by, notes, recorded_at)

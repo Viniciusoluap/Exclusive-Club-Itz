@@ -19,7 +19,7 @@ export default function Abastecimento() {
   const [notes, setNotes] = useState("");
 
   const trpcAny = trpc as any;
-  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ days: 7 }) || { data: [] };
+  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({}) || { data: [] }; // Busca todas as reservas
   const { data: fuelRecords, refetch } = trpcAny.fuelRecords?.list.useQuery({}) || { data: [] };
   const { data: vessels } = trpc.vessels.list.useQuery();
 
@@ -64,8 +64,14 @@ export default function Abastecimento() {
     });
   };
 
-  const totalCost = liters && pricePerLiter 
-    ? (parseFloat(liters) * parseFloat(pricePerLiter)).toFixed(2)
+  const SERVICE_FEE = 10.00; // Taxa de abastecimento e aplicativo
+  
+  const subtotal = liters && pricePerLiter 
+    ? parseFloat(liters) * parseFloat(pricePerLiter)
+    : 0;
+  
+  const totalCost = liters && pricePerLiter
+    ? (subtotal + SERVICE_FEE).toFixed(2)
     : "0.00";
 
   return (
@@ -159,7 +165,7 @@ export default function Abastecimento() {
                   onValueChange={(value) => setSelectedBookingId(parseInt(value))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma reserva recente" />
+                    <SelectValue placeholder="Selecione uma reserva" />
                   </SelectTrigger>
                   <SelectContent>
                     {recentBookings?.map((booking: any) => {
@@ -203,9 +209,17 @@ export default function Abastecimento() {
               </div>
 
               {liters && pricePerLiter && (
-                <div className="p-4 bg-primary/10 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">Valor Total:</span>
+                <div className="p-4 bg-primary/10 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Combustível ({liters}L × R$ {parseFloat(pricePerLiter).toFixed(2)}):</span>
+                    <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Taxa de Abastecimento e Aplicativo:</span>
+                    <span className="font-medium">R$ {SERVICE_FEE.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t pt-2 flex items-center justify-between">
+                    <span className="font-semibold">Valor Total:</span>
                     <span className="text-2xl font-bold text-primary">R$ {totalCost}</span>
                   </div>
                 </div>
