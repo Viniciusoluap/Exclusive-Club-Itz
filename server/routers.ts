@@ -754,14 +754,20 @@ export const appRouter = router({
         });
 
         // Criar manutenção
-        await db.createMaintenance({
+        const maintenanceData: any = {
           vesselId: input.vesselId,
           vesselName: vessel.name,
           startDate: input.startDate,
           endDate: input.endDate,
-          description: input.description,
           status: input.status || 'scheduled',
-        });
+        };
+        
+        // Apenas adicionar description se fornecida
+        if (input.description) {
+          maintenanceData.description = input.description;
+        }
+        
+        await db.createMaintenance(maintenanceData);
 
         // Cancelar reservas conflitantes
         const cancelledBookings = [];

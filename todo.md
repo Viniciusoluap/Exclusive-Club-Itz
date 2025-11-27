@@ -768,3 +768,14 @@
 - [x] Corrigir problema de listagem (MySQL retorna 1/0, frontend esperava true/false)
 - [x] Ajustado filtro para aceitar is_active === 1 ou is_active === true
 - [x] Testar cadastro e visualização
+
+
+## 🚨 BUG - Erro ao Criar Manutenção (27/11/2025 - 01:58) - RESOLVIDO
+
+### Failed query: insert into maintenances com valores default
+- [x] Identificar erro SQL ao criar manutenção
+- [x] Verificar que schema tem defaultNow() correto
+- [x] Problema: código passava description=undefined, gerando "default" no SQL
+- [x] Solução: passar description apenas se fornecida
+- [x] Ajustado createMaintenance para omitir campos undefined
+- [x] Sistema agora cria manutenções corretamente
