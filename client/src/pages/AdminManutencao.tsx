@@ -39,7 +39,13 @@ export default function AdminManutencao() {
   const utils = trpc.useUtils();
 
   // Fetch data
-  const { data: vessels } = trpc.vessels.listAll.useQuery();
+  const { data: vessels, refetch: refetchVessels } = trpc.vessels.listAll.useQuery(undefined, {
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+  });
+  
+  // Debug: log vessels data
+  console.log('[DEBUG] Vessels data:', vessels);
   // @ts-ignore - maintenances router exists but TypeScript types not regenerated
   const { data: maintenances, isLoading: maintenancesLoading } = trpc.maintenances.list.useQuery();
 
@@ -332,11 +338,15 @@ export default function AdminManutencao() {
                   <SelectValue placeholder="Selecione uma embarcação" />
                 </SelectTrigger>
                 <SelectContent>
-                  {vessels?.map((vessel) => (
-                    <SelectItem key={vessel.id} value={vessel.id.toString()}>
-                      {vessel.name}
-                    </SelectItem>
-                  ))}
+                  {vessels && vessels.length > 0 ? (
+                    vessels.map((vessel: any) => (
+                      <SelectItem key={vessel.id} value={vessel.id.toString()}>
+                        {vessel.name} (ID: {vessel.id})
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-sm text-muted-foreground">Nenhuma embarcação disponível</div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
