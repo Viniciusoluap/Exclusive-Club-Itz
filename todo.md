@@ -454,32 +454,33 @@
 ## Implementação Atual - Relatórios PDF de Vistorias (26/11/2025 - 22:30)
 
 ### Instalação e Setup
-- [ ] Instalar biblioteca puppeteer para geração de PDF
-- [ ] Configurar puppeteer no servidor
+- [x] Instalar biblioteca puppeteer para geração de PDF
+- [x] Configurar puppeteer no servidor
 
 ### Template HTML
-- [ ] Criar template HTML profissional
-- [ ] Incluir logo e branding do Exclusive Club
-- [ ] Formatar campos de aprovação/reprovação com ícones
-- [ ] Incluir data da vistoria e nome do usuário
-- [ ] Adicionar observações e assinatura
+- [x] Criar template HTML profissional
+- [x] Incluir logo e branding do Exclusive Club
+- [x] Formatar campos de aprovação/reprovação com ícones
+- [x] Incluir data da vistoria e nome do usuário
+- [x] Adicionar observações e taxa de aprovação
 
 ### Geração de PDF
-- [ ] Criar função generateInspectionPDF
-- [ ] Renderizar template com dados da vistoria
-- [ ] Gerar PDF usando puppeteer
-- [ ] Salvar PDF temporariamente
+- [x] Criar função generateInspectionPDF
+- [x] Renderizar template com dados da vistoria
+- [x] Gerar PDF usando puppeteer
+- [x] Retornar PDF como Buffer
 
 ### Envio por Email
-- [ ] Criar template de email com PDF anexado
-- [ ] Enviar para admin automaticamente após vistoria
-- [ ] Incluir resumo no corpo do email
+- [x] Criar template de email com resumo da vistoria
+- [x] Integrar com endpoint de criação de vistoria
+- [x] Gerar PDF automaticamente após cada vistoria
+- [ ] Implementar envio real com anexo (pendente suporte a attachments)
 
 ### Testes
-- [ ] Testar geração de PDF do Jet
-- [ ] Testar geração de PDF da Lancha
-- [ ] Testar envio de email com anexo
-- [ ] Validar formatação do PDF
+- [ ] Testar geração de PDF do Jet - PENDENTE
+- [ ] Testar geração de PDF da Lancha - PENDENTE
+- [ ] Testar envio de email com anexo - PENDENTE
+- [ ] Validar formatação do PDF - PENDENTE
 
 
 ## Bug - Cadastro de Funcionários (26/11/2025 - 22:35)
