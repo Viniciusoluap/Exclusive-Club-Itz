@@ -144,20 +144,33 @@ function QuotaUsageSection() {
     // Calcular uso para cada embarcação
     return Object.entries(quotasByVessel).map(([vesselId, quotas]) => {
       const vessel = vessels.find(v => v.id === parseInt(vesselId));
-      const totalQuotas = quotas.length;
       
-      // Contar reservas confirmadas ou usadas desta embarcação
-      const usedBookings = myBookings.filter(
-        (b: any) => b.vesselId === parseInt(vesselId) && 
-        (b.status === 'confirmed' || b.status === 'used')
-      ).length;
+      // Calcular total de reservas permitidas no mês
+      // Cota inteira = 2 reservas/mês, Meia cota = 1 reserva/mês
+      const totalReservationsAllowed = quotas.reduce((sum: number, quota: any) => {
+        return sum + (quota.quotaType === 'full' ? 2 : 1);
+      }, 0);
+      
+      // Pegar início e fim do mês atual
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      
+      // Contar reservas confirmadas ou usadas desta embarcação NO MÊS ATUAL
+      const usedBookings = myBookings.filter((b: any) => {
+        const bookingDate = new Date(b.bookingDate);
+        return b.vesselId === parseInt(vesselId) && 
+               (b.status === 'confirmed' || b.status === 'used') &&
+               bookingDate >= startOfMonth &&
+               bookingDate <= endOfMonth;
+      }).length;
       
       return {
         vesselId: parseInt(vesselId),
         vesselName: vessel?.name || 'Desconhecida',
-        total: totalQuotas,
+        total: totalReservationsAllowed,
         used: usedBookings,
-        percentage: totalQuotas > 0 ? (usedBookings / totalQuotas) * 100 : 0,
+        percentage: totalReservationsAllowed > 0 ? (usedBookings / totalReservationsAllowed) * 100 : 0,
       };
     });
   }, [myQuotas, myBookings, vessels]);

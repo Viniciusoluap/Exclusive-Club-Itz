@@ -176,9 +176,9 @@ export default function Reservas() {
     });
     if (hasMaintenance) return 'maintenance';
     
-    // Verificar se é segunda ou terça (não abrimos)
+    // Verificar se é segunda-feira (não abrimos)
     const dayOfWeek = date.getDay();
-    if (dayOfWeek === 1 || dayOfWeek === 2) return 'closed';
+    if (dayOfWeek === 1) return 'closed';
     
     // Verificar se é passado
     const today = new Date();
