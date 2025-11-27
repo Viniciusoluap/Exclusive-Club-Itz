@@ -1285,7 +1285,35 @@ Nenhuma reserva foi afetada.
           ]
         );
 
-        // TODO: Gerar PDF e enviar email ao admin
+        // Gerar PDF e enviar email ao admin
+        try {
+          const { generateInspectionPDF, sendInspectionReportEmail } = await import('./_core/inspectionPDF');
+          
+          const vessel = await db.execute(
+            'SELECT name FROM vessels WHERE id = ?',
+            [input.vesselId]
+          ) as any[];
+          
+          const inspectionData = {
+            id: 0, // Será preenchido depois
+            vesselName: vessel[0]?.name || 'Desconhecida',
+            vesselType: input.vesselType,
+            clientName: input.clientName,
+            inspectionDate: new Date(input.inspectionDate).toISOString(),
+            inspectedBy: ctx.user.name || ctx.user.email || 'Admin',
+            formData: input.formData as Record<string, 'approved' | 'disapproved'>,
+            notes: input.notes,
+          };
+
+          const pdfBuffer = await generateInspectionPDF(inspectionData);
+          await sendInspectionReportEmail(inspectionData, pdfBuffer);
+          
+          console.log('[Inspections] PDF gerado e email enviado com sucesso');
+        } catch (error) {
+          console.error('[Inspections] Erro ao gerar PDF:', error);
+          // Não falha a vistoria se o PDF falhar
+        }
+
         return { success: true };
       }),
 
