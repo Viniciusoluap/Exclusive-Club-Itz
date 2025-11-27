@@ -1036,8 +1036,8 @@ Nenhuma reserva foi afetada.
         const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds) : null;
 
         await db.execute(
-          `INSERT INTO employees (name, email, phone, vessel_ids, is_active, created_at, updated_at) 
-           VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+          `INSERT INTO employees (name, email, phone, vessel_ids, is_active) 
+           VALUES (?, ?, ?, ?, ?)`,
           [input.name, input.email, input.phone || null, vesselIdsJson, 1]
         );
 
