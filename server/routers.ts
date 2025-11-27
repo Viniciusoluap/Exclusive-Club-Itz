@@ -72,7 +72,7 @@ export const appRouter = router({
         phone: z.string().optional(),
         quotas: z.array(z.object({
           vesselId: z.number(),
-          quotaNumber: z.number().min(1).max(7), // 1-7 para lancha, 1-6 para jetski
+          quotaNumber: z.number().min(1).max(10), // 1-7 para lancha, 1-6 para jetski
           quotaType: z.enum(["full", "half"]),
         })),
       }))
@@ -82,18 +82,18 @@ export const appRouter = router({
           throw new TRPCError({ code: 'CONFLICT', message: 'Email já cadastrado' });
         }
         
-        // Validate quota numbers based on vessel type
+        // Validate quota numbers based on vessel quotaCount
         for (const quota of input.quotas) {
           const vessel = await db.getVesselById(quota.vesselId);
           if (!vessel) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Embarcação não encontrada' });
           }
           
-          const maxQuota = vessel.type === 'lancha' ? 7 : 6;
+          const maxQuota = vessel.quotaCount || 10;
           if (quota.quotaNumber < 1 || quota.quotaNumber > maxQuota) {
             throw new TRPCError({ 
               code: 'BAD_REQUEST', 
-              message: `Número de cota inválido para ${vessel.type}. Permitido: 1-${maxQuota}` 
+              message: `Número de cota inválido. Permitido: 1-${maxQuota}` 
             });
           }
         }
@@ -145,7 +145,7 @@ export const appRouter = router({
         isActive: z.boolean().optional(),
         quotas: z.array(z.object({
           vesselId: z.number(),
-          quotaNumber: z.number().min(1).max(7),
+          quotaNumber: z.number().min(1).max(10),
           quotaType: z.enum(["full", "half"]),
         })).optional(),
       }))

@@ -779,3 +779,14 @@
 - [x] Solução: passar description apenas se fornecida
 - [x] Ajustado createMaintenance para omitir campos undefined
 - [x] Sistema agora cria manutenções corretamente
+
+
+## 🚨 BUG - Erro ao Cadastrar Cliente com Cota #8 (27/11/2025 - 02:14) - RESOLVIDO
+
+### Sistema mostra botões #8 mas validação permite apenas até #7
+- [x] Investigar por que botões #8 estão sendo renderizados (quotaCount=8 no banco)
+- [x] Verificar quotaCount das embarcações no banco (confirmado: 8)
+- [x] Aumentar validação para max(10) conforme solicitado pelo usuário
+- [x] Ajustar validação para usar vessel.quotaCount ao invés de tipo fixo
+- [x] Sistema agora aceita até 10 cotas para qualquer embarcação
+- [x] Testar cadastro de cliente

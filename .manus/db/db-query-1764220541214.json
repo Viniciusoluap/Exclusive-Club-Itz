@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, name, type, quota_count FROM vessels",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, name, type, quota_count FROM vessels",
+  "rows": [
+    {
+      "id": "3",
+      "name": "JETSKI SEADOO GTI SE 130HP",
+      "type": "jetski",
+      "quota_count": "6"
+    },
+    {
+      "id": "4",
+      "name": "Focker 215 150HP",
+      "type": "lancha",
+      "quota_count": "7"
+    },
+    {
+      "id": "660001",
+      "name": "NOVO TESTE NAVIO",
+      "type": "lancha",
+      "quota_count": "8"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\ttype\tquota_count\n3\tJETSKI SEADOO GTI SE 130HP\tjetski\t6\n4\tFocker 215 150HP\tlancha\t7\n660001\tNOVO TESTE NAVIO\tlancha\t8\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}
