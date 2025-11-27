@@ -129,3 +129,65 @@ export const reviews = mysqlTable("reviews", {
 
 export type Review = typeof reviews.$inferSelect;
 export type InsertReview = typeof reviews.$inferInsert;
+
+
+/**
+ * Employees table - stores employee information with limited access
+ * Employees can view future bookings, create maintenances, and view reports
+ * Cannot access clients, vessels, or past bookings
+ */
+export const employees = mysqlTable("employees", {
+  id: int("id").autoincrement().primaryKey(),
+  name: text("name").notNull(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  phone: varchar("phone", { length: 20 }),
+  vesselIds: text("vessel_ids"), // JSON array of vessel IDs they are responsible for
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Employee = typeof employees.$inferSelect;
+export type InsertEmployee = typeof employees.$inferInsert;
+
+/**
+ * Fuel Records table - stores fuel consumption and charges per booking
+ * Admin only - tracks fuel used and amount charged to client
+ */
+export const fuelRecords = mysqlTable("fuel_records", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("booking_id").notNull(), // references bookings.id
+  vesselId: int("vessel_id").notNull(), // references vessels.id
+  vesselName: text("vessel_name").notNull(),
+  clientEmail: varchar("client_email", { length: 320 }).notNull(),
+  clientName: text("client_name").notNull(),
+  liters: int("liters").notNull(), // Litros abastecidos
+  pricePerLiter: int("price_per_liter").notNull(), // Preço por litro em centavos
+  totalAmount: int("total_amount").notNull(), // Valor total em centavos
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type FuelRecord = typeof fuelRecords.$inferSelect;
+export type InsertFuelRecord = typeof fuelRecords.$inferInsert;
+
+/**
+ * Inspections table - stores vessel inspection records
+ * Two types: jetski and lancha, each with different checklist
+ */
+export const inspections = mysqlTable("inspections", {
+  id: int("id").autoincrement().primaryKey(),
+  bookingId: int("booking_id"), // references bookings.id (optional - can be standalone inspection)
+  vesselId: int("vessel_id").notNull(), // references vessels.id
+  vesselName: text("vessel_name").notNull(),
+  vesselType: mysqlEnum("vessel_type", ["lancha", "jetski"]).notNull(),
+  clientName: text("client_name").notNull(),
+  inspectionData: text("inspection_data").notNull(), // JSON with all checklist items
+  observations: text("observations"),
+  status: mysqlEnum("status", ["approved", "rejected"]).notNull(), // Overall status
+  inspectedBy: text("inspected_by"), // Name of employee who performed inspection
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Inspection = typeof inspections.$inferSelect;
+export type InsertInspection = typeof inspections.$inferInsert;
