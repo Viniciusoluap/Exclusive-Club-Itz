@@ -417,3 +417,35 @@
 - [ ] Testar geração de relatório - PENDENTE
 - [ ] Testar envio de email - PENDENTE
 - [x] Validar dados salvos
+
+
+## Implementação Atual - Redesign Página de Reservas (26/11/2025 - 22:15)
+
+### Análise do Design
+- [x] Analisar print fornecido (estilo calendário mensal)
+- [x] Identificar elementos: navegação mensal, dias da semana, eventos por dia
+- [x] Identificar informações: horário, cliente, embarcação
+
+### Novo Layout
+- [x] Criar header com navegação mensal (setas + dropdown de mês)
+- [x] Grid de dias da semana (Dom, 2ª, 3ª, 4ª, 5ª, 6ª, Sáb)
+- [x] Cards de eventos por dia com horário visível
+- [x] Cores diferentes por embarcação
+- [x] Indicador de "Sem eventos" para dias vazios
+- [x] Botão flutuante "+" para nova reserva
+
+### Funcionalidades Mantidas
+- [x] Criar nova reserva
+- [x] Visualizar detalhes da reserva
+- [x] Cancelar reserva
+- [x] Navegar entre meses
+- [x] Responsividade mobile
+- [x] Indicador de data atual (borda azul)
+- [x] Datas indisponíveis (segundas e manutenções)
+
+### Testes
+- [x] Testar criação de reserva
+- [x] Testar navegação entre meses
+- [x] Testar responsividade
+- [x] Validar todas as funcionalidades existentes
+- [x] 37 testes passando (100%)
