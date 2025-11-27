@@ -445,3 +445,70 @@ Por favor, não responda este email.
 
   return true;
 }
+
+/**
+ * Envia relatório de vistoria em PDF para o admin
+ */
+export async function sendInspectionReportToAdmin(data: {
+  vesselName: string;
+  clientName: string;
+  inspectionDate: Date;
+  pdfBuffer: Buffer;
+  pdfFilename: string;
+}): Promise<boolean> {
+  const dateStr = data.inspectionDate.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const subject = `Relatório de Vistoria - ${data.vesselName}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb;">
+      <div style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); padding: 40px 20px; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">Exclusive Club</h1>
+      </div>
+      
+      <div style="background-color: white; padding: 40px 30px; border-radius: 8px; margin: 20px;">
+        <h2 style="color: #0891b2; margin-top: 0;">📋 Relatório de Vistoria</h2>
+        
+        <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+          Uma nova vistoria foi realizada e o relatório em PDF está anexado a este email.
+        </p>
+        
+        <div style="background-color: #f0f9ff; border-left: 4px solid #0891b2; padding: 20px; margin: 25px 0; border-radius: 4px;">
+          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${data.vesselName}</p>
+          <p style="margin: 8px 0; color: #1f2937;"><strong>👤 Cliente:</strong> ${data.clientName}</p>
+          <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data da Vistoria:</strong> ${dateStr}</p>
+        </div>
+        
+        <p style="font-size: 16px; color: #374151; line-height: 1.6;">
+          O relatório completo com todos os itens verificados está disponível no arquivo PDF anexado.
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+        
+        <p style="font-size: 14px; color: #6b7280; text-align: center;">
+          Sistema de Gestão<br>
+          <strong>Exclusive Club</strong>
+        </p>
+      </div>
+    </div>
+  `;
+
+  console.log(`[Email] Enviando relatório de vistoria com PDF anexado para admin`);
+  
+  return await sendEmail({
+    to: process.env.ADMIN_EMAIL || 'atendimento@exclusiveclubitz.com',
+    subject,
+    html,
+    attachments: [
+      {
+        filename: data.pdfFilename,
+        content: data.pdfBuffer,
+        contentType: 'application/pdf'
+      }
+    ]
+  });
+}

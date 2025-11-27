@@ -494,3 +494,14 @@
 - [x] Adicionar botão de voltar na página de abastecimento
 - [x] Adicionar botão de voltar na página de vistorias
 - [x] Testar todas as páginas
+
+
+## Implementação de Envio de PDF de Vistorias por Email (26/11/2025 - 20:06)
+
+### Geração e Envio Automático de Relatórios PDF
+- [x] Adicionar suporte a attachments na interface SendEmailOptions
+- [x] Atualizar função sendEmail para enviar anexos
+- [x] Implementar envio real de email com PDF anexado em inspectionPDF.ts
+- [x] Integrar envio automático ao criar vistoria (endpoint inspections.create)
+- [x] Testar geração de PDF e envio de email
+- [x] Verificar recebimento do email com anexo pelo admin
