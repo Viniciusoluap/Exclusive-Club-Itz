@@ -67,7 +67,7 @@ export const appRouter = router({
 
     create: adminProcedure
       .input(z.object({
-        email: z.string().email(),
+        email: z.string().min(1).regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email inválido"),
         name: z.string().min(1),
         phone: z.string().optional(),
         quotas: z.array(z.object({
@@ -139,7 +139,7 @@ export const appRouter = router({
     update: adminProcedure
       .input(z.object({
         id: z.number(),
-        email: z.string().email().optional(),
+        email: z.string().min(1).regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email inválido").optional(),
         name: z.string().min(1).optional(),
         phone: z.string().optional(),
         isActive: z.boolean().optional(),
@@ -480,7 +480,7 @@ export const appRouter = router({
     // Create booking for any client (admin only, no limits)
     createForClient: adminProcedure
       .input(z.object({
-        clientEmail: z.string().email(),
+        clientEmail: z.string().min(1).regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email inválido"),
         vesselId: z.number(),
         bookingDate: z.number(),
         notes: z.string().optional(),
@@ -1025,7 +1025,7 @@ Nenhuma reserva foi afetada.
     create: adminProcedure
       .input(z.object({
         name: z.string().min(1),
-        email: z.string().email(),
+        email: z.string().min(1).regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email inválido"),
         phone: z.string().optional(),
         vesselIds: z.array(z.number()).optional(),
       }))
@@ -1065,7 +1065,7 @@ Nenhuma reserva foi afetada.
       .input(z.object({
         id: z.number(),
         name: z.string().min(1).optional(),
-        email: z.string().email().optional(),
+        email: z.string().min(1).regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email inválido").optional(),
         phone: z.string().optional(),
         vesselIds: z.array(z.number()).optional(),
         isActive: z.boolean().optional(),
