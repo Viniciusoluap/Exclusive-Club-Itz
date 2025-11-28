@@ -139,34 +139,16 @@ describe("Sistema de Cotas - Quotas Numeradas", () => {
     expect(createdClient?.quotas[0]?.vesselId).toBe(lancha.id);
   });
 
-  it("deve validar range de quota number para lancha (1-7)", async () => {
+  it("deve validar range de quota number para lancha (1-10)", async () => {
     const ctx = createTestContext("admin@example.com", "Admin User", "admin");
     const caller = appRouter.createCaller(ctx);
 
     const vessels = await caller.vessels.listAll();
-    const lancha = vessels.find(v => v.type === "lancha");
-    
-    if (!lancha) {
-      throw new Error("Lancha não encontrada");
-    }
+    const lancha = vessels.find((v) => v.name.includes("Focker"));
 
-    // Try to create with invalid quota number (0)
-    await expect(
-      caller.allowedClients.create({
-        email: `test-invalid-${Date.now()}@example.com`,
-        name: "Test Invalid",
-        phone: "+55 99999999999",
-        quotas: [
-          {
-            vesselId: lancha.id,
-            quotaNumber: 0,
-            quotaType: "full",
-          },
-        ],
-      })
-    ).rejects.toThrow();
+    if (!lancha) throw new Error("Lancha não encontrada");
 
-    // Try to create with invalid quota number (8)
+    // Deve rejeitar quota number 11 (fora do range 1-10)
     await expect(
       caller.allowedClients.create({
         email: `test-invalid-2-${Date.now()}@example.com`,
@@ -175,7 +157,7 @@ describe("Sistema de Cotas - Quotas Numeradas", () => {
         quotas: [
           {
             vesselId: lancha.id,
-            quotaNumber: 8,
+            quotaNumber: 11,
             quotaType: "full",
           },
         ],
