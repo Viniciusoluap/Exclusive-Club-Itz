@@ -433,17 +433,6 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Quota Usage by Vessel */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Uso de Quotas por Embarcação</CardTitle>
-            <CardDescription>Acompanhe quantas reservas você já utilizou em cada embarcação</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <QuotaUsageSection />
-          </CardContent>
-        </Card>
-
         {/* Monthly Usage Chart */}
         <Card className="mb-8">
           <CardHeader>
