@@ -169,10 +169,15 @@ export default function Reservas() {
     const hasBooking = dayBookings.some((b: any) => b.vesselId === vesselId);
     if (hasBooking) return 'booked';
     
-    // Verificar manutenção
+    // Verificar manutenção (considera intervalo completo start_date até end_date)
     const hasMaintenance = monthMaintenances?.some((m: any) => {
-      const maintenanceDate = new Date(m.scheduled_date);
-      return maintenanceDate.toDateString() === date.toDateString() && m.vessel_id === vesselId;
+      const startDate = new Date(m.start_date);
+      const endDate = new Date(m.end_date);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      const checkDate = new Date(date);
+      checkDate.setHours(12, 0, 0, 0);
+      return checkDate >= startDate && checkDate <= endDate && m.vessel_id === vesselId;
     });
     if (hasMaintenance) return 'maintenance';
     
@@ -295,6 +300,75 @@ export default function Reservas() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 space-y-8">
+        {/* Minhas Reservas Ativas */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Minhas Reservas Ativas</CardTitle>
+            <p className="text-sm text-muted-foreground">Visualize e gerencie suas reservas confirmadas</p>
+          </CardHeader>
+          <CardContent>
+            {bookings && bookings.filter((b: any) => b.status === 'confirmed' && new Date(b.date).getTime() >= Date.now()).length > 0 ? (
+              <div className="space-y-3">
+                {bookings.filter((b: any) => b.status === 'confirmed' && new Date(b.date).getTime() >= Date.now()).map((booking: any) => (
+                  <div key={booking.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => { setSelectedBooking(booking); setShowDetailsDialog(true); }}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold">{userVessels.find(v => v.id === booking.vesselId)?.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(booking.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Confirmada</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">Você não possui reservas ativas no momento.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Uso de Quotas por Embarcação */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Uso de Quotas por Embarcação</CardTitle>
+            <p className="text-sm text-muted-foreground">Acompanhe quantas reservas você já utilizou em cada embarcação</p>
+          </CardHeader>
+          <CardContent>
+            {userVessels.length > 0 ? (
+              <div className="space-y-4">
+                {userVessels.map((vessel) => {
+                  const totalQuotas = myQuotas?.filter((q: any) => q.vesselId === vessel.id).reduce((sum: number, q: any) => sum + (q.quotaType === 'inteira' ? 2 : 1), 0) || 0;
+                  const usedQuotas = bookings?.filter((b: any) => b.vesselId === vessel.id && b.status === 'confirmed' && new Date(b.date).getFullYear() === new Date().getFullYear()).length || 0;
+                  const percentage = totalQuotas > 0 ? (usedQuotas / totalQuotas) * 100 : 0;
+                  
+                  return (
+                    <div key={vessel.id}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">🚤</span>
+                          <span className="font-semibold">{vessel.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-2xl font-bold">{usedQuotas}/{totalQuotas}</span>
+                          <span className="ml-2 text-green-600">✓</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div className="bg-green-500 h-2.5 rounded-full transition-all" style={{ width: `${percentage}%` }}></div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{totalQuotas - usedQuotas} quotas disponíveis</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">Você não possui quotas cadastradas.</p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Month Navigation */}
         <div className="flex items-center justify-center gap-2">
           <Button
@@ -331,30 +405,6 @@ export default function Reservas() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-
-        {/* Legenda Global */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap gap-4 justify-center text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-green-500"></div>
-                <span>Disponível</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-red-500"></div>
-                <span>Reservado</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-orange-500"></div>
-                <span>Manutenção</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-gray-400"></div>
-                <span>Não Abrimos</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Calendários por Embarcação */}
         {userVessels.length === 0 ? (
@@ -429,6 +479,30 @@ export default function Reservas() {
             </Card>
           ))
         )}
+
+        {/* Legenda Global - Abaixo dos Calendários */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-wrap gap-4 justify-center text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-green-500"></div>
+                <span>Disponível</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-red-500"></div>
+                <span>Reservado</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-orange-500"></div>
+                <span>Manutenção</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-gray-400"></div>
+                <span>Não Abrimos</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Booking Dialog */}
