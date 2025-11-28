@@ -918,3 +918,22 @@
 ✅ **TODAS AS CORREÇÕES IMPLEMENTADAS E TESTADAS COM SUCESSO!**
 ✅ **Sistema funcionando 100% conforme solicitado pelo usuário**
 ✅ **Pronto para checkpoint e entrega**
+
+
+## Correção de Cores do Calendário (28/11/2025 - 08:50) - RESOLVIDO ✅
+
+### Problema: Lógica de cores incorreta
+- [x] Calendário estava mostrando verde para minhas reservas
+- [x] Deve mostrar vermelho para TODAS as reservas (minhas + outros usuários)
+- [x] Laranja apenas para manutenção
+- [x] Cinza para passado e segundas-feiras
+- [x] Branco/claro para disponível
+
+### Correção implementada:
+- [x] Ajustada lógica em Reservas.tsx
+- [x] Vermelho: qualquer reserva (não importa o usuário) ✓
+- [x] Branco: disponível ✓
+- [x] Laranja: manutenção ✓
+- [x] Cinza: passado/segunda ✓
+- [x] Testado visualmente e validado ✓
+- [x] Legenda atualizada corretamente ✓
