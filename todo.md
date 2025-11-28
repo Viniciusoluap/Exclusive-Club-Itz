@@ -937,3 +937,23 @@
 - [x] Cinza: passado/segunda ✓
 - [x] Testado visualmente e validado ✓
 - [x] Legenda atualizada corretamente ✓
+
+
+## Bugs Reportados - Minhas Reservas Ativas (28/11/2025 - 09:10) - RESOLVIDO ✅
+
+### 1. Botão Cancelar não aparece na lista - RESOLVIDO ✅
+- [x] Lista de "Minhas Reservas Ativas" não mostra botão de cancelar
+- [x] Atualmente só exibe: embarcação, data, status "Confirmada"
+- [x] Adicionar botão vermelho "Cancelar" visível na lista
+- [x] Botão deve aparecer à direita de cada reserva
+- [x] Implementado AlertDialog de confirmação antes de cancelar
+- [x] Botão funcional e testado ✓
+
+### 2. Dialog mostrando "Invalid Date" - RESOLVIDO ✅
+- [x] Dialog de detalhes da reserva mostra "Invalid Date" para data e horário
+- [x] Deveria mostrar: "29 de novembro de 2025" e "10:00 - 19:00"
+- [x] Corrigir formatação de data usando bookingDate
+- [x] Corrigir exibição de horário fixo (10:00 - 19:00)
+- [x] Data formatada corretamente: "17 de dezembro de 2025" ✓
+- [x] Horário fixo exibido: "10:00 - 19:00" ✓
+- [x] Testado e validado visualmente ✓

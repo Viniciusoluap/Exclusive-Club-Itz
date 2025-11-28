@@ -10,6 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
@@ -52,6 +62,7 @@ export default function Reservas() {
   }, [weather]);
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
   const utils = trpc.useUtils();
@@ -116,6 +127,7 @@ export default function Reservas() {
     onSuccess: () => {
       toast.success("Reserva cancelada com sucesso!");
       setShowDetailsDialog(false);
+      setShowCancelDialog(false);
       setSelectedBooking(null);
       refetch();
     },
@@ -313,15 +325,28 @@ export default function Reservas() {
             {myActiveBookings && myActiveBookings.filter((b: any) => b.status === 'confirmed' && new Date(b.bookingDate).getTime() >= Date.now()).length > 0 ? (
               <div className="space-y-3">
                 {myActiveBookings.filter((b: any) => b.status === 'confirmed' && new Date(b.bookingDate).getTime() >= Date.now()).map((booking: any) => (
-                  <div key={booking.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => { setSelectedBooking(booking); setShowDetailsDialog(true); }}>
-                    <div className="flex justify-between items-start">
-                      <div>
+                  <div key={booking.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex-1 cursor-pointer" onClick={() => { setSelectedBooking(booking); setShowDetailsDialog(true); }}>
                         <p className="font-semibold">{booking.vesselName}</p>
                         <p className="text-sm text-muted-foreground">
                           {new Date(booking.bookingDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                         </p>
                       </div>
-                      <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Confirmada</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Confirmada</span>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedBooking(booking);
+                            setShowCancelDialog(true);
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -591,15 +616,13 @@ export default function Reservas() {
               <div>
                 <span className="text-sm font-medium">Data:</span>
                 <p className="text-sm text-muted-foreground">
-                  {new Date(selectedBooking.startTime).toLocaleDateString('pt-BR')}
+                  {new Date(selectedBooking.bookingDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </p>
               </div>
               <div>
                 <span className="text-sm font-medium">Horário:</span>
                 <p className="text-sm text-muted-foreground">
-                  {new Date(selectedBooking.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                  {' - '}
-                  {new Date(selectedBooking.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  10:00 - 19:00
                 </p>
               </div>
               {selectedBooking.notes && (
@@ -628,6 +651,33 @@ export default function Reservas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Alert Dialog de Cancelamento */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar Reserva</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja cancelar esta reserva? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Não, manter reserva</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (selectedBooking) {
+                  cancelBooking.mutate({ id: selectedBooking.id });
+                }
+              }}
+              disabled={cancelBooking.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {cancelBooking.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Sim, cancelar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
