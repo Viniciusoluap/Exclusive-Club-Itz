@@ -1,0 +1,100 @@
+{
+  "query": "SELECT b.id, b.booking_date, b.status, b.vessel_id, v.name as vessel_name, b.client_email, b.client_name\nFROM bookings b\nJOIN vessels v ON b.vessel_id = v.id\nWHERE b.booking_date >= 1732752000000\nORDER BY b.booking_date DESC\nLIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT b.id, b.booking_date, b.status, b.vessel_id, v.name as vessel_name, b.client_email, b.client_name\nFROM bookings b\nJOIN vessels v ON b.vessel_id = v.id\nWHERE b.booking_date >= 1732752000000\nORDER BY b.booking_date DESC\nLIMIT 10;",
+  "rows": [
+    {
+      "id": "450001",
+      "booking_date": "1766890800000",
+      "status": "cancelled",
+      "vessel_id": "4",
+      "vessel_name": "Focker 215 150HP",
+      "client_email": "via.vips@hotmail.com",
+      "client_name": "Erisvaldo Silva"
+    },
+    {
+      "id": "480001",
+      "booking_date": "1765594800000",
+      "status": "confirmed",
+      "vessel_id": "4",
+      "vessel_name": "Focker 215 150HP",
+      "client_email": "via.vips@hotmail.com",
+      "client_name": "Erisvaldo Silva"
+    },
+    {
+      "id": "510001",
+      "booking_date": "1765076400000",
+      "status": "confirmed",
+      "vessel_id": "3",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP",
+      "client_email": "motomais.acailandia@gmail.com",
+      "client_name": "EDILSON DA CONCEIÇÃO COSTA"
+    },
+    {
+      "id": "300006",
+      "booking_date": "1765076400000",
+      "status": "confirmed",
+      "vessel_id": "4",
+      "vessel_name": "Focker 215 150HP",
+      "client_email": "Mhamedfeiz@hotmail.com",
+      "client_name": "MAHMED"
+    },
+    {
+      "id": "390001",
+      "booking_date": "1764990000000",
+      "status": "confirmed",
+      "vessel_id": "4",
+      "vessel_name": "Focker 215 150HP",
+      "client_email": "ernanyoimp@gmail.com",
+      "client_name": "ernany oliveira"
+    },
+    {
+      "id": "780002",
+      "booking_date": "1764507600000",
+      "status": "confirmed",
+      "vessel_id": "660002",
+      "vessel_name": "NAVIO",
+      "client_email": "Atendimentogrupoefficaz@gmail.com",
+      "client_name": "Maylanne"
+    },
+    {
+      "id": "780004",
+      "booking_date": "1764507600000",
+      "status": "confirmed",
+      "vessel_id": "3",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP",
+      "client_email": "Atendimentogrupoefficaz@gmail.com",
+      "client_name": "Maylanne"
+    },
+    {
+      "id": "570002",
+      "booking_date": "1764471600000",
+      "status": "confirmed",
+      "vessel_id": "3",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP",
+      "client_email": "gabnercorporation@gmail.com",
+      "client_name": "LUCIANO GABRIEL"
+    },
+    {
+      "id": "300009",
+      "booking_date": "1764471600000",
+      "status": "confirmed",
+      "vessel_id": "4",
+      "vessel_name": "Focker 215 150HP",
+      "client_email": "diogobritolemos@gmail.com",
+      "client_name": "DIOGO LEMOS"
+    },
+    {
+      "id": "810002",
+      "booking_date": "1764421200000",
+      "status": "confirmed",
+      "vessel_id": "4",
+      "vessel_name": "Focker 215 150HP",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "client_name": "Vinicius Freitas"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tbooking_date\tstatus\tvessel_id\tvessel_name\tclient_email\tclient_name\n450001\t1766890800000\tcancelled\t4\tFocker 215 150HP\tvia.vips@hotmail.com\tErisvaldo Silva\n480001\t1765594800000\tconfirmed\t4\tFocker 215 150HP\tvia.vips@hotmail.com\tErisvaldo Silva\n510001\t1765076400000\tconfirmed\t3\tJETSKI SEADOO GTI SE 130HP\tmotomais.acailandia@gmail.com\tEDILSON DA CONCEIÇÃO COSTA\n300006\t1765076400000\tconfirmed\t4\tFocker 215 150HP\tMhamedfeiz@hotmail.com\tMAHMED\n390001\t1764990000000\tconfirmed\t4\tFocker 215 150HP\ternanyoimp@gmail.com\ternany oliveira\n780002\t1764507600000\tconfirmed\t660002\tNAVIO\tAtendimentogrupoefficaz@gmail.com\tMaylanne\n780004\t1764507600000\tconfirmed\t3\tJETSKI SEADOO GTI SE 130HP\tAtendimentogrupoefficaz@gmail.com\tMaylanne\n570002\t1764471600000\tconfirmed\t3\tJETSKI SEADOO GTI SE 130HP\tgabnercorporation@gmail.com\tLUCIANO GABRIEL\n300009\t1764471600000\tconfirmed\t4\tFocker 215 150HP\tdiogobritolemos@gmail.com\tDIOGO LEMOS\n810002\t1764421200000\tconfirmed\t4\tFocker 215 150HP\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n",
+  "stderr": "",
+  "execution_time_ms": 192
+}

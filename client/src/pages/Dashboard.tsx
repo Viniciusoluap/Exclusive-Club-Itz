@@ -461,17 +461,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Active Bookings */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Minhas Reservas Ativas</CardTitle>
-            <CardDescription>Visualize e gerencie suas reservas confirmadas</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ActiveBookingsSection />
-          </CardContent>
-        </Card>
-
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>

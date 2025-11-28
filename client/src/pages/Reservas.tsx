@@ -87,6 +87,9 @@ export default function Reservas() {
     endDate: endOfMonth,
   });
 
+  // Buscar minhas reservas ativas
+  const { data: myActiveBookings } = trpcAny.bookings?.myBookings.useQuery() || { data: [] };
+
   // Fetch maintenances
   const { data: monthMaintenances } = trpcAny.maintenances?.getActive.useQuery({
     startDate: startOfMonth,
@@ -151,7 +154,7 @@ export default function Reservas() {
     
     const grouped: Record<string, any[]> = {};
     bookings.forEach((booking: any) => {
-      const date = new Date(booking.startTime);
+      const date = new Date(booking.bookingDate);
       const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(booking);
@@ -307,15 +310,15 @@ export default function Reservas() {
             <p className="text-sm text-muted-foreground">Visualize e gerencie suas reservas confirmadas</p>
           </CardHeader>
           <CardContent>
-            {bookings && bookings.filter((b: any) => b.status === 'confirmed' && new Date(b.date).getTime() >= Date.now()).length > 0 ? (
+            {myActiveBookings && myActiveBookings.filter((b: any) => b.status === 'confirmed' && new Date(b.bookingDate).getTime() >= Date.now()).length > 0 ? (
               <div className="space-y-3">
-                {bookings.filter((b: any) => b.status === 'confirmed' && new Date(b.date).getTime() >= Date.now()).map((booking: any) => (
+                {myActiveBookings.filter((b: any) => b.status === 'confirmed' && new Date(b.bookingDate).getTime() >= Date.now()).map((booking: any) => (
                   <div key={booking.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => { setSelectedBooking(booking); setShowDetailsDialog(true); }}>
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-semibold">{userVessels.find(v => v.id === booking.vesselId)?.name}</p>
+                        <p className="font-semibold">{booking.vesselName}</p>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(booking.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                          {new Date(booking.bookingDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                         </p>
                       </div>
                       <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Confirmada</span>
@@ -340,7 +343,7 @@ export default function Reservas() {
               <div className="space-y-4">
                 {userVessels.map((vessel) => {
                   const totalQuotas = myQuotas?.filter((q: any) => q.vesselId === vessel.id).reduce((sum: number, q: any) => sum + (q.quotaType === 'full' ? 2 : 1), 0) || 0;
-                  const usedQuotas = bookings?.filter((b: any) => b.vesselId === vessel.id && b.status === 'confirmed' && new Date(b.date).getFullYear() === new Date().getFullYear()).length || 0;
+                  const usedQuotas = myActiveBookings?.filter((b: any) => b.vesselId === vessel.id && b.status === 'confirmed' && new Date(b.bookingDate).getFullYear() === new Date().getFullYear()).length || 0;
                   const percentage = totalQuotas > 0 ? (usedQuotas / totalQuotas) * 100 : 0;
                   
                   return (
@@ -358,7 +361,7 @@ export default function Reservas() {
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
                         <div className="bg-green-500 h-2.5 rounded-full transition-all" style={{ width: `${percentage}%` }}></div>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">{totalQuotas - usedQuotas} quotas disponíveis</p>
+                      <p className="text-xs text-muted-foreground mt-1">{usedQuotas} dias reservados</p>
                     </div>
                   );
                 })}
