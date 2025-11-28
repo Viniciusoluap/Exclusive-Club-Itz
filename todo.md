@@ -800,3 +800,14 @@
 - [x] Adicionar logs de debug
 - [x] Garantir que Select não aceite valores inválidos
 - [x] Aguardando teste do usuário para confirmar correção
+
+
+## 🎨 NOVA TAREFA - Criar Logo Redonda em Alta Qualidade (27/11/2025 - 02:35) - CONCLUÍDO
+
+### Substituir logo atual por versão redonda em alta qualidade
+- [x] Verificar logo atual no site
+- [x] Gerar nova logo redonda baseada no design atual (logo-exclusive-round.png)
+- [x] Fazer upload da nova logo
+- [x] Atualizar referências no código (const.ts)
+- [x] Favicon atualiza automaticamente via VITE_APP_LOGO
+- [x] Testar visualização em todas as páginas
