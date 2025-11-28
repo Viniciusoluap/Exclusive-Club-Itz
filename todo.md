@@ -826,3 +826,14 @@
   - [x] Cinza: segundas-feiras (não abrimos) + datas passadas
 - [x] Testar todas as combinações de cores
 - [x] Manter consulta meteorológica nas reservas (mantido)
+
+
+## 🐛 CORREÇÃO - Cálculo de Uso de Quotas (27/11/2025 - 23:15) - CONCLUÍDO
+
+### Corrigir cálculo de reservas disponíveis por tipo de cota
+- [x] Corrigir cálculo na página de Reservas:
+  - [x] Cota inteira (full) = 2 reservas permitidas por ano
+  - [x] Meia cota (half) = 1 reserva permitida por ano
+- [x] Exemplo: cliente com 1 cota inteira deve mostrar X/2 (não X/1)
+- [x] Remover seção "Uso de Quotas por Embarcação" do Dashboard (mantido na página de Reservas)
+- [x] Testar com diferentes combinações de cotas

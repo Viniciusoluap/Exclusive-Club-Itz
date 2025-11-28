@@ -339,7 +339,7 @@ export default function Reservas() {
             {userVessels.length > 0 ? (
               <div className="space-y-4">
                 {userVessels.map((vessel) => {
-                  const totalQuotas = myQuotas?.filter((q: any) => q.vesselId === vessel.id).reduce((sum: number, q: any) => sum + (q.quotaType === 'inteira' ? 2 : 1), 0) || 0;
+                  const totalQuotas = myQuotas?.filter((q: any) => q.vesselId === vessel.id).reduce((sum: number, q: any) => sum + (q.quotaType === 'full' ? 2 : 1), 0) || 0;
                   const usedQuotas = bookings?.filter((b: any) => b.vesselId === vessel.id && b.status === 'confirmed' && new Date(b.date).getFullYear() === new Date().getFullYear()).length || 0;
                   const percentage = totalQuotas > 0 ? (usedQuotas / totalQuotas) * 100 : 0;
                   
