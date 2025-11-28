@@ -451,7 +451,7 @@ export default function Reservas() {
                       date.getFullYear() === new Date().getFullYear();
 
                     const statusColors = {
-                      available: 'bg-green-500/90 hover:bg-green-600 text-white border-green-600',
+                      available: 'bg-white hover:bg-gray-50 text-gray-900 border-gray-300',
                       booked: 'bg-red-500/90 text-white border-red-600',
                       maintenance: 'bg-orange-500/90 text-white border-orange-600',
                       closed: 'bg-gray-300 text-gray-600 border-gray-400',
@@ -488,7 +488,7 @@ export default function Reservas() {
           <CardContent className="p-4">
             <div className="flex flex-wrap gap-4 justify-center text-sm">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-green-500"></div>
+                <div className="w-4 h-4 rounded bg-white border-2 border-gray-300"></div>
                 <span>Disponível</span>
               </div>
               <div className="flex items-center gap-2">
