@@ -811,3 +811,18 @@
 - [x] Atualizar referências no código (const.ts)
 - [x] Favicon atualiza automaticamente via VITE_APP_LOGO
 - [x] Testar visualização em todas as páginas
+
+
+## 🎨 REORGANIZAÇÃO DA INTERFACE DE RESERVAS (27/11/2025 - 22:50) - CONCLUÍDO
+
+### Melhorias de UX e correção de cores do calendário
+- [x] Mover "Minhas Reservas Ativas" para acima do calendário
+- [x] Mover "Uso de Quotas por Embarcação" para acima do calendário
+- [x] Mover legendas (Disponível, Reservado, Manutenção, Não Abrimos) para ABAIXO do calendário
+- [x] Corrigir cores do calendário:
+  - [x] Verde: apenas datas disponíveis
+  - [x] Vermelho: datas já reservadas
+  - [x] Laranja: datas em manutenção (bloqueadas para todos - intervalo completo)
+  - [x] Cinza: segundas-feiras (não abrimos) + datas passadas
+- [x] Testar todas as combinações de cores
+- [x] Manter consulta meteorológica nas reservas (mantido)
