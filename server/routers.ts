@@ -1415,62 +1415,120 @@ Nenhuma reserva foi afetada.
         vesselType: z.enum(['jet', 'lancha']),
         inspectionDate: z.number(), // Unix timestamp
         clientName: z.string(),
-        formData: z.record(z.any()), // JSON com todos os campos do formulário
+        formData: z.record(z.string(), z.string()), // JSON com todos os campos do formulário
         notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         // Allow admin and employee to access
         if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { inspections } = await import('../drizzle/schema');
+        
+        // Buscar nome da embarcação
+        const { vessels } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
+        const vessel = await db.select().from(vessels).where(eq(vessels.id, input.vesselId)).limit(1);
+        if (!vessel || vessel.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Embarcação não encontrada' });
         }
+
+        // Determinar status geral (approved se todos aprovados, rejected se algum reprovado)
+        const hasRejected = Object.values(input.formData).some(v => v === 'reprovado');
+        const status = hasRejected ? 'rejected' : 'approved';
+
+        await db.insert(inspections).values({
+          bookingId: input.bookingId,
+          vesselId: input.vesselId,
+          vesselName: vessel[0].name,
+          vesselType: input.vesselType,
+          clientName: input.clientName,
+          inspectionData: JSON.stringify(input.formData),
+          observations: input.notes || null,
+          status,
+          inspectedBy: ctx.user?.name || null,
+        } as any);
+
+        return { success: true };
+      }),
+
+    delete: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+        
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        await db.execute(
-          `INSERT INTO inspections (booking_id, vessel_id, vessel_type, inspection_date, client_name, form_data, notes, inspected_by, created_at)
-           VALUES (?, ?, ?, FROM_UNIXTIME(?), ?, ?, ?, ?, NOW())`,
-          [
-            input.bookingId,
-            input.vesselId,
-            input.vesselType,
-            input.inspectionDate / 1000,
-            input.clientName,
-            JSON.stringify(input.formData),
-            input.notes || null,
-            ctx.user.id
-          ]
-        );
+        const { inspections } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
 
-        // Gerar PDF e enviar email ao admin
         try {
-          const { generateInspectionPDF, sendInspectionReportEmail } = await import('./_core/inspectionPDF');
-          
-          const vessel = await db.execute(
-            'SELECT name FROM vessels WHERE id = ?',
-            [input.vesselId]
-          ) as any[];
-          
-          const inspectionData = {
-            id: 0, // Será preenchido depois
-            vesselName: vessel[0]?.name || 'Desconhecida',
-            vesselType: input.vesselType,
-            clientName: input.clientName,
-            inspectionDate: new Date(input.inspectionDate).toISOString(),
-            inspectedBy: ctx.user.name || ctx.user.email || 'Admin',
-            formData: input.formData as Record<string, 'approved' | 'disapproved'>,
-            notes: input.notes,
-          };
-
-          const pdfBuffer = await generateInspectionPDF(inspectionData);
-          await sendInspectionReportEmail(inspectionData, pdfBuffer);
-          
-          console.log('[Inspections] PDF gerado e email enviado com sucesso');
-        } catch (error) {
-          console.error('[Inspections] Erro ao gerar PDF:', error);
-          // Não falha a vistoria se o PDF falhar
+          await db.delete(inspections).where(eq(inspections.id, input.id));
+          return { success: true };
+        } catch (error: any) {
+          console.error('[inspections.delete] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao excluir vistoria: ${error.message}` 
+          });
         }
+      }),
 
-        return { success: true };
+    generateReport: publicProcedure
+      .mutation(async ({ ctx }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+        
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          // Buscar últimas 10 vistorias
+          const result = await db.execute(`
+            SELECT 
+              i.*,
+              v.name as vessel_name,
+              b.booking_date,
+              b.client_name as booking_client_name,
+              u.name as inspected_by_name
+            FROM inspections i
+            JOIN vessels v ON i.vessel_id = v.id
+            JOIN bookings b ON i.booking_id = b.id
+            LEFT JOIN users u ON i.inspected_by = u.id
+            ORDER BY i.created_at DESC
+            LIMIT 10
+          `) as any;
+
+          const inspections = (Array.isArray(result[0]) ? result[0] : []).map((row: any) => ({
+            ...row,
+            inspection_data: typeof row.inspection_data === 'string' ? JSON.parse(row.inspection_data) : row.inspection_data
+          }));
+
+          // Gerar PDF
+          const { generateInspectionsReportPDF } = await import('./_core/inspectionsPDF');
+          const { notifyOwner } = await import('./_core/notification');
+          const pdfBuffer = await generateInspectionsReportPDF(inspections);
+
+          // Notificar owner
+          await notifyOwner({
+            title: '📋 Relatório de Vistorias Gerado',
+            content: `Relatório das últimas ${inspections.length} vistorias foi gerado com sucesso. O PDF foi baixado automaticamente.`,
+          });
+
+          return { success: true, count: inspections.length, pdfBase64: pdfBuffer.toString('base64') };
+        } catch (error: any) {
+          console.error('[inspections.generateReport] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao gerar relatório: ${error.message}` 
+          });
+        }
       }),
 
     list: publicProcedure
@@ -1487,44 +1545,15 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        let query = `
-          SELECT 
-            i.*,
-            v.name as vessel_name,
-            b.startTime as booking_date,
-            u.name as inspected_by_name
-          FROM inspections i
-          JOIN vessels v ON i.vessel_id = v.id
-          JOIN bookings b ON i.booking_id = b.id
-          JOIN users u ON i.inspected_by = u.id
-          WHERE 1=1
-        `;
-        const params: any[] = [];
+        const { inspections } = await import('../drizzle/schema');
+        const { desc } = await import('drizzle-orm');
 
-        if (input.vesselId) {
-          query += ' AND i.vessel_id = ?';
-          params.push(input.vesselId);
-        }
+        const result = await db.select().from(inspections).orderBy(desc(inspections.createdAt));
 
-        if (input.startDate) {
-          query += ' AND i.inspection_date >= FROM_UNIXTIME(?)';
-          params.push(input.startDate / 1000);
-        }
-
-        if (input.endDate) {
-          query += ' AND i.inspection_date <= FROM_UNIXTIME(?)';
-          params.push(input.endDate / 1000);
-        }
-
-        query += ' ORDER BY i.inspection_date DESC';
-
-        const result = await db.execute(query, params);
-        const inspections = (result[0] as any[]).map(row => ({
+        return result.map(row => ({
           ...row,
-          form_data: typeof row.form_data === 'string' ? JSON.parse(row.form_data) : row.form_data
+          inspectionData: typeof row.inspectionData === 'string' ? JSON.parse(row.inspectionData) : row.inspectionData
         }));
-
-        return inspections;
       }),
 
     getByBooking: publicProcedure
@@ -1540,18 +1569,93 @@ Nenhuma reserva foi afetada.
         const result = await db.execute(
           `SELECT i.*, u.name as inspected_by_name
            FROM inspections i
-           JOIN users u ON i.inspected_by = u.id
+           LEFT JOIN users u ON i.inspected_by = u.id
            WHERE i.booking_id = ?
            ORDER BY i.inspection_date DESC`,
           [input.bookingId]
-        );
+        ) as any;
 
-        const inspections = (result[0] as any[]).map(row => ({
+        const inspections = (Array.isArray(result[0]) ? result[0] : []).map((row: any) => ({
           ...row,
           form_data: typeof row.form_data === 'string' ? JSON.parse(row.form_data) : row.form_data
         }));
 
         return inspections;
+      }),
+
+    delete: publicProcedure
+      .input(z.object({
+        id: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          await db.execute(`DELETE FROM inspections WHERE id = ${input.id}`);
+          return { success: true };
+        } catch (error: any) {
+          console.error('[inspections.delete] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao excluir vistoria: ${error.message}` 
+          });
+        }
+      }),
+
+    generateReport: publicProcedure
+      .mutation(async ({ ctx }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          // Buscar últimas 10 vistorias
+          const result = await db.execute(`
+            SELECT 
+              i.*,
+              v.name as vessel_name,
+              b.booking_date,
+              b.client_name as booking_client_name,
+              u.name as inspected_by_name
+            FROM inspections i
+            JOIN vessels v ON i.vessel_id = v.id
+            JOIN bookings b ON i.booking_id = b.id
+            LEFT JOIN users u ON i.inspected_by = u.id
+            ORDER BY i.inspection_date DESC
+            LIMIT 10
+          `) as any;
+
+          const inspections = (Array.isArray(result[0]) ? result[0] : []).map((row: any) => ({
+            ...row,
+            form_data: typeof row.form_data === 'string' ? JSON.parse(row.form_data) : row.form_data
+          }));
+
+          // Gerar PDF
+          const { generateInspectionsReportPDF } = await import('./_core/inspectionsPDF');
+          const { notifyOwner } = await import('./_core/notification');
+
+          const pdfBuffer = await generateInspectionsReportPDF(inspections);
+          
+          // Notificar admin
+          await notifyOwner({
+            title: '📋 Relatório de Vistorias Gerado',
+            content: `Relatório das últimas ${inspections.length} vistorias foi gerado com sucesso. O PDF foi baixado automaticamente.`,
+          });
+
+          return { success: true, count: inspections.length, pdfBase64: pdfBuffer.toString('base64') };
+        } catch (error: any) {
+          console.error('[inspections.generateReport] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao gerar relatório: ${error.message}` 
+          });
+        }
       }),
   }),
 });

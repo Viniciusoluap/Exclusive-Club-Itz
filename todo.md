@@ -1446,3 +1446,41 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Implementar dialog de confirmação antes de excluir
 - [x] Atualizar lista após exclusão
 - [x] Testar exclusão de abastecimento
+
+## Corrigir Sistema de Vistorias (29/11/2025 - 18:10)
+
+- [ ] Modificar dropdown de reservas para mostrar apenas últimas 6 reservas utilizadas (status 'used')
+- [ ] Corrigir erro "Cannot read properties of undefined (reading '_zod')" ao criar vistoria
+- [ ] Criar lista de vistorias registradas mostrando: reserva, embarcação, data, cliente
+- [ ] Adicionar botão de excluir em cada vistoria
+- [ ] Criar endpoint para gerar relatório PDF das últimas 10 vistorias
+- [ ] Implementar botão no canto superior esquerdo para gerar e enviar PDF por email
+- [ ] Testar criação, listagem, exclusão e geração de relatório
+
+
+## Correção Sistema de Vistorias - Fase 2 (29/11/2025 - 16:30)
+
+### Dropdown de Reservas
+- [x] Modificar para mostrar apenas últimas 6 reservas utilizadas (status 'used')
+- [x] Nunca mostrar reservas futuras ou pendentes
+
+### Botão de Excluir
+- [x] Adicionar endpoint inspections.delete
+- [x] Adicionar botão de excluir em cada card de vistoria
+- [x] Implementar AlertDialog de confirmação
+- [ ] Testar exclusão de vistoria - PENDENTE
+
+### Relatório PDF
+- [x] Criar endpoint inspections.generateReport
+- [x] Adicionar botão "Relatório PDF" no canto superior esquerdo
+- [x] Gerar PDF das últimas 10 vistorias
+- [x] Enviar notificação ao admin
+- [ ] Testar geração de relatório - PENDENTE
+
+### Correções Técnicas Pendentes
+- [ ] Limpar código duplicado no router de vistorias
+- [ ] Corrigir todos os endpoints para usar API do Drizzle ORM consistentemente
+- [ ] Corrigir endpoint inspections.list para retornar dados corretos (vesselName, clientName, booking_date)
+- [ ] Corrigir erro ao criar vistoria (schema vs endpoint incompatibilidade)
+- [ ] Testar criação de vistoria completa
+- [ ] Testar lista de vistorias com dados corretos
