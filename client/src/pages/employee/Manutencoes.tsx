@@ -63,17 +63,27 @@ export default function EmployeeManutencoes() {
     }
 
     try {
+      // Converter datas para timestamp em milissegundos
+      const startDate = new Date(formData.start_date).setHours(0, 0, 0, 0);
+      const endDate = new Date(formData.end_date).setHours(23, 59, 59, 999);
+      
       if (editingId) {
         await updateMutation.mutateAsync({
           id: editingId,
-          ...formData,
-          vessel_id: parseInt(formData.vessel_id),
+          vesselId: parseInt(formData.vessel_id),
+          startDate,
+          endDate,
+          description: formData.description,
+          status: formData.status,
         });
         toast.success("Manutenção atualizada com sucesso!");
       } else {
         await createMutation.mutateAsync({
-          ...formData,
-          vessel_id: parseInt(formData.vessel_id),
+          vesselId: parseInt(formData.vessel_id),
+          startDate,
+          endDate,
+          description: formData.description,
+          status: formData.status,
         });
         toast.success("Manutenção criada com sucesso!");
       }
@@ -130,9 +140,9 @@ export default function EmployeeManutencoes() {
 
       await updateMutation.mutateAsync({
         id: statusChangeId,
-        vessel_id: maintenance.vessel_id,
-        start_date: new Date(maintenance.start_date).toISOString().split("T")[0],
-        end_date: new Date(maintenance.end_date).toISOString().split("T")[0],
+        vesselId: maintenance.vessel_id,
+        startDate: maintenance.start_date,
+        endDate: maintenance.end_date,
         description: maintenance.description || "",
         status: newStatus as any,
       });
