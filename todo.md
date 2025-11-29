@@ -1509,3 +1509,18 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - **Frontend**: Páginas de funcionário atualizadas para usar APIs corretas (fuelRecords, inspections)
 - **Testes**: 41 testes passando, 1 skipped, 0 falhas
 - **TypeScript**: 0 erros de compilação
+
+
+## ✅ Bug Crítico - Erro ao Criar Vistoria (29/11/2025 - 18:45) - RESOLVIDO
+
+- [x] Investigar erro de validação do campo vesselType
+- [x] Adicionar campo de seleção manual (Jetski/Lancha) no formulário
+- [x] Corrigir mapeamento: 'jet' → 'jetski' antes de enviar ao backend
+- [x] Testar criação de vistoria pelo formulário admin
+- [x] Validar que vistoria é salva corretamente no banco
+
+### Solução Implementada
+- Adicionado campo de seleção "Tipo de Embarcação" com opções Jetski/Lancha
+- Corrigido mapeamento interno de 'jet' para 'jetski' em todas as comparações
+- Checklist correto aparece automaticamente após selecionar tipo
+- FormData é limpo ao trocar tipo de embarcação
