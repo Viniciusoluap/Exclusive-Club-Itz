@@ -321,13 +321,16 @@ export async function getMaintenances() {
   const db = await getDb();
   if (!db) return [];
   
-  // Usar SQL direto para fazer JOIN e retornar nome da embarcação
+  // Usar SQL direto para fazer JOIN e retornar nome da embarcação e criador
   const result = await db.execute(`
     SELECT 
       m.*,
-      v.name as vessel_name
+      v.name as vessel_name,
+      u.name as created_by_name,
+      u.role as created_by_role
     FROM maintenances m
     JOIN vessels v ON m.vessel_id = v.id
+    LEFT JOIN users u ON m.created_by = u.id
     ORDER BY m.start_date DESC
   `);
   

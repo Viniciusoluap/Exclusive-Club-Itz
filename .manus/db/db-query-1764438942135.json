@@ -1,0 +1,18 @@
+{
+  "query": "SELECT m.id, m.vessel_name, m.description, m.created_by, u.name as created_by_name, u.role FROM maintenances m LEFT JOIN users u ON m.created_by = u.id ORDER BY m.id DESC LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT m.id, m.vessel_name, m.description, m.created_by, u.name as created_by_name, u.role FROM maintenances m LEFT JOIN users u ON m.created_by = u.id ORDER BY m.id DESC LIMIT 5",
+  "rows": [
+    {
+      "id": "330002",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP",
+      "description": "Troca dos Bicos",
+      "created_by": "1",
+      "created_by_name": "Vinicius Freitas",
+      "role": "admin"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_name\tdescription\tcreated_by\tcreated_by_name\trole\n330002\tJETSKI SEADOO GTI SE 130HP\tTroca dos Bicos\t1\tVinicius Freitas\tadmin\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}
