@@ -235,10 +235,13 @@
 
 ## Bugs Reportados - Calendário e Emails (26/11/2025 - 20:30)
 
-### 1. Calendário não mostra datas em manutenção
+### 1. Calendário não mostra datas em manutenção - RESOLVIDO (28/11/2025)
 - [x] Investigar endpoint de disponibilidade
 - [x] Adicionar manutenções ao cálculo de indisponibilidade
 - [x] Testar visualização no calendário
+- [x] Corrigir função getDayStatus para verificar períodos de manutenção
+- [x] Validar cores: laranja para manutenção, vermelho para reservas
+- [x] Remover logs de debug
 
 ### 2. Emails de cancelamento por manutenção não enviados
 - [x] Verificar função notifyClientMaintenanceCancellation
@@ -1048,3 +1051,20 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Sistema 100% operacional
 
 ### Status: RESOLVIDO ✅
+
+
+## Bug Crítico - Calendário Não Mostra Manutenções (29/11/2025 - 00:33)
+
+### Problema: Dias em manutenção não aparecem em laranja
+- [ ] Há 2 manutenções programadas (JETSKI e Navio: 29/11 - 03/12/2025)
+- [ ] Calendário de novembro não mostra dias 29-30 em LARANJA
+- [ ] Legenda indica que manutenção = LARANJA
+- [ ] Função getDayStatus não está verificando manutenções
+
+### Correção necessária:
+- [ ] Investigar função getDayStatus em Reservas.tsx
+- [ ] Adicionar verificação de períodos de manutenção
+- [ ] Buscar manutenções da embarcação via tRPC
+- [ ] Verificar se data está dentro do período de manutenção
+- [ ] Retornar status 'maintenance' para dias em manutenção
+- [ ] Testar visualmente: dias 29-30/11 devem ficar LARANJA

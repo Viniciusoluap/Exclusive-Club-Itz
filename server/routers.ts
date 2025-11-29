@@ -649,7 +649,7 @@ export const appRouter = router({
         return allMaintenances.filter((m: any) => {
           if (m.status === 'cancelled' || m.status === 'completed') return false;
           
-          // Verificar se há sobreposição de datas
+          // Verificar se há sobreposição de datas (usar camelCase do Drizzle)
           return m.startDate <= input.endDate && m.endDate >= input.startDate;
         });
       }),
