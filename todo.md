@@ -1068,3 +1068,25 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [ ] Verificar se data está dentro do período de manutenção
 - [ ] Retornar status 'maintenance' para dias em manutenção
 - [ ] Testar visualmente: dias 29-30/11 devem ficar LARANJA
+
+
+## Bugs Reportados - Sistema de Funcionários (28/11/2025 - 22:50) - RESOLVIDOS
+
+### 1. Funcionário cadastrado não aparece na lista - RESOLVIDO
+- [x] Investigar por que funcionário não aparece após cadastro bem-sucedido
+- [x] Verificar query de listagem (filtro is_active)
+- [x] Corrigir incompatibilidade MySQL - endpoint retornava result ao invés de result[0]
+- [x] Testar cadastro e visualização
+- [x] Solução: Ajustado endpoint employees.list para pegar result[0] (rows) do MySQL
+
+### 2. Falta botão de editar nos cards de funcionários - JÁ EXISTIA
+- [x] Botão "Editar" já estava implementado (linhas 142-151 em Funcionarios.tsx)
+- [x] Dialog de edição já estava completo (linhas 239-309)
+- [x] Testado e funcionando corretamente
+
+### 3. Documentar permissões de funcionário - CONCLUÍDO
+- [x] Confirmar lógica de acesso: apenas emails cadastrados podem logar
+- [x] Documentar quais páginas/funcionalidades funcionário pode acessar
+- [x] Criar arquivo EMPLOYEE_PERMISSIONS.md com detalhes completos
+- [x] Confirmar restrições (não pode acessar clientes, embarcações, etc.)
+- [x] Documentar implementação futura (role employee, middleware, dashboard)

@@ -1055,10 +1055,13 @@ Nenhuma reserva foi afetada.
       if (!db) return [];
 
       const result = await db.execute(
-        'SELECT * FROM employees ORDER BY created_at DESC'
-      ) as any[];
+        'SELECT * FROM employees WHERE is_active = 1 ORDER BY created_at DESC'
+      ) as any;
 
-      return result.map((row: any) => ({
+      // db.execute retorna [rows, fields], pegar apenas rows
+      const rows = Array.isArray(result[0]) ? result[0] : result;
+
+      return rows.map((row: any) => ({
         ...row,
         vesselIds: row.vessel_ids ? JSON.parse(row.vessel_ids) : [],
       }));
