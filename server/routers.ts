@@ -759,13 +759,9 @@ export const appRouter = router({
           vesselName: vessel.name,
           startDate: new Date(input.startDate).getTime(),
           endDate: new Date(input.endDate).getTime(),
+          description: input.description || '',
           status: input.status || 'scheduled',
         };
-        
-        // Apenas adicionar description se fornecida
-        if (input.description) {
-          maintenanceData.description = input.description;
-        }
         
         const created = await db.createMaintenance(maintenanceData);
 
