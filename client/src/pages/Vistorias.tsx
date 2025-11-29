@@ -3,13 +3,14 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Plus, ClipboardCheck, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, ClipboardCheck, CheckCircle2, XCircle, ArrowLeft, Trash2, FileText } from "lucide-react";
 import { Link } from "wouter";
 
 const JET_FIELDS = [
@@ -52,6 +53,8 @@ const LANCHA_FIELDS = [
 
 export default function Vistorias() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [vesselType, setVesselType] = useState<'jet' | 'lancha' | null>(null);
   const [inspectionDate, setInspectionDate] = useState(new Date().toISOString().split('T')[0]);
@@ -60,7 +63,7 @@ export default function Vistorias() {
   const [notes, setNotes] = useState("");
 
   const trpcAny = trpc as any;
-  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ includeUsed: true }) || { data: [] }; // Busca todas as reservas incluindo usadas
+  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas reservas utilizadas
   const { data: inspections, refetch } = trpcAny.inspections?.list.useQuery({}) || { data: [] };
   const { data: vessels } = trpc.vessels.list.useQuery();
 
@@ -76,6 +79,32 @@ export default function Vistorias() {
     },
   });
 
+  const deleteMutation = trpcAny.inspections?.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Vistoria excluída com sucesso!');
+      setIsDeleteDialogOpen(false);
+      setDeleteId(null);
+      refetch();
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao excluir vistoria: ${error.message}`);
+    },
+  });
+
+  const generateReportMutation = trpcAny.inspections?.generateReport.useMutation({
+    onSuccess: (data: any) => {
+      // Baixar PDF automaticamente
+      const link = document.createElement('a');
+      link.href = `data:application/pdf;base64,${data.pdfBase64}`;
+      link.download = `relatorio-vistorias-${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+      toast.success(`Relatório de ${data.count} vistorias gerado com sucesso!`);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao gerar relatório: ${error.message}`);
+    },
+  });
+
   const resetForm = () => {
     setSelectedBookingId(null);
     setVesselType(null);
@@ -83,6 +112,17 @@ export default function Vistorias() {
     setClientName("");
     setFormData({});
     setNotes("");
+  };
+
+  const handleDeleteClick = (id: number) => {
+    setDeleteId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate({ id: deleteId });
+    }
   };
 
   const handleBookingChange = (bookingId: string) => {
@@ -158,10 +198,29 @@ export default function Vistorias() {
               Registre vistorias das embarcações antes e após o uso
             </p>
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Vistoria
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => generateReportMutation.mutate()}
+              disabled={generateReportMutation.isPending}
+            >
+              {generateReportMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Relatório PDF
+                </>
+              )}
+            </Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nova Vistoria
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -190,22 +249,32 @@ export default function Vistorias() {
                         <div>
                           <CardTitle className="text-lg">{inspection.vessel_name}</CardTitle>
                           <CardDescription>
-                            {inspection.client_name} • {new Date(inspection.inspection_date).toLocaleDateString('pt-BR')}
+                            {inspection.booking_client_name || inspection.client_name} • {new Date(inspection.booking_date || inspection.inspection_date).toLocaleDateString('pt-BR')}
                           </CardDescription>
                         </div>
                       </div>
-                      <div className="text-right">
-                        {isFullyApproved ? (
-                          <div className="flex items-center gap-2 text-green-600">
-                            <CheckCircle2 className="w-5 h-5" />
-                            <span className="font-semibold">Aprovado</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-amber-600">
-                            <XCircle className="w-5 h-5" />
-                            <span className="font-semibold">Reprovações: {totalFields - approvedCount}</span>
-                          </div>
-                        )}
+                      <div className="flex items-start gap-4">
+                        <div className="text-right flex-1">
+                          {isFullyApproved ? (
+                            <div className="flex items-center gap-2 text-green-600">
+                              <CheckCircle2 className="w-5 h-5" />
+                              <span className="font-semibold">Aprovado</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-amber-600">
+                              <XCircle className="w-5 h-5" />
+                              <span className="font-semibold">Reprovações: {totalFields - approvedCount}</span>
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClick(inspection.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardHeader>
@@ -350,6 +419,34 @@ export default function Vistorias() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta vistoria? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
