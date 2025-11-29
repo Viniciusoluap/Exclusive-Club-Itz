@@ -105,11 +105,11 @@ export default function EmployeeManutencoes() {
   const handleEdit = (maintenance: any) => {
     setEditingId(maintenance.id);
     // Timestamp já está em milissegundos
-    const startDate = new Date(maintenance.start_date);
-    const endDate = new Date(maintenance.end_date);
+    const startDate = new Date(maintenance.startDate);
+    const endDate = new Date(maintenance.endDate);
     
     setFormData({
-      vessel_id: maintenance.vessel_id.toString(),
+      vessel_id: maintenance.vesselId.toString(),
       start_date: startDate.toISOString().split("T")[0],
       end_date: endDate.toISOString().split("T")[0],
       description: maintenance.description || "",
@@ -140,9 +140,9 @@ export default function EmployeeManutencoes() {
 
       await updateMutation.mutateAsync({
         id: statusChangeId,
-        vesselId: maintenance.vessel_id,
-        startDate: maintenance.start_date,
-        endDate: maintenance.end_date,
+        vesselId: maintenance.vesselId,
+        startDate: maintenance.startDate,
+        endDate: maintenance.endDate,
         description: maintenance.description || "",
         status: newStatus as any,
       });
@@ -348,7 +348,7 @@ export default function EmployeeManutencoes() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Settings className="h-5 w-5 text-muted-foreground" />
-                    <h3 className="font-semibold">{maintenance.vessel_name}</h3>
+                    <h3 className="font-semibold">{maintenance.vesselName}</h3>
                   </div>
                   <button
                     onClick={() => {
@@ -367,17 +367,17 @@ export default function EmployeeManutencoes() {
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <User className="h-4 w-4" />
                     <span>
-                      Requisitado por: <strong>{maintenance.created_by_name || "Admin"}</strong>
+                      Requisitado por: <strong>{maintenance.createdByName || "Admin"}</strong>
                     </span>
                   </div>
                   
                   <div>
                     <span className="text-muted-foreground">Início:</span>{" "}
-                    <strong>{formatDate(maintenance.start_date)}</strong>
+                    <strong>{formatDate(maintenance.startDate)}</strong>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Término:</span>{" "}
-                    <strong>{formatDate(maintenance.end_date)}</strong>
+                    <strong>{formatDate(maintenance.endDate)}</strong>
                   </div>
                   {maintenance.description && (
                     <div>

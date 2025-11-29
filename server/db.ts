@@ -321,19 +321,37 @@ export async function getMaintenances() {
   const db = await getDb();
   if (!db) return [];
   
-  // Usar SQL direto para fazer JOIN e retornar nome da embarcação
+  // Usar SQL direto para fazer JOIN e retornar nome da embarcação e criador
   const result = await db.execute(`
     SELECT 
       m.*,
-      v.name as vessel_name
+      v.name as vessel_name,
+      u.name as created_by_name,
+      u.role as created_by_role
     FROM maintenances m
     JOIN vessels v ON m.vessel_id = v.id
+    LEFT JOIN users u ON m.created_by = u.id
     ORDER BY m.start_date DESC
   `);
   
   // db.execute retorna [rows, fields], pegar apenas rows
   const rows = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : [];
-  return rows;
+  
+  // Converter snake_case para camelCase para compatibilidade com frontend
+  return rows.map((row: any) => ({
+    id: row.id,
+    vesselId: row.vessel_id,
+    vesselName: row.vessel_name,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    description: row.description,
+    status: row.status,
+    createdBy: row.created_by,
+    createdByName: row.created_by_name,
+    createdByRole: row.created_by_role,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
 }
 
 export async function getMaintenanceById(id: number) {
