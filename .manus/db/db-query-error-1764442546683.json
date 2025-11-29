@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE maintenances ADD COLUMN created_by INT NULL AFTER status",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute ALTER TABLE maintenances ADD COLUMN created_by INT NULL AFTER status",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1060 (42S21) at line 1: Duplicate column name 'created_by'"
+  ]
+}

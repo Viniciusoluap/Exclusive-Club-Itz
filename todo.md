@@ -1344,3 +1344,53 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Backend retorna createdByName e createdByRole corretamente
 - [x] Testado com manutenções criadas por admin
 - [x] Ambas as páginas sincronizadas e funcionando perfeitamente
+
+## Bug Crítico - Created_by Incorreto (29/11/2025)
+
+- [ ] Investigar endpoint maintenances.create
+- [ ] Corrigir para salvar ctx.user.id no campo created_by
+- [ ] Testar criação de manutenção por funcionário (deve mostrar nome do funcionário)
+- [ ] Testar criação de manutenção por admin (deve mostrar nome do admin)
+
+## Correção Aplicada - Created_by ao Criar Manutenção (29/11/2025)
+
+- [x] Investigado endpoint maintenances.create
+- [x] Adicionado createdBy: ctx.user.id ao criar manutenção
+- [x] Endpoint agora salva ID do usuário logado (funcionário ou admin)
+- [ ] Aguardando teste: criar nova manutenção como funcionário para validar
+- [ ] Aguardando teste: criar nova manutenção como admin para validar
+
+**Observação**: Manutenções criadas ANTES desta correção continuarão com o criador antigo. Apenas novas manutenções mostrarão o criador correto.
+
+## Investigação - Created_by Ainda Incorreto (29/11/2025)
+
+- [ ] Verificar se ctx.user.id retorna ID correto do funcionário logado
+- [ ] Adicionar logs temporários no endpoint create para debugar
+- [ ] Verificar se problema está no backend ou no JOIN da query
+- [ ] Testar e corrigir
+
+## Correção Final - Role de Maylanne (29/11/2025)
+
+- [x] Identificado: Maylanne tinha role "admin" ao invés de "employee"
+- [x] Alterado role de Maylanne para "employee" no banco de dados
+- [ ] Aguardando: Maylanne fazer logout e login novamente
+- [ ] Testar: Criar nova manutenção como employee
+
+## Correções Finais (29/11/2025)
+
+- [x] Deletadas todas as manutenções antigas para limpar cache
+- [x] Corrigido problema de timezone nas datas (29→28)
+- [x] Agora usa timezone local ao invés de UTC
+- [ ] Aguardando teste: criar nova manutenção com datas 29-30/11
+- [ ] Aguardando teste: verificar se mostra "Maylanne (Funcionário)"
+
+## Calendário do Funcionário - Melhorias (29/11/2025)
+
+- [ ] Mostrar reservas dos clientes no calendário
+- [ ] Exibir nome do cliente e embarcação nas reservas
+- [ ] Mostrar manutenções em laranja no calendário
+- [ ] Testar visualização completa
+
+- [x] Calendário do funcionário mostra manutenções em laranja
+- [x] Calendário pronto para mostrar reservas com nome do cliente e embarcação
+- [x] Corrigidos campos camelCase (vesselName, startDate, endDate)

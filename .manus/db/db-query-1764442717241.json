@@ -1,0 +1,108 @@
+{
+  "query": "SELECT id, openId, name, email, role FROM users ORDER BY id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, openId, name, email, role FROM users ORDER BY id",
+  "rows": [
+    {
+      "id": "1",
+      "openId": "fCNJikpeuBxzy42NrCqy3y",
+      "name": "Vinicius Freitas",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "role": "admin"
+    },
+    {
+      "id": "390043",
+      "openId": "G2EoTyU43fSvXvpdGf26Np",
+      "name": "paulovinicius92",
+      "email": "paulovinicius92@hotmail.com",
+      "role": "user"
+    },
+    {
+      "id": "1260005",
+      "openId": "QVXr52rUXMqo6Wm8x2n4vP",
+      "name": "ernany oliveira",
+      "email": "ernanyoimp@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "1350001",
+      "openId": "hDYSnedwquJMU8X8cNvvK5",
+      "name": "mhamedfeiz",
+      "email": "mhamedfeiz@hotmail.com",
+      "role": "user"
+    },
+    {
+      "id": "1440001",
+      "openId": "bGXdWgh4SPoBCWzHupVM3H",
+      "name": "Diogo Brito",
+      "email": "diogobritolemos@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "1470001",
+      "openId": "7j5NBeWPSEYtDXYfdZR7dU",
+      "name": "Filippe Murta",
+      "email": "filippeamurta@yahoo.com.br",
+      "role": "user"
+    },
+    {
+      "id": "1500001",
+      "openId": "dojpNuswan3BWxGKvSbF9k",
+      "name": "ronaldo bianchini",
+      "email": "rbq1992@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "1590001",
+      "openId": "WoTmppUJEHZyJkeADD7FeC",
+      "name": "Erisvaldo Alves",
+      "email": "erisvaldo1308@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "1590050",
+      "openId": "6tip8xsBejkdStYrd2x8W4",
+      "name": "Erinaldo Alves Silva",
+      "email": "erinaldo7717@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "1650059",
+      "openId": "h7bJZ2VAE2mqmkqE7r7NJo",
+      "name": "Erisvaldo Silva",
+      "email": "via.vips@hotmail.com",
+      "role": "user"
+    },
+    {
+      "id": "1710001",
+      "openId": "9LpFxVudChzWWZTMZvzbyW",
+      "name": "Gabner Corporation",
+      "email": "gabnercorporation@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "1860001",
+      "openId": "PXTr5whLobXJeT8AZUrQJa",
+      "name": "EDILSON DA CONCEIÇÃO COSTA",
+      "email": "motomais.acailandia@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "2190043",
+      "openId": "LtACbhAdM4WWbWB8WkKS4Q",
+      "name": "Louise",
+      "email": "atendimento@prospectaconstrucoes.com",
+      "role": "user"
+    },
+    {
+      "id": "2190063",
+      "openId": "TDb4yB9pGB78LmdVRhLRkL",
+      "name": "Maylanne",
+      "email": "Atendimentogrupoefficaz@gmail.com",
+      "role": "employee"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\trole\n1\tfCNJikpeuBxzy42NrCqy3y\tVinicius Freitas\tv6h2sw5vmn@privaterelay.appleid.com\tadmin\n390043\tG2EoTyU43fSvXvpdGf26Np\tpaulovinicius92\tpaulovinicius92@hotmail.com\tuser\n1260005\tQVXr52rUXMqo6Wm8x2n4vP\ternany oliveira\ternanyoimp@gmail.com\tuser\n1350001\thDYSnedwquJMU8X8cNvvK5\tmhamedfeiz\tmhamedfeiz@hotmail.com\tuser\n1440001\tbGXdWgh4SPoBCWzHupVM3H\tDiogo Brito\tdiogobritolemos@gmail.com\tuser\n1470001\t7j5NBeWPSEYtDXYfdZR7dU\tFilippe Murta\tfilippeamurta@yahoo.com.br\tuser\n1500001\tdojpNuswan3BWxGKvSbF9k\tronaldo bianchini\trbq1992@gmail.com\tuser\n1590001\tWoTmppUJEHZyJkeADD7FeC\tErisvaldo Alves\terisvaldo1308@gmail.com\tuser\n1590050\t6tip8xsBejkdStYrd2x8W4\tErinaldo Alves Silva\terinaldo7717@gmail.com\tuser\n1650059\th7bJZ2VAE2mqmkqE7r7NJo\tErisvaldo Silva\tvia.vips@hotmail.com\tuser\n1710001\t9LpFxVudChzWWZTMZvzbyW\tGabner Corporation\tgabnercorporation@gmail.com\tuser\n1860001\tPXTr5whLobXJeT8AZUrQJa\tEDILSON DA CONCEIÇÃO COSTA\tmotomais.acailandia@gmail.com\tuser\n2190043\tLtACbhAdM4WWbWB8WkKS4Q\tLouise\tatendimento@prospectaconstrucoes.com\tuser\n2190063\tTDb4yB9pGB78LmdVRhLRkL\tMaylanne\tAtendimentogrupoefficaz@gmail.com\temployee\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

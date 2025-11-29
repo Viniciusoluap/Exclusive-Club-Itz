@@ -54,8 +54,8 @@ export default function EmployeeReservas() {
     const dayEnd = new Date(year, month, day, 23, 59, 59).getTime();
     
     return maintenances.filter((m: any) => {
-      // Manutenção está ativa se o dia está entre start_date e end_date
-      return m.start_date <= dayEnd && m.end_date >= dayStart;
+      // Manutenção está ativa se o dia está entre startDate e endDate
+      return m.startDate <= dayEnd && m.endDate >= dayStart;
     });
   };
 
@@ -202,7 +202,7 @@ export default function EmployeeReservas() {
                           <Wrench className="h-2.5 w-2.5 md:h-3 md:w-3 flex-shrink-0" />
                           <span className="font-medium text-[9px] md:text-[10px]">Manutenção</span>
                         </div>
-                        <div className="font-medium leading-tight break-words">{maintenance.vessel_name}</div>
+                        <div className="font-medium leading-tight break-words">{maintenance.vesselName}</div>
                         <div className="text-[9px] md:text-[10px]">
                           {getMaintenanceStatusLabel(maintenance.status)}
                         </div>

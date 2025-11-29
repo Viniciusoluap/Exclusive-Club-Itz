@@ -817,6 +817,7 @@ export const appRouter = router({
           endDate: new Date(input.endDate).getTime(),
           description: input.description || '',
           status: input.status || 'scheduled',
+          createdBy: ctx.user.id, // Salvar ID do usuário logado (admin ou funcionário)
         };
         
         const created = await db.createMaintenance(maintenanceData);

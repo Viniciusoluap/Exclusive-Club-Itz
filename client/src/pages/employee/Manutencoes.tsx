@@ -48,7 +48,10 @@ export default function EmployeeManutencoes() {
     status: "scheduled" as "scheduled" | "in_progress" | "completed" | "cancelled",
   });
 
-  const { data: maintenances, isLoading, refetch } = trpc.maintenances.list.useQuery();
+  const { data: maintenances, isLoading, refetch } = trpc.maintenances.list.useQuery(undefined, {
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+  });
   const { data: vessels } = trpc.vessels.list.useQuery();
   const createMutation = trpc.maintenances.create.useMutation();
   const updateMutation = trpc.maintenances.update.useMutation();
@@ -63,9 +66,11 @@ export default function EmployeeManutencoes() {
     }
 
     try {
-      // Converter datas para timestamp em milissegundos
-      const startDate = new Date(formData.start_date).setHours(0, 0, 0, 0);
-      const endDate = new Date(formData.end_date).setHours(23, 59, 59, 999);
+      // Converter datas para timestamp em milissegundos (timezone local)
+      const [startYear, startMonth, startDay] = formData.start_date.split('-').map(Number);
+      const [endYear, endMonth, endDay] = formData.end_date.split('-').map(Number);
+      const startDate = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0).getTime();
+      const endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999).getTime();
       
       if (editingId) {
         await updateMutation.mutateAsync({
