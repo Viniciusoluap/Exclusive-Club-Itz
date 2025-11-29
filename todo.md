@@ -957,3 +957,20 @@
 - [x] Data formatada corretamente: "17 de dezembro de 2025" ✓
 - [x] Horário fixo exibido: "10:00 - 19:00" ✓
 - [x] Testado e validado visualmente ✓
+
+
+## Bug Crítico - Calendário Mostrando Reservas Canceladas (28/11/2025 - 23:36) - RESOLVIDO ✅
+
+### Problema: Reservas canceladas aparecem como indisponíveis - RESOLVIDO ✅
+- [x] Calendário mostra dia 17 em VERMELHO (indisponível)
+- [x] Mas a reserva do dia 17 foi CANCELADA (Status: Cancelled)
+- [x] Dias com reservas canceladas devem voltar a ficar BRANCOS (disponíveis)
+- [x] Apenas reservas com status 'confirmed' devem aparecer em vermelho
+
+### Correção implementada:
+- [x] Filtrado apenas reservas confirmadas em getDayStatus ✓
+- [x] Adicionada condição: `booking.status === 'confirmed'` ✓
+- [x] Testado: reserva cancelada do dia 17 → dia voltou a ficar BRANCO ✓
+- [x] Validado visualmente no calendário de dezembro ✓
+- [x] Dias 2 e 3 (confirmadas) = VERMELHO ✓
+- [x] Dia 17 (cancelada) = BRANCO (disponível) ✓
