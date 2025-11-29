@@ -1243,3 +1243,22 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 5. Funcionário é redirecionado para /employee/reservas
 6. Menu lateral mostra apenas: Calendário, Manutenções, Abastecimentos, Vistorias
 7. Funcionário NÃO pode acessar: Clientes, Embarcações, Relatórios, Configurações
+
+
+## Bug Crítico - Funcionário Vê Dashboard Errado (29/11/2025 - 13:10) - RESOLVIDO
+
+- [x] Funcionário com role "employee" está vendo dashboard de usuário comum (/dashboard)
+- [x] Deveria ver dashboard de funcionário (/employee/reservas) com menu lateral
+- [x] Implementar redirecionamento automático em /dashboard baseado em role
+- [x] Se role = "employee" → redirecionar para /employee/reservas
+- [x] Se role = "admin" → redirecionar para /admin/dashboard
+- [x] Se role = "user" → manter em /dashboard
+- [x] Adicionar botão visível no menu mobile para funcionário acessar painel
+- [ ] Testar login de funcionário e verificar interface correta - AGUARDANDO TESTE DO USUÁRIO
+
+### Soluções Implementadas:
+- [x] Adicionado useEffect em Dashboard.tsx que detecta role do usuário
+- [x] Redirecionamento automático: employee → /employee/reservas, admin → /admin/dashboard
+- [x] Botão "Painel Funcionário" adicionado no menu desktop (Home.tsx linha 55-59)
+- [x] Botão "Painel Funcionário" adicionado no menu mobile (MobileMenu.tsx linha 141-145)
+- [x] Botões aparecem apenas para usuários com role = "employee"

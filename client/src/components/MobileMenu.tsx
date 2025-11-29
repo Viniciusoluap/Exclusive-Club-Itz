@@ -137,6 +137,12 @@ export function MobileMenu() {
               Admin
             </NavLink>
           )}
+          
+          {isAuthenticated && user?.role === "employee" && (
+            <NavLink href="/employee/reservas">
+              Painel Funcionário
+            </NavLink>
+          )}
 
           <div className="border-t border-border my-4"></div>
 
