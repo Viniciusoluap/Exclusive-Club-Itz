@@ -166,10 +166,9 @@ export default function Vistorias() {
       bookingId: selectedBookingId,
       vesselId: booking.vesselId,
       vesselType,
-      inspectionDate: new Date(inspectionDate).getTime(),
       clientName,
       formData,
-      notes: notes || undefined,
+      observations: notes || undefined,
     });
   };
 
