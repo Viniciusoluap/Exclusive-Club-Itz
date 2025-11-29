@@ -1623,3 +1623,25 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - Frontend corrigido: `inspector_name` → `inspectedBy`
 - Adicionado fallback "Não informado" para registros sem vistoriador
 - Resultado: Data: 19/11/2025 ✅ | Vistoriador: Vinicius Freitas ✅
+
+
+## ✅ ETAPA 3 - Tipo de Embarcação Incorreto em Vistorias Admin (29/11/2025 - 19:45) - RESOLVIDO
+
+- [x] Investigar onde o tipo de embarcação é exibido na página `/admin/vistorias`
+- [x] Verificar de onde vem o dado (backend ou frontend)
+- [x] Verificar se o problema está no banco de dados (registro salvo errado)
+- [x] Verificar se o problema está na lógica de exibição (mapeamento incorreto)
+- [x] Corrigir mapeamento ou lógica conforme necessário
+- [x] Testar página `/admin/vistorias` no navegador
+- [x] Confirmar que Jetski aparece como "Jet Ski" (não "Lancha")
+
+### Problema Identificado
+- Lógica de exibição estava correta: `vesselType === 'jetski' ? 'Jet Ski' : 'Lancha'`
+- Problema estava no banco de dados: registro salvo com `vessel_type = 'lancha'` quando deveria ser `'jetski'`
+- Causa: formulário antigo tinha bug e salvou tipo incorreto
+
+### Solução
+- Executado UPDATE SQL: `UPDATE inspections SET vessel_type = 'jetski' WHERE vessel_name LIKE '%JETSKI%' AND vessel_type = 'lancha'`
+- Corrigido registro incorreto no banco de dados
+- Formulário já foi corrigido anteriormente (ETAPA 1) com seleção manual de tipo
+- Resultado: Todas as vistorias agora exibem "Tipo: Jet Ski" corretamente ✅
