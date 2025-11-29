@@ -1305,3 +1305,11 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Corrigir erro de validação ao criar manutenção (vesselId, startDate, endDate undefined)
 - [x] Converter datas corretamente para timestamp
 - [x] Testar criação de manutenção
+
+
+## Correção - Campo "Requisitado por" em Manutenções (29/11/2025)
+
+- [x] Adicionar campo created_by ao schema de maintenances
+- [x] Modificar backend para salvar user_id ao criar manutenção
+- [x] Atualizar query getMaintenances para retornar nome do criador
+- [x] Testar criação de manutenção mostrando usuário correto
