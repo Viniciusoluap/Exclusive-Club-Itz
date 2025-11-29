@@ -348,6 +348,46 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await db.getBookingsByDateRange(input.startDate, input.endDate);
       }),
+    
+    // Get all bookings for a specific month (for employee calendar)
+    getByMonth: publicProcedure
+      .input(z.object({
+        year: z.number(),
+        month: z.number(), // 1-12
+      }))
+      .query(async ({ input, ctx }) => {
+        // Only allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+        
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        
+        // Calculate start and end of month in UTC
+        const startDate = new Date(Date.UTC(input.year, input.month - 1, 1, 0, 0, 0)).getTime();
+        const endDate = new Date(Date.UTC(input.year, input.month, 0, 23, 59, 59)).getTime();
+        
+        const query = `SELECT 
+          b.id,
+          b.vesselId,
+          b.bookingDate as booking_date,
+          b.startTime,
+          b.endTime,
+          b.status,
+          b.notes,
+          u.name as clientName,
+          u.email as clientEmail,
+          v.name as vesselName
+        FROM bookings b
+        JOIN users u ON b.userId = u.id
+        JOIN vessels v ON b.vesselId = v.id
+        WHERE b.bookingDate >= ? AND b.bookingDate <= ?
+        ORDER BY b.bookingDate ASC`;
+        
+        const result = await db.execute(query, [startDate, endDate]);
+        return result[0] as any[];
+      }),
 
     // Create booking with validation
     create: allowedClientProcedure
@@ -654,19 +694,31 @@ export const appRouter = router({
         });
       }),
 
-    list: adminProcedure.query(async () => {
+    list: publicProcedure.query(async ({ ctx }) => {
+      // Allow admin and employee to access
+      if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+      }
       return await db.getMaintenances();
     }),
 
-    getById: adminProcedure
+    getById: publicProcedure
       .input(z.object({ id: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         return await db.getMaintenanceById(input.id);
       }),
 
-    getByVessel: adminProcedure
+    getByVessel: publicProcedure
       .input(z.object({ vesselId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         return await db.getMaintenancesByVesselId(input.vesselId);
       }),
 
@@ -710,7 +762,7 @@ export const appRouter = router({
         };
       }),
 
-    create: adminProcedure
+    create: publicProcedure
       .input(z.object({
         vesselId: z.number(),
         startDate: z.number(),
@@ -718,7 +770,11 @@ export const appRouter = router({
         description: z.string().optional(),
         status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         // Get vessel info
         const vessel = await db.getVesselById(input.vesselId);
         if (!vessel) {
@@ -829,7 +885,7 @@ Nenhuma reserva foi afetada.
         };
       }),
 
-    update: adminProcedure
+    update: publicProcedure
       .input(z.object({
         id: z.number(),
         vesselId: z.number().optional(),
@@ -838,7 +894,11 @@ Nenhuma reserva foi afetada.
         description: z.string().optional(),
         status: z.enum(['scheduled', 'in_progress', 'completed', 'cancelled']).optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         const { id, ...data } = input;
         
         // Get current maintenance to check if status changed
@@ -1135,9 +1195,9 @@ Nenhuma reserva foi afetada.
       }),
   }),
 
-  // Fuel Records router - Admin only
+  // Fuel Records router - Admin and Employee
   fuelRecords: router({  
-    create: adminProcedure
+    create: publicProcedure
       .input(z.object({
         bookingId: z.number(),
         vesselId: z.number(),
@@ -1146,6 +1206,10 @@ Nenhuma reserva foi afetada.
         notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
@@ -1162,13 +1226,17 @@ Nenhuma reserva foi afetada.
         return { success: true, totalCost };
       }),
 
-    list: adminProcedure
+    list: publicProcedure
       .input(z.object({
         vesselId: z.number().optional(),
         startDate: z.number().optional(),
         endDate: z.number().optional(),
       }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
@@ -1209,9 +1277,13 @@ Nenhuma reserva foi afetada.
         return result[0] as any[];
       }),
 
-    getByBooking: adminProcedure
+    getByBooking: publicProcedure
       .input(z.object({ bookingId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
@@ -1227,13 +1299,17 @@ Nenhuma reserva foi afetada.
         return result[0] as any[];
       }),
 
-    stats: adminProcedure
+    stats: publicProcedure
       .input(z.object({
         vesselId: z.number().optional(),
         startDate: z.number().optional(),
         endDate: z.number().optional(),
       }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
@@ -1277,9 +1353,9 @@ Nenhuma reserva foi afetada.
       }),
   }),
 
-  // Inspections router - Admin only
+  // Inspections router - Admin and Employee
   inspections: router({
-    create: adminProcedure
+    create: publicProcedure
       .input(z.object({
         bookingId: z.number(),
         vesselId: z.number(),
@@ -1290,6 +1366,10 @@ Nenhuma reserva foi afetada.
         notes: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
@@ -1340,13 +1420,17 @@ Nenhuma reserva foi afetada.
         return { success: true };
       }),
 
-    list: adminProcedure
+    list: publicProcedure
       .input(z.object({
         vesselId: z.number().optional(),
         startDate: z.number().optional(),
         endDate: z.number().optional(),
       }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
@@ -1390,9 +1474,13 @@ Nenhuma reserva foi afetada.
         return inspections;
       }),
 
-    getByBooking: adminProcedure
+    getByBooking: publicProcedure
       .input(z.object({ bookingId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
