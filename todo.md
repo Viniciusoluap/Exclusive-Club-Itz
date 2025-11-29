@@ -1314,3 +1314,18 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Melhorar layout mobile para mostrar nome completo do cliente (break-words)
 - [x] Garantir legibilidade em dispositivos móveis (fontes menores, espaçamento otimizado)
 - [x] Testar no navegador
+
+## Bug Crítico - Manutenções do Funcionário (29/11/2025)
+
+- [ ] Corrigir "Invalid Date" na página de manutenções do funcionário
+- [ ] Sincronizar formatação de datas com página do admin
+- [ ] Garantir que ambas as páginas funcionem igualmente
+- [ ] Testar criação, edição e visualização de manutenções
+
+## Correção Aplicada - Manutenções do Funcionário (29/11/2025)
+
+- [x] Corrigido "Invalid Date" na página de manutenções do funcionário
+- [x] Sincronizada formatação de datas com página do admin
+- [x] Backend agora retorna campos em camelCase (startDate, endDate, vesselName)
+- [x] Ambas as páginas funcionam igualmente
+- [x] Testado criação, edição e visualização de manutenções
