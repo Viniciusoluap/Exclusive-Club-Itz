@@ -1262,3 +1262,21 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Botão "Painel Funcionário" adicionado no menu desktop (Home.tsx linha 55-59)
 - [x] Botão "Painel Funcionário" adicionado no menu mobile (MobileMenu.tsx linha 141-145)
 - [x] Botões aparecem apenas para usuários com role = "employee"
+
+
+## Bugs Críticos - Páginas de Funcionário Sem Dados (29/11/2025 - 13:35)
+
+### 1. Calendário de Reservas vazio
+- [ ] Calendário do funcionário mostra "Sem reservas" em todos os dias
+- [ ] Devem existir reservas cadastradas no sistema que não estão aparecendo
+- [ ] Investigar endpoint usado pela página /employee/reservas
+- [ ] Verificar se query está retornando dados corretos
+- [ ] Testar com reservas existentes no banco
+
+### 2. Manutenções não aparecem
+- [ ] Página de manutenções mostra "Nenhuma manutenção agendada"
+- [ ] Existem manutenções criadas pelo admin que não estão aparecendo
+- [ ] Investigar endpoint usado pela página /employee/manutencoes
+- [ ] Verificar se query está filtrando corretamente
+- [ ] Garantir que admin e funcionário vejam as mesmas manutenções
+- [ ] Testar sincronização em tempo real entre admin e funcionário
