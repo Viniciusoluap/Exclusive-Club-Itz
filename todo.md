@@ -1090,3 +1090,48 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Criar arquivo EMPLOYEE_PERMISSIONS.md com detalhes completos
 - [x] Confirmar restrições (não pode acessar clientes, embarcações, etc.)
 - [x] Documentar implementação futura (role employee, middleware, dashboard)
+
+
+## Bug Crítico - Editar e Excluir Funcionários (28/11/2025 - 23:18)
+
+### Erro: query.getSQL is not a function
+- [ ] Investigar endpoints employees.update e employees.delete
+- [ ] Corrigir para usar SQL direto ao invés de Drizzle ORM
+- [ ] Testar edição de funcionário
+- [ ] Testar exclusão de funcionário
+- [ ] Validar que dados são atualizados corretamente no banco
+
+
+## Bugs Reportados - Sistema de Funcionários (28/11/2025 - 22:50) - RESOLVIDOS
+
+### 1. Funcionário cadastrado não aparece na lista - RESOLVIDO
+- [x] Investigar por que funcionário não aparece após cadastro bem-sucedido
+- [x] Verificar query de listagem (filtro is_active)
+- [x] Corrigir incompatibilidade MySQL - endpoint retornava result ao invés de result[0]
+- [x] Testar cadastro e visualização
+- [x] Solução: Ajustado endpoint employees.list para pegar result[0] (rows) do MySQL
+
+### 2. Falta botão de editar nos cards de funcionários - JÁ EXISTIA
+- [x] Botão "Editar" já estava implementado (linhas 142-151 em Funcionarios.tsx)
+- [x] Dialog de edição já estava completo (linhas 239-309)
+- [x] Testado e funcionando corretamente
+
+### 3. Documentar permissões de funcionário - CONCLUÍDO
+- [x] Confirmar lógica de acesso: apenas emails cadastrados podem logar
+- [x] Documentar quais páginas/funcionalidades funcionário pode acessar
+- [x] Criar arquivo EMPLOYEE_PERMISSIONS.md com detalhes completos
+- [x] Confirmar restrições (não pode acessar clientes, embarcações, etc.)
+- [x] Documentar implementação futura (role employee, middleware, dashboard)
+
+
+## Bug Crítico - Editar e Excluir Funcionários (28/11/2025 - 23:18) - RESOLVIDO
+
+### Erro "query.getSQL is not a function"
+- [x] Erro ao tentar editar funcionário
+- [x] Erro ao tentar excluir funcionário
+- [x] Investigar endpoints employees.update e employees.delete
+- [x] Problema identificado: MySQL não aceitava placeholders ? em db.execute()
+- [x] Solução: Migrar para Drizzle ORM usando .update().set().where(eq())
+- [x] Testar edição - Funcionando: Nome alterado de "Teste" para "Teste Editado"
+- [x] Testar exclusão - Funcionando: Funcionário "vitor" removido da lista (is_active=false)
+- [x] Validar que ambas as operações funcionam corretamente

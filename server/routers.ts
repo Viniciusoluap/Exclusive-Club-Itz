@@ -1080,41 +1080,34 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const updates: string[] = [];
-        const params: any[] = [];
+        const { employees } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
 
-        if (input.name !== undefined) {
-          updates.push('name = ?');
-          params.push(input.name);
-        }
-        if (input.email !== undefined) {
-          updates.push('email = ?');
-          params.push(input.email);
-        }
-        if (input.phone !== undefined) {
-          updates.push('phone = ?');
-          params.push(input.phone);
-        }
-        if (input.vesselIds !== undefined) {
-          updates.push('vessel_ids = ?');
-          params.push(JSON.stringify(input.vesselIds));
-        }
-        if (input.isActive !== undefined) {
-          updates.push('is_active = ?');
-          params.push(input.isActive);
-        }
+        const updateData: any = {};
 
-        if (updates.length === 0) {
+        if (input.name !== undefined) updateData.name = input.name;
+        if (input.email !== undefined) updateData.email = input.email;
+        if (input.phone !== undefined) updateData.phone = input.phone || null;
+        if (input.vesselIds !== undefined) updateData.vesselIds = JSON.stringify(input.vesselIds);
+        if (input.isActive !== undefined) updateData.isActive = input.isActive;
+
+        if (Object.keys(updateData).length === 0) {
           return { success: true };
         }
 
-        params.push(input.id);
-        await db.execute({
-          sql: `UPDATE employees SET ${updates.join(', ')} WHERE id = ?`,
-          params,
-        });
-
-        return { success: true };
+        try {
+          await db.update(employees)
+            .set(updateData)
+            .where(eq(employees.id, input.id));
+          
+          return { success: true };
+        } catch (error: any) {
+          console.error('[employees.update] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao atualizar funcionário: ${error.message}` 
+          });
+        }
       }),
 
     delete: adminProcedure
@@ -1123,12 +1116,22 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        await db.execute({
-          sql: 'UPDATE employees SET is_active = ? WHERE id = ?',
-          params: [false, input.id],
-        });
+        const { employees } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
 
-        return { success: true };
+        try {
+          await db.update(employees)
+            .set({ isActive: false })
+            .where(eq(employees.id, input.id));
+          
+          return { success: true };
+        } catch (error: any) {
+          console.error('[employees.delete] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao desativar funcionário: ${error.message}` 
+          });
+        }
       }),
   }),
 
