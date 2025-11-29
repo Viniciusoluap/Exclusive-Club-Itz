@@ -757,8 +757,8 @@ export const appRouter = router({
         const maintenanceData: any = {
           vesselId: input.vesselId,
           vesselName: vessel.name,
-          startDate: input.startDate,
-          endDate: input.endDate,
+          startDate: new Date(input.startDate).getTime(),
+          endDate: new Date(input.endDate).getTime(),
           status: input.status || 'scheduled',
         };
         
@@ -767,7 +767,7 @@ export const appRouter = router({
           maintenanceData.description = input.description;
         }
         
-        await db.createMaintenance(maintenanceData);
+        const created = await db.createMaintenance(maintenanceData);
 
         // Cancelar reservas conflitantes
         const cancelledBookings = [];
@@ -827,6 +827,7 @@ Nenhuma reserva foi afetada.
 
         return { 
           success: true,
+          id: created.id,
           cancelledCount: cancelledBookings.length,
           cancelledBookings 
         };

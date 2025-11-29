@@ -136,7 +136,7 @@ export default function AdminManutencao() {
     try {
       console.log("Verificando conflitos...", { vesselId: selectedVesselId, startTimestamp, endTimestamp });
       // @ts-ignore - maintenances router exists but TypeScript types not regenerated
-      const conflicts = await utils.client.maintenances.checkConflicts.query({
+      const conflicts = await utils.maintenances.checkConflicts.query({
         vesselId: selectedVesselId,
         startDate: startTimestamp,
         endDate: endTimestamp,
