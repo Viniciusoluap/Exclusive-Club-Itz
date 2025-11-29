@@ -817,7 +817,6 @@ export const appRouter = router({
           endDate: new Date(input.endDate).getTime(),
           description: input.description || '',
           status: input.status || 'scheduled',
-          createdBy: ctx.user.id, // Save who created this maintenance
         };
         
         const created = await db.createMaintenance(maintenanceData);
