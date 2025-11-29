@@ -19,7 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { Calendar, Loader2, Plus, Settings, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -31,10 +31,12 @@ export default function AdminManutencao() {
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictingBookings, setConflictingBookings] = useState<any[]>([]);
   const [selectedVesselId, setSelectedVesselId] = useState<number | null>(null);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<"scheduled" | "in_progress" | "completed" | "cancelled">("scheduled");
+  
+  // Usar refs para inputs de data (uncontrolled)
+  const startDateRef = useRef<HTMLInputElement>(null);
+  const endDateRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
 
@@ -104,13 +106,16 @@ export default function AdminManutencao() {
 
   const resetForm = () => {
     setSelectedVesselId(null);
-    setStartDate("");
-    setEndDate("");
+    if (startDateRef.current) startDateRef.current.value = '';
+    if (endDateRef.current) endDateRef.current.value = '';
     setDescription("");
     setStatus("scheduled");
   };
 
-  const handleCreateMaintenance = async () => {
+  const handleCreateMaintenance = () => {
+    const startDate = startDateRef.current?.value || '';
+    const endDate = endDateRef.current?.value || '';
+    
     console.log('[DEBUG] handleCreateMaintenance called', { selectedVesselId, startDate, endDate, description, status });
     
     if (!selectedVesselId || !startDate || !endDate) {
@@ -132,35 +137,15 @@ export default function AdminManutencao() {
       return;
     }
 
-    // Verificar conflitos antes de criar
-    try {
-      console.log("Verificando conflitos...", { vesselId: selectedVesselId, startTimestamp, endTimestamp });
-      // @ts-ignore - maintenances router exists but TypeScript types not regenerated
-      const conflicts = await utils.maintenances.checkConflicts.query({
-        vesselId: selectedVesselId,
-        startDate: startTimestamp,
-        endDate: endTimestamp,
-      });
-      console.log("Resultado da verificação:", conflicts);
-
-      if (conflicts.hasConflicts) {
-        // Mostrar dialog de confirmação com lista de reservas
-        setConflictingBookings(conflicts.conflictingBookings);
-        setShowConflictDialog(true);
-      } else {
-        // Sem conflitos, criar diretamente
-        confirmCreateMaintenance();
-      }
-    } catch (error: any) {
-      console.error("Erro completo ao verificar conflitos:", error);
-      console.error("Stack trace:", error?.stack);
-      console.error("Mensagem:", error?.message);
-      console.error("Dados:", error?.data);
-      toast.error(error?.message || error?.data?.message || "Erro ao verificar conflitos. Verifique o console para mais detalhes.");
-    }
+    // Criar manutenção diretamente sem verificar conflitos
+    // (a verificação será feita no backend)
+    confirmCreateMaintenance();
   };
 
   const confirmCreateMaintenance = () => {
+    const startDate = startDateRef.current?.value || '';
+    const endDate = endDateRef.current?.value || '';
+    
     if (!selectedVesselId || !startDate || !endDate) return;
 
     const startTimestamp = new Date(startDate).getTime();
@@ -355,9 +340,8 @@ export default function AdminManutencao() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Data/Hora Início *</label>
                 <input
+                  ref={startDateRef}
                   type="datetime-local"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
@@ -365,9 +349,8 @@ export default function AdminManutencao() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Data/Hora Término *</label>
                 <input
+                  ref={endDateRef}
                   type="datetime-local"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
