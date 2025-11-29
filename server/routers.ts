@@ -964,9 +964,13 @@ Nenhuma reserva foi afetada.
         return { success: true };
       }),
 
-    delete: adminProcedure
+    delete: publicProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        // Allow admin and employee to access
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         await db.deleteMaintenance(input.id);
         return { success: true };
       }),

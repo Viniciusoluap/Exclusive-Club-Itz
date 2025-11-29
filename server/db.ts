@@ -320,7 +320,20 @@ export async function deleteClientQuotasByClientId(clientId: number) {
 export async function getMaintenances() {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(maintenances).orderBy(desc(maintenances.startDate));
+  
+  // Usar SQL direto para fazer JOIN e retornar nome da embarcação
+  const result = await db.execute(`
+    SELECT 
+      m.*,
+      v.name as vessel_name
+    FROM maintenances m
+    JOIN vessels v ON m.vessel_id = v.id
+    ORDER BY m.start_date DESC
+  `);
+  
+  // db.execute retorna [rows, fields], pegar apenas rows
+  const rows = Array.isArray(result) && Array.isArray(result[0]) ? result[0] : [];
+  return rows;
 }
 
 export async function getMaintenanceById(id: number) {
