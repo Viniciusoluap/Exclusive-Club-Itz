@@ -19,7 +19,7 @@ export default function Abastecimento() {
   const [notes, setNotes] = useState("");
 
   const trpcAny = trpc as any;
-  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ includeUsed: true }) || { data: [] }; // Busca todas as reservas incluindo usadas
+  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas as últimas 6 reservas utilizadas
   const { data: fuelRecords, refetch } = trpcAny.fuelRecords?.list.useQuery({}) || { data: [] };
   const { data: vessels } = trpc.vessels.list.useQuery();
 

@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, vessel_name, client_name, booking_date, status FROM bookings WHERE status = 'used' ORDER BY booking_date DESC LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, vessel_name, client_name, booking_date, status FROM bookings WHERE status = 'used' ORDER BY booking_date DESC LIMIT 10",
+  "rows": [
+    {
+      "id": "960001",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP",
+      "client_name": "Vinicius Freitas",
+      "booking_date": "1763521200000",
+      "status": "used"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_name\tclient_name\tbooking_date\tstatus\n960001\tJETSKI SEADOO GTI SE 130HP\tVinicius Freitas\t1763521200000\tused\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}
