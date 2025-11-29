@@ -54,9 +54,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     // Verificar se o email está cadastrado como funcionário
     let isEmployee = false;
     if (user.email) {
+      const { and } = await import('drizzle-orm');
       const employeeCheck = await db.select().from(employees)
-        .where(eq(employees.email, user.email))
-        .where(eq(employees.isActive, true))
+        .where(and(
+          eq(employees.email, user.email),
+          eq(employees.isActive, true)
+        ))
         .limit(1);
       isEmployee = employeeCheck.length > 0;
     }

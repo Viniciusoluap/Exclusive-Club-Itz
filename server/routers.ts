@@ -280,8 +280,9 @@ export const appRouter = router({
           query += ' LIMIT 6';
         }
 
-        const result = await db.execute(query, params);
-        return result[0] as any[];
+        const { sql: sqlTag } = await import('drizzle-orm');
+        const result = await db.execute(sqlTag.raw(query)) as any;
+        return (Array.isArray(result[0]) ? result[0] : result) as any[];
       }),
 
     // Get user's own bookings
@@ -396,8 +397,9 @@ export const appRouter = router({
         WHERE b.bookingDate >= ? AND b.bookingDate <= ?
         ORDER BY b.bookingDate ASC`;
         
-        const result = await db.execute(query, [startDate, endDate]);
-        return result[0] as any[];
+        const { sql: sqlTag } = await import('drizzle-orm');
+        const result = await db.execute(sqlTag.raw(query)) as any;
+        return (Array.isArray(result[0]) ? result[0] : result) as any[];
       }),
 
     // Create booking with validation
@@ -1025,73 +1027,66 @@ Nenhuma reserva foi afetada.
         comment: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const db = await getDb();
+        const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
         
-        // Check if already reviewed
-        const existing = await db.execute({
-          sql: 'SELECT id FROM reviews WHERE booking_id = ?',
-          params: [input.bookingId],
-        }) as any[];
+        const { sql } = await import('drizzle-orm');
         
-        if (existing.length > 0) {
+        // Check if already reviewed
+        const existing = await db.execute(sql`
+          SELECT id FROM reviews WHERE booking_id = ${input.bookingId}
+        `) as any;
+        
+        if ((Array.isArray(existing[0]) ? existing[0] : existing).length > 0) {
           throw new TRPCError({ code: 'BAD_REQUEST', message: 'Você já avaliou esta reserva' });
         }
         
-        await db.execute({
-          sql: 'INSERT INTO reviews (booking_id, client_email, client_name, vessel_id, vessel_name, rating, comment) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          params: [
-            input.bookingId,
-            ctx.user.email || '',
-            ctx.user.name || '',
-            input.vesselId,
-            input.vesselName,
-            input.rating,
-            input.comment || null,
-          ],
-        });
+        await db.execute(sql`
+          INSERT INTO reviews (booking_id, client_email, client_name, vessel_id, vessel_name, rating, comment) 
+          VALUES (${input.bookingId}, ${ctx.user.email || ''}, ${ctx.user.name || ''}, ${input.vesselId}, ${input.vesselName}, ${input.rating}, ${input.comment || null})
+        `);
         
         return { success: true };
       }),
     
     listAll: adminProcedure.query(async () => {
-      const db = await getDb();
+      const db = await import('./db').then(m => m.getDb());
       if (!db) return [];
       
-      const result = await db.execute({
-        sql: 'SELECT * FROM reviews ORDER BY created_at DESC',
-        params: [],
-      }) as any[];
+      const { sql } = await import('drizzle-orm');
+      const result = await db.execute(sql`
+        SELECT * FROM reviews ORDER BY created_at DESC
+      `) as any;
       
-      return result;
+      return (Array.isArray(result[0]) ? result[0] : result);
     }),
     
     listByVessel: publicProcedure
       .input(z.object({ vesselId: z.number() }))
       .query(async ({ input }) => {
-        const db = await getDb();
+        const db = await import('./db').then(m => m.getDb());
         if (!db) return [];
         
-        const result = await db.execute({
-          sql: 'SELECT * FROM reviews WHERE vessel_id = ? ORDER BY created_at DESC',
-          params: [input.vesselId],
-        }) as any[];
+        const { sql } = await import('drizzle-orm');
+        const result = await db.execute(sql`
+          SELECT * FROM reviews WHERE vessel_id = ${input.vesselId} ORDER BY created_at DESC
+        `) as any;
         
-        return result;
+        return (Array.isArray(result[0]) ? result[0] : result);
       }),
     
     stats: publicProcedure
       .input(z.object({ vesselId: z.number() }))
       .query(async ({ input }) => {
-        const db = await getDb();
+        const db = await import('./db').then(m => m.getDb());
         if (!db) return { averageRating: 0, totalReviews: 0 };
         
-        const result = await db.execute({
-          sql: 'SELECT AVG(rating) as avgRating, COUNT(*) as total FROM reviews WHERE vessel_id = ?',
-          params: [input.vesselId],
-        }) as any[];
+        const { sql } = await import('drizzle-orm');
+        const result = await db.execute(sql`
+          SELECT AVG(rating) as avgRating, COUNT(*) as total FROM reviews WHERE vessel_id = ${input.vesselId}
+        `) as any;
         
-        const stats = result[0];
+        const stats = (Array.isArray(result[0]) ? result[0][0] : result[0]);
         return {
           averageRating: stats?.avgRating ? Math.round(stats.avgRating * 10) / 10 : 0,
           totalReviews: stats?.total || 0,
@@ -1229,13 +1224,14 @@ Nenhuma reserva foi afetada.
         if (!database) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         // Buscar dados da reserva e embarcação
-        const bookingResult = await database.execute(`
+        const { sql } = await import('drizzle-orm');
+        const bookingResult = await database.execute(sql`
           SELECT b.client_name, b.client_email, b.vessel_name, v.name as vessel_name_actual
           FROM bookings b
           JOIN vessels v ON b.vessel_id = v.id
           WHERE b.id = ${input.bookingId}
-        `);
-        const booking = (bookingResult[0] as any[])[0];
+        `) as any;
+        const booking = (Array.isArray(bookingResult[0]) ? bookingResult[0][0] : bookingResult[0]);
         if (!booking) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Reserva não encontrada' });
         }
@@ -1269,7 +1265,10 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        let query = `
+        const { sql } = await import('drizzle-orm');
+        
+        // Construir query base
+        let queryStr = `
           SELECT 
             fr.*,
             b.booking_date
@@ -1277,27 +1276,23 @@ Nenhuma reserva foi afetada.
           JOIN bookings b ON fr.booking_id = b.id
           WHERE 1=1
         `;
-        const params: any[] = [];
 
         if (input.vesselId) {
-          query += ' AND fr.vessel_id = ?';
-          params.push(input.vesselId);
+          queryStr += ` AND fr.vessel_id = ${input.vesselId}`;
         }
 
         if (input.startDate) {
-          query += ' AND fr.created_at >= FROM_UNIXTIME(?)';
-          params.push(input.startDate / 1000);
+          queryStr += ` AND fr.created_at >= FROM_UNIXTIME(${input.startDate / 1000})`;
         }
 
         if (input.endDate) {
-          query += ' AND fr.created_at <= FROM_UNIXTIME(?)';
-          params.push(input.endDate / 1000);
+          queryStr += ` AND fr.created_at <= FROM_UNIXTIME(${input.endDate / 1000})`;
         }
 
-        query += ' ORDER BY fr.created_at DESC';
+        queryStr += ' ORDER BY fr.created_at DESC';
 
-        const result = await db.execute(query, params);
-        const records = result[0] as any[];
+        const result = await db.execute(sql.raw(queryStr)) as any;
+        const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
         
         // Converter valores de centavos para reais
         return records.map((record: any) => ({
@@ -1318,15 +1313,15 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const result = await db.execute(
-          `SELECT fr.*
-           FROM fuel_records fr
-           WHERE fr.booking_id = ?
-           ORDER BY fr.created_at DESC`,
-          [input.bookingId]
-        );
+        const { sql } = await import('drizzle-orm');
+        const result = await db.execute(sql`
+          SELECT fr.*
+          FROM fuel_records fr
+          WHERE fr.booking_id = ${input.bookingId}
+          ORDER BY fr.created_at DESC
+        `) as any;
 
-        return result[0] as any[];
+        return (Array.isArray(result[0]) ? result[0] : result) as any[];
       }),
 
     stats: publicProcedure
@@ -1370,8 +1365,9 @@ Nenhuma reserva foi afetada.
           params.push(input.endDate / 1000);
         }
 
-        const result = await db.execute(query, params);
-        const stats = (result[0] as any[])[0];
+        const { sql: sqlTag } = await import('drizzle-orm');
+        const result = await db.execute(sqlTag.raw(query)) as any;
+        const stats = (Array.isArray(result[0]) ? result[0][0] : result[0]);
 
         return {
           totalRecords: Number(stats.total_records) || 0,
@@ -1412,24 +1408,23 @@ Nenhuma reserva foi afetada.
       .input(z.object({
         bookingId: z.number(),
         vesselId: z.number(),
-        vesselType: z.enum(['jet', 'lancha']),
-        inspectionDate: z.number(), // Unix timestamp
+        vesselType: z.enum(['jetski', 'lancha']),
         clientName: z.string(),
         formData: z.record(z.string(), z.string()), // JSON com todos os campos do formulário
-        notes: z.string().optional(),
+        observations: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        // Allow admin and employee to access
         if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
-        }        const db = await import('./db').then(m => m.getDb());
+        }
+        
+        const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const { inspections } = await import('../drizzle/schema');
+        const { inspections, vessels } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
         
         // Buscar nome da embarcação
-        const { vessels } = await import('../drizzle/schema');
-        const { eq } = await import('drizzle-orm');
         const vessel = await db.select().from(vessels).where(eq(vessels.id, input.vesselId)).limit(1);
         if (!vessel || vessel.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Embarcação não encontrada' });
@@ -1439,19 +1434,122 @@ Nenhuma reserva foi afetada.
         const hasRejected = Object.values(input.formData).some(v => v === 'reprovado');
         const status = hasRejected ? 'rejected' : 'approved';
 
-        await db.insert(inspections).values({
-          bookingId: input.bookingId,
-          vesselId: input.vesselId,
-          vesselName: vessel[0].name,
-          vesselType: input.vesselType,
-          clientName: input.clientName,
-          inspectionData: JSON.stringify(input.formData),
-          observations: input.notes || null,
-          status,
-          inspectedBy: ctx.user?.name || null,
-        } as any);
+        try {
+          await db.insert(inspections).values({
+            bookingId: input.bookingId,
+            vesselId: input.vesselId,
+            vesselName: vessel[0].name,
+            vesselType: input.vesselType,
+            clientName: input.clientName,
+            inspectionData: JSON.stringify(input.formData),
+            observations: input.observations || null,
+            status,
+            inspectedBy: ctx.user?.name || null,
+          });
 
-        return { success: true };
+          return { success: true };
+        } catch (error: any) {
+          console.error('[inspections.create] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao criar vistoria: ${error.message}` 
+          });
+        }
+      }),
+
+    list: publicProcedure
+      .input(z.object({
+        vesselId: z.number().optional(),
+        startDate: z.number().optional(),
+        endDate: z.number().optional(),
+      }))
+      .query(async ({ input, ctx }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          // Buscar vistorias com JOIN para pegar nome da embarcação, cliente e data da reserva
+          const { sql } = await import('drizzle-orm');
+          const result = await db.execute(sql`
+            SELECT 
+              i.id,
+              i.booking_id as bookingId,
+              i.vessel_id as vesselId,
+              i.vessel_name as vesselName,
+              i.inspection_data as inspectionData,
+              i.observations,
+              i.status,
+              i.inspected_by as inspectedBy,
+              i.created_at as createdAt,
+              b.client_name as clientName,
+              b.booking_date as bookingDate,
+              u.name as inspectedByName
+            FROM inspections i
+            LEFT JOIN bookings b ON i.booking_id = b.id
+            LEFT JOIN users u ON i.inspected_by = u.id
+            ORDER BY i.created_at DESC
+          `) as any;
+
+          const inspections = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
+            id: row.id,
+            bookingId: row.bookingId,
+            vesselId: row.vesselId,
+            vesselName: row.vesselName,
+            clientName: row.clientName,
+            bookingDate: row.bookingDate,
+            inspectionData: typeof row.inspectionData === 'string' ? JSON.parse(row.inspectionData) : row.inspectionData,
+            observations: row.observations,
+            status: row.status,
+            inspectedBy: row.inspectedBy,
+            inspectedByName: row.inspectedByName,
+            createdAt: row.createdAt,
+          }));
+
+          return inspections;
+        } catch (error: any) {
+          console.error('[inspections.list] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao listar vistorias: ${error.message}` 
+          });
+        }
+      }),
+
+    getByBooking: publicProcedure
+      .input(z.object({ bookingId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const result = await db.execute(sql`
+            SELECT i.*, u.name as inspected_by_name
+            FROM inspections i
+            LEFT JOIN users u ON i.inspected_by = u.id
+            WHERE i.booking_id = ${input.bookingId}
+            ORDER BY i.created_at DESC
+          `) as any;
+
+          const inspections = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
+            ...row,
+            inspectionData: typeof row.inspection_data === 'string' ? JSON.parse(row.inspection_data) : row.inspection_data
+          }));
+
+          return inspections;
+        } catch (error: any) {
+          console.error('[inspections.getByBooking] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao buscar vistorias: ${error.message}` 
+          });
+        }
       }),
 
     delete: publicProcedure
@@ -1490,7 +1588,8 @@ Nenhuma reserva foi afetada.
 
         try {
           // Buscar últimas 10 vistorias
-          const result = await db.execute(`
+          const { sql } = await import('drizzle-orm');
+          const result = await db.execute(sql`
             SELECT 
               i.*,
               v.name as vessel_name,
@@ -1499,13 +1598,13 @@ Nenhuma reserva foi afetada.
               u.name as inspected_by_name
             FROM inspections i
             JOIN vessels v ON i.vessel_id = v.id
-            JOIN bookings b ON i.booking_id = b.id
+            LEFT JOIN bookings b ON i.booking_id = b.id
             LEFT JOIN users u ON i.inspected_by = u.id
             ORDER BY i.created_at DESC
             LIMIT 10
           `) as any;
 
-          const inspections = (Array.isArray(result[0]) ? result[0] : []).map((row: any) => ({
+          const inspections = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
             ...row,
             inspection_data: typeof row.inspection_data === 'string' ? JSON.parse(row.inspection_data) : row.inspection_data
           }));
@@ -1516,133 +1615,6 @@ Nenhuma reserva foi afetada.
           const pdfBuffer = await generateInspectionsReportPDF(inspections);
 
           // Notificar owner
-          await notifyOwner({
-            title: '📋 Relatório de Vistorias Gerado',
-            content: `Relatório das últimas ${inspections.length} vistorias foi gerado com sucesso. O PDF foi baixado automaticamente.`,
-          });
-
-          return { success: true, count: inspections.length, pdfBase64: pdfBuffer.toString('base64') };
-        } catch (error: any) {
-          console.error('[inspections.generateReport] Error:', error);
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR', 
-            message: `Erro ao gerar relatório: ${error.message}` 
-          });
-        }
-      }),
-
-    list: publicProcedure
-      .input(z.object({
-        vesselId: z.number().optional(),
-        startDate: z.number().optional(),
-        endDate: z.number().optional(),
-      }))
-      .query(async ({ input, ctx }) => {
-        // Allow admin and employee to access
-        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
-        }
-        const db = await import('./db').then(m => m.getDb());
-        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
-
-        const { inspections } = await import('../drizzle/schema');
-        const { desc } = await import('drizzle-orm');
-
-        const result = await db.select().from(inspections).orderBy(desc(inspections.createdAt));
-
-        return result.map(row => ({
-          ...row,
-          inspectionData: typeof row.inspectionData === 'string' ? JSON.parse(row.inspectionData) : row.inspectionData
-        }));
-      }),
-
-    getByBooking: publicProcedure
-      .input(z.object({ bookingId: z.number() }))
-      .query(async ({ input, ctx }) => {
-        // Allow admin and employee to access
-        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
-        }
-        const db = await import('./db').then(m => m.getDb());
-        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
-
-        const result = await db.execute(
-          `SELECT i.*, u.name as inspected_by_name
-           FROM inspections i
-           LEFT JOIN users u ON i.inspected_by = u.id
-           WHERE i.booking_id = ?
-           ORDER BY i.inspection_date DESC`,
-          [input.bookingId]
-        ) as any;
-
-        const inspections = (Array.isArray(result[0]) ? result[0] : []).map((row: any) => ({
-          ...row,
-          form_data: typeof row.form_data === 'string' ? JSON.parse(row.form_data) : row.form_data
-        }));
-
-        return inspections;
-      }),
-
-    delete: publicProcedure
-      .input(z.object({
-        id: z.number(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
-        }
-        const db = await import('./db').then(m => m.getDb());
-        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
-
-        try {
-          await db.execute(`DELETE FROM inspections WHERE id = ${input.id}`);
-          return { success: true };
-        } catch (error: any) {
-          console.error('[inspections.delete] Error:', error);
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR', 
-            message: `Erro ao excluir vistoria: ${error.message}` 
-          });
-        }
-      }),
-
-    generateReport: publicProcedure
-      .mutation(async ({ ctx }) => {
-        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
-        }
-        const db = await import('./db').then(m => m.getDb());
-        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
-
-        try {
-          // Buscar últimas 10 vistorias
-          const result = await db.execute(`
-            SELECT 
-              i.*,
-              v.name as vessel_name,
-              b.booking_date,
-              b.client_name as booking_client_name,
-              u.name as inspected_by_name
-            FROM inspections i
-            JOIN vessels v ON i.vessel_id = v.id
-            JOIN bookings b ON i.booking_id = b.id
-            LEFT JOIN users u ON i.inspected_by = u.id
-            ORDER BY i.inspection_date DESC
-            LIMIT 10
-          `) as any;
-
-          const inspections = (Array.isArray(result[0]) ? result[0] : []).map((row: any) => ({
-            ...row,
-            form_data: typeof row.form_data === 'string' ? JSON.parse(row.form_data) : row.form_data
-          }));
-
-          // Gerar PDF
-          const { generateInspectionsReportPDF } = await import('./_core/inspectionsPDF');
-          const { notifyOwner } = await import('./_core/notification');
-
-          const pdfBuffer = await generateInspectionsReportPDF(inspections);
-          
-          // Notificar admin
           await notifyOwner({
             title: '📋 Relatório de Vistorias Gerado',
             content: `Relatório das últimas ${inspections.length} vistorias foi gerado com sucesso. O PDF foi baixado automaticamente.`,
