@@ -246,7 +246,7 @@ export default function Dashboard() {
       if (user.role === 'employee') {
         setLocation('/employee/reservas');
       } else if (user.role === 'admin') {
-        setLocation('/admin/dashboard');
+        setLocation('/admin');
       }
     }
   }, [user, loading, setLocation]);

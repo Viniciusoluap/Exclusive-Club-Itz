@@ -1394,3 +1394,16 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Calendário do funcionário mostra manutenções em laranja
 - [x] Calendário pronto para mostrar reservas com nome do cliente e embarcação
 - [x] Corrigidos campos camelCase (vesselName, startDate, endDate)
+
+## Bug - Dashboard 404 (29/11/2025)
+
+- [ ] Investigar rotas no App.tsx
+- [ ] Criar/corrigir rota /dashboard
+- [ ] Testar acesso ao Dashboard do admin
+- [ ] Testar acesso ao Dashboard do cliente
+
+- [x] Investigar rotas no App.tsx
+- [x] Criar/corrigir rota /dashboard
+- [x] Testar acesso ao Dashboard do admin
+- [x] Testar acesso ao Dashboard do cliente
+- [x] Corrigido redirect de admin para /admin ao invés de /admin/dashboard
