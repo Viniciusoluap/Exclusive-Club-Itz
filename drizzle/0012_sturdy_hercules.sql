@@ -1,0 +1,1 @@
+ALTER TABLE `maintenances` ADD `created_by` int NOT NULL;

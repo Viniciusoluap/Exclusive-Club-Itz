@@ -1305,3 +1305,12 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Corrigir erro de validação ao criar manutenção (vesselId, startDate, endDate undefined)
 - [x] Converter datas corretamente para timestamp
 - [x] Testar criação de manutenção
+
+
+## Correções Calendário do Funcionário - Mobile (29/11/2025)
+
+- [x] Corrigir exibição de manutenções no calendário (usar snake_case: start_date, end_date)
+- [x] Melhorar layout mobile para mostrar nome completo da embarcação (break-words)
+- [x] Melhorar layout mobile para mostrar nome completo do cliente (break-words)
+- [x] Garantir legibilidade em dispositivos móveis (fontes menores, espaçamento otimizado)
+- [x] Testar no navegador
