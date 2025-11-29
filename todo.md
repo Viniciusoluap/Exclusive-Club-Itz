@@ -1407,3 +1407,16 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Testar acesso ao Dashboard do admin
 - [x] Testar acesso ao Dashboard do cliente
 - [x] Corrigido redirect de admin para /admin ao invés de /admin/dashboard
+
+## Restaurar Dashboard Original (29/11/2025)
+
+- [ ] Remover redirect automático que envia admin para /admin
+- [ ] Dashboard deve mostrar estatísticas para todos os usuários
+- [ ] Testar Dashboard com cliente
+- [ ] Testar Dashboard com admin
+
+- [x] Remover redirect automático que envia admin para /admin
+- [x] Dashboard deve mostrar estatísticas para todos os usuários
+- [x] Testar Dashboard com cliente
+- [x] Testar Dashboard com admin
+- [x] Dashboard funcionando com layout original

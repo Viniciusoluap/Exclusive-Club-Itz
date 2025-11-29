@@ -240,14 +240,13 @@ export default function Dashboard() {
   const [newName, setNewName] = useState("");
   const utils = trpc.useUtils();
 
-  // Redirecionamento automático baseado em role
+  // Redirecionamento automático apenas para funcionários
   useEffect(() => {
     if (!loading && user) {
       if (user.role === 'employee') {
         setLocation('/employee/reservas');
-      } else if (user.role === 'admin') {
-        setLocation('/admin');
       }
+      // Admin e clientes veem o dashboard normalmente
     }
   }, [user, loading, setLocation]);
   
