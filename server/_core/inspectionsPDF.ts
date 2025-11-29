@@ -15,9 +15,13 @@ export async function generateInspectionsReportPDF(inspections: any[]): Promise<
   
   // Tabela de vistorias
   const tableData = inspections.map((insp, index) => {
-    const approvedCount = Object.values(insp.form_data).filter((v: any) => v === 'APROVADO').length;
-    const totalFields = Object.keys(insp.form_data).length;
-    const status = approvedCount === totalFields ? 'Aprovado' : `${totalFields - approvedCount} reprovações`;
+    // Tratar formData que pode ser null/undefined
+    const formData = insp.inspection_data || insp.form_data || {};
+    const formDataObj = typeof formData === 'string' ? JSON.parse(formData) : formData;
+    
+    const approvedCount = Object.values(formDataObj).filter((v: any) => v === 'APROVADO' || v === 'approved').length;
+    const totalFields = Object.keys(formDataObj).length;
+    const status = totalFields === 0 ? 'Sem dados' : (approvedCount === totalFields ? 'Aprovado' : `${totalFields - approvedCount} reprovações`);
     
     return [
       index + 1,
