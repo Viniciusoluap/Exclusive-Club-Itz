@@ -1,0 +1,26 @@
+{
+  "query": "SELECT id, vessel_id, vessel_name, start_date, end_date, status FROM maintenances WHERE status = 'scheduled' ORDER BY start_date DESC LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, vessel_id, vessel_name, start_date, end_date, status FROM maintenances WHERE status = 'scheduled' ORDER BY start_date DESC LIMIT 5",
+  "rows": [
+    {
+      "id": "300001",
+      "vessel_id": "3",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP",
+      "start_date": "1764410400000",
+      "end_date": "1764795600000",
+      "status": "scheduled"
+    },
+    {
+      "id": "300003",
+      "vessel_id": "690001",
+      "vessel_name": "Navio",
+      "start_date": "1764387120000",
+      "end_date": "1764732720000",
+      "status": "scheduled"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_id\tvessel_name\tstart_date\tend_date\tstatus\n300001\t3\tJETSKI SEADOO GTI SE 130HP\t1764410400000\t1764795600000\tscheduled\n300003\t690001\tNavio\t1764387120000\t1764732720000\tscheduled\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

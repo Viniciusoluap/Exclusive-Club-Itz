@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, vessel_name, start_date, end_date, FROM_UNIXTIME(start_date/1000) as start_formatted, FROM_UNIXTIME(end_date/1000) as end_formatted, status FROM maintenances WHERE status = 'scheduled'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, vessel_name, start_date, end_date, FROM_UNIXTIME(start_date/1000) as start_formatted, FROM_UNIXTIME(end_date/1000) as end_formatted, status FROM maintenances WHERE status = 'scheduled'",
+  "rows": [
+    {
+      "id": "300001",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP",
+      "start_date": "1764410400000",
+      "end_date": "1764795600000",
+      "start_formatted": "2025-11-29 10:00:00.0000",
+      "end_formatted": "2025-12-03 21:00:00.0000",
+      "status": "scheduled"
+    },
+    {
+      "id": "300003",
+      "vessel_name": "Navio",
+      "start_date": "1764387120000",
+      "end_date": "1764732720000",
+      "start_formatted": "2025-11-29 03:32:00.0000",
+      "end_formatted": "2025-12-03 03:32:00.0000",
+      "status": "scheduled"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_name\tstart_date\tend_date\tstart_formatted\tend_formatted\tstatus\n300001\tJETSKI SEADOO GTI SE 130HP\t1764410400000\t1764795600000\t2025-11-29 10:00:00.0000\t2025-12-03 21:00:00.0000\tscheduled\n300003\tNavio\t1764387120000\t1764732720000\t2025-11-29 03:32:00.0000\t2025-12-03 03:32:00.0000\tscheduled\n",
+  "stderr": "",
+  "execution_time_ms": 65
+}

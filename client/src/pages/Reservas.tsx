@@ -184,15 +184,15 @@ export default function Reservas() {
     const hasBooking = dayBookings.some((b: any) => b.vesselId === vesselId && b.status === 'confirmed');
     if (hasBooking) return 'booked';
     
-    // Verificar manutenção (considera intervalo completo start_date até end_date)
+    // Verificar manutenção (considera intervalo completo startDate até endDate)
     const hasMaintenance = monthMaintenances?.some((m: any) => {
-      const startDate = new Date(m.start_date);
-      const endDate = new Date(m.end_date);
+      const startDate = new Date(m.startDate);
+      const endDate = new Date(m.endDate);
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(23, 59, 59, 999);
       const checkDate = new Date(date);
       checkDate.setHours(12, 0, 0, 0);
-      return checkDate >= startDate && checkDate <= endDate && m.vessel_id === vesselId;
+      return checkDate >= startDate && checkDate <= endDate && m.vesselId === vesselId;
     });
     if (hasMaintenance) return 'maintenance';
     
