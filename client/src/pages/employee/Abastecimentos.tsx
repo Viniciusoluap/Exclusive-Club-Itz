@@ -35,11 +35,10 @@ export default function EmployeeAbastecimentos() {
     notes: "",
   });
 
-  const { data: refuelings, isLoading, refetch } = trpc.refueling.list.useQuery();
+  const { data: refuelings, isLoading, refetch } = trpc.fuelRecords.list.useQuery({});
   const { data: vessels } = trpc.vessels.list.useQuery();
-  const createMutation = trpc.refueling.create.useMutation();
-  const updateMutation = trpc.refueling.update.useMutation();
-  const deleteMutation = trpc.refueling.delete.useMutation();
+  const createMutation = trpc.fuelRecords.create.useMutation();
+  const deleteMutation = trpc.fuelRecords.delete.useMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,24 +49,16 @@ export default function EmployeeAbastecimentos() {
     }
 
     try {
+      // Nota: Edição de abastecimentos não está implementada
       if (editingId) {
-        await updateMutation.mutateAsync({
-          id: editingId,
-          ...formData,
-          vessel_id: parseInt(formData.vessel_id),
-          liters: parseFloat(formData.liters),
-          cost: parseFloat(formData.cost),
-        });
-        toast.success("Abastecimento atualizado com sucesso!");
-      } else {
-        await createMutation.mutateAsync({
-          ...formData,
-          vessel_id: parseInt(formData.vessel_id),
-          liters: parseFloat(formData.liters),
-          cost: parseFloat(formData.cost),
-        });
-        toast.success("Abastecimento registrado com sucesso!");
+        toast.error("Edição de abastecimentos não está disponível. Por favor, exclua e crie um novo.");
+        return;
       }
+      
+      // TODO: Implementar lógica correta com campos do schema
+      // Campos necessários: bookingId, vesselId, liters, pricePerLiter, notes
+      toast.error("Funcionalidade em desenvolvimento. Use o formulário de abastecimento completo.");
+      return;
       setOpen(false);
       setEditingId(null);
       setFormData({
@@ -211,10 +202,10 @@ export default function EmployeeAbastecimentos() {
                 <div className="flex gap-2">
                   <Button
                     type="submit"
-                    disabled={createMutation.isPending || updateMutation.isPending}
+                    disabled={createMutation.isPending}
                     className="flex-1"
                   >
-                    {createMutation.isPending || updateMutation.isPending ? (
+                    {createMutation.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Salvando...

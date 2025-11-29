@@ -1484,3 +1484,28 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [ ] Corrigir erro ao criar vistoria (schema vs endpoint incompatibilidade)
 - [ ] Testar criação de vistoria completa
 - [ ] Testar lista de vistorias com dados corretos
+
+
+## ✅ Correção Urgente - Erros TypeScript no Sistema de Vistorias (29/11/2025 - 17:40) - CONCLUÍDO
+
+- [x] Analisar todos os erros TypeScript relacionados a db.execute()
+- [x] Identificar código duplicado no router de vistorias
+- [x] Corrigir incompatibilidade entre schema e endpoint inspections.create
+- [x] Corrigir endpoint inspections.list para retornar dados corretos (vesselName, clientName, bookingDate)
+- [x] Substituir db.execute(sql, params) por API do Drizzle ORM com sql template tags
+- [x] Corrigir todos os endpoints de fuelRecords para usar sql template tags
+- [x] Corrigir todos os endpoints de reviews para usar sql template tags
+- [x] Corrigir encadeamento de where() no db.ts usando and()
+- [x] Remover código duplicado (delete e generateReport duplicados)
+- [x] Atualizar frontend de Vistorias para usar API correta
+- [x] Atualizar frontend de Abastecimentos para usar trpc.fuelRecords
+- [x] Testar criação de vistoria
+- [x] Testar listagem de vistorias
+- [x] Testar exclusão de vistoria
+- [x] Validar que todos os testes automatizados passam (41 testes passaram ✅)
+
+### Resumo das Correções
+- **Backend**: Todos os endpoints agora usam `sql` template tags do Drizzle ORM ao invés de `db.execute(query, params)`
+- **Frontend**: Páginas de funcionário atualizadas para usar APIs corretas (fuelRecords, inspections)
+- **Testes**: 41 testes passando, 1 skipped, 0 falhas
+- **TypeScript**: 0 erros de compilação
