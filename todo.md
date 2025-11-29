@@ -1280,3 +1280,13 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [ ] Verificar se query está filtrando corretamente
 - [ ] Garantir que admin e funcionário vejam as mesmas manutenções
 - [ ] Testar sincronização em tempo real entre admin e funcionário
+
+
+## Correções Página de Manutenções do Funcionário (29/11/2025)
+
+- [x] Exibir nome da embarcação no card de manutenção
+- [x] Exibir quem requisitou (admin ou funcionário + nome)
+- [x] Corrigir formatação de datas (início e término)
+- [x] Implementar funcionalidade do botão Editar
+- [x] Adicionar botão Excluir
+- [x] Adicionar opção de alterar status da manutenção

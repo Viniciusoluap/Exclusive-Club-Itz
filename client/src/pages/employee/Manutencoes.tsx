@@ -10,6 +10,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,13 +30,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Settings } from "lucide-react";
+import { Loader2, Plus, Settings, Trash2, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export default function EmployeeManutencoes() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [statusChangeId, setStatusChangeId] = useState<number | null>(null);
+  const [newStatus, setNewStatus] = useState<string>("");
   const [formData, setFormData] = useState({
     vessel_id: "",
     start_date: "",
@@ -39,6 +52,7 @@ export default function EmployeeManutencoes() {
   const { data: vessels } = trpc.vessels.list.useQuery();
   const createMutation = trpc.maintenances.create.useMutation();
   const updateMutation = trpc.maintenances.update.useMutation();
+  const deleteMutation = trpc.maintenances.delete.useMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,14 +94,55 @@ export default function EmployeeManutencoes() {
 
   const handleEdit = (maintenance: any) => {
     setEditingId(maintenance.id);
+    // Timestamp já está em milissegundos
+    const startDate = new Date(maintenance.start_date);
+    const endDate = new Date(maintenance.end_date);
+    
     setFormData({
       vessel_id: maintenance.vessel_id.toString(),
-      start_date: new Date(maintenance.start_date).toISOString().split("T")[0],
-      end_date: new Date(maintenance.end_date).toISOString().split("T")[0],
+      start_date: startDate.toISOString().split("T")[0],
+      end_date: endDate.toISOString().split("T")[0],
       description: maintenance.description || "",
       status: maintenance.status,
     });
     setOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+
+    try {
+      await deleteMutation.mutateAsync({ id: deleteId });
+      toast.success("Manutenção excluída com sucesso!");
+      setDeleteId(null);
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao excluir manutenção");
+    }
+  };
+
+  const handleStatusChange = async () => {
+    if (!statusChangeId || !newStatus) return;
+
+    try {
+      const maintenance = maintenances?.find((m) => m.id === statusChangeId);
+      if (!maintenance) return;
+
+      await updateMutation.mutateAsync({
+        id: statusChangeId,
+        vessel_id: maintenance.vessel_id,
+        start_date: new Date(maintenance.start_date).toISOString().split("T")[0],
+        end_date: new Date(maintenance.end_date).toISOString().split("T")[0],
+        description: maintenance.description || "",
+        status: newStatus as any,
+      });
+      toast.success("Status atualizado com sucesso!");
+      setStatusChangeId(null);
+      setNewStatus("");
+      refetch();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar status");
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -118,6 +173,16 @@ export default function EmployeeManutencoes() {
       default:
         return status;
     }
+  };
+
+  const formatDate = (timestamp: number) => {
+    // Timestamp já está em milissegundos, não precisa multiplicar
+    const date = new Date(timestamp);
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
   return (
@@ -275,23 +340,34 @@ export default function EmployeeManutencoes() {
                     <Settings className="h-5 w-5 text-muted-foreground" />
                     <h3 className="font-semibold">{maintenance.vessel_name}</h3>
                   </div>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
+                  <button
+                    onClick={() => {
+                      setStatusChangeId(maintenance.id);
+                      setNewStatus(maintenance.status);
+                    }}
+                    className={`text-xs px-2 py-1 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${getStatusColor(
                       maintenance.status
                     )}`}
                   >
                     {getStatusLabel(maintenance.status)}
-                  </span>
+                  </button>
                 </div>
 
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-sm mb-4">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <User className="h-4 w-4" />
+                    <span>
+                      Requisitado por: <strong>{maintenance.created_by_name || "Admin"}</strong>
+                    </span>
+                  </div>
+                  
                   <div>
                     <span className="text-muted-foreground">Início:</span>{" "}
-                    {new Date(maintenance.start_date).toLocaleDateString("pt-BR")}
+                    <strong>{formatDate(maintenance.start_date)}</strong>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Término:</span>{" "}
-                    {new Date(maintenance.end_date).toLocaleDateString("pt-BR")}
+                    <strong>{formatDate(maintenance.end_date)}</strong>
                   </div>
                   {maintenance.description && (
                     <div>
@@ -301,14 +377,21 @@ export default function EmployeeManutencoes() {
                   )}
                 </div>
 
-                <div className="mt-4">
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full"
+                    className="flex-1"
                     onClick={() => handleEdit(maintenance)}
                   >
                     Editar
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setDeleteId(maintenance.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </Card>
@@ -324,6 +407,88 @@ export default function EmployeeManutencoes() {
           </Card>
         )}
       </div>
+
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta manutenção? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                "Excluir"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog de alteração de status */}
+      <Dialog open={!!statusChangeId} onOpenChange={() => setStatusChangeId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alterar Status da Manutenção</DialogTitle>
+            <DialogDescription>
+              Selecione o novo status para esta manutenção
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="new-status">Novo Status</Label>
+              <Select value={newStatus} onValueChange={setNewStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">Agendada</SelectItem>
+                  <SelectItem value="in_progress">Em Andamento</SelectItem>
+                  <SelectItem value="completed">Concluída</SelectItem>
+                  <SelectItem value="cancelled">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleStatusChange}
+                disabled={updateMutation.isPending || !newStatus}
+                className="flex-1"
+              >
+                {updateMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Atualizando...
+                  </>
+                ) : (
+                  "Atualizar"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setStatusChangeId(null);
+                  setNewStatus("");
+                }}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </EmployeeDashboardLayout>
   );
 }

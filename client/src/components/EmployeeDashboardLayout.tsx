@@ -42,7 +42,7 @@ export default function EmployeeDashboardLayout({ children }: EmployeeDashboardL
     );
   }
 
-  if (!user || user.role !== "employee") {
+  if (!user || (user.role !== "employee" && user.role !== "admin")) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

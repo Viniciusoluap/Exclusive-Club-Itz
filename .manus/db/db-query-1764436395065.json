@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, vessel_name, start_date, end_date, description FROM maintenances LIMIT 3",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, vessel_name, start_date, end_date, description FROM maintenances LIMIT 3",
+  "rows": [
+    {
+      "id": "330002",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP",
+      "start_date": "1763632800000",
+      "end_date": "1764799200000",
+      "description": "Troca dos Bicos"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_name\tstart_date\tend_date\tdescription\n330002\tJETSKI SEADOO GTI SE 130HP\t1763632800000\t1764799200000\tTroca dos Bicos\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}
