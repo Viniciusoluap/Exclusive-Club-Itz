@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, lte, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, allowedClients, InsertAllowedClient, vessels, InsertVessel, bookings, InsertBooking, clientQuotas, InsertClientQuota, maintenances, InsertMaintenance } from "../drizzle/schema";
+import { InsertUser, users, allowedClients, InsertAllowedClient, vessels, InsertVessel, bookings, InsertBooking, clientQuotas, InsertClientQuota, maintenances, InsertMaintenance, employees } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -51,12 +51,25 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.lastSignedIn = user.lastSignedIn;
       updateSet.lastSignedIn = user.lastSignedIn;
     }
+    // Verificar se o email está cadastrado como funcionário
+    let isEmployee = false;
+    if (user.email) {
+      const employeeCheck = await db.select().from(employees)
+        .where(eq(employees.email, user.email))
+        .where(eq(employees.isActive, true))
+        .limit(1);
+      isEmployee = employeeCheck.length > 0;
+    }
+
     if (user.role !== undefined) {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
       values.role = 'admin';
       updateSet.role = 'admin';
+    } else if (isEmployee) {
+      values.role = 'employee';
+      updateSet.role = 'employee';
     }
 
     if (!values.lastSignedIn) {
