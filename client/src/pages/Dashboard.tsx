@@ -4,10 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X, CheckCircle2, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useMemo } from "react";
 
 function ActiveBookingsSection() {
@@ -232,12 +232,24 @@ function QuotaUsageSection() {
 
 export default function Dashboard() {
   const { user, loading, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const { data: stats, isLoading: statsLoading } = trpc.stats.client.useQuery(undefined, {
     enabled: isAuthenticated,
   });
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState("");
   const utils = trpc.useUtils();
+
+  // Redirecionamento automático baseado em role
+  useEffect(() => {
+    if (!loading && user) {
+      if (user.role === 'employee') {
+        setLocation('/employee/reservas');
+      } else if (user.role === 'admin') {
+        setLocation('/admin/dashboard');
+      }
+    }
+  }, [user, loading, setLocation]);
   
   // @ts-ignore
   const updateName = trpc.auth.updateName.useMutation({
