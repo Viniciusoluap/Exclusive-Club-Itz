@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, name, email, phone FROM employees WHERE is_active = 1 LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, name, email, phone FROM employees WHERE is_active = 1 LIMIT 5",
+  "rows": [
+    {
+      "id": "90001",
+      "name": "Maylanne",
+      "email": "atendimentogrupoefficaz@gmail.com",
+      "phone": "99981392208"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tphone\n90001\tMaylanne\tatendimentogrupoefficaz@gmail.com\t99981392208\n",
+  "stderr": "",
+  "execution_time_ms": 163
+}

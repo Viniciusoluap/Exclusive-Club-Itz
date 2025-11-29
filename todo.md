@@ -1135,3 +1135,49 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Testar edição - Funcionando: Nome alterado de "Teste" para "Teste Editado"
 - [x] Testar exclusão - Funcionando: Funcionário "vitor" removido da lista (is_active=false)
 - [x] Validar que ambas as operações funcionam corretamente
+
+
+## Nova Feature - Dashboard de Funcionário (29/11/2025 - 00:00) - IMPLEMENTADO
+
+### Sistema de Autenticação por Role
+- [x] Adicionar verificação de role "employee" ao fazer login
+- [x] Verificar se email logado está cadastrado na tabela employees
+- [x] Atribuir role "employee" automaticamente se email estiver cadastrado
+- [x] Atualizar schema: role enum agora aceita "user", "admin", "employee"
+- [x] Implementar lógica em upsertUser (db.ts) para verificar employees
+
+### Dashboard de Funcionário
+- [x] Criar layout específico para funcionário (EmployeeDashboardLayout)
+- [x] Menu lateral com apenas: Calendário e Manutenções
+- [x] Bloquear acesso a: Clientes, Embarcações, Relatórios, Configurações
+- [x] Implementar verificação de role no layout (redireciona se não for employee)
+
+### Calendário de Reservas (Funcionário)
+- [x] Criar página /employee/reservas
+- [x] Mostrar TODAS as reservas (passadas e futuras)
+- [x] Exibir em formato de calendário mensal
+- [x] Mostrar detalhes: cliente, embarcação, status
+- [x] Apenas visualização (sem criar/editar/cancelar)
+- [x] Cores por status: verde (confirmada), vermelho (cancelada), azul (usada)
+
+### Manutenções (Funcionário)
+- [x] Criar página /employee/manutencoes
+- [x] Permitir visualizar todas as manutenções
+- [x] Permitir criar nova manutenção
+- [x] Permitir editar manutenções existentes
+- [x] Permitir mudar status de manutenção
+- [x] Interface completa com formulário e cards
+
+### Navegação e Menu
+- [x] Adicionar rotas /employee/reservas e /employee/manutencoes no App.tsx
+- [x] Adicionar botão "Painel Funcionário" no menu principal (Home.tsx)
+- [x] Botão aparece apenas para usuários com role "employee"
+- [x] Menu mobile e desktop funcionando
+
+### Testes
+- [x] Implementação completa finalizada
+- [ ] Testar login com email de funcionário (próxima etapa)
+- [ ] Verificar redirecionamento correto
+- [ ] Testar acesso às páginas permitidas
+- [ ] Verificar bloqueio de páginas restritas
+- [ ] Validar permissões de manutenção

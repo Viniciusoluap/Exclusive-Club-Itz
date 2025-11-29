@@ -52,9 +52,16 @@ export default function Home() {
                       <Button variant="outline">Admin</Button>
                     </Link>
                   )}
-                  <Link href="/reservas">
-                    <Button>Minhas Reservas</Button>
-                  </Link>
+                  {user?.role === "employee" && (
+                    <Link href="/employee/reservas">
+                      <Button variant="outline">Painel Funcionário</Button>
+                    </Link>
+                  )}
+                  {user?.role === "user" && (
+                    <Link href="/reservas">
+                      <Button>Minhas Reservas</Button>
+                    </Link>
+                  )}
                   <Button variant="ghost" onClick={handleLogout}>Sair</Button>
                 </>
               ) : (
