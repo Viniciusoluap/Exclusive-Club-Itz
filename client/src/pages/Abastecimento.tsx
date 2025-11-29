@@ -3,16 +3,19 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Abastecimento() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [liters, setLiters] = useState("");
   const [pricePerLiter, setPricePerLiter] = useState("");
@@ -40,11 +43,34 @@ export default function Abastecimento() {
     },
   });
 
+  const deleteMutation = trpcAny.fuelRecords?.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Abastecimento excluído com sucesso!');
+      setIsDeleteDialogOpen(false);
+      setDeleteId(null);
+      refetch();
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao excluir abastecimento: ${error.message}`);
+    },
+  });
+
   const resetForm = () => {
     setSelectedBookingId(null);
     setLiters("");
     setPricePerLiter("");
     setNotes("");
+  };
+
+  const handleDeleteClick = (id: number) => {
+    setDeleteId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate({ id: deleteId });
+    }
   };
 
   const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
@@ -126,14 +152,24 @@ export default function Abastecimento() {
                         </CardDescription>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-primary">
-                        R$ {Number(record.total_cost).toFixed(2)}
+                    <div className="flex items-start gap-4">
+                      <div className="text-right flex-1">
+                        <div className="text-2xl font-bold text-primary">
+                          R$ {Number(record.total_cost).toFixed(2)}
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-0.5">
+                          <div>{Number(record.liters).toFixed(1)}L × R$ {Number(record.price_per_liter).toFixed(2)} = R$ {(Number(record.liters) * Number(record.price_per_liter)).toFixed(2)}</div>
+                          <div>Taxa: R$ 10,00</div>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground space-y-0.5">
-                        <div>{Number(record.liters).toFixed(1)}L × R$ {Number(record.price_per_liter).toFixed(2)} = R$ {(Number(record.liters) * Number(record.price_per_liter)).toFixed(2)}</div>
-                        <div>Taxa: R$ 10,00</div>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteClick(record.id)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -261,6 +297,34 @@ export default function Abastecimento() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este registro de abastecimento? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

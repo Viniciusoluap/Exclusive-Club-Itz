@@ -1438,3 +1438,11 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Ordenar da mais recente para a mais antiga
 - [x] Nunca mostrar reservas futuras (confirmed ou pending)
 - [x] Testar dropdown de abastecimento
+
+## Adicionar Exclusão de Abastecimento (29/11/2025 - 15:55)
+
+- [x] Criar endpoint fuelRecords.delete no backend
+- [x] Adicionar botão de excluir em cada registro de abastecimento
+- [x] Implementar dialog de confirmação antes de excluir
+- [x] Atualizar lista após exclusão
+- [x] Testar exclusão de abastecimento

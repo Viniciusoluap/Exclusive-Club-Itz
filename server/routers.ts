@@ -1381,6 +1381,29 @@ Nenhuma reserva foi afetada.
           avgPricePerLiter: Number(stats.avg_price_per_liter) || 0,
         };
       }),
+
+    delete: publicProcedure
+      .input(z.object({
+        id: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          await db.execute(`DELETE FROM fuel_records WHERE id = ${input.id}`);
+          return { success: true };
+        } catch (error: any) {
+          console.error('[fuelRecords.delete] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao excluir abastecimento: ${error.message}` 
+          });
+        }
+      }),
   }),
 
   // Inspections router - Admin and Employee
