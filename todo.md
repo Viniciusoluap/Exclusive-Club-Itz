@@ -1645,3 +1645,21 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - Corrigido registro incorreto no banco de dados
 - Formulário já foi corrigido anteriormente (ETAPA 1) com seleção manual de tipo
 - Resultado: Todas as vistorias agora exibem "Tipo: Jet Ski" corretamente ✅
+
+
+## 🚨 BUGS CRÍTICOS REPORTADOS (29/11/2025 - 20:08) - ✅ RESOLVIDOS
+
+### ERRO 1: Cadastro de Funcionário Falhando - ✅ RESOLVIDO
+- [x] Investigar erro SQL: "Failed query: insert into `employees`"
+- [x] Problema: valores default não aceitos pelo MySQL
+- [x] Correção: Drizzle ORM insert() já gerencia created_at e updated_at automaticamente
+- [x] Removido envio explícito desses campos no endpoint employees.create
+- [x] Testar cadastro com email: efficazcorrespondente@hotmail.com
+
+### ERRO 2: Geração de Relatório PDF de Vistoria Falhando - ✅ RESOLVIDO
+- [x] Investigar erro: "Cannot convert undefined or null to object"
+- [x] Problema: formData null/undefined causava erro em Object.values()
+- [x] Correção: Adicionado tratamento de dados nulos em inspectionsPDF.ts
+- [x] Fallback para objeto vazio quando formData é null/undefined
+- [x] Suporte a ambos os formatos: inspection_data e form_data
+- [x] Testar geração de PDF para vistorias existentes

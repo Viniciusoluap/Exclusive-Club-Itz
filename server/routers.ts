@@ -1116,6 +1116,7 @@ Nenhuma reserva foi afetada.
           phone: input.phone || null,
           vesselIds: vesselIdsJson,
           isActive: true,
+          // created_at e updated_at têm defaultNow() no schema, não precisam ser passados
         });
 
         return { success: true };
