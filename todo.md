@@ -1313,3 +1313,10 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Modificar backend para salvar user_id ao criar manutenção
 - [x] Atualizar query getMaintenances para retornar nome do criador
 - [x] Testar criação de manutenção mostrando usuário correto
+
+
+## Bug - Página de Manutenções do Admin (29/11/2025)
+
+- [x] Corrigir exibição do nome da embarcação na página do admin
+- [x] Corrigir exibição das datas de início e término na página do admin
+- [x] Testar correções no navegador
