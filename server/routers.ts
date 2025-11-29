@@ -237,7 +237,8 @@ export const appRouter = router({
     getRecent: adminProcedure
       .input(z.object({ 
         days: z.number().optional(), // Se não fornecido, retorna todas
-        includeUsed: z.boolean().default(false) // Incluir reservas já usadas
+        includeUsed: z.boolean().default(false), // Incluir reservas já usadas
+        onlyUsed: z.boolean().default(false) // Apenas reservas já usadas (para abastecimento)
       }))
       .query(async ({ input }) => {
         const db = await import('./db').then(m => m.getDb());
@@ -253,9 +254,16 @@ export const appRouter = router({
           b.client_email as clientEmail,
           b.vessel_name as vesselName
         FROM bookings b
-        WHERE (b.status = 'confirmed' OR b.status = 'used')`;
+        WHERE `;
         
         const params: any[] = [];
+        
+        // Se onlyUsed for true, retorna apenas reservas utilizadas (para abastecimento)
+        if (input.onlyUsed) {
+          query += `b.status = 'used'`;
+        } else {
+          query += `(b.status = 'confirmed' OR b.status = 'used')`;
+        }
         
         // Se days for fornecido, filtra por período
         if (input.days !== undefined) {
@@ -266,6 +274,11 @@ export const appRouter = router({
         }
         
         query += ' ORDER BY b.booking_date DESC';
+        
+        // Para abastecimento, limita a 6 registros
+        if (input.onlyUsed) {
+          query += ' LIMIT 6';
+        }
 
         const result = await db.execute(query, params);
         return result[0] as any[];

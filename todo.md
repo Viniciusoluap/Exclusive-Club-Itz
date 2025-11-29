@@ -1430,3 +1430,11 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Corrigir endpoint fuelRecords.create para usar colunas corretas do banco
 - [x] Corrigir endpoint fuelRecords.list para converter valores de centavos para reais
 - [x] Testar criação e listagem de abastecimentos
+
+## Correção Dropdown Abastecimento (29/11/2025 - 15:45)
+
+- [x] Modificar endpoint bookings.getRecent para retornar apenas reservas com status 'used'
+- [x] Limitar a 6 últimas reservas utilizadas
+- [x] Ordenar da mais recente para a mais antiga
+- [x] Nunca mostrar reservas futuras (confirmed ou pending)
+- [x] Testar dropdown de abastecimento
