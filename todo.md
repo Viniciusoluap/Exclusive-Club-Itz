@@ -1557,3 +1557,22 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - Botões: `flex-col sm:flex-row` (empilhados no mobile, lado a lado no desktop)
 - Botões: `w-full sm:w-auto` (largura total no mobile para fácil toque)
 - Layout: `space-y-4` ao invés de `justify-between` (melhor fluxo vertical)
+
+
+## ✅ Bug Crítico - Erro ao Abrir Página de Vistorias (29/11/2025 - 19:13) - RESOLVIDO
+
+- [x] Investigar stack trace do erro
+- [x] Verificar logs do servidor
+- [x] Identificar linha exata do erro no código
+- [x] Corrigir problema
+- [x] Testar acesso à página novamente
+
+### Causa do Problema
+- Frontend tentava fazer `JSON.parse()` em `inspection.inspectionData` que já vinha como objeto do backend
+- Nomes de campos estavam em snake_case no frontend mas backend retorna camelCase
+- `Object.values()` falhava quando `formData` era `null`/`undefined`
+
+### Solução
+- Removido `JSON.parse()` - inspectionData já é objeto
+- Corrigido nomes dos campos: `vessel_name` → `vesselName`, `client_name` → `clientName`, etc.
+- Adicionado fallback `|| {}` para evitar erro com dados nulos

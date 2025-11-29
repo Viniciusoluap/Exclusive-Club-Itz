@@ -229,8 +229,10 @@ export default function Vistorias() {
         ) : (
           <div className="grid gap-4">
             {inspections.map((inspection: any) => {
-              const approvedCount = Object.values(inspection.form_data).filter(v => v === 'APROVADO').length;
-              const totalFields = Object.keys(inspection.form_data).length;
+              // inspectionData already comes as object from backend
+              const formData = inspection.inspectionData || {};
+              const approvedCount = Object.values(formData).filter(v => v === 'aprovado').length;
+              const totalFields = Object.keys(formData).length;
               const isFullyApproved = approvedCount === totalFields;
 
               return (
@@ -240,9 +242,9 @@ export default function Vistorias() {
                       <div className="flex items-center gap-2">
                         <ClipboardCheck className="w-5 h-5 text-primary" />
                         <div>
-                          <CardTitle className="text-lg">{inspection.vessel_name}</CardTitle>
+                          <CardTitle className="text-lg">{inspection.vesselName}</CardTitle>
                           <CardDescription>
-                            {inspection.booking_client_name || inspection.client_name} • {new Date(inspection.booking_date || inspection.inspection_date).toLocaleDateString('pt-BR')}
+                            {inspection.clientName} • {new Date(inspection.bookingDate || inspection.createdAt).toLocaleDateString('pt-BR')}
                           </CardDescription>
                         </div>
                       </div>
@@ -273,10 +275,10 @@ export default function Vistorias() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-sm space-y-2">
-                      <p><strong>Tipo:</strong> {inspection.vessel_type === 'jet' ? 'Jet Ski' : 'Lancha'}</p>
-                      <p><strong>Vistoriado por:</strong> {inspection.inspected_by_name}</p>
-                      {inspection.notes && (
-                        <p><strong>Observações:</strong> {inspection.notes}</p>
+                      <p><strong>Tipo:</strong> {inspection.vesselType === 'jetski' ? 'Jet Ski' : 'Lancha'}</p>
+                      <p><strong>Vistoriado por:</strong> {inspection.inspectedBy || 'N/A'}</p>
+                      {inspection.observations && (
+                        <p><strong>Observações:</strong> {inspection.observations}</p>
                       )}
                     </div>
                   </CardContent>
