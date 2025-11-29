@@ -376,9 +376,9 @@ export const appRouter = router({
           b.endTime,
           b.status,
           b.notes,
-          u.name as clientName,
-          u.email as clientEmail,
-          v.name as vesselName
+          u.name as client_name,
+          u.email as client_email,
+          v.name as vessel_name
         FROM bookings b
         JOIN users u ON b.userId = u.id
         JOIN vessels v ON b.vesselId = v.id

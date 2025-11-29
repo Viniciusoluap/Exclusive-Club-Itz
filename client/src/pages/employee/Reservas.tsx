@@ -2,7 +2,7 @@ import EmployeeDashboardLayout from "@/components/EmployeeDashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Wrench } from "lucide-react";
 import { useState } from "react";
 
 export default function EmployeeReservas() {
@@ -11,10 +11,15 @@ export default function EmployeeReservas() {
   const month = currentDate.getMonth();
 
   // Buscar todas as reservas do mês
-  const { data: reservations, isLoading } = trpc.bookings.getByMonth.useQuery({
+  const { data: reservations, isLoading: loadingReservations } = trpc.bookings.getByMonth.useQuery({
     year,
     month: month + 1,
   });
+
+  // Buscar todas as manutenções
+  const { data: maintenances, isLoading: loadingMaintenances } = trpc.maintenances.list.useQuery();
+
+  const isLoading = loadingReservations || loadingMaintenances;
 
   const monthNames = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -38,8 +43,19 @@ export default function EmployeeReservas() {
     const dayEnd = new Date(year, month, day, 23, 59, 59).getTime();
     
     return reservations.filter(r => {
-      const bookingDate = new Date(r.booking_date).getTime();
+      const bookingDate = r.booking_date;
       return bookingDate >= dayStart && bookingDate <= dayEnd;
+    });
+  };
+
+  const getMaintenancesForDay = (day: number) => {
+    if (!maintenances) return [];
+    const dayStart = new Date(year, month, day, 0, 0, 0).getTime();
+    const dayEnd = new Date(year, month, day, 23, 59, 59).getTime();
+    
+    return maintenances.filter((m: any) => {
+      // Manutenção está ativa se o dia está entre start_date e end_date
+      return m.start_date <= dayEnd && m.end_date >= dayStart;
     });
   };
 
@@ -69,6 +85,36 @@ export default function EmployeeReservas() {
     }
   };
 
+  const getMaintenanceStatusColor = (status: string) => {
+    switch (status) {
+      case "scheduled":
+        return "bg-orange-100 text-orange-800 border-orange-200";
+      case "in_progress":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "completed":
+        return "bg-gray-100 text-gray-800 border-gray-200";
+      case "cancelled":
+        return "bg-red-100 text-red-800 border-red-200";
+      default:
+        return "bg-orange-100 text-orange-800 border-orange-200";
+    }
+  };
+
+  const getMaintenanceStatusLabel = (status: string) => {
+    switch (status) {
+      case "scheduled":
+        return "Agendada";
+      case "in_progress":
+        return "Em Andamento";
+      case "completed":
+        return "Concluída";
+      case "cancelled":
+        return "Cancelada";
+      default:
+        return status;
+    }
+  };
+
   return (
     <EmployeeDashboardLayout>
       <div className="container py-8">
@@ -84,6 +130,26 @@ export default function EmployeeReservas() {
             <Button variant="outline" size="icon" onClick={nextMonth}>
               <ChevronRight className="h-4 w-4" />
             </Button>
+          </div>
+        </div>
+
+        {/* Legenda */}
+        <div className="mb-4 flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-green-100 border border-green-200"></div>
+            <span>Confirmada</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-blue-100 border border-blue-200"></div>
+            <span>Usada</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-red-100 border border-red-200"></div>
+            <span>Cancelada</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-orange-100 border border-orange-200"></div>
+            <span>Manutenção</span>
           </div>
         </div>
 
@@ -109,6 +175,7 @@ export default function EmployeeReservas() {
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const dayReservations = getReservationsForDay(day);
+              const dayMaintenances = getMaintenancesForDay(day);
               const isToday =
                 day === new Date().getDate() &&
                 month === new Date().getMonth() &&
@@ -123,7 +190,27 @@ export default function EmployeeReservas() {
                 >
                   <div className="font-semibold text-sm mb-2">{day}</div>
                   <div className="space-y-1">
-                    {dayReservations.length === 0 ? (
+                    {/* Manutenções */}
+                    {dayMaintenances.map((maintenance: any) => (
+                      <div
+                        key={`maintenance-${maintenance.id}`}
+                        className={`text-xs p-1 rounded border ${getMaintenanceStatusColor(
+                          maintenance.status
+                        )}`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <Wrench className="h-3 w-3" />
+                          <span className="font-medium truncate">Manutenção</span>
+                        </div>
+                        <div className="truncate">{maintenance.vessel_name}</div>
+                        <div className="text-[10px]">
+                          {getMaintenanceStatusLabel(maintenance.status)}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Reservas */}
+                    {dayReservations.length === 0 && dayMaintenances.length === 0 ? (
                       <p className="text-xs text-muted-foreground">Sem reservas</p>
                     ) : (
                       dayReservations.map((reservation) => (

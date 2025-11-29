@@ -1290,3 +1290,11 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Implementar funcionalidade do botão Editar
 - [x] Adicionar botão Excluir
 - [x] Adicionar opção de alterar status da manutenção
+
+
+## Correções Calendário do Funcionário (29/11/2025)
+
+- [x] Corrigir exibição de reservas no calendário (mostrando "Sem reservas" mesmo tendo reservas)
+- [x] Exibir nomes de clientes e embarcações nas reservas do calendário
+- [x] Destacar datas de manutenção em laranja no calendário
+- [x] Testar calendário com dados reais
