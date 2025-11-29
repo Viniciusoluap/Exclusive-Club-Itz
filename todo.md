@@ -1524,3 +1524,20 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - Corrigido mapeamento interno de 'jet' para 'jetski' em todas as comparações
 - Checklist correto aparece automaticamente após selecionar tipo
 - FormData é limpo ao trocar tipo de embarcação
+
+
+## ✅ Bug - Erro Inesperado Após Criar Vistoria (29/11/2025 - 19:01) - RESOLVIDO
+
+- [x] Verificar logs do servidor para identificar causa do erro
+- [x] Analisar stack trace do erro
+- [x] Corrigir problema no backend
+- [x] Testar criação de vistoria novamente
+- [x] Validar que vistoria é salva corretamente
+
+### Causa do Problema
+- Frontend enviava campos `inspectionDate` e `notes` que não existem no schema do backend
+- Backend espera apenas: `bookingId`, `vesselId`, `vesselType`, `clientName`, `formData`, `observations`
+
+### Solução
+- Removido campo `inspectionDate` (não necessário - usa timestamp automático)
+- Renomeado `notes` para `observations` para corresponder ao schema
