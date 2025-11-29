@@ -364,12 +364,17 @@ export default function EmployeeManutencoes() {
                 </div>
 
                 <div className="space-y-2 text-sm mb-4">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <User className="h-4 w-4" />
-                    <span>
-                      Requisitado por: <strong>{maintenance.createdByName || "Admin"}</strong>
-                    </span>
-                  </div>
+                  {maintenance.createdByName && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <User className="h-4 w-4" />
+                      <span>
+                        Requisitado por: <strong>{maintenance.createdByName}</strong>
+                        {maintenance.createdByRole && (
+                          <span className="text-xs ml-1">({maintenance.createdByRole === 'admin' ? 'Admin' : 'Funcionário'})</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
                   
                   <div>
                     <span className="text-muted-foreground">Início:</span>{" "}

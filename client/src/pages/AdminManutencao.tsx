@@ -242,6 +242,14 @@ export default function AdminManutencao() {
                         {getStatusBadge(maintenance.status)}
                       </div>
                       <div className="text-sm text-muted-foreground ml-7">
+                        {maintenance.createdByName && (
+                          <p>
+                            <strong>Requisitado por:</strong> {maintenance.createdByName}
+                            {maintenance.createdByRole && (
+                              <span className="text-xs ml-1">({maintenance.createdByRole === 'admin' ? 'Admin' : 'Funcionário'})</span>
+                            )}
+                          </p>
+                        )}
                         <p>
                           <strong>Início:</strong> {new Date(maintenance.startDate).toLocaleDateString("pt-BR")}
                           {" às "}
