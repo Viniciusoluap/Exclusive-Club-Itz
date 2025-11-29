@@ -1329,3 +1329,18 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Backend agora retorna campos em camelCase (startDate, endDate, vesselName)
 - [x] Ambas as páginas funcionam igualmente
 - [x] Testado criação, edição e visualização de manutenções
+
+## Bugs - Campo "Requisitado por" nas Manutenções (29/11/2025)
+
+- [ ] Corrigir página do funcionário: mostrar nome correto de quem criou (não "Admin" genérico)
+- [ ] Adicionar campo "Requisitado por" na página do admin
+- [ ] Garantir que backend retorna createdByName corretamente
+- [ ] Testar com manutenções criadas por admin e funcionário
+
+## Correção Aplicada - Campo "Requisitado por" (29/11/2025)
+
+- [x] Corrigida página do funcionário: mostra nome correto de quem criou com role (Admin/Funcionário)
+- [x] Adicionado campo "Requisitado por" na página do admin
+- [x] Backend retorna createdByName e createdByRole corretamente
+- [x] Testado com manutenções criadas por admin
+- [x] Ambas as páginas sincronizadas e funcionando perfeitamente
