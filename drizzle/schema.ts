@@ -103,6 +103,7 @@ export const maintenances = mysqlTable("maintenances", {
   endDate: bigint("end_date", { mode: "number" }).notNull(), // UTC timestamp in milliseconds
   description: text("description"),
   status: mysqlEnum("status", ["scheduled", "in_progress", "completed", "cancelled"]).default("scheduled").notNull(),
+  createdBy: int("created_by"), // references users.id - quem criou a manutenção
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
