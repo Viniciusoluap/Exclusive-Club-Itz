@@ -180,8 +180,8 @@ export default function Reservas() {
     const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
     const dayBookings = bookingsByDate[dateKey] || [];
     
-    // Verificar se tem reserva para esta embarcação
-    const hasBooking = dayBookings.some((b: any) => b.vesselId === vesselId);
+    // Verificar se tem reserva CONFIRMADA para esta embarcação
+    const hasBooking = dayBookings.some((b: any) => b.vesselId === vesselId && b.status === 'confirmed');
     if (hasBooking) return 'booked';
     
     // Verificar manutenção (considera intervalo completo start_date até end_date)
