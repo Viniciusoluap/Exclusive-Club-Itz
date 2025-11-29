@@ -1541,3 +1541,19 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 ### Solução
 - Removido campo `inspectionDate` (não necessário - usa timestamp automático)
 - Renomeado `notes` para `observations` para corresponder ao schema
+
+
+## ✅ Melhoria - Layout Mobile Responsivo - Página Vistorias (29/11/2025 - 19:10) - CONCLUÍDO
+
+- [x] Ajustar título para não cortar no mobile
+- [x] Ajustar subtítulo para quebrar linha corretamente
+- [x] Reorganizar botões "Relatório PDF" e "Nova Vistoria" para mobile
+- [x] Garantir que todo conteúdo caiba na viewport
+- [x] Testar em diferentes tamanhos de tela
+
+### Ajustes Implementados
+- Título: `text-2xl md:text-3xl` (menor no mobile, maior no desktop)
+- Subtítulo: `text-sm md:text-base` (texto menor e mais legível no mobile)
+- Botões: `flex-col sm:flex-row` (empilhados no mobile, lado a lado no desktop)
+- Botões: `w-full sm:w-auto` (largura total no mobile para fácil toque)
+- Layout: `space-y-4` ao invés de `justify-between` (melhor fluxo vertical)
