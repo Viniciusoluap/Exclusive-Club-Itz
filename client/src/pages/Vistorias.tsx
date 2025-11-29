@@ -56,7 +56,7 @@ export default function Vistorias() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
-  const [vesselType, setVesselType] = useState<'jet' | 'lancha' | null>(null);
+  const [vesselType, setVesselType] = useState<'jetski' | 'lancha' | null>(null);
   const [inspectionDate, setInspectionDate] = useState(new Date().toISOString().split('T')[0]);
   const [clientName, setClientName] = useState("");
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -132,14 +132,7 @@ export default function Vistorias() {
     const booking = recentBookings?.find((b: any) => b.id === id);
     if (booking) {
       setClientName(booking.clientName);
-      
-      // Determinar tipo de embarcação
-      const vessel = vessels?.find(v => v.id === booking.vesselId);
-      if (vessel?.name.toLowerCase().includes('jet')) {
-        setVesselType('jet');
-      } else {
-        setVesselType('lancha');
-      }
+      // Não define automaticamente - usuário escolhe manualmente
     }
   };
 
@@ -161,7 +154,7 @@ export default function Vistorias() {
       return;
     }
 
-    const fields = vesselType === 'jet' ? JET_FIELDS : LANCHA_FIELDS;
+    const fields = vesselType === 'jetski' ? JET_FIELDS : LANCHA_FIELDS;
     const missingFields = fields.filter(field => !formData[field]);
     
     if (missingFields.length > 0) {
@@ -180,7 +173,7 @@ export default function Vistorias() {
     });
   };
 
-  const currentFields = vesselType === 'jet' ? JET_FIELDS : vesselType === 'lancha' ? LANCHA_FIELDS : [];
+  const currentFields = vesselType === 'jetski' ? JET_FIELDS : vesselType === 'lancha' ? LANCHA_FIELDS : [];
 
   return (
     <div className="container py-8">
@@ -354,11 +347,31 @@ export default function Vistorias() {
                 />
               </div>
 
+              {/* Vessel Type Selection */}
+              <div className="grid gap-2">
+                <Label htmlFor="vesselType">Tipo de Embarcação *</Label>
+                <Select 
+                  value={vesselType || undefined} 
+                  onValueChange={(value) => {
+                    setVesselType(value as 'jetski' | 'lancha');
+                    setFormData({}); // Limpa formData ao trocar tipo
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="jetski">Jetski</SelectItem>
+                    <SelectItem value="lancha">Lancha</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Inspection Fields */}
               {vesselType && (
                 <div className="space-y-4 border-t pt-4">
                   <h3 className="font-semibold text-lg">
-                    Checklist - {vesselType === 'jet' ? 'Jet Ski GTI 130' : 'Focker 215'}
+                    Checklist - {vesselType === 'jetski' ? 'Jet Ski GTI 130' : 'Focker 215'}
                   </h3>
                   
                   {currentFields.map((field, index) => (
