@@ -158,7 +158,7 @@ export default function EmployeeReservas() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-1 md:gap-2">
             {/* Headers dos dias da semana */}
             {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
               <div key={day} className="text-center font-semibold py-2 text-sm">
@@ -184,26 +184,26 @@ export default function EmployeeReservas() {
               return (
                 <Card
                   key={day}
-                  className={`min-h-[120px] p-2 ${
+                  className={`min-h-[100px] md:min-h-[140px] p-1 md:p-2 ${
                     isToday ? "border-primary border-2" : ""
                   }`}
                 >
-                  <div className="font-semibold text-sm mb-2">{day}</div>
-                  <div className="space-y-1">
+                  <div className="font-semibold text-xs md:text-sm mb-1">{day}</div>
+                  <div className="space-y-0.5 md:space-y-1">
                     {/* Manutenções */}
                     {dayMaintenances.map((maintenance: any) => (
                       <div
                         key={`maintenance-${maintenance.id}`}
-                        className={`text-xs p-1 rounded border ${getMaintenanceStatusColor(
+                        className={`text-[10px] md:text-xs p-1 rounded border-2 ${getMaintenanceStatusColor(
                           maintenance.status
                         )}`}
                       >
                         <div className="flex items-center gap-1">
-                          <Wrench className="h-3 w-3" />
-                          <span className="font-medium truncate">Manutenção</span>
+                          <Wrench className="h-2.5 w-2.5 md:h-3 md:w-3 flex-shrink-0" />
+                          <span className="font-medium text-[9px] md:text-[10px]">Manutenção</span>
                         </div>
-                        <div className="truncate">{maintenance.vessel_name}</div>
-                        <div className="text-[10px]">
+                        <div className="font-medium leading-tight break-words">{maintenance.vessel_name}</div>
+                        <div className="text-[9px] md:text-[10px]">
                           {getMaintenanceStatusLabel(maintenance.status)}
                         </div>
                       </div>
@@ -211,20 +211,20 @@ export default function EmployeeReservas() {
 
                     {/* Reservas */}
                     {dayReservations.length === 0 && dayMaintenances.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">Sem reservas</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground">Sem reservas</p>
                     ) : (
                       dayReservations.map((reservation) => (
                         <div
                           key={reservation.id}
-                          className={`text-xs p-1 rounded border ${getStatusColor(
+                          className={`text-[10px] md:text-xs p-1 rounded border-2 ${getStatusColor(
                             reservation.status
                           )}`}
                         >
-                          <div className="font-medium truncate">
+                          <div className="font-bold leading-tight break-words">
                             {reservation.client_name}
                           </div>
-                          <div className="truncate">{reservation.vessel_name}</div>
-                          <div className="text-[10px]">
+                          <div className="font-medium leading-tight break-words">{reservation.vessel_name}</div>
+                          <div className="text-[9px] md:text-[10px]">
                             {getStatusLabel(reservation.status)}
                           </div>
                         </div>

@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, vessel_id, start_date, end_date, status, description FROM maintenances ORDER BY start_date DESC LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, vessel_id, start_date, end_date, status, description FROM maintenances ORDER BY start_date DESC LIMIT 5",
+  "rows": [
+    {
+      "id": "330002",
+      "vessel_id": "3",
+      "start_date": "1763521200000",
+      "end_date": "1764557999999",
+      "status": "in_progress",
+      "description": "Troca dos Bicos"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_id\tstart_date\tend_date\tstatus\tdescription\n330002\t3\t1763521200000\t1764557999999\tin_progress\tTroca dos Bicos\n",
+  "stderr": "",
+  "execution_time_ms": 48
+}
