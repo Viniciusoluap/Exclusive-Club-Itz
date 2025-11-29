@@ -1480,17 +1480,16 @@ Nenhuma reserva foi afetada.
               i.booking_id as bookingId,
               i.vessel_id as vesselId,
               i.vessel_name as vesselName,
+              i.vessel_type as vesselType,
               i.inspection_data as inspectionData,
               i.observations,
               i.status,
               i.inspected_by as inspectedBy,
               i.created_at as createdAt,
               b.client_name as clientName,
-              b.booking_date as bookingDate,
-              u.name as inspectedByName
+              b.booking_date as bookingDate
             FROM inspections i
             LEFT JOIN bookings b ON i.booking_id = b.id
-            LEFT JOIN users u ON i.inspected_by = u.id
             ORDER BY i.created_at DESC
           `) as any;
 
@@ -1499,13 +1498,14 @@ Nenhuma reserva foi afetada.
             bookingId: row.bookingId,
             vesselId: row.vesselId,
             vesselName: row.vesselName,
+            vesselType: row.vesselType,
             clientName: row.clientName,
             bookingDate: row.bookingDate,
+            date: row.bookingDate, // Mapear para frontend
             inspectionData: typeof row.inspectionData === 'string' ? JSON.parse(row.inspectionData) : row.inspectionData,
             observations: row.observations,
             status: row.status,
-            inspectedBy: row.inspectedBy,
-            inspectedByName: row.inspectedByName,
+            inspectedBy: row.inspectedBy, // Já é o nome (TEXT)
             createdAt: row.createdAt,
           }));
 

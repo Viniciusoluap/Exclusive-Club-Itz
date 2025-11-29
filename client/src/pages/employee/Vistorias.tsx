@@ -296,7 +296,7 @@ export default function EmployeeVistorias() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Vistoriador:</span>{" "}
-                    {inspection.inspector_name}
+                    {inspection.inspectedBy || "Não informado"}
                   </div>
                   {inspection.notes && (
                     <div>

@@ -1598,3 +1598,28 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - Adicionado mapeamento `date: record.booking_date` no backend
 - Removida conversão duplicada de centavos (backend já faz)
 - Página agora exibe: Data: 19/11/2025, Litros: 100.00 L, Custo: R$ 610.00, Custo/Litro: R$ 6.00
+
+
+## ✅ ETAPA 2 - Dados Ausentes em Vistorias Funcionário (29/11/2025 - 19:40) - RESOLVIDO
+
+- [x] Investigar endpoint `inspections.list` para ver quais campos estão sendo retornados
+- [x] Verificar se campo de data está presente e em qual formato
+- [x] Verificar se campo `inspectedBy` (nome do vistoriador) está sendo retornado
+- [x] Corrigir mapeamento de campos no backend se necessário
+- [x] Corrigir frontend para usar nomes corretos dos campos
+- [x] Testar página `/employee/vistorias` no navegador
+- [x] Confirmar que data aparece corretamente formatada
+- [x] Confirmar que nome do vistoriador aparece
+
+### Problema Identificado
+- Backend fazia JOIN incorreto: `LEFT JOIN users u ON i.inspected_by = u.id` mas `inspected_by` é TEXT (nome), não ID
+- Frontend usava `inspection.inspector_name` mas backend retorna `inspection.inspectedBy`
+- Campo `date` não estava mapeado no backend
+
+### Solução
+- Removido JOIN incorreto com tabela `users`
+- Adicionado mapeamento `date: row.bookingDate` no backend
+- Adicionado `vesselType` no SELECT para uso futuro
+- Frontend corrigido: `inspector_name` → `inspectedBy`
+- Adicionado fallback "Não informado" para registros sem vistoriador
+- Resultado: Data: 19/11/2025 ✅ | Vistoriador: Vinicius Freitas ✅
