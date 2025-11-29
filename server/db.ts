@@ -345,7 +345,9 @@ export async function createMaintenance(maintenance: InsertMaintenance) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(maintenances).values(maintenance);
-  return result;
+  // MySQL/TiDB returns insertId in result
+  const insertId = (result as any).insertId || (result as any)[0]?.insertId;
+  return { id: insertId };
 }
 
 export async function updateMaintenance(id: number, data: Partial<InsertMaintenance>) {
