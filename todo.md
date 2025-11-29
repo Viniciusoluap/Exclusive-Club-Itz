@@ -1181,3 +1181,65 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [ ] Testar acesso às páginas permitidas
 - [ ] Verificar bloqueio de páginas restritas
 - [ ] Validar permissões de manutenção
+
+
+## Bug Reportado - Dashboard de Funcionário (29/11/2025 - 10:00)
+
+### Problema: Funcionário vê dashboard de usuário comum
+- [ ] Funcionário logado com email cadastrado vê página /dashboard (usuário comum)
+- [ ] Não aparece botão "Painel Funcionário" no menu
+- [ ] Funcionário não consegue acessar interface específica dele
+
+### Melhorias Solicitadas
+- [ ] Adicionar redirecionamento automático após login baseado em role
+- [ ] Se role = "employee" → redirecionar para /employee/reservas
+- [ ] Se role = "admin" → redirecionar para /admin
+- [ ] Se role = "user" → redirecionar para /dashboard
+
+### Páginas Faltantes para Funcionário
+- [ ] Criar /employee/abastecimentos (visualizar, criar, editar, excluir)
+- [ ] Criar /employee/vistorias (visualizar, criar, editar, excluir)
+- [ ] Atualizar menu lateral do EmployeeDashboardLayout com 4 opções:
+  * Calendário de Reservas (já existe)
+  * Manutenções (já existe)
+  * Abastecimentos (novo)
+  * Vistorias (novo)
+
+### Permissões de Funcionário
+- [ ] Calendário: apenas visualização de TODAS as reservas
+- [ ] Manutenções: criar, editar, excluir
+- [ ] Abastecimentos: criar, editar, excluir
+- [ ] Vistorias: criar, editar, excluir
+
+
+## Bug Reportado - Dashboard de Funcionário Não Aparece (29/11/2025 - 10:00) - RESOLVIDO
+
+- [x] Funcionário logado vê dashboard de usuário comum ao invés de dashboard de funcionário
+- [x] Botão "Painel Funcionário" não aparece no menu para funcionários
+- [x] Falta página de Abastecimentos para funcionário - CRIADA
+- [x] Falta página de Vistorias para funcionário - CRIADA
+- [x] Funcionário precisa poder criar, editar e excluir em: Manutenções, Abastecimentos e Vistorias - IMPLEMENTADO
+- [x] Implementar redirecionamento automático após login baseado em role - IMPLEMENTADO
+
+### Soluções Implementadas:
+- [x] Criado EmployeeDashboardLayout com menu lateral (Calendário, Manutenções, Abastecimentos, Vistorias)
+- [x] Criado /employee/reservas - Calendário completo com TODAS as reservas (passadas e futuras)
+- [x] Criado /employee/manutencoes - Visualizar, criar, editar manutenções
+- [x] Criado /employee/abastecimentos - Visualizar, criar, editar, excluir abastecimentos
+- [x] Criado /employee/vistorias - Visualizar, criar, editar, excluir vistorias
+- [x] Adicionado verificação automática: email em employees recebe role "employee" no login
+- [x] Implementado RoleRedirect para redirecionar baseado em role
+- [x] Proteção de rotas: apenas usuários com role "employee" acessam /employee/*
+- [x] Atualizado enum role no schema: "user", "admin", "employee"
+- [x] Modificado upsertUser em db.ts para verificar employees e atribuir role automaticamente
+- [x] Adicionadas rotas no App.tsx para todas as páginas de funcionário
+- [x] Menu lateral com 4 seções: Calendário de Reservas, Manutenções, Abastecimentos, Vistorias
+
+### Como Funciona:
+1. Admin cadastra funcionário com email na página /admin/funcionarios
+2. Funcionário faz login com esse email pela primeira vez
+3. Sistema verifica se email está em employees (is_active = true)
+4. Se sim, atribui automaticamente role = "employee" ao usuário
+5. Funcionário é redirecionado para /employee/reservas
+6. Menu lateral mostra apenas: Calendário, Manutenções, Abastecimentos, Vistorias
+7. Funcionário NÃO pode acessar: Clientes, Embarcações, Relatórios, Configurações

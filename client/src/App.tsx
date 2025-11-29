@@ -17,12 +17,16 @@ import Abastecimento from "./pages/Abastecimento";
 import Vistorias from "./pages/Vistorias";
 import EmployeeReservas from "./pages/employee/Reservas";
 import EmployeeManutencoes from "./pages/employee/Manutencoes";
+import EmployeeAbastecimentos from "./pages/employee/Abastecimentos";
+import EmployeeVistorias from "./pages/employee/Vistorias";
+import RoleRedirect from "./components/RoleRedirect";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/redirect"} component={RoleRedirect} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/galeria"} component={Galeria} />
       <Route path={"/reservas"} component={Reservas} />
@@ -34,6 +38,8 @@ function Router() {
       <Route path={"/admin/vistorias"} component={Vistorias} />
       <Route path={"/employee/reservas"} component={EmployeeReservas} />
       <Route path={"/employee/manutencoes"} component={EmployeeManutencoes} />
+      <Route path={"/employee/abastecimentos"} component={EmployeeAbastecimentos} />
+      <Route path={"/employee/vistorias"} component={EmployeeVistorias} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
