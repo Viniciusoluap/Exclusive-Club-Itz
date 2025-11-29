@@ -1297,6 +1297,7 @@ Nenhuma reserva foi afetada.
         // Converter valores de centavos para reais
         return records.map((record: any) => ({
           ...record,
+          date: record.booking_date, // Mapear booking_date para date
           liters: record.liters / 100,
           price_per_liter: record.price_per_liter / 100,
           total_cost: record.total_amount / 100,

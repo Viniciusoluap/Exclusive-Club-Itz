@@ -1576,3 +1576,25 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - Removido `JSON.parse()` - inspectionData já é objeto
 - Corrigido nomes dos campos: `vessel_name` → `vesselName`, `client_name` → `clientName`, etc.
 - Adicionado fallback `|| {}` para evitar erro com dados nulos
+
+
+## ✅ ETAPA 1 - ERRO CRÍTICO - Página Abastecimentos Funcionário (29/11/2025 - 19:30) - RESOLVIDO
+
+- [x] Investigar linha 455 de `/client/src/pages/employee/Abastecimentos.tsx`
+- [x] Identificar qual campo está undefined (quantity, pricePerLiter, serviceFee, totalCost)
+- [x] Adicionar validação para campos numéricos antes de chamar `.toFixed()`
+- [x] Testar página `/employee/abastecimentos` no navegador
+- [x] Verificar se listagem de abastecimentos carrega sem erros
+- [x] Confirmar que valores aparecem formatados corretamente
+
+### Problema Identificado
+- Frontend usava `refueling.cost` mas backend retorna `total_cost`
+- Frontend usava `refueling.pricePerLiter` (camelCase) mas backend retorna `price_per_liter` (snake_case)
+- Frontend usava `refueling.date` mas backend retornava `booking_date`
+- Valores já vinham convertidos de centavos para reais pelo backend
+
+### Solução
+- Corrigido frontend para usar `total_cost`, `price_per_liter`
+- Adicionado mapeamento `date: record.booking_date` no backend
+- Removida conversão duplicada de centavos (backend já faz)
+- Página agora exibe: Data: 19/11/2025, Litros: 100.00 L, Custo: R$ 610.00, Custo/Litro: R$ 6.00

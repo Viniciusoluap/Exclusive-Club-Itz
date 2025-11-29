@@ -263,11 +263,11 @@ export default function EmployeeAbastecimentos() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Custo:</span>{" "}
-                    R$ {refueling.cost.toFixed(2)}
+                    R$ {refueling.total_cost.toFixed(2)}
                   </div>
                   <div>
                     <span className="text-muted-foreground">Custo/Litro:</span>{" "}
-                    R$ {(refueling.cost / refueling.liters).toFixed(2)}
+                    R$ {refueling.price_per_liter.toFixed(2)}
                   </div>
                   {refueling.notes && (
                     <div>
