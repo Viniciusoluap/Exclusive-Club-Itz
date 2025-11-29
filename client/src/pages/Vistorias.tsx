@@ -183,18 +183,19 @@ export default function Vistorias() {
             Voltar
           </Button>
         </Link>
-        <div className="flex justify-between items-center">
+        <div className="space-y-4">
           <div>
-            <h1 className="text-3xl font-bold">Vistorias</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl md:text-3xl font-bold">Vistorias</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1">
               Registre vistorias das embarcações antes e após o uso
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Button 
               variant="outline" 
               onClick={() => generateReportMutation.mutate()}
               disabled={generateReportMutation.isPending}
+              className="w-full sm:w-auto"
             >
               {generateReportMutation.isPending ? (
                 <>
@@ -208,7 +209,7 @@ export default function Vistorias() {
                 </>
               )}
             </Button>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
               Nova Vistoria
             </Button>
