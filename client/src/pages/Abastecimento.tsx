@@ -23,6 +23,11 @@ export default function Abastecimento() {
   const { data: fuelRecords, refetch } = trpcAny.fuelRecords?.list.useQuery({}) || { data: [] };
   const { data: vessels } = trpc.vessels.list.useQuery();
 
+  // Debug: ver se recentBookings está vindo
+  console.log('[Abastecimento] recentBookings:', recentBookings);
+  console.log('[Abastecimento] fuelRecords:', fuelRecords);
+  console.log('[Abastecimento] vessels:', vessels);
+
   const createMutation = trpcAny.fuelRecords?.create.useMutation({
     onSuccess: (data: any) => {
       toast.success(`Abastecimento registrado! Valor total: R$ ${data.totalCost.toFixed(2)}`);

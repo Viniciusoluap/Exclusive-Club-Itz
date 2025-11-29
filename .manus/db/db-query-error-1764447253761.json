@@ -1,0 +1,8 @@
+{
+  "query": "SELECT \n  b.id,\n  b.vesselId,\n  b.startTime,\n  b.endTime,\n  b.status,\n  u.name as clientName,\n  u.email as clientEmail,\n  v.name as vesselName\nFROM bookings b\nJOIN users u ON b.userId = u.id\nJOIN vessels v ON b.vesselId = v.id\nWHERE (b.status = 'confirmed' OR b.status = 'used')\nORDER BY b.endTime DESC\nLIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  b.id,\n  b.vesselId,\n  b.startTime,\n  b.endTime,\n  b.status,\n  u.name as clientName,\n  u.email as clientEmail,\n  v.name as vesselName\nFROM bookings b\nJOIN users u ON b.userId = u.id\nJOIN vessels v ON b.vesselId = v.id\nWHERE (b.status = 'confirmed' OR b.status = 'used')\nORDER BY b.endTime DESC\nLIMIT 10;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'b.userid' in 'on clause'"
+  ]
+}

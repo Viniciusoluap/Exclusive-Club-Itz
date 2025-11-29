@@ -1420,3 +1420,13 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Testar Dashboard com cliente
 - [x] Testar Dashboard com admin
 - [x] Dashboard funcionando com layout original
+
+## Corrigir Abastecimento (29/11/2025)
+
+- [x] Campo "Reserva" vazio - deve mostrar reservas utilizadas
+- [x] Formato do dropdown: Data - Cliente - Embarcação
+- [x] Criar lista de abastecimentos cadastrados após criação
+- [x] Lista deve mostrar: reserva, dia, cliente, embarcação, litros, preço
+- [x] Corrigir endpoint fuelRecords.create para usar colunas corretas do banco
+- [x] Corrigir endpoint fuelRecords.list para converter valores de centavos para reais
+- [x] Testar criação e listagem de abastecimentos

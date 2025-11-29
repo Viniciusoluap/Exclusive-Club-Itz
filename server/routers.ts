@@ -245,16 +245,14 @@ export const appRouter = router({
 
         let query = `SELECT 
           b.id,
-          b.vesselId,
-          b.startTime,
-          b.endTime,
+          b.vessel_id as vesselId,
+          b.booking_date as startTime,
+          b.booking_date as endTime,
           b.status,
-          u.name as clientName,
-          u.email as clientEmail,
-          v.name as vesselName
+          b.client_name as clientName,
+          b.client_email as clientEmail,
+          b.vessel_name as vesselName
         FROM bookings b
-        JOIN users u ON b.userId = u.id
-        JOIN vessels v ON b.vesselId = v.id
         WHERE (b.status = 'confirmed' OR b.status = 'used')`;
         
         const params: any[] = [];
@@ -263,11 +261,11 @@ export const appRouter = router({
         if (input.days !== undefined) {
           const cutoffDate = new Date();
           cutoffDate.setDate(cutoffDate.getDate() - input.days);
-          query += ' AND b.endTime >= ?';
+          query += ' AND b.booking_date >= ?';
           params.push(cutoffDate.getTime());
         }
         
-        query += ' ORDER BY b.endTime DESC';
+        query += ' ORDER BY b.booking_date DESC';
 
         const result = await db.execute(query, params);
         return result[0] as any[];
@@ -1210,25 +1208,38 @@ Nenhuma reserva foi afetada.
         pricePerLiter: z.number().positive(),
         notes: z.string().optional(),
       }))
-      .mutation(async ({ input, ctx }) => {
-        // Allow admin and employee to access
+      .mutation(async ({ ctx, input }) => {
         if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
         }
-        const db = await import('./db').then(m => m.getDb());
-        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+        const database = await import('./db').then(m => m.getDb());
+        if (!database) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const SERVICE_FEE = 10.00; // Taxa de abastecimento e aplicativo
-        const fuelCost = input.liters * input.pricePerLiter;
-        const totalCost = fuelCost + SERVICE_FEE;
+        // Buscar dados da reserva e embarcação
+        const bookingResult = await database.execute(`
+          SELECT b.client_name, b.client_email, b.vessel_name, v.name as vessel_name_actual
+          FROM bookings b
+          JOIN vessels v ON b.vessel_id = v.id
+          WHERE b.id = ${input.bookingId}
+        `);
+        const booking = (bookingResult[0] as any[])[0];
+        if (!booking) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Reserva não encontrada' });
+        }
 
-        await db.execute(
-          `INSERT INTO fuel_records (booking_id, vessel_id, liters, price_per_liter, total_cost, recorded_by, notes, recorded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
-          [input.bookingId, input.vesselId, input.liters, input.pricePerLiter, totalCost, ctx.user.id, input.notes || null]
-        );
+        const SERVICE_FEE = 1000; // Taxa de abastecimento e aplicativo em centavos (R$ 10,00)
+        const litersInCents = Math.round(input.liters * 100); // Converter para centavos
+        const pricePerLiterInCents = Math.round(input.pricePerLiter * 100); // Converter para centavos
+        const fuelCost = Math.round((input.liters * input.pricePerLiter) * 100); // em centavos
+        const totalAmount = fuelCost + SERVICE_FEE;
 
-        return { success: true, totalCost };
+        const notesValue = input.notes ? `'${input.notes.replace(/'/g, "''")}'` : 'NULL';
+        await database.execute(`
+          INSERT INTO fuel_records (booking_id, vessel_id, vessel_name, client_email, client_name, liters, price_per_liter, total_amount, notes)
+          VALUES (${input.bookingId}, ${input.vesselId}, '${booking.vessel_name_actual}', '${booking.client_email}', '${booking.client_name}', ${litersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${notesValue})
+        `); 
+
+        return { success: true, totalCost: totalAmount / 100 };
       }),
 
     list: publicProcedure
@@ -1248,15 +1259,9 @@ Nenhuma reserva foi afetada.
         let query = `
           SELECT 
             fr.*,
-            v.name as vessel_name,
-            b.startTime as booking_date,
-            u.name as client_name,
-            rec.name as recorded_by_name
+            b.booking_date
           FROM fuel_records fr
-          JOIN vessels v ON fr.vessel_id = v.id
           JOIN bookings b ON fr.booking_id = b.id
-          JOIN users u ON b.userId = u.id
-          JOIN users rec ON fr.recorded_by = rec.id
           WHERE 1=1
         `;
         const params: any[] = [];
@@ -1267,19 +1272,27 @@ Nenhuma reserva foi afetada.
         }
 
         if (input.startDate) {
-          query += ' AND fr.recorded_at >= FROM_UNIXTIME(?)';
+          query += ' AND fr.created_at >= FROM_UNIXTIME(?)';
           params.push(input.startDate / 1000);
         }
 
         if (input.endDate) {
-          query += ' AND fr.recorded_at <= FROM_UNIXTIME(?)';
+          query += ' AND fr.created_at <= FROM_UNIXTIME(?)';
           params.push(input.endDate / 1000);
         }
 
-        query += ' ORDER BY fr.recorded_at DESC';
+        query += ' ORDER BY fr.created_at DESC';
 
         const result = await db.execute(query, params);
-        return result[0] as any[];
+        const records = result[0] as any[];
+        
+        // Converter valores de centavos para reais
+        return records.map((record: any) => ({
+          ...record,
+          liters: record.liters / 100,
+          price_per_liter: record.price_per_liter / 100,
+          total_cost: record.total_amount / 100,
+        }));
       }),
 
     getByBooking: publicProcedure
@@ -1293,11 +1306,10 @@ Nenhuma reserva foi afetada.
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         const result = await db.execute(
-          `SELECT fr.*, u.name as recorded_by_name
+          `SELECT fr.*
            FROM fuel_records fr
-           JOIN users u ON fr.recorded_by = u.id
            WHERE fr.booking_id = ?
-           ORDER BY fr.recorded_at DESC`,
+           ORDER BY fr.created_at DESC`,
           [input.bookingId]
         );
 
