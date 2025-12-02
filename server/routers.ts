@@ -557,9 +557,15 @@ export const appRouter = router({
           });
         }
 
-        // Admin pode reservar segundas-feiras (bloqueio removido)
-        // Clientes comuns continuam bloqueados no endpoint bookings.create
+        // Check if it's a Monday (not allowed)
         const bookingDate = new Date(input.bookingDate);
+        const dayOfWeek = bookingDate.getUTCDay();
+        if (dayOfWeek === 1) { // 1 = Monday
+          throw new TRPCError({ 
+            code: 'BAD_REQUEST', 
+            message: 'Reservas não são permitidas às segundas-feiras' 
+          });
+        }
 
         // Check if vessel is under maintenance for this date
         const maintenances = await db.getActiveMaintenancesByVesselAndDate(input.vesselId, input.bookingDate);
@@ -668,21 +674,6 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
-        
-        // Se status está mudando para 'cancelled', buscar dados da reserva para enviar email
-        if (data.status === 'cancelled') {
-          const booking = await db.getBookingById(id);
-          if (booking) {
-            // Enviar email de cancelamento ao cliente
-            await notifyClientBookingCancellation({
-              clientName: booking.clientName,
-              clientEmail: booking.clientEmail,
-              vesselName: booking.vesselName,
-              bookingDate: new Date(booking.bookingDate),
-            });
-          }
-        }
-        
         await db.updateBooking(id, data);
         return { success: true };
       }),
@@ -1115,19 +1106,18 @@ Nenhuma reserva foi afetada.
       .mutation(async ({ input, ctx }) => {
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
-        
-        const { sql } = await import('drizzle-orm');
+        const { employees } = await import('../drizzle/schema');
 
-        const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds) : 'null';
-        const phone = input.phone ? `'${input.phone.replace(/'/g, "\\'")}'` : 'null';
-        const name = input.name.replace(/'/g, "\\'");
-        const email = input.email.replace(/'/g, "\\'");
+        const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds) : null;
 
-        // Usar sql.raw() com interpolação manual (campos default gerenciados pelo banco)
-        await db.execute(sql.raw(`
-          INSERT INTO employees (name, email, phone, vessel_ids, is_active)
-          VALUES ('${name}', '${email}', ${phone}, '${vesselIdsJson}', true)
-        `));
+        await db.insert(employees).values({
+          name: input.name,
+          email: input.email,
+          phone: input.phone || null,
+          vesselIds: vesselIdsJson,
+          isActive: true,
+          // created_at e updated_at têm defaultNow() no schema, não precisam ser passados
+        });
 
         return { success: true };
       }),
@@ -1429,79 +1419,6 @@ Nenhuma reserva foi afetada.
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
             message: `Erro ao excluir abastecimento: ${error.message}` 
-          });
-        }
-      }),
-
-    generateReport: publicProcedure
-      .input(z.object({
-        refuelingIds: z.array(z.number()),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
-        }
-        
-        if (input.refuelingIds.length === 0) {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Selecione pelo menos um abastecimento' });
-        }
-
-        try {
-          const db = await import('./db').then(m => m.getDb());
-          if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
-
-          const { inArray, eq, desc } = await import('drizzle-orm');
-          const { fuelRecords, bookings } = await import('../drizzle/schema');
-          
-          // Buscar abastecimentos selecionados com informações completas usando Drizzle ORM
-          const result = await db
-            .select({
-              id: fuelRecords.id,
-              booking_id: fuelRecords.bookingId,
-              vessel_id: fuelRecords.vesselId,
-              vessel_name: fuelRecords.vesselName,
-              client_name: fuelRecords.clientName,
-              client_email: fuelRecords.clientEmail,
-              liters: fuelRecords.liters,
-              price_per_liter: fuelRecords.pricePerLiter,
-              total_amount: fuelRecords.totalAmount,
-              notes: fuelRecords.notes,
-              created_at: fuelRecords.createdAt,
-              booking_date: bookings.bookingDate,
-            })
-            .from(fuelRecords)
-            .innerJoin(bookings, eq(fuelRecords.bookingId, bookings.id))
-            .where(inArray(fuelRecords.id, input.refuelingIds))
-            .orderBy(desc(fuelRecords.createdAt));
-
-          if (result.length === 0) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum abastecimento encontrado com os IDs fornecidos' });
-          }
-
-          const refuelings = result.map((row: any) => ({
-            ...row,
-            liters: row.liters / 100,
-            price_per_liter: row.price_per_liter / 100,
-            total_cost: row.total_amount / 100,
-          }));
-
-          // Gerar PDF
-          const { generateRefuelingsReportPDF } = await import('./_core/refuelingsPDF');
-          const { notifyOwner } = await import('./_core/notification');
-          const pdfBuffer = await generateRefuelingsReportPDF(refuelings);
-
-          // Notificar owner
-          await notifyOwner({
-            title: '⛽ Relatório de Abastecimentos Gerado',
-            content: `Relatório de ${refuelings.length} abastecimento(s) foi gerado com sucesso. O PDF foi baixado automaticamente.`,
-          });
-
-          return { success: true, count: refuelings.length, pdfBase64: pdfBuffer.toString('base64') };
-        } catch (error: any) {
-          console.error('[fuelRecords.generateReport] Error:', error);
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR', 
-            message: `Erro ao gerar relatório: ${error.message}` 
           });
         }
       }),

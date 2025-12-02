@@ -205,13 +205,6 @@ export async function getAllBookings() {
   return await db.select().from(bookings);
 }
 
-export async function getBookingById(id: number) {
-  const db = await getDb();
-  if (!db) return null;
-  const result = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
-  return result.length > 0 ? result[0] : null;
-}
-
 export async function getBookingsByEmail(email: string) {
   const db = await getDb();
   if (!db) return [];
