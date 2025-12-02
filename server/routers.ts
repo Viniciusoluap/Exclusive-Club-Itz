@@ -1106,18 +1106,20 @@ Nenhuma reserva foi afetada.
       .mutation(async ({ input, ctx }) => {
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
-        const { employees } = await import('../drizzle/schema');
 
-        const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds) : null;
+        const { sql } = await import('drizzle-orm');
 
-        await db.insert(employees).values({
-          name: input.name,
-          email: input.email,
-          phone: input.phone || null,
-          vesselIds: vesselIdsJson,
-          isActive: true,
-          // created_at e updated_at têm defaultNow() no schema, não precisam ser passados
-        });
+        // Escapar aspas simples para evitar SQL injection
+        const name = input.name.replace(/'/g, "\\'");
+        const email = input.email.replace(/'/g, "\\'");
+        const phone = input.phone ? `'${input.phone.replace(/'/g, "\\'")}'` : 'null';
+        const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds).replace(/'/g, "\\'") : 'null';
+
+        // Usar sql.raw() com interpolação manual (campos default gerenciados pelo banco)
+        await db.execute(sql.raw(`
+          INSERT INTO employees (name, email, phone, vessel_ids, is_active)
+          VALUES ('${name}', '${email}', ${phone}, '${vesselIdsJson}', true)
+        `));
 
         return { success: true };
       }),

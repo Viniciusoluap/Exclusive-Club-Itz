@@ -1715,3 +1715,30 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
   - tamanhos responsivos (text-base/text-lg)
 - [x] Mantida correção de funcionários do checkpoint atual
 - [x] TypeScript: 0 erros
+
+
+---
+
+## 🚨 2 BUGS CRÍTICOS REPORTADOS (30/11/2025 - 09:29)
+
+### BUG 1: Funcionários - Email .com falhando no CREATE
+- [x] Erro ao cadastrar funcionário com email efficazcorrespondente@hotmail.com
+- [x] Mensagem: "Failed query: insert into `employees` (`id`, `name`, `email`, `phone`, `vessel_ids`, `is_active`, `created_at`, `updated_at`) values (default, ?, ?, ?, ?, ?, default, default) params: Teste 2,efficazcorrespondente@hotmail.com,99981392210,[3,4],true"
+- [x] Causa: employees.create ainda usa placeholders ? inválidos
+- [x] Correção: Reescrito usando sql.raw() com escape de aspas simples
+
+### BUG 2: Vistorias - Contagem de reprovações errada
+- [x] Mostrando "Reprovações: 20" quando deveria mostrar lógica correta
+- [x] Mostrando "Reprovações: 12" quando deveria mostrar lógica correta
+- [x] Lógica esperada implementada:
+  - Se 0 reprovações → "Aprovado"
+  - Se 1 reprovação → "Reprovado: 1"
+  - Se 2+ reprovações → "Reprovações: X"
+- [x] Correção: Adicionado cálculo failedCount e condicional ternário
+
+### Ações Concluídas:
+- [x] Corrigido employees.create com sql.raw()
+- [x] Corrigido lógica de reprovações nas vistorias
+- [x] Criados 4 testes automatizados (100% passando)
+- [x] TypeScript: 0 erros
+- [x] Dev server: funcionando
