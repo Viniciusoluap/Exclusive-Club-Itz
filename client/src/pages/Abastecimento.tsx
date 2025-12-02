@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2 } from "lucide-react";
+import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 
 export default function Abastecimento() {
@@ -20,6 +21,7 @@ export default function Abastecimento() {
   const [liters, setLiters] = useState("");
   const [pricePerLiter, setPricePerLiter] = useState("");
   const [notes, setNotes] = useState("");
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   const trpcAny = trpc as any;
   const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas as últimas 6 reservas utilizadas
@@ -55,6 +57,24 @@ export default function Abastecimento() {
     },
   });
 
+  const generateReportMutation = trpcAny.fuelRecords?.generateReport.useMutation({
+    onSuccess: (data: any) => {
+      // Download PDF
+      const linkSource = `data:application/pdf;base64,${data.pdfBase64}`;
+      const downloadLink = document.createElement('a');
+      const fileName = `relatorio-abastecimentos-${new Date().toISOString().split('T')[0]}.pdf`;
+      downloadLink.href = linkSource;
+      downloadLink.download = fileName;
+      downloadLink.click();
+      
+      toast.success(`Relatório gerado com ${data.count} abastecimento(s)!`);
+      setSelectedIds([]);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao gerar relatório: ${error.message}`);
+    },
+  });
+
   const resetForm = () => {
     setSelectedBookingId(null);
     setLiters("");
@@ -71,6 +91,28 @@ export default function Abastecimento() {
     if (deleteId) {
       deleteMutation.mutate({ id: deleteId });
     }
+  };
+
+  const handleToggleSelection = (id: number) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === fuelRecords?.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(fuelRecords?.map((r: any) => r.id) || []);
+    }
+  };
+
+  const handleGenerateReport = () => {
+    if (selectedIds.length === 0) {
+      toast.error('Selecione pelo menos um abastecimento');
+      return;
+    }
+    generateReportMutation.mutate({ refuelingIds: selectedIds });
   };
 
   const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
@@ -114,23 +156,57 @@ export default function Abastecimento() {
             Voltar
           </Button>
         </Link>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold">Abastecimento</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold">Abastecimento</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Registre o abastecimento das embarcações após o uso
             </p>
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Registrar Abastecimento
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            {fuelRecords && fuelRecords.length > 0 && (
+              <Button 
+                variant="outline"
+                onClick={handleGenerateReport}
+                disabled={selectedIds.length === 0 || generateReportMutation.isPending}
+                className="flex-1 sm:flex-none"
+              >
+                {generateReportMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4 mr-2" />
+                )}
+                <span className="hidden sm:inline">Relatório PDF</span>
+                <span className="sm:hidden">PDF</span>
+                {selectedIds.length > 0 && ` (${selectedIds.length})`}
+              </Button>
+            )}
+            <Button 
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="flex-1 sm:flex-none"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Registrar Abastecimento</span>
+              <span className="sm:hidden">Registrar</span>
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Recent Fuel Records */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Registros Recentes</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Registros Recentes</h2>
+          {fuelRecords && fuelRecords.length > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleSelectAll}
+            >
+              {selectedIds.length === fuelRecords.length ? 'Desmarcar todos' : 'Selecionar todos'}
+            </Button>
+          )}
+        </div>
         {!fuelRecords || fuelRecords.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
@@ -140,33 +216,39 @@ export default function Abastecimento() {
         ) : (
           <div className="grid gap-4">
             {fuelRecords.map((record: any) => (
-              <Card key={record.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <Fuel className="w-5 h-5 text-primary" />
-                      <div>
-                        <CardTitle className="text-lg">{record.vessel_name}</CardTitle>
-                        <CardDescription>
+              <Card key={record.id} className={selectedIds.includes(record.id) ? 'ring-2 ring-primary' : ''}>
+                <CardHeader className="p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <Checkbox 
+                        checked={selectedIds.includes(record.id)}
+                        onCheckedChange={() => handleToggleSelection(record.id)}
+                        className="mt-1 flex-shrink-0"
+                      />
+                      <Fuel className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base sm:text-lg truncate">{record.vessel_name}</CardTitle>
+                        <CardDescription className="text-xs sm:text-sm">
                           {record.client_name} • {new Date(record.booking_date).toLocaleDateString('pt-BR')}
                         </CardDescription>
                       </div>
                     </div>
-                    <div className="flex items-start gap-4">
-                      <div className="text-right flex-1">
-                        <div className="text-2xl font-bold text-primary">
+                    <div className="flex items-center justify-between sm:items-start gap-3 sm:gap-4">
+                      <div className="text-left sm:text-right flex-1">
+                        <div className="text-xl sm:text-2xl font-bold text-primary whitespace-nowrap">
                           R$ {Number(record.total_cost).toFixed(2)}
                         </div>
-                        <div className="text-xs text-muted-foreground space-y-0.5">
-                          <div>{Number(record.liters).toFixed(1)}L × R$ {Number(record.price_per_liter).toFixed(2)} = R$ {(Number(record.liters) * Number(record.price_per_liter)).toFixed(2)}</div>
-                          <div>Taxa: R$ 10,00</div>
+                        <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+                          <div className="whitespace-nowrap">{Number(record.liters).toFixed(1)}L × R$ {Number(record.price_per_liter).toFixed(2)}</div>
+                          <div className="whitespace-nowrap">= R$ {(Number(record.liters) * Number(record.price_per_liter)).toFixed(2)}</div>
+                          <div className="whitespace-nowrap">Taxa: R$ 10,00</div>
                         </div>
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDeleteClick(record.id)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

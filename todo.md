@@ -1687,3 +1687,31 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Testado UPDATE: .com, .com.br, .net, prospectaconstrucoes.com
 - [x] TypeScript: 0 erros
 - [x] Sistema funciona com QUALQUER formato de email
+
+
+---
+
+## 🚨 BUG CRÍTICO - Funcionalidades Perdidas na Página de Abastecimento (30/11/2025 - 09:13)
+
+### Problema Reportado:
+- [x] Opção de gerar PDF foi removida
+- [x] Seleção múltipla de abastecimentos foi removida
+- [x] Layout está cortando campos e palavras no mobile
+- [x] Funcionalidades existiam nos checkpoints anteriores
+
+### Causa Raiz:
+- [x] Conflito Git durante merge automático no último checkpoint (660bc0d8)
+- [x] Mensagem: "Divergence between local/main and origin/main detected"
+- [x] Funcionalidades foram perdidas durante resolução automática do conflito
+
+### Restauração Aplicada:
+- [x] Recuperado código do checkpoint e50bdf7 "Ajustes de layout mobile e geração de relatório PDF de abastecimentos"
+- [x] Restaurada funcionalidade de gerar PDF (botão "Relatório PDF" com contador)
+- [x] Restaurada seleção múltipla de abastecimentos (checkbox em cada card)
+- [x] Corrigido layout mobile:
+  - flex-col no mobile, flex-row no desktop
+  - whitespace-nowrap para evitar quebra de valores
+  - truncate em títulos longos
+  - tamanhos responsivos (text-base/text-lg)
+- [x] Mantida correção de funcionários do checkpoint atual
+- [x] TypeScript: 0 erros
