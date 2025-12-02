@@ -1700,3 +1700,17 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Garantir que notifyClientBookingCancellation é chamada em todos os casos
 - [x] Testar envio de emails em cada cenário
 - [x] Validar que emails chegam corretamente
+
+
+## ✅ BUG RESOLVIDO - Erro ao Cadastrar Funcionários (29/11/2025 - 22:40)
+
+### Problema:
+- [x] Erro SQL ao tentar cadastrar funcionário
+- [x] Query tentando passar created_at e updated_at como default
+- [x] Drizzle ORM insert() gerando SQL inválido
+
+### Correção:
+- [x] Reescrito endpoint employees.create usando SQL raw
+- [x] Usar db.execute(sql\`INSERT INTO...\`) em vez de db.insert()
+- [x] Inserir apenas campos necessários: name, email, phone, vessel_ids, is_active
+- [x] Deixar id, created_at e updated_at serem gerenciados pelo banco automaticamente
