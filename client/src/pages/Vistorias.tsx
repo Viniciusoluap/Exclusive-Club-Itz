@@ -231,9 +231,10 @@ export default function Vistorias() {
             {inspections.map((inspection: any) => {
               // inspectionData already comes as object from backend
               const formData = inspection.inspectionData || {};
-              const approvedCount = Object.values(formData).filter(v => v === 'aprovado').length;
+              const approvedCount = Object.values(formData).filter(v => v === 'APROVADO').length;
+              const repprovedCount = Object.values(formData).filter(v => v === 'REPROVADO').length;
               const totalFields = Object.keys(formData).length;
-              const isFullyApproved = approvedCount === totalFields;
+              const isFullyApproved = totalFields > 0 && approvedCount === totalFields;
 
               return (
                 <Card key={inspection.id}>
@@ -258,7 +259,7 @@ export default function Vistorias() {
                           ) : (
                             <div className="flex items-center gap-2 text-amber-600">
                               <XCircle className="w-5 h-5" />
-                              <span className="font-semibold">Reprovações: {totalFields - approvedCount}</span>
+                              <span className="font-semibold">Reprovações: {repprovedCount}</span>
                             </div>
                           )}
                         </div>
