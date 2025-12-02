@@ -31,6 +31,7 @@ export default function Abastecimento() {
   // Debug: ver se recentBookings está vindo
   console.log('[Abastecimento] recentBookings:', recentBookings);
   console.log('[Abastecimento] fuelRecords:', fuelRecords);
+  console.log('[Abastecimento] fuelRecords IDs:', fuelRecords?.map((r: any) => ({ id: r.id, booking_id: r.booking_id })));
   console.log('[Abastecimento] vessels:', vessels);
 
   const createMutation = trpcAny.fuelRecords?.create.useMutation({

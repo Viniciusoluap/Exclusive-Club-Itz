@@ -1781,3 +1781,19 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] flex-1 no texto, whitespace-nowrap nos valores
 - [x] Valor total menor em mobile: text-xl sm:text-2xl
 - [x] Testar TypeScript (0 erros)
+
+
+## ✅ BUG RESOLVIDO - Erro SQL ao Gerar Relatório PDF de Abastecimentos (30/11/2025 - 01:10)
+
+### Problema:
+- [x] Query SQL falhando com IDs inválidos (120001, 90001)
+- [x] Erro: "Failed query: SELECT fr.*, b.booking_date, u.name as recorded_by_name FROM fuel_records..."
+- [x] Query SQL raw com interpolação de string insegura
+- [x] JOIN com tabela users.recordedBy que não existe no schema
+
+### Correção:
+- [x] Reescrito endpoint usando Drizzle ORM proper (.select + .where + inArray)
+- [x] Removido JOIN com tabela users (campo recorded_by não existe em fuel_records)
+- [x] Adicionado validação: se nenhum abastecimento encontrado, retorna erro claro
+- [x] Ordenação correta com desc(fuelRecords.createdAt)
+- [x] TypeScript: 0 erros
