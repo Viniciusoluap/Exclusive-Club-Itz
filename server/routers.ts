@@ -557,15 +557,9 @@ export const appRouter = router({
           });
         }
 
-        // Check if it's a Monday (not allowed)
+        // Admin pode reservar segundas-feiras (bloqueio removido)
+        // Clientes comuns continuam bloqueados no endpoint bookings.create
         const bookingDate = new Date(input.bookingDate);
-        const dayOfWeek = bookingDate.getUTCDay();
-        if (dayOfWeek === 1) { // 1 = Monday
-          throw new TRPCError({ 
-            code: 'BAD_REQUEST', 
-            message: 'Reservas não são permitidas às segundas-feiras' 
-          });
-        }
 
         // Check if vessel is under maintenance for this date
         const maintenances = await db.getActiveMaintenancesByVesselAndDate(input.vesselId, input.bookingDate);

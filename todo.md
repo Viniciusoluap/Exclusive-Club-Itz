@@ -1663,3 +1663,19 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Fallback para objeto vazio quando formData é null/undefined
 - [x] Suporte a ambos os formatos: inspection_data e form_data
 - [x] Testar geração de PDF para vistorias existentes
+
+
+## ✅ NOVA FUNCIONALIDADE - Admin Pode Reservar Segundas-Feiras (29/11/2025 - 20:20) - CONCLUÍDA
+
+### Requisito:
+- [x] Permitir que admin crie reservas em segundas-feiras via formulário "Criar Reserva para Cliente"
+- [x] Manter bloqueio de segundas-feiras para clientes comuns
+- [x] Preservar todas as marcações visuais do calendário (segundas em cinza)
+- [x] Não alterar interface do cliente (segundas continuam desabilitadas)
+
+### Implementação:
+- [x] Remover validação de segunda-feira do endpoint bookings.createForClient (admin only)
+- [x] Manter validação de segunda-feira no endpoint bookings.create (cliente)
+- [x] Testar criação de reserva admin em segunda-feira
+- [x] Validar que cliente continua bloqueado de reservar segundas
+- [x] Criar teste automatizado validando ambos os cenários
