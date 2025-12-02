@@ -1409,6 +1409,67 @@ Nenhuma reserva foi afetada.
           });
         }
       }),
+
+    generateReport: publicProcedure
+      .input(z.object({
+        refuelingIds: z.array(z.number()),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+        
+        if (input.refuelingIds.length === 0) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Selecione pelo menos um abastecimento' });
+        }
+
+        try {
+          const db = await import('./db').then(m => m.getDb());
+          if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+          const { sql } = await import('drizzle-orm');
+          
+          // Buscar abastecimentos selecionados com informações completas
+          const idsStr = input.refuelingIds.join(',');
+          const result = await db.execute(sql.raw(`
+            SELECT 
+              fr.*,
+              b.booking_date,
+              u.name as recorded_by_name
+            FROM fuel_records fr
+            JOIN bookings b ON fr.booking_id = b.id
+            LEFT JOIN users u ON fr.recorded_by = u.id
+            WHERE fr.id IN (${idsStr})
+            ORDER BY fr.created_at DESC
+          `)) as any;
+
+          const refuelings = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
+            ...row,
+            liters: row.liters / 100,
+            price_per_liter: row.price_per_liter / 100,
+            total_cost: row.total_amount / 100,
+          }));
+
+          // Gerar PDF
+          const { generateRefuelingsReportPDF } = await import('./_core/refuelingsPDF');
+          const { notifyOwner } = await import('./_core/notification');
+          const pdfBuffer = await generateRefuelingsReportPDF(refuelings);
+
+          // Notificar owner
+          await notifyOwner({
+            title: '⛽ Relatório de Abastecimentos Gerado',
+            content: `Relatório de ${refuelings.length} abastecimento(s) foi gerado com sucesso. O PDF foi baixado automaticamente.`,
+          });
+
+          return { success: true, count: refuelings.length, pdfBase64: pdfBuffer.toString('base64') };
+        } catch (error: any) {
+          console.error('[fuelRecords.generateReport] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao gerar relatório: ${error.message}` 
+          });
+        }
+      }),
   }),
 
   // Inspections router - Admin and Employee

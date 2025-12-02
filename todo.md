@@ -1714,3 +1714,25 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Usar db.execute(sql\`INSERT INTO...\`) em vez de db.insert()
 - [x] Inserir apenas campos necessários: name, email, phone, vessel_ids, is_active
 - [x] Deixar id, created_at e updated_at serem gerenciados pelo banco automaticamente
+
+
+## ✅ MELHORIAS - Página de Abastecimento (29/11/2025 - 22:45) - CONCLUÍDAS
+
+### Requisitos:
+- [x] Ajustar layout mobile para evitar cortes no botão "Registrar Abastecimento"
+- [x] Garantir que todo conteúdo fique visível sem scroll horizontal
+- [x] Adicionar botão "Relatório PDF" (similar ao de Vistorias)
+- [x] Implementar seleção de abastecimentos via checkbox
+- [x] Gerar PDF com abastecimentos selecionados
+- [x] Enviar PDF por email ao admin automaticamente
+- [x] Manter todas as funcionalidades existentes (registro, listagem, exclusão)
+
+### Implementação:
+- [x] Ajustar CSS da página Abastecimento para mobile (flex-col + texto responsivo)
+- [x] Criar função generateRefuelingsPDF() em server/_core/refuelingsPDF.ts
+- [x] Adicionar checkboxes nos cards de abastecimento com destaque visual
+- [x] Criar endpoint fuelRecords.generateReport com notificação ao admin
+- [x] Integrar botão "Relatório PDF" com contador de selecionados
+- [x] Adicionar botão "Selecionar todos" / "Desmarcar todos"
+- [x] Implementar download automático do PDF em base64
+- [x] Testar TypeScript (0 erros) e servidor (rodando)
