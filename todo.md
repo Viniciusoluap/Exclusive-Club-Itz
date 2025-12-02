@@ -1736,3 +1736,29 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Adicionar botão "Selecionar todos" / "Desmarcar todos"
 - [x] Implementar download automático do PDF em base64
 - [x] Testar TypeScript (0 erros) e servidor (rodando)
+
+
+## ✅ BUG RESOLVIDO - Cálculo Incorreto de Reprovações em Vistorias (30/11/2025 - 00:14)
+
+### Problema:
+- [x] Vistoria com 1 item reprovado mostrava "Reprovações: 20"
+- [x] Vistoria com todos itens aprovados mostrava "Reprovações: 12"
+- [x] Contagem de reprovações estava completamente errada
+
+### Causa Raiz:
+- [x] Valores salvos: "APROVADO" e "REPROVADO" (MAIÚSCULAS)
+- [x] Código verificava: v === 'aprovado' (minúsculas)
+- [x] Resultado: approvedCount sempre = 0, reprovações = totalFields
+
+### Lógica Correta:
+- [x] Se TODOS os itens aprovados → mostrar "✅ Aprovado"
+- [x] Se ALGUM item reprovado → mostrar "❌ Reprovações: X" (X = quantidade real)
+- [x] Manter observações visíveis em ambos os casos
+
+### Correção:
+- [x] Investigar código que calcula reprovações (Vistorias.tsx linha 234)
+- [x] Corrigir verificação para v === 'APROVADO' (MAIÚSCULAS)
+- [x] Adicionar contagem específica de reprovados (repprovedCount)
+- [x] Ajustar exibição para mostrar quantidade real de reprovações
+- [x] Adicionar verificação totalFields > 0 para evitar divisão por zero
+- [x] Testar TypeScript (0 erros) e servidor (rodando)
