@@ -1797,3 +1797,20 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Adicionado validação: se nenhum abastecimento encontrado, retorna erro claro
 - [x] Ordenação correta com desc(fuelRecords.createdAt)
 - [x] TypeScript: 0 erros
+
+
+## ✅ BUG RESOLVIDO - Erro ao Cadastrar Funcionário (SQL placeholders inválidos) (30/11/2025 - 01:15)
+
+### Problema:
+- [x] Query SQL falhando: "INSERT INTO employees (name, email, phone, vessel_ids, is_active) VALUES (?, ?, ?, ?, true)"
+- [x] Placeholders `?` não funcionam com sql.raw()
+- [x] Servidor com código antigo em cache
+
+### Correção:
+- [x] Descoberto: sql\`...\` com ${...} NÃO funciona com db.execute()
+- [x] Reescrito usando sql.raw() com interpolação manual e escape de aspas
+- [x] Criado teste automatizado employees.test.ts
+- [x] Testes passando: 2/2 (cadastro com e sem telefone)
+- [x] Backend funcionando perfeitamente
+- [x] Frontend também correto
+- [x] Problema: cache do navegador mostrando erro antigo
