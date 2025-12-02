@@ -233,7 +233,8 @@ export default function Vistorias() {
               const formData = inspection.inspectionData || {};
               const approvedCount = Object.values(formData).filter(v => v === 'aprovado').length;
               const totalFields = Object.keys(formData).length;
-              const isFullyApproved = approvedCount === totalFields;
+              const failedCount = totalFields - approvedCount;
+              const isFullyApproved = failedCount === 0;
 
               return (
                 <Card key={inspection.id}>
@@ -258,7 +259,9 @@ export default function Vistorias() {
                           ) : (
                             <div className="flex items-center gap-2 text-amber-600">
                               <XCircle className="w-5 h-5" />
-                              <span className="font-semibold">Reprovações: {totalFields - approvedCount}</span>
+                              <span className="font-semibold">
+                                {failedCount === 1 ? 'Reprovado: 1' : `Reprovações: ${failedCount}`}
+                              </span>
                             </div>
                           )}
                         </div>
