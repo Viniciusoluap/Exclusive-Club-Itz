@@ -668,6 +668,21 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const { id, ...data } = input;
+        
+        // Se status está mudando para 'cancelled', buscar dados da reserva para enviar email
+        if (data.status === 'cancelled') {
+          const booking = await db.getBookingById(id);
+          if (booking) {
+            // Enviar email de cancelamento ao cliente
+            await notifyClientBookingCancellation({
+              clientName: booking.clientName,
+              clientEmail: booking.clientEmail,
+              vesselName: booking.vesselName,
+              bookingDate: new Date(booking.bookingDate),
+            });
+          }
+        }
+        
         await db.updateBooking(id, data);
         return { success: true };
       }),

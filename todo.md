@@ -1679,3 +1679,24 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Testar criação de reserva admin em segunda-feira
 - [x] Validar que cliente continua bloqueado de reservar segundas
 - [x] Criar teste automatizado validando ambos os cenários
+
+
+## ✅ NOVA REGRA - Email de Cancelamento Universal (29/11/2025 - 22:30) - CONCLUÍDA
+
+### Requisito:
+- [x] Cliente deve receber email SEMPRE que uma reserva for cancelada
+- [x] Independente de quem cancelou: cliente, admin ou sistema
+- [x] Email deve informar claramente o motivo do cancelamento
+
+### Cenários cobertos:
+- [x] Cliente cancela sua própria reserva (endpoint bookings.cancel) - Já enviava email
+- [x] Admin cancela via painel mudando status (endpoint bookings.update) - IMPLEMENTADO
+- [x] Sistema cancela por manutenção (função em maintenances.create) - Já enviava email
+
+### Implementação:
+- [x] Auditar todos os endpoints que cancelam reservas
+- [x] Criar função getBookingById() em db.ts
+- [x] Adicionar envio de email em bookings.update quando status = 'cancelled'
+- [x] Garantir que notifyClientBookingCancellation é chamada em todos os casos
+- [x] Testar envio de emails em cada cenário
+- [x] Validar que emails chegam corretamente
