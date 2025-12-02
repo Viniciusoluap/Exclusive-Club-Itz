@@ -40,7 +40,7 @@ describe("Sistema de Cotas - Limites", () => {
     expect(quotaInfo.maxBookings).toBe(2); // 1 cota inteira = 2 reservas
   });
 
-  it("deve bloquear reservas em segundas-feiras", async () => {
+  it("admin pode reservar segundas-feiras (clientes bloqueados)", async () => {
     const ctx = createTestContext("test@example.com", "Test User", "admin");
     const caller = appRouter.createCaller(ctx);
 
@@ -60,17 +60,29 @@ describe("Sistema de Cotas - Limites", () => {
       }],
     });
 
-    // Segunda-feira, 1 de dezembro de 2025
-    const monday = new Date(2025, 11, 1); // Mês 11 = dezembro (0-indexed)
+    // Segunda-feira, 15 de dezembro de 2025 (data futura para evitar conflitos)
+    const monday = new Date(2025, 11, 15); // Mês 11 = dezembro (0-indexed)
     const mondayTimestamp = monday.getTime();
 
-    // Admin pode tentar criar reserva, mas segunda-feira deve ser bloqueada
+    // Admin PODE criar reserva em segunda-feira (nova regra)
+    const mondayResult = await caller.bookings.createForClient({
+      clientEmail: uniqueEmail,
+      vesselId: lancha!.id,
+      bookingDate: mondayTimestamp,
+      notes: "Teste segunda-feira - Admin pode reservar",
+    });
+    
+    expect(mondayResult.success).toBe(true);
+    
+    // Mas cliente comum ainda deve ser bloqueado
+    const clientCtx = createTestContext(uniqueEmail, "Test Client Monday", "user");
+    const clientCaller = appRouter.createCaller(clientCtx);
+    
     await expect(
-      caller.bookings.createForClient({
-        clientEmail: uniqueEmail,
+      clientCaller.bookings.create({
         vesselId: lancha!.id,
         bookingDate: mondayTimestamp,
-        notes: "Teste segunda-feira",
+        notes: "Cliente tentando reservar segunda",
       })
     ).rejects.toThrow("Reservas não são permitidas às segundas-feiras");
   });
