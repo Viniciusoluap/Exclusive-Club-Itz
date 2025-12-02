@@ -1427,23 +1427,35 @@ Nenhuma reserva foi afetada.
           const db = await import('./db').then(m => m.getDb());
           if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-          const { sql } = await import('drizzle-orm');
+          const { inArray, eq, desc } = await import('drizzle-orm');
+          const { fuelRecords, bookings } = await import('../drizzle/schema');
           
-          // Buscar abastecimentos selecionados com informações completas
-          const idsStr = input.refuelingIds.join(',');
-          const result = await db.execute(sql.raw(`
-            SELECT 
-              fr.*,
-              b.booking_date,
-              u.name as recorded_by_name
-            FROM fuel_records fr
-            JOIN bookings b ON fr.booking_id = b.id
-            LEFT JOIN users u ON fr.recorded_by = u.id
-            WHERE fr.id IN (${idsStr})
-            ORDER BY fr.created_at DESC
-          `)) as any;
+          // Buscar abastecimentos selecionados com informações completas usando Drizzle ORM
+          const result = await db
+            .select({
+              id: fuelRecords.id,
+              booking_id: fuelRecords.bookingId,
+              vessel_id: fuelRecords.vesselId,
+              vessel_name: fuelRecords.vesselName,
+              client_name: fuelRecords.clientName,
+              client_email: fuelRecords.clientEmail,
+              liters: fuelRecords.liters,
+              price_per_liter: fuelRecords.pricePerLiter,
+              total_amount: fuelRecords.totalAmount,
+              notes: fuelRecords.notes,
+              created_at: fuelRecords.createdAt,
+              booking_date: bookings.bookingDate,
+            })
+            .from(fuelRecords)
+            .innerJoin(bookings, eq(fuelRecords.bookingId, bookings.id))
+            .where(inArray(fuelRecords.id, input.refuelingIds))
+            .orderBy(desc(fuelRecords.createdAt));
 
-          const refuelings = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
+          if (result.length === 0) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum abastecimento encontrado com os IDs fornecidos' });
+          }
+
+          const refuelings = result.map((row: any) => ({
             ...row,
             liters: row.liters / 100,
             price_per_liter: row.price_per_liter / 100,

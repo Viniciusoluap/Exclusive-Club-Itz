@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, booking_id, liters, total_amount, created_at FROM fuel_records ORDER BY created_at DESC LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, booking_id, liters, total_amount, created_at FROM fuel_records ORDER BY created_at DESC LIMIT 5",
+  "rows": [
+    {
+      "id": "90001",
+      "booking_id": "960001",
+      "liters": "1000",
+      "total_amount": "7500",
+      "created_at": "2025-11-29 23:07:17"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tbooking_id\tliters\ttotal_amount\tcreated_at\n90001\t960001\t1000\t7500\t2025-11-29 23:07:17\n",
+  "stderr": "",
+  "execution_time_ms": 77
+}
