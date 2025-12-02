@@ -1762,3 +1762,22 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Ajustar exibição para mostrar quantidade real de reprovações
 - [x] Adicionar verificação totalFields > 0 para evitar divisão por zero
 - [x] Testar TypeScript (0 erros) e servidor (rodando)
+
+
+## ✅ BUG RESOLVIDO - Layout Mobile do Modal de Abastecimento Cortando Texto (30/11/2025 - 01:09)
+
+### Problema:
+- [x] Descrição do modal cortada: "Registre o abastecimento após a vistoria da embarcaç..."
+- [x] Valores de custo cortados na direita (R$ 70, R$ 10, R$ 80 não aparecem completos)
+- [x] Layout não responsivo em telas mobile
+
+### Correção:
+- [x] Ajustar DialogContent: max-h-[90vh] overflow-y-auto para scroll
+- [x] Título responsivo: text-lg sm:text-xl
+- [x] Descrição menor: text-sm
+- [x] Box de cálculos: padding reduzido (p-3 sm:p-4)
+- [x] Textos menores: text-xs sm:text-sm
+- [x] Adicionado gap-2 entre texto e valor
+- [x] flex-1 no texto, whitespace-nowrap nos valores
+- [x] Valor total menor em mobile: text-xl sm:text-2xl
+- [x] Testar TypeScript (0 erros)
