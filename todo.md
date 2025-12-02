@@ -1814,3 +1814,25 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Backend funcionando perfeitamente
 - [x] Frontend também correto
 - [x] Problema: cache do navegador mostrando erro antigo
+
+
+---
+
+## 🚨 BUG CRÍTICO URGENTE - Cadastro E Edição de Funcionários Falhando (30/11/2025 - 01:41)
+
+### Problema Reportado:
+- [x] Erro ao CRIAR funcionário: "Failed query: INSERT INTO employees (name, email, phone, vessel_ids, is_active) VALUES ('Teste', 'efficazcorrespondente@hotmail.com', '99981392210', '[3,4]', true) params:"
+- [x] Erro ao EDITAR funcionário: "update `employees` set `name` = ?, `email` = ?, `phone` = ?, `vessel_ids` = ? where `employees`.`id` = ? params: Teste Funcionário,efficazcorrespondente@hotmail.com,11999999999,[3,4],300009"
+
+### Causa Identificada:
+- [x] Endpoint employees.create: SQL com aspas simples quebrando com emails que contêm caracteres especiais
+- [x] Endpoint employees.update: Drizzle ORM gerando placeholders `?` que não funcionam com db.execute()
+
+### Correção Urgente Aplicada:
+- [x] Reescrito employees.create usando sql.raw() com escape correto de aspas
+- [x] Reescrito employees.update usando sql.raw() ao invés de Drizzle ORM
+- [x] Criados 4 testes automatizados (todos passando)
+- [x] Testado CREATE com 3 cenários diferentes
+- [x] Testado UPDATE com criação + atualização
+- [x] TypeScript: 0 erros
+- [x] Pronto para checkpoint

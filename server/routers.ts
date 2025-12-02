@@ -1162,25 +1162,45 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const { employees } = await import('../drizzle/schema');
-        const { eq } = await import('drizzle-orm');
+        const { sql } = await import('drizzle-orm');
 
-        const updateData: any = {};
+        // Construir SET clause dinamicamente
+        const updates: string[] = [];
 
-        if (input.name !== undefined) updateData.name = input.name;
-        if (input.email !== undefined) updateData.email = input.email;
-        if (input.phone !== undefined) updateData.phone = input.phone || null;
-        if (input.vesselIds !== undefined) updateData.vesselIds = JSON.stringify(input.vesselIds);
-        if (input.isActive !== undefined) updateData.isActive = input.isActive;
+        if (input.name !== undefined) {
+          const name = input.name.replace(/'/g, "\\'");
+          updates.push(`name = '${name}'`);
+        }
 
-        if (Object.keys(updateData).length === 0) {
+        if (input.email !== undefined) {
+          const email = input.email.replace(/'/g, "\\'");
+          updates.push(`email = '${email}'`);
+        }
+
+        if (input.phone !== undefined) {
+          const phone = input.phone ? `'${input.phone.replace(/'/g, "\\'")}' ` : 'null';
+          updates.push(`phone = ${phone}`);
+        }
+
+        if (input.vesselIds !== undefined) {
+          const vesselIdsJson = JSON.stringify(input.vesselIds).replace(/'/g, "\\'");
+          updates.push(`vessel_ids = '${vesselIdsJson}'`);
+        }
+
+        if (input.isActive !== undefined) {
+          updates.push(`is_active = ${input.isActive ? 1 : 0}`);
+        }
+
+        if (updates.length === 0) {
           return { success: true };
         }
 
         try {
-          await db.update(employees)
-            .set(updateData)
-            .where(eq(employees.id, input.id));
+          await db.execute(sql.raw(`
+            UPDATE employees
+            SET ${updates.join(', ')}
+            WHERE id = ${input.id}
+          `));
           
           return { success: true };
         } catch (error: any) {
