@@ -1109,11 +1109,11 @@ Nenhuma reserva foi afetada.
 
         const { sql } = await import('drizzle-orm');
 
-        // Escapar aspas simples para evitar SQL injection
-        const name = input.name.replace(/'/g, "\\'");
-        const email = input.email.replace(/'/g, "\\'");
-        const phone = input.phone ? `'${input.phone.replace(/'/g, "\\'")}'` : 'null';
-        const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds).replace(/'/g, "\\'") : 'null';
+        // Escapar aspas simples para evitar SQL injection (MySQL usa '' para escapar ')
+        const name = input.name.replace(/'/g, "''");
+        const email = input.email.replace(/'/g, "''");
+        const phone = input.phone ? `'${input.phone.replace(/'/g, "''")}'` : 'null';
+        const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds).replace(/'/g, "''") : 'null';
 
         // Usar sql.raw() com interpolação manual (campos default gerenciados pelo banco)
         await db.execute(sql.raw(`
@@ -1160,22 +1160,22 @@ Nenhuma reserva foi afetada.
         const updates: string[] = [];
 
         if (input.name !== undefined) {
-          const name = input.name.replace(/'/g, "\\'");
+          const name = input.name.replace(/'/g, "''");
           updates.push(`name = '${name}'`);
         }
 
         if (input.email !== undefined) {
-          const email = input.email.replace(/'/g, "\\'");
+          const email = input.email.replace(/'/g, "''");
           updates.push(`email = '${email}'`);
         }
 
         if (input.phone !== undefined) {
-          const phone = input.phone ? `'${input.phone.replace(/'/g, "\\'")}' ` : 'null';
+          const phone = input.phone ? `'${input.phone.replace(/'/g, "''")}' ` : 'null';
           updates.push(`phone = ${phone}`);
         }
 
         if (input.vesselIds !== undefined) {
-          const vesselIdsJson = JSON.stringify(input.vesselIds).replace(/'/g, "\\'");
+          const vesselIdsJson = JSON.stringify(input.vesselIds).replace(/'/g, "''");
           updates.push(`vessel_ids = '${vesselIdsJson}'`);
         }
 
