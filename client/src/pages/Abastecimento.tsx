@@ -271,11 +271,11 @@ export default function Abastecimento() {
 
       {/* Create Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleCreate}>
             <DialogHeader>
-              <DialogTitle>Registrar Abastecimento</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-lg sm:text-xl">Registrar Abastecimento</DialogTitle>
+              <DialogDescription className="text-sm">
                 Registre o abastecimento após a vistoria da embarcação
               </DialogDescription>
             </DialogHeader>
@@ -331,18 +331,18 @@ export default function Abastecimento() {
               </div>
 
               {liters && pricePerLiter && (
-                <div className="p-4 bg-primary/10 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Combustível ({liters}L × R$ {parseFloat(pricePerLiter).toFixed(2)}):</span>
-                    <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
+                <div className="p-3 sm:p-4 bg-primary/10 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+                    <span className="flex-1">Combustível ({liters}L × R$ {parseFloat(pricePerLiter).toFixed(2)}):</span>
+                    <span className="font-medium whitespace-nowrap">R$ {subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Taxa de Abastecimento e Aplicativo:</span>
-                    <span className="font-medium">R$ {SERVICE_FEE.toFixed(2)}</span>
+                  <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+                    <span className="flex-1">Taxa de Abastecimento e Aplicativo:</span>
+                    <span className="font-medium whitespace-nowrap">R$ {SERVICE_FEE.toFixed(2)}</span>
                   </div>
-                  <div className="border-t pt-2 flex items-center justify-between">
-                    <span className="font-semibold">Valor Total:</span>
-                    <span className="text-2xl font-bold text-primary">R$ {totalCost}</span>
+                  <div className="border-t pt-2 flex items-center justify-between gap-2">
+                    <span className="font-semibold text-sm sm:text-base">Valor Total:</span>
+                    <span className="text-xl sm:text-2xl font-bold text-primary whitespace-nowrap">R$ {totalCost}</span>
                   </div>
                 </div>
               )}
