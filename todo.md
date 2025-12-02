@@ -1742,3 +1742,25 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Criados 4 testes automatizados (100% passando)
 - [x] TypeScript: 0 erros
 - [x] Dev server: funcionando
+
+
+---
+
+## 🚨 CORREÇÕES ANTERIORES NÃO FUNCIONARAM (30/11/2025 - 09:42)
+
+### Problema 1: Funcionários - Escape SQL errado
+- [x] Erro ao cadastrar com .com.br: "Failed query: INSERT INTO employees (name, email, phone, vessel_ids, is_active) VALUES ('Paulo', 'atendimento@prospectaconstrucoes.com.br', '99981392210', '[3,4]', true)"
+- [x] Causa: Escape usando `\\'` não funciona no MySQL
+- [x] Correção: Trocado para `''` (aspas duplas) em employees.create E employees.update
+
+### Problema 2: Vistorias - Cache do navegador
+- [x] Ainda mostrando "Reprovações: 20" e "Reprovações: 12"
+- [x] Correção ESTÁ no código (linhas 236-263)
+- [x] Problema: Cache do navegador não atualizou
+- [x] Solução: Checkpoint invalida cache automaticamente
+
+### Ações Concluídas:
+- [x] Trocado escape de `\\'` para `''` no employees.create
+- [x] Trocado escape de `\\'` para `''` no employees.update
+- [x] Verificado código de Vistorias.tsx (correção presente)
+- [x] Testes: 4/4 passando (100%)
