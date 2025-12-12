@@ -347,9 +347,44 @@ export const appRouter = router({
     }),
 
     // Get all bookings (admin only)
-    listAll: adminProcedure.query(async () => {
-      return await db.getBookings();
-    }),
+    listAll: adminProcedure
+      .input(z.object({
+        timeFilter: z.enum(["future", "past"]).default("future"),
+      }).optional())
+      .query(async ({ input }) => {
+        const dbInstance = await import('./db').then(m => m.getDb());
+        if (!dbInstance) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql: sqlTag } = await import('drizzle-orm');
+        const now = Date.now();
+        const timeFilter = input?.timeFilter || "future";
+
+        let query = `
+          SELECT 
+            b.id,
+            b.client_email as clientEmail,
+            b.client_name as clientName,
+            b.vessel_id as vesselId,
+            b.vessel_name as vesselName,
+            b.booking_date as bookingDate,
+            b.status,
+            b.notes,
+            b.created_at as createdAt,
+            b.updated_at as updatedAt
+          FROM bookings b
+          WHERE `;
+
+        if (timeFilter === "future") {
+          // Futuras: data >= hoje, ordenadas da mais próxima
+          query += `b.booking_date >= ${now} ORDER BY b.booking_date ASC`;
+        } else {
+          // Passadas: data < hoje, últimas 20, ordenadas da mais recente
+          query += `b.booking_date < ${now} ORDER BY b.booking_date DESC LIMIT 20`;
+        }
+
+        const result = await dbInstance.execute(sqlTag.raw(query)) as any;
+        return (Array.isArray(result[0]) ? result[0] : result) as any[];
+      }),
 
     // Get bookings by date range (for calendar availability)
     getByDateRange: allowedClientProcedure
