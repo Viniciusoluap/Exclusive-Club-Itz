@@ -1151,12 +1151,27 @@ Nenhuma reserva foi afetada.
         const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds).replace(/'/g, "''") : 'null';
 
         // Usar sql.raw() com interpolação manual (campos default gerenciados pelo banco)
-        await db.execute(sql.raw(`
-          INSERT INTO employees (name, email, phone, vessel_ids, is_active)
-          VALUES ('${name}', '${email}', ${phone}, '${vesselIdsJson}', true)
-        `));
-
-        return { success: true };
+        try {
+          await db.execute(sql.raw(`
+            INSERT INTO employees (name, email, phone, vessel_ids, is_active)
+            VALUES ('${name}', '${email}', ${phone}, '${vesselIdsJson}', true)
+          `));
+          return { success: true };
+        } catch (error: any) {
+          console.error('[employees.create] Error:', error);
+          // Tratar erro de email duplicado (MySQL error code 1062)
+          const errorMsg = error.message || String(error);
+          if (errorMsg.includes('Duplicate entry') || errorMsg.includes('duplicate key') || error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+            throw new TRPCError({ 
+              code: 'CONFLICT', 
+              message: `Email ${input.email} já está cadastrado` 
+            });
+          }
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao cadastrar funcionário: ${errorMsg}` 
+          });
+        }
       }),
 
     list: adminProcedure.query(async () => {
@@ -1232,6 +1247,13 @@ Nenhuma reserva foi afetada.
           return { success: true };
         } catch (error: any) {
           console.error('[employees.update] Error:', error);
+          // Tratar erro de email duplicado
+          if (error.message && error.message.includes('Duplicate entry')) {
+            throw new TRPCError({ 
+              code: 'CONFLICT', 
+              message: `Email ${input.email} já está cadastrado` 
+            });
+          }
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
             message: `Erro ao atualizar funcionário: ${error.message}` 

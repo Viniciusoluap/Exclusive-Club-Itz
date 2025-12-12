@@ -1783,3 +1783,28 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Backend: Query SQL com filtro de data e LIMIT 20 para passadas
 - [x] TypeScript: 0 erros
 - [x] Dev server: funcionando
+
+
+---
+
+## 🚨 BUG REPORTADO: Cadastro de Funcionários Falhando com Emails .com (12/12/2025 - 17:13)
+
+### Problema:
+- [x] Não permite cadastrar funcionário com email terminado em .com (ex: efficazcorrespondente@hotmail.com)
+- [x] Não permite cadastrar com .net ou qualquer extensão com ponto
+- [x] Erro SQL: "Failed query: INSERT INTO employees (name, email, phone, vessel_ids, is_active) VALUES ('Testef', 'efficazcorrespondente@hotmail.com', '99981392210', '[3,4]', true) params:"
+- [x] Mas funciona com .com.br (ex: contato@grupoefficaz.com.br)
+
+### Causa Raiz Identificada:
+- [x] NÃO era problema com extensões - era email DUPLICADO no banco
+- [x] Tabela tem UNIQUE KEY `email` (`email`)
+- [x] Email efficazcorrespondente@hotmail.com já existia no banco
+- [x] Mensagem de erro não era clara (mostrava SQL bruto)
+
+### Correção Aplicada:
+- [x] Adicionado tratamento de erro para email duplicado em employees.create
+- [x] Adicionado tratamento de erro para email duplicado em employees.update
+- [x] Mensagem de erro agora mostra: "Email X já está cadastrado"
+- [x] Criados 5 testes automatizados (100% passando)
+- [x] Testado: .com, .com.br, .net, .org, duplicação
+- [x] TypeScript: 0 erros
