@@ -193,6 +193,11 @@ export default function Funcionarios() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
+              {createMutation.error && (
+                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                  {createMutation.error.message}
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor="name">Nome *</Label>
                 <Input id="name" name="name" required />
