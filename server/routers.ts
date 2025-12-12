@@ -1148,7 +1148,8 @@ Nenhuma reserva foi afetada.
         const name = input.name.replace(/'/g, "''");
         const email = input.email.replace(/'/g, "''");
         const phone = input.phone ? `'${input.phone.replace(/'/g, "''")}'` : 'null';
-        const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds).replace(/'/g, "''") : 'null';
+        // JSON.stringify já retorna string válida, apenas precisamos escapar aspas simples dentro do JSON
+        const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds).replace(/'/g, "''") : '[]';
 
         // Usar sql.raw() com interpolação manual (campos default gerenciados pelo banco)
         try {
