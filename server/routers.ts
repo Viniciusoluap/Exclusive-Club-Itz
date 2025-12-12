@@ -1142,27 +1142,36 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const { sql } = await import('drizzle-orm');
+        const { employees } = await import('../drizzle/schema');
 
-        // Escapar aspas simples para evitar SQL injection (MySQL usa '' para escapar ')
-        const name = input.name.replace(/'/g, "''");
-        const email = input.email.replace(/'/g, "''");
-        const phone = input.phone ? `'${input.phone.replace(/'/g, "''")}'` : 'null';
-        // JSON.stringify já retorna string válida, apenas precisamos escapar aspas simples dentro do JSON
-        const vesselIdsJson = input.vesselIds ? JSON.stringify(input.vesselIds).replace(/'/g, "''") : '[]';
-
-        // Usar sql.raw() com interpolação manual (campos default gerenciados pelo banco)
         try {
-          await db.execute(sql.raw(`
-            INSERT INTO employees (name, email, phone, vessel_ids, is_active)
-            VALUES ('${name}', '${email}', ${phone}, '${vesselIdsJson}', true)
-          `));
+          await db.insert(employees).values({
+            name: input.name,
+            email: input.email,
+            phone: input.phone || null,
+            vesselIds: input.vesselIds ? JSON.stringify(input.vesselIds) : null,
+            isActive: true,
+          });
           return { success: true };
         } catch (error: any) {
           console.error('[employees.create] Error:', error);
           // Tratar erro de email duplicado (MySQL error code 1062)
+          // Drizzle encapsula o erro do MySQL em error.cause
+          const cause = error.cause || error;
           const errorMsg = error.message || String(error);
-          if (errorMsg.includes('Duplicate entry') || errorMsg.includes('duplicate key') || error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+          const causeMsg = cause.sqlMessage || cause.message || '';
+          
+          // Verificar código de erro duplicado em múltiplos níveis
+          if (
+            error.code === 'ER_DUP_ENTRY' || 
+            error.errno === 1062 ||
+            cause.code === 'ER_DUP_ENTRY' || 
+            cause.errno === 1062 ||
+            errorMsg.includes('Duplicate entry') || 
+            causeMsg.includes('Duplicate entry') ||
+            errorMsg.includes('duplicate key') ||
+            causeMsg.includes('duplicate key')
+          ) {
             throw new TRPCError({ 
               code: 'CONFLICT', 
               message: `Email ${input.email} já está cadastrado` 
