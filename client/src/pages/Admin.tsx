@@ -183,6 +183,7 @@ export default function Admin() {
   
   // Booking Management State
   const [showBookingDialog, setShowBookingDialog] = useState(false);
+  const [bookingTimeFilter, setBookingTimeFilter] = useState<"future" | "past">("future");
   const [bookingForm, setBookingForm] = useState({
     clientEmail: "",
     vesselId: 0,
@@ -206,9 +207,12 @@ export default function Admin() {
     enabled: isAuthenticated && user?.role === "admin",
   });
 
-  const { data: bookings, isLoading: bookingsLoading } = trpc.bookings.listAll.useQuery(undefined, {
-    enabled: isAuthenticated && user?.role === "admin",
-  });
+  const { data: bookings, isLoading: bookingsLoading } = trpc.bookings.listAll.useQuery(
+    { timeFilter: bookingTimeFilter },
+    {
+      enabled: isAuthenticated && user?.role === "admin",
+    }
+  );
 
   // Mutations
   const createClient = trpc.allowedClients.create.useMutation({
@@ -600,15 +604,35 @@ export default function Admin() {
           {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-4">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Todas as Reservas</CardTitle>
-                  <CardDescription>Gerencie todas as reservas do sistema</CardDescription>
+              <CardHeader className="space-y-4">
+                <div className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Todas as Reservas</CardTitle>
+                    <CardDescription>Gerencie todas as reservas do sistema</CardDescription>
+                  </div>
+                  <Button onClick={() => setShowBookingDialog(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar Reserva
+                  </Button>
                 </div>
-                <Button onClick={() => setShowBookingDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar Reserva
-                </Button>
+                
+                {/* Filtro de tempo */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={bookingTimeFilter === "future" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setBookingTimeFilter("future")}
+                  >
+                    📅 Futuras
+                  </Button>
+                  <Button
+                    variant={bookingTimeFilter === "past" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setBookingTimeFilter("past")}
+                  >
+                    📜 Passadas (últimas 20)
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {bookingsLoading ? (

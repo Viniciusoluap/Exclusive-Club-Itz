@@ -1764,3 +1764,22 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Trocado escape de `\\'` para `''` no employees.update
 - [x] Verificado código de Vistorias.tsx (correção presente)
 - [x] Testes: 4/4 passando (100%)
+
+
+---
+
+## 📅 NOVA FEATURE: Filtro de Reservas Futuras/Passadas (30/11/2025 - 20:12)
+
+### Requisito:
+- [x] Adicionar filtro na página de Reservas do admin
+- [x] Opção 1: "Futuras" - reservas com data >= hoje (ordenadas da mais próxima)
+- [x] Opção 2: "Passadas" - últimas 20 reservas com data < hoje (ordenadas da mais recente)
+- [x] Implementar com botões toggle no topo da seção "Todas as Reservas"
+
+### Implementação Concluída:
+- [x] Frontend: Adicionado state `bookingTimeFilter` ("future" | "past")
+- [x] Frontend: Adicionados botões toggle com emojis 📅 e 📜
+- [x] Backend: Atualizado endpoint `bookings.listAll` com input `timeFilter`
+- [x] Backend: Query SQL com filtro de data e LIMIT 20 para passadas
+- [x] TypeScript: 0 erros
+- [x] Dev server: funcionando
