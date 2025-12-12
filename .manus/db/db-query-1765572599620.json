@@ -1,0 +1,26 @@
+{
+  "query": "SHOW CREATE TABLE employees",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SHOW CREATE TABLE employees",
+  "rows": [
+    {
+      "Table": "employees",
+      "Create Table": "CREATE TABLE `employees` ("
+    }
+  ],
+  "messages": [
+    "  `id` int(11) NOT NULL AUTO_INCREMENT,",
+    "  `name` text COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `email` varchar(320) COLLATE utf8mb4_unicode_ci NOT NULL,",
+    "  `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,",
+    "  `vessel_ids` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,",
+    "  `is_active` tinyint(1) NOT NULL DEFAULT '1',",
+    "  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+    "  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,",
+    "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,",
+    "  UNIQUE KEY `email` (`email`)",
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=540001"
+  ],
+  "stdout": "Table\tCreate Table\nemployees\tCREATE TABLE `employees` (\n  `id` int(11) NOT NULL AUTO_INCREMENT,\n  `name` text COLLATE utf8mb4_unicode_ci NOT NULL,\n  `email` varchar(320) COLLATE utf8mb4_unicode_ci NOT NULL,\n  `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `vessel_ids` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,\n  `is_active` tinyint(1) NOT NULL DEFAULT '1',\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  UNIQUE KEY `email` (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=540001\n",
+  "stderr": "",
+  "execution_time_ms": 1458
+}
