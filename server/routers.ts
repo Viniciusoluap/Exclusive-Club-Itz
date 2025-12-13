@@ -40,6 +40,14 @@ const allowedClientProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   return next({ ctx });
 });
 
+// Employee procedure - checks if user is employee or admin
+const employeeProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== 'employee' && ctx.user.role !== 'admin') {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Employee access required' });
+  }
+  return next({ ctx });
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -2025,6 +2033,44 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           });
         }
       }),
+  }),
+
+  // Employee router
+  employee: router({
+    // Get upcoming reservations (today + next 20 future confirmed)
+    upcomingReservations: employeeProcedure.query(async () => {
+      const dbInstance = await import('./db').then(m => m.getDb());
+      if (!dbInstance) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+      const { sql: sqlTag } = await import('drizzle-orm');
+      
+      // Normalizar para meia-noite para comparar apenas datas (sem horas)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const now = today.getTime();
+
+      const query = `
+        SELECT 
+          id,
+          client_email as clientEmail,
+          client_name as clientName,
+          vessel_id as vesselId,
+          vessel_name as vesselName,
+          booking_date as bookingDate,
+          status,
+          notes,
+          created_at as createdAt,
+          updated_at as updatedAt
+        FROM bookings
+        WHERE booking_date >= ${now}
+          AND status = 'confirmed'
+        ORDER BY booking_date ASC
+        LIMIT 21
+      `;
+
+      const result = await dbInstance.execute(sqlTag.raw(query)) as any;
+      return (Array.isArray(result[0]) ? result[0] : result) as any[];
+    }),
   }),
 });
 

@@ -2920,3 +2920,66 @@ if (timeFilter === "future") {
 - Arquivo: server/routers.ts ou server/db.ts
 - Endpoint: admin.getAllBookings
 - Lógica de filtro por data
+
+
+---
+
+## 🔧 Ajustes na Interface do Funcionário (13/12/2025)
+
+### Objetivo: Melhorar funcionalidades do painel do funcionário
+
+**RESTRIÇÃO CRÍTICA:** NÃO alterar interfaces de admin e usuário comum
+
+### Alterações Necessárias:
+
+#### 1. Botão "Voltar para Home"
+- [x] Adicionar botão/link no menu lateral do funcionário
+- [x] Redirecionar para `/` (home do site)
+
+#### 2. "Calendário de Reservas" → "Próximas Reservas"
+- [x] Renomear título para "Próximas Reservas"
+- [x] Exibir reservas de hoje + 20 próximas futuras
+- [x] Filtro: `date >= hoje` e `status = 'confirmed'`
+- [x] Ordenação: Data mais próxima → mais distante (ASC)
+- [x] Campos: Embarcação, Cliente, Data, Observações
+
+#### 3. Campo "Manutenção" (Replicar 100% do Admin)
+- [x] Layout idêntico ao `/admin/manutencao`
+- [x] Criar, editar, visualizar, excluir manutenções
+- [x] Mesmos formulários e validações
+- [x] Mesmos relatórios
+- [x] Mesma lógica de cancelamento automático
+- [x] Mesmas notificações
+
+#### 4. Campo "Abastecimentos" (Replicar 100% do Admin)
+- [x] Layout idêntico ao `/admin/abastecimento`
+- [x] Registrar, visualizar, gerar relatórios
+- [x] Mesmos formulários e campos
+- [x] Mesma tabela de listagem
+- [x] Mesmos relatórios PDF
+- [x] Mesmos filtros
+
+#### 5. Campo "Vistorias" (Replicar 100% do Admin)
+- [x] Layout idêntico ao `/admin/vistorias`
+- [x] Criar, visualizar, gerar relatórios
+- [x] Mesmos formulários (Jetski e Lancha)
+- [x] Mesma estrutura de relatórios
+- [x] Mesmas permissões
+
+### Validação Obrigatória:
+- [x] Interface admin permanece 100% intacta
+- [x] Interface usuário comum permanece 100% intacta
+- [x] "Próximas Reservas" funciona corretamente
+- [x] Manutenção funcionário = Manutenção admin
+- [x] Abastecimentos funcionário = Abastecimentos admin
+- [x] Vistorias funcionário = Vistorias admin
+- [x] Botão "Voltar para Home" funciona
+- [x] Testes automatizados passam
+
+**Arquivos a modificar:**
+- `client/src/pages/EmployeeDashboard.tsx`
+- `server/routers.ts` (se necessário)
+
+**Arquivos PROIBIDOS:**
+- Páginas/componentes de admin
+- Páginas/componentes de usuário comum
