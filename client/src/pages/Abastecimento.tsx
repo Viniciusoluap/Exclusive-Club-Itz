@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 
 export default function Abastecimento() {
+  const utils = trpc.useUtils();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -165,9 +166,9 @@ export default function Abastecimento() {
       toast.success('Orçamento configurado com sucesso!');
       setIsBudgetDialogOpen(false);
       setBudgetAmount("");
-      // Refetch stats to update dashboard
-      trpcAny.fuelRecords?.financialStats.refetch?.();
-      trpcAny.fuelBudget?.get.refetch?.();
+      // Invalidar cache para forçar refetch
+      utils.fuelRecords.financialStats.invalidate();
+      utils.fuelBudget.get.invalidate();
     },
     onError: (error: any) => {
       toast.error(`Erro ao configurar orçamento: ${error.message}`);
