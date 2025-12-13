@@ -501,3 +501,19 @@ Código de integração está correto, mas falta a chave de API.
 - [x] **Solução:** Alterado para publicProcedure com validação de role (admin/employee)
 - [x] **Teste:** Criado bookings.getRecent.test.ts - 4/4 PASSANDO
 - [x] **Resultado:** Funcionários agora conseguem acessar reservas utilizadas
+
+
+---
+
+## 🎨 Ajuste de Layout - Modal de Abastecimento (13/12/2025 - 18:32)
+
+### Problema Reportado:
+- [x] Modal "Registrar Abastecimento" está cortado na tela mobile
+- [x] Conteúdo não está totalmente visível (campos e botões cortados)
+- [x] Necessário ajustar altura e scroll para mobile
+
+### Solução:
+- [x] Adicionar max-height responsivo ao DialogContent
+- [x] Garantir scroll interno quando conteúdo exceder altura da tela
+- [x] Testar em diferentes tamanhos de tela (mobile, tablet, desktop)
+- [x] Verificar se todos os campos e botões ficam acessíveis
