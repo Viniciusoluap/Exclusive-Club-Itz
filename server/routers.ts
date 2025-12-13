@@ -41,6 +41,14 @@ const allowedClientProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   return next({ ctx });
 });
 
+// Employee procedure - checks if user is employee or admin
+const employeeProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== 'employee' && ctx.user.role !== 'admin') {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Employee access required' });
+  }
+  return next({ ctx });
+});
+
 export const appRouter = router({
   system: systemRouter,
   webhooks: webhookRouter,
@@ -1129,6 +1137,41 @@ Nenhuma reserva foi afetada.
           totalReviews: stats?.total || 0,
         };
       }),
+  }),
+
+  // Employee router - For employee and admin users
+  employee: router({
+    // Get upcoming reservations (today + next 20 future confirmed)
+    upcomingReservations: employeeProcedure.query(async () => {
+      const dbInstance = await import('./db').then(m => m.getDb());
+      if (!dbInstance) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+      const { sql: sqlTag } = await import('drizzle-orm');
+      
+      // Normalizar para meia-noite para comparar apenas datas (sem horas)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const now = today.getTime();
+      const query = `
+        SELECT 
+          id,
+          client_email as clientEmail,
+          client_name as clientName,
+          vessel_id as vesselId,
+          vessel_name as vesselName,
+          booking_date as bookingDate,
+          status,
+          notes,
+          created_at as createdAt,
+          updated_at as updatedAt
+        FROM bookings
+        WHERE booking_date >= ${now}
+          AND status = 'confirmed'
+        ORDER BY booking_date ASC
+        LIMIT 21
+      `;
+      const result = await dbInstance.execute(sqlTag.raw(query)) as any;
+      return (Array.isArray(result[0]) ? result[0] : result) as any[];
+    }),
   }),
 
   // Employees router - Admin only
@@ -2244,93 +2287,6 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             code: 'INTERNAL_SERVER_ERROR', 
             message: `Erro ao enviar relatório: ${error.message}` 
           });
-        }
-      }),
-  }),
-
-  // Webhooks router - Receber notificações do Asaas
-  webhooks: router({
-    asaas: publicProcedure
-      .input(z.object({
-        event: z.string(),
-        payment: z.object({
-          id: z.string(),
-          status: z.string(),
-          value: z.number().optional(),
-          netValue: z.number().optional(),
-          paymentDate: z.string().optional(),
-          confirmedDate: z.string().optional(),
-          externalReference: z.string().optional(),
-        }).passthrough(), // Permite campos adicionais
-      }).passthrough()) // Permite campos adicionais no root
-      .mutation(async ({ input }) => {
-        console.log('[webhooks.asaas] Evento recebido:', input.event, input.payment.id);
-
-        const db = await import('./db').then(m => m.getDb());
-        if (!db) {
-          console.error('[webhooks.asaas] Database not available');
-          return { success: false, message: 'Database not available' };
-        }
-
-        try {
-          const { sql } = await import('drizzle-orm');
-
-          // Buscar registro pelo asaas_charge_id
-          const result = await db.execute(sql`
-            SELECT id, client_email, client_name, vessel_name, total_amount
-            FROM fuel_records
-            WHERE asaas_charge_id = ${input.payment.id}
-          `) as any;
-
-          const record = (Array.isArray(result[0]) ? result[0][0] : result[0]);
-
-          if (!record) {
-            console.warn('[webhooks.asaas] Registro não encontrado para charge:', input.payment.id);
-            return { success: true, message: 'Record not found, ignoring' };
-          }
-
-          // Processar eventos
-          if (input.event === 'PAYMENT_RECEIVED' || input.event === 'PAYMENT_CONFIRMED') {
-            // Pagamento recebido
-            const paidAt = input.payment.confirmedDate || input.payment.paymentDate || new Date().toISOString();
-            const paidAtTimestamp = Math.floor(new Date(paidAt).getTime() / 1000);
-
-            await db.execute(sql`
-              UPDATE fuel_records
-              SET payment_status = 'paid', paid_at = FROM_UNIXTIME(${paidAtTimestamp})
-              WHERE asaas_charge_id = ${input.payment.id}
-            `);
-
-            console.log('[webhooks.asaas] ✅ Pagamento confirmado:', input.payment.id);
-
-            // TODO: Enviar email de confirmação para cliente
-            // TODO: Atualizar fuel_budget (total_received)
-
-          } else if (input.event === 'PAYMENT_OVERDUE') {
-            // Pagamento vencido
-            await db.execute(sql`
-              UPDATE fuel_records
-              SET payment_status = 'overdue'
-              WHERE asaas_charge_id = ${input.payment.id}
-            `);
-
-            console.log('[webhooks.asaas] ⚠️ Pagamento vencido:', input.payment.id);
-
-          } else if (input.event === 'PAYMENT_DELETED') {
-            // Cobrança cancelada
-            await db.execute(sql`
-              UPDATE fuel_records
-              SET payment_status = 'cancelled'
-              WHERE asaas_charge_id = ${input.payment.id}
-            `);
-
-            console.log('[webhooks.asaas] 🚫 Cobrança cancelada:', input.payment.id);
-          }
-
-          return { success: true };
-        } catch (error: any) {
-          console.error('[webhooks.asaas] Erro ao processar webhook:', error);
-          return { success: false, message: error.message };
         }
       }),
   }),
