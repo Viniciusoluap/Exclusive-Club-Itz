@@ -1281,8 +1281,8 @@ Nenhuma reserva foi afetada.
         const { eq } = await import('drizzle-orm');
 
         try {
-          await db.update(employees)
-            .set({ isActive: false })
+          // Hard delete para liberar o email imediatamente
+          await db.delete(employees)
             .where(eq(employees.id, input.id));
           
           return { success: true };
