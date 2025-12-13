@@ -184,6 +184,24 @@ export type FuelRecord = typeof fuelRecords.$inferSelect;
 export type InsertFuelRecord = typeof fuelRecords.$inferInsert;
 
 /**
+ * Fuel Budget table - stores monthly budget for fuel expenses
+ * Admin can set budget per month/year to track spending
+ * total_spent and total_received are calculated dynamically from fuel_records
+ */
+export const fuelBudget = mysqlTable("fuel_budget", {
+  id: int("id").autoincrement().primaryKey(),
+  monthYear: varchar("month_year", { length: 7 }).notNull().unique(), // Format: "2025-11" (YYYY-MM)
+  totalBudget: int("total_budget").notNull().default(0), // Orçamento total em centavos
+  totalSpent: int("total_spent").notNull().default(0), // Total gasto (calculado)
+  totalReceived: int("total_received").notNull().default(0), // Total recebido (calculado)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type FuelBudget = typeof fuelBudget.$inferSelect;
+export type InsertFuelBudget = typeof fuelBudget.$inferInsert;
+
+/**
  * Inspections table - stores vessel inspection records
  * Two types: jetski and lancha, each with different checklist
  */

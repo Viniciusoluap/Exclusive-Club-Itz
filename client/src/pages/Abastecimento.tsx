@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,14 +30,26 @@ export default function Abastecimento() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
 
-  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+  // Estado de filtro de mês/ano
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1); // 1-12
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const currentMonthYear = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`; // YYYY-MM
 
   const trpcAny = trpc as any;
   const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas as últimas 6 reservas utilizadas
-  const { data: fuelRecords, refetch } = trpcAny.fuelRecords?.list.useQuery({}) || { data: [] };
+  const { data: fuelRecords, refetch } = trpcAny.fuelRecords?.list.useQuery({ 
+    month: selectedMonth, 
+    year: selectedYear 
+  }) || { data: [] };
   const { data: vessels } = trpc.vessels.list.useQuery();
-  const { data: financialStats } = trpcAny.fuelRecords?.financialStats.useQuery({ monthYear: currentMonth }) || { data: null };
-  const { data: budget } = trpcAny.fuelBudget?.get.useQuery({ monthYear: currentMonth }) || { data: null };
+  const { data: financialStats } = trpcAny.fuelRecords?.financialStats.useQuery({ monthYear: currentMonthYear }) || { data: null };
+  const { data: budget } = trpcAny.fuelBudget?.get.useQuery({ monthYear: currentMonthYear }) || { data: null };
+
+  // Refetch quando mês/ano mudar
+  useEffect(() => {
+    refetch();
+  }, [selectedMonth, selectedYear]);
 
   // Debug: ver se recentBookings está vindo
   console.log('[Abastecimento] recentBookings:', recentBookings);
@@ -283,13 +295,64 @@ export default function Abastecimento() {
             Voltar
           </Button>
         </Link>
-        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Abastecimento</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Registre o abastecimento das embarcações após o uso
-            </p>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">Abastecimento</h1>
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">
+                Registre o abastecimento das embarcações após o uso
+              </p>
+            </div>
+            
+            {/* Filtros de Mês e Ano */}
+            <div className="flex gap-2 items-center">
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Mês</Label>
+                <Select 
+                  value={String(selectedMonth)} 
+                  onValueChange={(value) => setSelectedMonth(parseInt(value))}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Janeiro</SelectItem>
+                    <SelectItem value="2">Fevereiro</SelectItem>
+                    <SelectItem value="3">Março</SelectItem>
+                    <SelectItem value="4">Abril</SelectItem>
+                    <SelectItem value="5">Maio</SelectItem>
+                    <SelectItem value="6">Junho</SelectItem>
+                    <SelectItem value="7">Julho</SelectItem>
+                    <SelectItem value="8">Agosto</SelectItem>
+                    <SelectItem value="9">Setembro</SelectItem>
+                    <SelectItem value="10">Outubro</SelectItem>
+                    <SelectItem value="11">Novembro</SelectItem>
+                    <SelectItem value="12">Dezembro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs text-muted-foreground">Ano</Label>
+                <Select 
+                  value={String(selectedYear)} 
+                  onValueChange={(value) => setSelectedYear(parseInt(value))}
+                >
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2023">2023</SelectItem>
+                    <SelectItem value="2024">2024</SelectItem>
+                    <SelectItem value="2025">2025</SelectItem>
+                    <SelectItem value="2026">2026</SelectItem>
+                    <SelectItem value="2027">2027</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
+          
           <div className="flex gap-2 flex-wrap">
             {fuelRecords && fuelRecords.length > 0 && (
               <>
@@ -420,7 +483,7 @@ export default function Abastecimento() {
                   <div>
                     <CardTitle>Orçamento Mensal</CardTitle>
                     <CardDescription>
-                      {new Date(currentMonth + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                      {new Date(currentMonthYear + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
                     </CardDescription>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setIsBudgetDialogOpen(true)}>
@@ -883,7 +946,7 @@ export default function Abastecimento() {
           <DialogHeader>
             <DialogTitle>Configurar Orçamento Mensal</DialogTitle>
             <DialogDescription>
-              Defina o orçamento para {new Date(currentMonth + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+              Defina o orçamento para {new Date(currentMonthYear + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -926,7 +989,7 @@ export default function Abastecimento() {
                   toast.error('Informe um valor válido');
                   return;
                 }
-                setBudgetMutation.mutate({ monthYear: currentMonth, totalBudget: amount });
+                setBudgetMutation.mutate({ monthYear: currentMonthYear, totalBudget: amount });
               }}
               disabled={setBudgetMutation.isPending || !budgetAmount}
             >

@@ -505,6 +505,40 @@ Código de integração está correto, mas falta a chave de API.
 
 ---
 
+## 📅 Filtro de Mês e Ano - Abastecimentos (13/12/2025 - 19:00)
+
+### Requisitos:
+- [ ] Substituir texto fixo "novembro 2025" por dropdowns de mês e ano
+- [ ] Dropdown de mês: Janeiro a Dezembro
+- [ ] Dropdown de ano: Últimos 3 anos + próximos 2 anos
+- [ ] Todos os valores devem se atualizar ao mudar filtro
+- [ ] Cada mês deve ter seu orçamento individual configurável
+- [ ] Lista "Registros Recentes" deve mostrar apenas do mês/ano selecionado
+
+### Backend:
+- [x] Ajustar tabela fuel_budget para usar month_year como chave única
+- [x] Criar endpoint fuelRecords.getByMonth(month, year)
+- [x] Atualizar endpoint financialStats para aceitar month/year
+- [x] Atualizar endpoint fuelBudget.get para aceitar month/year
+- [x] Atualizar endpoint fuelBudget.set para aceitar month/year
+
+### Frontend:
+- [x] Adicionar Select de mês (1-12)
+- [x] Adicionar Select de ano (2023-2027)
+- [x] Estado para mês/ano selecionado (padrão: mês/ano atual)
+- [x] Atualizar queries para passar month/year como parâmetro
+- [x] Atualizar card de orçamento para mostrar mês/ano selecionado
+- [x] Atualizar lista de abastecimentos para filtrar por mês/ano
+- [x] Aplicar mesma lógica no painel do funcionário
+
+### Testes:
+- [ ] Validar filtro de mês e ano
+- [ ] Validar estatísticas dinâmicas
+- [ ] Validar orçamento individual por mês
+- [ ] Validar lista filtrada
+
+---
+
 ## 🎨 Ajuste de Layout - Modal de Abastecimento (13/12/2025 - 18:32)
 
 ### Problema Reportado:
