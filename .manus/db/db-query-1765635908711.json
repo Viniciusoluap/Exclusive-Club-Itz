@@ -1,0 +1,130 @@
+{
+  "query": "SELECT id, email, name, phone, is_active, created_at FROM employees ORDER BY created_at DESC",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, email, name, phone, is_active, created_at FROM employees ORDER BY created_at DESC",
+  "rows": [
+    {
+      "id": "630018",
+      "email": "semtelefone1765583469763@example.com",
+      "name": "Teste Sem Telefone",
+      "phone": "NULL",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:51:09"
+    },
+    {
+      "id": "630024",
+      "email": "atendimento1765583469882@prospectaconstrucoes.com",
+      "name": "Teste 2",
+      "phone": "99981392210",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:51:09"
+    },
+    {
+      "id": "630023",
+      "email": "atualizado1765583469856@servidor.net",
+      "name": "Teste Atualizado NET",
+      "phone": "11977776666",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:51:09"
+    },
+    {
+      "id": "630022",
+      "email": "atualizado1765583469829@empresa.com.br",
+      "name": "Teste Atualizado BR",
+      "phone": "11988887777",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:51:09"
+    },
+    {
+      "id": "630021",
+      "email": "atualizado1765583469798@prospectaconstrucoes.com",
+      "name": "Teste Atualizado",
+      "phone": "11999999999",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:51:09"
+    },
+    {
+      "id": "630020",
+      "email": "teste1765583469787@empresa.com.br",
+      "name": "Teste Brasil",
+      "phone": "11988887777",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:51:09"
+    },
+    {
+      "id": "630019",
+      "email": "teste1765583469774@hotmail.com",
+      "name": "Teste Hotmail",
+      "phone": "99981392210",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:51:09"
+    },
+    {
+      "id": "630017",
+      "email": "teste1765583469681@example.com",
+      "name": "Teste Funcionário",
+      "phone": "11999999999",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:51:09"
+    },
+    {
+      "id": "630016",
+      "email": "novofuncionario@hotmail.com",
+      "name": "Teste Duplicado Final",
+      "phone": "11999999999",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:50:41"
+    },
+    {
+      "id": "630008",
+      "email": "duplicate-1765582850048@example.com",
+      "name": "First User",
+      "phone": "11999999999",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:40:50"
+    },
+    {
+      "id": "630007",
+      "email": "test-1765582850033@example.org",
+      "name": "Test User ORG",
+      "phone": "11999999999",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:40:50"
+    },
+    {
+      "id": "630006",
+      "email": "test-1765582850016@example.net",
+      "name": "Test User NET",
+      "phone": "11999999999",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:40:50"
+    },
+    {
+      "id": "630005",
+      "email": "test-1765582849999@example.com.br",
+      "name": "Test User COM.BR",
+      "phone": "11999999999",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:40:50"
+    },
+    {
+      "id": "630004",
+      "email": "test-1765582849930@example.com",
+      "name": "Test User COM",
+      "phone": "11999999999",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:40:49"
+    },
+    {
+      "id": "600002",
+      "email": "teste@example.com.br",
+      "name": "Teste BR",
+      "phone": "11999999999",
+      "is_active": "0",
+      "created_at": "2025-12-12 23:12:49"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\tphone\tis_active\tcreated_at\n630018\tsemtelefone1765583469763@example.com\tTeste Sem Telefone\tNULL\t0\t2025-12-12 23:51:09\n630024\tatendimento1765583469882@prospectaconstrucoes.com\tTeste 2\t99981392210\t0\t2025-12-12 23:51:09\n630023\tatualizado1765583469856@servidor.net\tTeste Atualizado NET\t11977776666\t0\t2025-12-12 23:51:09\n630022\tatualizado1765583469829@empresa.com.br\tTeste Atualizado BR\t11988887777\t0\t2025-12-12 23:51:09\n630021\tatualizado1765583469798@prospectaconstrucoes.com\tTeste Atualizado\t11999999999\t0\t2025-12-12 23:51:09\n630020\tteste1765583469787@empresa.com.br\tTeste Brasil\t11988887777\t0\t2025-12-12 23:51:09\n630019\tteste1765583469774@hotmail.com\tTeste Hotmail\t99981392210\t0\t2025-12-12 23:51:09\n630017\tteste1765583469681@example.com\tTeste Funcionário\t11999999999\t0\t2025-12-12 23:51:09\n630016\tnovofuncionario@hotmail.com\tTeste Duplicado Final\t11999999999\t0\t2025-12-12 23:50:41\n630008\tduplicate-1765582850048@example.com\tFirst User\t11999999999\t0\t2025-12-12 23:40:50\n630007\ttest-1765582850033@example.org\tTest User ORG\t11999999999\t0\t2025-12-12 23:40:50\n630006\ttest-1765582850016@example.net\tTest User NET\t11999999999\t0\t2025-12-12 23:40:50\n630005\ttest-1765582849999@example.com.br\tTest User COM.BR\t11999999999\t0\t2025-12-12 23:40:50\n630004\ttest-1765582849930@example.com\tTest User COM\t11999999999\t0\t2025-12-12 23:40:49\n600002\tteste@example.com.br\tTeste BR\t11999999999\t0\t2025-12-12 23:12:49\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

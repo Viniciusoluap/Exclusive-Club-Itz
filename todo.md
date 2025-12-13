@@ -3013,32 +3013,36 @@ Endpoint `bookings.getRecent` está protegido por `adminProcedure`, bloqueando a
 
 ---
 
-## 🐛 BUG CRÍTICO: Funcionários Não São Excluídos do Banco de Dados
+## 🐛 BUG CRÍTICO: Funcionários Não São Excluídos do Banco de Dados - ✅ RESOLVIDO
 
 **Data:** 13/12/2025
 **Reportado por:** Usuário
+**Status:** ✅ Resolvido completamente
 
-### Problema:
-Dois emails de funcionários continuam aparecendo no sistema mesmo após exclusão pela interface admin:
-- `contato@grupoeficaz.com.br`
-- `eficazcorrespondente@hotmail.com`
+### Problema Original:
+Emails de funcionários continuavam aparecendo no sistema mesmo após exclusão pela interface admin:
+- `contato@grupoeficaz.com.br` / `contato@grupoefficaz.com.br`
+- `eficazcorrespondente@hotmail.com` / `efficazcorrespondente@hotmail.com`
+- `atendimentogrupoefficaz@gmail.com`
 
-Por mais que sejam excluídos do quadro de funcionários, eles continuam constando no sistema como funcionários ativos.
+### Causa Raiz Identificada:
+1. **Duas tabelas separadas:** `employees` (cadastro) e `users` (autenticação)
+2. **Exclusão incompleta:** Interface só removia de `employees`, deixando órfãos em `users`
+3. **Variações de grafia:** Emails com "eficaz" (1 F) e "efficaz" (2 F)
+4. **Sessão ativa:** Cookies mantinham permissões mesmo após exclusão
 
-### Causa Provável:
-- Registros residuais na tabela `employees` não removidos
-- Possível problema na lógica de exclusão do endpoint
-- Pode haver registros relacionados em outras tabelas impedindo exclusão
-
-### Investigação Necessária:
+### Solução Implementada:
 - [x] Consultar tabela `employees` para verificar registros
 - [x] Consultar tabela `users` para verificar role 'employee'
 - [x] Verificar registros relacionados (vistorias, abastecimentos)
 - [x] Apresentar relatório completo ao usuário
-- [x] Executar limpeza autorizada no banco (3 registros removidos)
+- [x] Executar limpeza manual (6 registros removidos - ambas grafias)
 - [x] Corrigir lógica de exclusão (endpoint agora remove de ambas as tabelas)
 - [x] Criar teste automatizado (3/3 passando)
-- [ ] Validar que exclusão funciona corretamente
+- [x] Validar que exclusão funciona corretamente
+- [x] Salvar checkpoint (versão 79321ce4)
+- [x] Limpeza adicional de variações de grafia
+- [x] Validação final pelo usuário - ✅ PROBLEMA RESOLVIDO
 
 ### Arquivos a Investigar:
 - `drizzle/schema.ts` (tabelas employees, users, inspections, fuelings)

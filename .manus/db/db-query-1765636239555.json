@@ -1,0 +1,43 @@
+{
+  "query": "SELECT id, openId, email, name, role, loginMethod, createdAt, updatedAt, lastSignedIn FROM users WHERE email LIKE '%efficaz%' OR email LIKE '%eficaz%' ORDER BY email",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, openId, email, name, role, loginMethod, createdAt, updatedAt, lastSignedIn FROM users WHERE email LIKE '%efficaz%' OR email LIKE '%eficaz%' ORDER BY email",
+  "rows": [
+    {
+      "id": "7800152",
+      "openId": "TDb4yB9pGB78LmdVRhLRkL",
+      "email": "Atendimentogrupoefficaz@gmail.com",
+      "name": "Marduqueu",
+      "role": "user",
+      "loginMethod": "email",
+      "createdAt": "2025-12-13 14:27:53",
+      "updatedAt": "2025-12-13 14:28:07",
+      "lastSignedIn": "2025-12-13 14:28:08"
+    },
+    {
+      "id": "4980040",
+      "openId": "CbMGyT6KAmqPLXomMXeW3u",
+      "email": "contato@grupoefficaz.com.br",
+      "name": "Joao",
+      "role": "employee",
+      "loginMethod": "email",
+      "createdAt": "2025-12-02 03:03:12",
+      "updatedAt": "2025-12-13 14:27:34",
+      "lastSignedIn": "2025-12-13 14:27:34"
+    },
+    {
+      "id": "4710110",
+      "openId": "N3bAoq5TuoFEU7R8BGrCFH",
+      "email": "efficazcorrespondente@hotmail.com",
+      "name": "Jhonjhon",
+      "role": "employee",
+      "loginMethod": "email",
+      "createdAt": "2025-11-29 23:12:54",
+      "updatedAt": "2025-12-13 14:30:18",
+      "lastSignedIn": "2025-12-13 14:30:18"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\temail\tname\trole\tloginMethod\tcreatedAt\tupdatedAt\tlastSignedIn\n7800152\tTDb4yB9pGB78LmdVRhLRkL\tAtendimentogrupoefficaz@gmail.com\tMarduqueu\tuser\temail\t2025-12-13 14:27:53\t2025-12-13 14:28:07\t2025-12-13 14:28:08\n4980040\tCbMGyT6KAmqPLXomMXeW3u\tcontato@grupoefficaz.com.br\tJoao\temployee\temail\t2025-12-02 03:03:12\t2025-12-13 14:27:34\t2025-12-13 14:27:34\n4710110\tN3bAoq5TuoFEU7R8BGrCFH\tefficazcorrespondente@hotmail.com\tJhonjhon\temployee\temail\t2025-11-29 23:12:54\t2025-12-13 14:30:18\t2025-12-13 14:30:18\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}
