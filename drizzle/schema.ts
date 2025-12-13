@@ -166,6 +166,12 @@ export const fuelRecords = mysqlTable("fuel_records", {
   pricePerLiter: int("price_per_liter").notNull(), // Preço por litro em centavos
   totalAmount: int("total_amount").notNull(), // Valor total em centavos
   notes: text("notes"),
+  // Campos de pagamento Asaas
+  asaasChargeId: varchar("asaas_charge_id", { length: 100 }), // ID da cobrança no Asaas
+  asaasCustomerId: varchar("asaas_customer_id", { length: 100 }), // ID do cliente no Asaas
+  paymentStatus: mysqlEnum("payment_status", ["pending", "paid", "cancelled", "overdue"]).default("pending").notNull(),
+  paymentUrl: text("payment_url"), // URL para pagamento no Asaas
+  paidAt: timestamp("paid_at"), // Data do pagamento
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -1,5 +1,22 @@
 # TODO - Novas Funcionalidades
 
+## 🚨 URGENTE - Correção de Retrocesso (13/12/2025)
+
+### BUG CRÍTICO: PDF de Vistorias Retrocedeu
+- [x] **Problema:** Merge Git automático (checkpoint c2b83ff6) removeu funcionalidades importantes do PDF
+- [ ] **Funcionalidades perdidas:**
+  1. Timezone de Brasília na data de geração (estava: `America/Sao_Paulo`, agora: sem timezone)
+  2. Nome do vistoriador correto (estava: `insp.inspected_by || insp.inspectedBy`, agora: `insp.inspected_by_name`)
+  3. Seção completa de itens reprovados detalhada (REMOVIDA)
+  4. Seção de observações completas com quebra de texto (REMOVIDA)
+  5. Paginação automática quando conteúdo excede página (REMOVIDA)
+- [x] **Ação:** Restaurar código do checkpoint 9c60fbc (versão correta)
+- [x] **Validação:** Testar geração de PDF e confirmar que todas as seções aparecem
+- [x] **Resultado:** 4 testes automatizados criados e passando (100%)
+- [x] **Confirmado:** Todas as 5 funcionalidades restauradas com sucesso
+
+---
+
 ## Funcionalidades Solicitadas
 
 ### Menu Mobile Responsivo
