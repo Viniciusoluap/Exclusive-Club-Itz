@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText } from "lucide-react";
+import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText, Mail } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 
@@ -23,6 +23,8 @@ export default function Abastecimento() {
   const [notes, setNotes] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showAllRecords, setShowAllRecords] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [emailAddress, setEmailAddress] = useState("");
 
   const trpcAny = trpc as any;
   const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas as últimas 6 reservas utilizadas
@@ -73,6 +75,18 @@ export default function Abastecimento() {
     },
     onError: (error: any) => {
       toast.error(`Erro ao gerar relatório: ${error.message}`);
+    },
+  });
+
+  const sendEmailMutation = trpcAny.fuelRecords?.sendReportByEmail.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Relatório enviado para ${data.email} com sucesso!`);
+      setIsEmailDialogOpen(false);
+      setEmailAddress("");
+      setSelectedIds([]);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao enviar email: ${error.message}`);
     },
   });
 
@@ -166,21 +180,38 @@ export default function Abastecimento() {
           </div>
           <div className="flex gap-2 flex-wrap">
             {fuelRecords && fuelRecords.length > 0 && (
-              <Button 
-                variant="outline"
-                onClick={handleGenerateReport}
-                disabled={selectedIds.length === 0 || generateReportMutation.isPending}
-                className="flex-1 sm:flex-none"
-              >
-                {generateReportMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <FileText className="w-4 h-4 mr-2" />
-                )}
-                <span className="hidden sm:inline">Relatório PDF</span>
-                <span className="sm:hidden">PDF</span>
-                {selectedIds.length > 0 && ` (${selectedIds.length})`}
-              </Button>
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={handleGenerateReport}
+                  disabled={selectedIds.length === 0 || generateReportMutation.isPending}
+                  className="flex-1 sm:flex-none"
+                >
+                  {generateReportMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4 mr-2" />
+                  )}
+                  <span className="hidden sm:inline">Relatório PDF</span>
+                  <span className="sm:hidden">PDF</span>
+                  {selectedIds.length > 0 && ` (${selectedIds.length})`}
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setIsEmailDialogOpen(true)}
+                  disabled={selectedIds.length === 0 || sendEmailMutation.isPending}
+                  className="flex-1 sm:flex-none"
+                >
+                  {sendEmailMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Mail className="w-4 h-4 mr-2" />
+                  )}
+                  <span className="hidden sm:inline">Enviar Email</span>
+                  <span className="sm:hidden">Email</span>
+                  {selectedIds.length > 0 && ` (${selectedIds.length})`}
+                </Button>
+              </>
             )}
             <Button 
               onClick={() => setIsCreateDialogOpen(true)}
@@ -403,6 +434,61 @@ export default function Abastecimento() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de envio por email */}
+      <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar Relatório por Email</DialogTitle>
+            <DialogDescription>
+              Informe o endereço de email para enviar o relatório de abastecimentos
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={emailAddress}
+                onChange={(e) => setEmailAddress(e.target.value)}
+                placeholder="exemplo@email.com"
+                required
+              />
+            </div>
+            <div className="bg-muted p-3 rounded-md text-sm">
+              <p className="text-muted-foreground">
+                <strong>{selectedIds.length}</strong> abastecimento(s) selecionado(s) serão enviados em PDF.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setIsEmailDialogOpen(false);
+                setEmailAddress("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => {
+                if (!emailAddress) {
+                  toast.error('Informe um email válido');
+                  return;
+                }
+                sendEmailMutation.mutate({ recordIds: selectedIds, email: emailAddress });
+              }}
+              disabled={sendEmailMutation.isPending || !emailAddress}
+            >
+              {sendEmailMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Enviar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
