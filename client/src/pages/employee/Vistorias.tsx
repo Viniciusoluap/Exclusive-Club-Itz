@@ -1,343 +1,643 @@
 import EmployeeDashboardLayout from "@/components/EmployeeDashboardLayout";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardCheck, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
 import { toast } from "sonner";
+import { Loader2, Plus, ClipboardCheck, CheckCircle2, XCircle, ArrowLeft, Trash2, FileText } from "lucide-react";
+import { Link } from "wouter";
+
+const JET_FIELDS = [
+  "PINTURA / CASCO",
+  "LUZES GERAL",
+  "CARPETE",
+  "BANCO E ESTOFADO",
+  "ANCORA",
+  "COLETES",
+  "TURBINA / IBR",
+  "CHAVE",
+  "CARRETINHA",
+  "PNEUS DA CARRETINHA",
+  "CASCO",
+  "TAMPA DO JET",
+];
+
+const LANCHA_FIELDS = [
+  "PINTURA / CASCO",
+  "LUZES GERAL",
+  "CARPETE",
+  "BANCO E ESTOFADO",
+  "ANCORA",
+  "COLETES",
+  "MOTOR",
+  "HELICE",
+  "CHAVE",
+  "CARRETINHA",
+  "PNEUS DA CARRETINHA",
+  "CASCO",
+  "TAMPA DO MOTOR",
+  "PARA-BRISA",
+  "TOLDO",
+  "ESCADA",
+  "EXTINTOR",
+  "BUZINA",
+  "LIMPADOR DE PARA-BRISA",
+  "SISTEMA ELETRICO",
+];
 
 export default function EmployeeVistorias() {
-  const [open, setOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    vessel_id: "",
-    date: "",
-    inspector_name: "",
-    status: "approved" as "approved" | "rejected" | "pending",
-    notes: "",
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+  const [vesselType, setVesselType] = useState<'jetski' | 'lancha' | null>(null);
+  const [inspectionDate, setInspectionDate] = useState(new Date().toISOString().split('T')[0]);
+  const [clientName, setClientName] = useState("");
+  const [inspectorName, setInspectorName] = useState(""); // Nome de quem está fazendo a vistoria
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [notes, setNotes] = useState("");
+  const [selectedInspections, setSelectedInspections] = useState<number[]>([]);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [emailRecipient, setEmailRecipient] = useState("");
+  const [showAllInspections, setShowAllInspections] = useState(false);
+
+  const trpcAny = trpc as any;
+  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas reservas utilizadas
+  const { data: inspections, refetch } = trpcAny.inspections?.list.useQuery({}) || { data: [] };
+  const { data: vessels } = trpc.vessels.list.useQuery();
+
+  const createMutation = trpcAny.inspections?.create.useMutation({
+    onSuccess: () => {
+      toast.success("Vistoria registrada com sucesso!");
+      setIsCreateDialogOpen(false);
+      resetForm();
+      refetch();
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao registrar vistoria: ${error.message}`);
+    },
   });
 
-  const { data: inspections, isLoading, refetch } = trpc.inspections.list.useQuery({});
-  const { data: vessels } = trpc.vessels.list.useQuery();
-  const createMutation = trpc.inspections.create.useMutation();
-  const deleteMutation = trpc.inspections.delete.useMutation();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.vessel_id || !formData.date || !formData.inspector_name) {
-      toast.error("Preencha todos os campos obrigatórios");
-      return;
-    }
-
-    try {
-      // Nota: Edição de vistorias não está implementada no backend
-      // Por enquanto, apenas criação está disponível
-      if (editingId) {
-        toast.error("Edição de vistorias não está disponível. Por favor, exclua e crie uma nova.");
-        return;
-      }
-      
-      // TODO: Implementar lógica correta de criação com os campos do schema
-      // Campos necessários: bookingId, vesselId, vesselType, clientName, formData, observations
-      toast.error("Funcionalidade em desenvolvimento. Use o formulário de vistoria completo.");
-      return;
-      // setOpen(false);
-      // setEditingId(null);
-      // setFormData({
-      //   vessel_id: "",
-      //   date: "",
-      //   inspector_name: "",
-      //   status: "approved",
-      //   notes: "",
-      // });
-      // refetch();
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao salvar vistoria");
-    }
-  };
-
-  const handleEdit = (inspection: { id: number; vessel_id: string; date: string; inspector_name: string; status: string; notes: string }) => {
-    setEditingId(inspection.id);
-    setFormData({
-      vessel_id: inspection.vessel_id.toString(),
-      date: new Date(inspection.date).toISOString().split("T")[0],
-      inspector_name: inspection.inspector_name,
-      status: inspection.status as "approved" | "rejected" | "pending",
-      notes: inspection.notes || "",
-    });
-    setOpen(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir esta vistoria?")) return;
-
-    try {
-      await deleteMutation.mutateAsync({ id });
-      toast.success("Vistoria excluída com sucesso!");
+  const deleteMutation = trpcAny.inspections?.delete.useMutation({
+    onSuccess: () => {
+      toast.success('Vistoria excluída com sucesso!');
+      setIsDeleteDialogOpen(false);
+      setDeleteId(null);
       refetch();
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao excluir vistoria");
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao excluir vistoria: ${error.message}`);
+    },
+  });
+
+  const generateReportMutation = trpcAny.inspections?.generateReport.useMutation({
+    onSuccess: (data: any) => {
+      // Baixar PDF automaticamente
+      const link = document.createElement('a');
+      link.href = `data:application/pdf;base64,${data.pdfBase64}`;
+      link.download = `relatorio-vistorias-${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+      toast.success(`Relatório de ${data.count} vistorias gerado com sucesso!`);
+      setSelectedInspections([]);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao gerar relatório: ${error.message}`);
+    },
+  });
+
+  const sendEmailMutation = trpcAny.inspections?.sendReportByEmail.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Relatório de ${data.count} vistoria(s) enviado para ${emailRecipient}!`);
+      setIsEmailDialogOpen(false);
+      setEmailRecipient("");
+      setSelectedInspections([]);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao enviar relatório: ${error.message}`);
+    },
+  });
+
+  const toggleInspectionSelection = (id: number) => {
+    setSelectedInspections(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  // Calcular vistorias exibidas com base no filtro
+  const displayedInspections = useMemo(() => {
+    if (!inspections) return [];
+    const sortedInspections = [...inspections].sort((a: any, b: any) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return dateB - dateA; // Mais recente primeiro
+    });
+    return showAllInspections ? sortedInspections : sortedInspections.slice(0, 4);
+  }, [inspections, showAllInspections]);
+
+  const toggleSelectAll = () => {
+    // Usar displayedInspections (filtradas) ao invés de inspections (todas)
+    const displayedIds = displayedInspections.map((i: any) => i.id);
+    const allDisplayedSelected = displayedIds.every(id => selectedInspections.includes(id));
+    
+    if (allDisplayedSelected) {
+      // Desmarcar apenas as vistorias exibidas
+      setSelectedInspections(prev => prev.filter(id => !displayedIds.includes(id)));
+    } else {
+      // Selecionar apenas as vistorias exibidas
+      setSelectedInspections(prev => {
+        const newSelection = [...prev];
+        displayedIds.forEach(id => {
+          if (!newSelection.includes(id)) {
+            newSelection.push(id);
+          }
+        });
+        return newSelection;
+      });
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "approved":
-        return "bg-green-100 text-green-800";
-      case "rejected":
-        return "bg-red-100 text-red-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  const handleGenerateReport = () => {
+    if (selectedInspections.length === 0) {
+      toast.error("Selecione pelo menos uma vistoria");
+      return;
+    }
+    generateReportMutation.mutate({ inspectionIds: selectedInspections });
+  };
+
+  const handleSendEmail = () => {
+    if (selectedInspections.length === 0) {
+      toast.error("Selecione pelo menos uma vistoria");
+      return;
+    }
+    setIsEmailDialogOpen(true);
+  };
+
+  const resetForm = () => {
+    setSelectedBookingId(null);
+    setVesselType(null);
+    setInspectionDate(new Date().toISOString().split('T')[0]);
+    setClientName("");
+    setInspectorName("");
+    setFormData({});
+    setNotes("");
+  };
+
+  const handleDeleteClick = (id: number) => {
+    setDeleteId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate({ id: deleteId });
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "approved":
-        return "Aprovada";
-      case "rejected":
-        return "Reprovada";
-      case "pending":
-        return "Pendente";
-      default:
-        return status;
+  const handleBookingChange = (bookingId: string) => {
+    const id = parseInt(bookingId);
+    setSelectedBookingId(id);
+    
+    const booking = recentBookings?.find((b: any) => b.id === id);
+    if (booking) {
+      setClientName(booking.clientName);
+      // Não define automaticamente - usuário escolhe manualmente
     }
   };
+
+  const handleFieldChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    if (!selectedBookingId || !vesselType) {
+      toast.error("Selecione uma reserva");
+      return;
+    }
+
+    if (!inspectorName.trim()) {
+      toast.error("Preencha o nome do vistoriador");
+      return;
+    }
+
+    const booking = recentBookings?.find((b: any) => b.id === selectedBookingId);
+    if (!booking) {
+      toast.error("Reserva não encontrada");
+      return;
+    }
+
+    const fields = vesselType === 'jetski' ? JET_FIELDS : LANCHA_FIELDS;
+    const missingFields = fields.filter(field => !formData[field]);
+    
+    if (missingFields.length > 0) {
+      toast.error(`Preencha todos os campos: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    createMutation.mutate({
+      bookingId: selectedBookingId,
+      vesselId: booking.vesselId,
+      vesselType,
+      clientName, // Nome do cliente (da reserva)
+      inspectorName, // Nome de quem está fazendo a vistoria
+      formData,
+      observations: notes || undefined,
+    });
+  };
+
+  const currentFields = vesselType === 'jetski' ? JET_FIELDS : vesselType === 'lancha' ? LANCHA_FIELDS : [];
 
   return (
     <EmployeeDashboardLayout>
       <div className="container py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold">Vistorias</h1>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Vistoria
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId ? "Editar Vistoria" : "Nova Vistoria"}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingId
-                    ? "Atualize as informações da vistoria"
-                    : "Registre uma nova vistoria de embarcação"}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="vessel">Embarcação *</Label>
-                  <Select
-                    value={formData.vessel_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, vessel_id: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma embarcação" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vessels?.map((vessel) => (
-                        <SelectItem key={vessel.id} value={vessel.id.toString()}>
-                          {vessel.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="date">Data *</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) =>
-                      setFormData({ ...formData, date: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="inspector_name">Vistoriador *</Label>
-                  <Input
-                    id="inspector_name"
-                    type="text"
-                    value={formData.inspector_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, inspector_name: e.target.value })
-                    }
-                    placeholder="Nome do vistoriador"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value: any) =>
-                      setFormData({ ...formData, status: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="approved">Aprovada</SelectItem>
-                      <SelectItem value="rejected">Reprovada</SelectItem>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="notes">Observações</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) =>
-                      setFormData({ ...formData, notes: e.target.value })
-                    }
-                    placeholder="Detalhes da vistoria..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    type="submit"
-                    disabled={createMutation.isPending}
-                    className="flex-1"
-                  >
-                    {createMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      "Salvar"
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setOpen(false);
-                      setEditingId(null);
-                      setFormData({
-                        vessel_id: "",
-                        date: "",
-                        inspector_name: "",
-                        status: "approved",
-                        notes: "",
-                      });
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : inspections && inspections.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {inspections.map((inspection: any) => (
-              <Card key={inspection.id} className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <ClipboardCheck className="h-5 w-5 text-muted-foreground" />
-                    <h3 className="font-semibold">{inspection.vessel_name}</h3>
-                  </div>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
-                      inspection.status
-                    )}`}
-                  >
-                    {getStatusLabel(inspection.status)}
-                  </span>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Data:</span>{" "}
-                    {new Date(inspection.date).toLocaleDateString("pt-BR")}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Vistoriador:</span>{" "}
-                    {inspection.inspectedBy || "Não informado"}
-                  </div>
-                  {inspection.notes && (
-                    <div>
-                      <span className="text-muted-foreground">Observações:</span>
-                      <p className="mt-1">{inspection.notes}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2 mt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleEdit(inspection)}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Editar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    onClick={() => handleDelete(inspection.id)}
-                    disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card className="p-12 text-center">
-            <ClipboardCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhuma vistoria registrada</h3>
-            <p className="text-muted-foreground mb-4">
-              Clique em "Nova Vistoria" para registrar uma vistoria.
+      <div className="mb-6">
+        <div className="space-y-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Vistorias</h1>
+            <p className="text-sm md:text-base text-muted-foreground mt-1">
+              Registre vistorias das embarcações antes e após o uso
             </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleGenerateReport}
+              disabled={generateReportMutation.isPending || selectedInspections.length === 0}
+              className="w-full sm:w-auto"
+            >
+              {generateReportMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Gerar PDF ({selectedInspections.length})
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={handleSendEmail}
+              disabled={selectedInspections.length === 0}
+              className="w-full sm:w-auto"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Enviar por Email ({selectedInspections.length})
+            </Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
+              <Plus className="w-4 h-4 mr-2" />
+              Nova Vistoria
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Inspections */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h2 className="text-xl font-semibold">Vistorias Recentes</h2>
+          <div className="flex items-center gap-2">
+            {inspections && inspections.length > 4 && (
+              <div className="flex gap-1 border rounded-md p-1">
+                <Button 
+                  variant={!showAllInspections ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setShowAllInspections(false)}
+                >
+                  Últimas 4
+                </Button>
+                <Button 
+                  variant={showAllInspections ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setShowAllInspections(true)}
+                >
+                  Mostrar Todas
+                </Button>
+              </div>
+            )}
+            {inspections && inspections.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={toggleSelectAll}
+              >
+                {selectedInspections.length === inspections.length ? 'Desmarcar Todas' : 'Selecionar Todas'}
+              </Button>
+            )}
+          </div>
+        </div>
+        {!inspections || inspections.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              Nenhuma vistoria registrada
+            </CardContent>
           </Card>
+        ) : (
+          <div className="grid gap-4">
+            {displayedInspections.map((inspection: any) => {
+              // inspectionData already comes as object from backend
+              const formData = inspection.inspectionData || {};
+              const approvedCount = Object.values(formData).filter(v => v === 'APROVADO').length;
+              const totalFields = Object.keys(formData).length;
+              const failedCount = totalFields - approvedCount;
+              const isFullyApproved = failedCount === 0;
+
+              return (
+                <Card key={inspection.id} className={selectedInspections.includes(inspection.id) ? 'ring-2 ring-primary' : ''}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedInspections.includes(inspection.id)}
+                          onChange={() => toggleInspectionSelection(inspection.id)}
+                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                        />
+                        <ClipboardCheck className="w-5 h-5 text-primary" />
+                        <div>
+                          <CardTitle className="text-lg">{inspection.vesselName}</CardTitle>
+                          <CardDescription>
+                            {inspection.clientName} • {new Date(inspection.bookingDate || inspection.createdAt).toLocaleDateString('pt-BR')}
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-4">
+                        <div className="text-right flex-1">
+                          {isFullyApproved ? (
+                            <div className="flex items-center gap-2 text-blue-600">
+                              <CheckCircle2 className="w-5 h-5" />
+                              <span className="font-semibold">Aprovado</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-red-600">
+                              <XCircle className="w-5 h-5" />
+                              <span className="font-semibold">
+                                Reprovado {failedCount}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClick(inspection.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm space-y-2">
+                      <p><strong>Tipo:</strong> {inspection.vesselType === 'jetski' ? 'Jet Ski' : 'Lancha'}</p>
+                      <p><strong>Vistoriado por:</strong> {inspection.inspectedBy || 'N/A'}</p>
+                      {inspection.observations && (
+                        <p><strong>Observações:</strong> {inspection.observations}</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         )}
+      </div>
+
+      {/* Create Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>Nova Vistoria</DialogTitle>
+              <DialogDescription>
+                Preencha o formulário de vistoria da embarcação
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-4 py-4">
+              {/* Booking Selection */}
+              <div className="grid gap-2">
+                <Label htmlFor="booking">Reserva *</Label>
+                <Select 
+                  value={selectedBookingId?.toString()} 
+                  onValueChange={handleBookingChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma reserva" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {recentBookings?.map((booking: any) => {
+                      const vessel = vessels?.find(v => v.id === booking.vesselId);
+                      return (
+                        <SelectItem key={booking.id} value={booking.id.toString()}>
+                          {vessel?.name} - {booking.clientName} ({new Date(booking.startTime).toLocaleDateString('pt-BR')})
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Inspection Date */}
+              <div className="grid gap-2">
+                <Label htmlFor="inspectionDate">Data da Vistoria *</Label>
+                <Input
+                  id="inspectionDate"
+                  type="date"
+                  value={inspectionDate}
+                  onChange={(e) => setInspectionDate(e.target.value)}
+                  required
+                />
+              </div>
+
+              {/* Inspector Name */}
+              <div className="grid gap-2">
+                <Label htmlFor="inspectorName">Nome do Vistoriador *</Label>
+                <Input
+                  id="inspectorName"
+                  type="text"
+                  placeholder="Nome de quem está fazendo a vistoria"
+                  value={inspectorName}
+                  onChange={(e) => setInspectorName(e.target.value)}
+                  required
+                />
+              </div>
+
+              {/* Vessel Type Selection */}
+              <div className="grid gap-2">
+                <Label htmlFor="vesselType">Tipo de Embarcação *</Label>
+                <Select 
+                  value={vesselType || undefined} 
+                  onValueChange={(value) => {
+                    setVesselType(value as 'jetski' | 'lancha');
+                    setFormData({}); // Limpa formData ao trocar tipo
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="jetski">Jetski</SelectItem>
+                    <SelectItem value="lancha">Lancha</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Inspection Fields */}
+              {vesselType && (
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="font-semibold text-lg">
+                    Checklist - {vesselType === 'jetski' ? 'Jet Ski GTI 130' : 'Focker 215'}
+                  </h3>
+                  
+                  {currentFields.map((field, index) => (
+                    <div key={index} className="grid gap-2">
+                      <Label>{index + 1}. {field} *</Label>
+                      <RadioGroup
+                        value={formData[field]}
+                        onValueChange={(value) => handleFieldChange(field, value)}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="APROVADO" id={`${field}-aprovado`} />
+                          <Label htmlFor={`${field}-aprovado`} className="cursor-pointer">
+                            APROVADO
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="REPROVADO" id={`${field}-reprovado`} />
+                          <Label htmlFor={`${field}-reprovado`} className="cursor-pointer">
+                            REPROVADO
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Notes */}
+              <div className="grid gap-2">
+                <Label htmlFor="notes">Observações e Itens Reprovados</Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Descreva os problemas encontrados nos itens reprovados..."
+                  rows={4}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setIsCreateDialogOpen(false);
+                  resetForm();
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Registrar Vistoria
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de envio de email */}
+      <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar Relatório por Email</DialogTitle>
+            <DialogDescription>
+              Digite o email do destinatário para enviar o relatório de {selectedInspections.length} vistoria(s) selecionada(s).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email do Destinatário</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="exemplo@email.com"
+                value={emailRecipient}
+                onChange={(e) => setEmailRecipient(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsEmailDialogOpen(false);
+                setEmailRecipient("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => sendEmailMutation.mutate({ 
+                inspectionIds: selectedInspections, 
+                email: emailRecipient 
+              })}
+              disabled={sendEmailMutation.isPending || !emailRecipient}
+            >
+              {sendEmailMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                'Enviar'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmação de exclusão */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta vistoria? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </div>
     </EmployeeDashboardLayout>
   );
