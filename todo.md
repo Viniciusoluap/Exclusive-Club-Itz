@@ -1,5 +1,18 @@
 # TODO - Diagnóstico e Correção Integração Asaas
 
+## ✅ BUG RESOLVIDO - Erro ao Configurar Orçamento (13/12/2025 - 17:45)
+
+### Problema
+- [x] Erro JavaScript "s[u] is not a function" ao configurar orçamento mensal
+- [x] Orçamento era salvo no banco mas erro aparecia na interface
+- [x] Causa: Invalidação incorreta do cache do React Query
+
+### Solução Aplicada
+- [x] Substituído `trpcAny.fuelRecords?.financialStats.refetch?.()` por `utils.fuelRecords.financialStats.invalidate()`
+- [x] Substituído `trpcAny.fuelBudget?.get.refetch?.()` por `utils.fuelBudget.get.invalidate()`
+- [x] Adicionado `const utils = trpc.useUtils()` no componente
+- [x] Testado com sucesso: orçamento atualiza sem erros
+
 ## 🚨 URGENTE - Cobranças Asaas Não Estão Sendo Criadas (13/12/2025 - 18:45)
 
 ### FASE 1: Diagnóstico Completo - ✅ CONCLUÍDO
