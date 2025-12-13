@@ -40,14 +40,6 @@ const allowedClientProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   return next({ ctx });
 });
 
-// Employee procedure - checks if user is employee or admin
-const employeeProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== 'employee' && ctx.user.role !== 'admin') {
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'Employee access required' });
-  }
-  return next({ ctx });
-});
-
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -241,18 +233,14 @@ export const appRouter = router({
 
   // Bookings
   bookings: router({
-    // Get recent bookings for fuel registration and inspections (Admin and Employee)
-    getRecent: publicProcedure
+    // Get recent bookings for fuel registration and inspections (Admin only)
+    getRecent: adminProcedure
       .input(z.object({ 
         days: z.number().optional(), // Se não fornecido, retorna todas
         includeUsed: z.boolean().default(false), // Incluir reservas já usadas
         onlyUsed: z.boolean().default(false) // Apenas reservas já usadas (para abastecimento)
       }))
-      .query(async ({ ctx, input }) => {
-        // Verificar permissões: apenas admin e employee podem acessar
-        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado. Apenas administradores e funcionários podem acessar.' });
-        }
+      .query(async ({ input }) => {
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
@@ -368,10 +356,7 @@ export const appRouter = router({
         if (!dbInstance) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         const { sql: sqlTag } = await import('drizzle-orm');
-        // Normalizar para meia-noite para comparar apenas datas (sem horas)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const now = today.getTime();
+        const now = Date.now();
         const timeFilter = input?.timeFilter || "future";
 
         let query = `
@@ -390,11 +375,11 @@ export const appRouter = router({
           WHERE `;
 
         if (timeFilter === "future") {
-          // Futuras: data > hoje (somente futuras), ordenadas da mais próxima
-          query += `b.booking_date > ${now} ORDER BY b.booking_date ASC`;
+          // Futuras: data >= hoje, ordenadas da mais próxima
+          query += `b.booking_date >= ${now} ORDER BY b.booking_date ASC`;
         } else {
-          // Passadas: data <= hoje (hoje + passadas), ordenadas da mais recente
-          query += `b.booking_date <= ${now} ORDER BY b.booking_date DESC`;
+          // Passadas: data < hoje, ordenadas da mais recente
+          query += `b.booking_date < ${now} ORDER BY b.booking_date DESC`;
         }
 
         const result = await dbInstance.execute(sqlTag.raw(query)) as any;
@@ -1292,27 +1277,13 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const { employees, users } = await import('../drizzle/schema');
+        const { employees } = await import('../drizzle/schema');
         const { eq } = await import('drizzle-orm');
 
         try {
-          // Buscar email do funcionário antes de excluir
-          const employeeResult = await db.select({ email: employees.email })
-            .from(employees)
-            .where(eq(employees.id, input.id))
-            .limit(1);
-          
-          const employeeEmail = employeeResult[0]?.email;
-
-          // 1. Hard delete na tabela employees para liberar o email imediatamente
+          // Hard delete para liberar o email imediatamente
           await db.delete(employees)
             .where(eq(employees.id, input.id));
-          
-          // 2. Remover também da tabela users (se existir) para evitar órfãos
-          if (employeeEmail) {
-            await db.delete(users)
-              .where(eq(users.email, employeeEmail));
-          }
           
           return { success: true };
         } catch (error: any) {
@@ -1550,25 +1521,11 @@ Nenhuma reserva foi afetada.
           ORDER BY fr.created_at DESC
         `)) as any;
         
-        const rawRecords = (Array.isArray(result[0]) ? result[0] : result) as any[];
+        const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
 
-        if (!rawRecords || rawRecords.length === 0) {
+        if (!records || records.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum registro encontrado' });
         }
-
-        // Mapear campos snake_case → camelCase e calcular campos faltantes
-        const records = rawRecords.map((r: any) => ({
-          id: r.id,
-          vesselName: r.vessel_name || 'N/A',
-          employeeName: ctx.user?.name || 'N/A', // Nome do usuário logado
-          date: r.booking_date || r.created_at,
-          liters: r.liters || 0,
-          pricePerLiter: r.price_per_liter || 0,
-          subtotal: r.liters * r.price_per_liter / 100 || 0, // litros * preço (já em centavos)
-          serviceFee: 1000, // Taxa de serviço fixa: R$ 10.00 em centavos
-          totalAmount: r.total_amount || 0,
-          notes: r.notes,
-        }));
 
         // Gerar PDF
         const { generateFuelRecordsPDF } = await import('./_core/fuelRecordPDF');
@@ -1610,25 +1567,11 @@ Nenhuma reserva foi afetada.
           ORDER BY fr.created_at DESC
         `)) as any;
         
-        const rawRecords = (Array.isArray(result[0]) ? result[0] : result) as any[];
+        const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
 
-        if (!rawRecords || rawRecords.length === 0) {
+        if (!records || records.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum registro encontrado' });
         }
-
-        // Mapear campos snake_case → camelCase e calcular campos faltantes
-        const records = rawRecords.map((r: any) => ({
-          id: r.id,
-          vesselName: r.vessel_name || 'N/A',
-          employeeName: ctx.user?.name || 'N/A', // Nome do usuário logado
-          date: r.booking_date || r.created_at,
-          liters: r.liters || 0,
-          pricePerLiter: r.price_per_liter || 0,
-          subtotal: r.liters * r.price_per_liter / 100 || 0, // litros * preço (já em centavos)
-          serviceFee: 1000, // Taxa de serviço fixa: R$ 10.00 em centavos
-          totalAmount: r.total_amount || 0,
-          notes: r.notes,
-        }));
 
         // Gerar PDF
         const { generateFuelRecordsPDF } = await import('./_core/fuelRecordPDF');
@@ -1724,6 +1667,211 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
         return { success: true, email: input.email };
       }),
+
+    // Novo endpoint: myRecords - Cliente vê seus próprios abastecimentos
+    myRecords: publicProcedure
+      .query(async ({ ctx }) => {
+        if (!ctx.user) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Usuário não autenticado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+        const result = await db.execute(sql`
+          SELECT 
+            fr.id,
+            fr.vessel_name as vesselName,
+            fr.liters,
+            fr.price_per_liter as pricePerLiter,
+            fr.total_amount as totalAmount,
+            fr.notes,
+            fr.receipt_url as receiptUrl,
+            fr.asaas_charge_id as asaasChargeId,
+            fr.payment_status as paymentStatus,
+            fr.paid_at as paidAt,
+            fr.due_date as dueDate,
+            fr.created_at as createdAt,
+            b.booking_date as bookingDate
+          FROM fuel_records fr
+          LEFT JOIN bookings b ON fr.booking_id = b.id
+          WHERE fr.client_email = ${ctx.user.email}
+          ORDER BY fr.created_at DESC
+        `) as any;
+
+        const records = (Array.isArray(result[0]) ? result[0] : result);
+
+        // Mapear campos para camelCase e converter centavos para reais
+        return records.map((r: any) => ({
+          id: r.id,
+          vesselName: r.vesselName,
+          liters: r.liters / 100, // Converter centavos para reais
+          pricePerLiter: r.pricePerLiter / 100,
+          totalAmount: r.totalAmount / 100,
+          notes: r.notes,
+          receiptUrl: r.receiptUrl,
+          asaasChargeId: r.asaasChargeId,
+          paymentStatus: r.paymentStatus,
+          paidAt: r.paidAt,
+          dueDate: r.dueDate,
+          createdAt: r.createdAt,
+          bookingDate: r.bookingDate,
+        }));
+      }),
+
+    // Novo endpoint: uploadReceipt - Upload de comprovante de pagamento
+    uploadReceipt: publicProcedure
+      .input(z.object({
+        recordId: z.number(),
+        receiptUrl: z.string().url(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+        await db.execute(sql`
+          UPDATE fuel_records 
+          SET receipt_url = ${input.receiptUrl}
+          WHERE id = ${input.recordId}
+        `);
+
+        return { success: true };
+      }),
+
+    // Novo endpoint: financialStats - Estatísticas financeiras para dashboard
+    financialStats: publicProcedure
+      .input(z.object({
+        monthYear: z.string().optional(), // formato: YYYY-MM
+      }))
+      .query(async ({ input, ctx }) => {
+        if (!ctx.user || ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+
+        // Se não especificado, usar mês atual
+        const monthYear = input.monthYear || new Date().toISOString().slice(0, 7);
+
+        // Buscar estatísticas do mês
+        const result = await db.execute(sql`
+          SELECT 
+            COUNT(*) as total_records,
+            SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) as total_received,
+            SUM(total_amount) as total_billed,
+            SUM(CASE WHEN payment_status = 'pending' THEN total_amount ELSE 0 END) as total_pending,
+            SUM(CASE WHEN payment_status = 'overdue' THEN total_amount ELSE 0 END) as total_overdue
+          FROM fuel_records
+          WHERE DATE_FORMAT(created_at, '%Y-%m') = ${monthYear}
+        `) as any;
+
+        const stats = (Array.isArray(result[0]) ? result[0][0] : result[0]);
+
+        // Buscar orçamento do mês
+        const budgetResult = await db.execute(sql`
+          SELECT total_budget FROM fuel_budget WHERE month_year = ${monthYear}
+        `) as any;
+
+        const budget = (Array.isArray(budgetResult[0]) ? budgetResult[0][0] : budgetResult[0]);
+
+        const totalReceived = Number(stats.total_received) || 0;
+        const totalBilled = Number(stats.total_billed) || 0;
+        const totalPending = Number(stats.total_pending) || 0;
+        const totalOverdue = Number(stats.total_overdue) || 0;
+        const totalBudget = budget ? Number(budget.total_budget) : 0;
+
+        // Calcular saldo (Recebido - Gasto)
+        // Nota: "Gasto" seria o custo real do combustível, mas como não temos essa informação separada,
+        // vamos considerar que o "Gasto" é o valor total cobrado (que inclui taxa)
+        const balance = totalReceived - totalBilled;
+
+        return {
+          monthYear,
+          totalRecords: Number(stats.total_records) || 0,
+          totalReceived: totalReceived / 100, // Converter centavos para reais
+          totalBilled: totalBilled / 100,
+          totalPending: totalPending / 100,
+          totalOverdue: totalOverdue / 100,
+          balance: balance / 100,
+          totalBudget: totalBudget / 100,
+          budgetUsagePercent: totalBudget > 0 ? (totalBilled / totalBudget) * 100 : 0,
+        };
+      }),
+  }),
+
+  // Fuel Budget router - Admin only
+  fuelBudget: router({
+    get: publicProcedure
+      .input(z.object({
+        monthYear: z.string(), // formato: YYYY-MM
+      }))
+      .query(async ({ input, ctx }) => {
+        if (!ctx.user || ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+        const result = await db.execute(sql`
+          SELECT * FROM fuel_budget WHERE month_year = ${input.monthYear}
+        `) as any;
+
+        const budget = (Array.isArray(result[0]) ? result[0][0] : result[0]);
+
+        if (!budget) {
+          // Retornar valores zerados se não existir
+          return {
+            monthYear: input.monthYear,
+            totalBudget: 0,
+            totalSpent: 0,
+            totalReceived: 0,
+          };
+        }
+
+        return {
+          monthYear: budget.month_year,
+          totalBudget: budget.total_budget / 100, // Converter centavos para reais
+          totalSpent: budget.total_spent / 100,
+          totalReceived: budget.total_received / 100,
+        };
+      }),
+
+    set: publicProcedure
+      .input(z.object({
+        monthYear: z.string(), // formato: YYYY-MM
+        totalBudget: z.number().positive(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user || ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const totalBudgetInCents = Math.round(input.totalBudget * 100);
+
+        const { sql } = await import('drizzle-orm');
+        // Upsert: atualiza se existe, cria se não existe
+        await db.execute(sql`
+          INSERT INTO fuel_budget (month_year, total_budget, total_spent, total_received)
+          VALUES (${input.monthYear}, ${totalBudgetInCents}, 0, 0)
+          ON DUPLICATE KEY UPDATE total_budget = ${totalBudgetInCents}
+        `);
+
+        return { success: true };
+      }),
   }),
 
   // Inspections router - Admin and Employee
@@ -1734,7 +1882,6 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         vesselId: z.number(),
         vesselType: z.enum(['jetski', 'lancha']),
         clientName: z.string(),
-        inspectorName: z.string(), // Nome de quem está fazendo a vistoria
         formData: z.record(z.string(), z.string()), // JSON com todos os campos do formulário
         observations: z.string().optional(),
       }))
@@ -1769,7 +1916,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             inspectionData: JSON.stringify(input.formData),
             observations: input.observations || null,
             status,
-            inspectedBy: input.inspectorName || null, // Nome digitado no formulário
+            inspectedBy: ctx.user?.name || null,
           });
 
           return { success: true };
@@ -1926,10 +2073,12 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 i.*,
                 v.name as vessel_name,
                 b.booking_date,
-                b.client_name as booking_client_name
+                b.client_name as booking_client_name,
+                u.name as inspected_by_name
               FROM inspections i
               JOIN vessels v ON i.vessel_id = v.id
               LEFT JOIN bookings b ON i.booking_id = b.id
+              LEFT JOIN users u ON i.inspected_by = u.id
               WHERE i.id IN (${ids})
               ORDER BY i.created_at DESC
             `)) as any;
@@ -1940,10 +2089,12 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 i.*,
                 v.name as vessel_name,
                 b.booking_date,
-                b.client_name as booking_client_name
+                b.client_name as booking_client_name,
+                u.name as inspected_by_name
               FROM inspections i
               JOIN vessels v ON i.vessel_id = v.id
               LEFT JOIN bookings b ON i.booking_id = b.id
+              LEFT JOIN users u ON i.inspected_by = u.id
               ORDER BY i.created_at DESC
               LIMIT 10
             `) as any;
@@ -2053,42 +2204,91 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
       }),
   }),
 
-  // Employee router
-  employee: router({
-    // Get upcoming reservations (today + next 20 future confirmed)
-    upcomingReservations: employeeProcedure.query(async () => {
-      const dbInstance = await import('./db').then(m => m.getDb());
-      if (!dbInstance) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+  // Webhooks router - Receber notificações do Asaas
+  webhooks: router({
+    asaas: publicProcedure
+      .input(z.object({
+        event: z.string(),
+        payment: z.object({
+          id: z.string(),
+          status: z.string(),
+          value: z.number().optional(),
+          netValue: z.number().optional(),
+          paymentDate: z.string().optional(),
+          confirmedDate: z.string().optional(),
+          externalReference: z.string().optional(),
+        }).passthrough(), // Permite campos adicionais
+      }).passthrough()) // Permite campos adicionais no root
+      .mutation(async ({ input }) => {
+        console.log('[webhooks.asaas] Evento recebido:', input.event, input.payment.id);
 
-      const { sql: sqlTag } = await import('drizzle-orm');
-      
-      // Normalizar para meia-noite para comparar apenas datas (sem horas)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const now = today.getTime();
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) {
+          console.error('[webhooks.asaas] Database not available');
+          return { success: false, message: 'Database not available' };
+        }
 
-      const query = `
-        SELECT 
-          id,
-          client_email as clientEmail,
-          client_name as clientName,
-          vessel_id as vesselId,
-          vessel_name as vesselName,
-          booking_date as bookingDate,
-          status,
-          notes,
-          created_at as createdAt,
-          updated_at as updatedAt
-        FROM bookings
-        WHERE booking_date >= ${now}
-          AND status = 'confirmed'
-        ORDER BY booking_date ASC
-        LIMIT 21
-      `;
+        try {
+          const { sql } = await import('drizzle-orm');
 
-      const result = await dbInstance.execute(sqlTag.raw(query)) as any;
-      return (Array.isArray(result[0]) ? result[0] : result) as any[];
-    }),
+          // Buscar registro pelo asaas_charge_id
+          const result = await db.execute(sql`
+            SELECT id, client_email, client_name, vessel_name, total_amount
+            FROM fuel_records
+            WHERE asaas_charge_id = ${input.payment.id}
+          `) as any;
+
+          const record = (Array.isArray(result[0]) ? result[0][0] : result[0]);
+
+          if (!record) {
+            console.warn('[webhooks.asaas] Registro não encontrado para charge:', input.payment.id);
+            return { success: true, message: 'Record not found, ignoring' };
+          }
+
+          // Processar eventos
+          if (input.event === 'PAYMENT_RECEIVED' || input.event === 'PAYMENT_CONFIRMED') {
+            // Pagamento recebido
+            const paidAt = input.payment.confirmedDate || input.payment.paymentDate || new Date().toISOString();
+            const paidAtTimestamp = Math.floor(new Date(paidAt).getTime() / 1000);
+
+            await db.execute(sql`
+              UPDATE fuel_records
+              SET payment_status = 'paid', paid_at = FROM_UNIXTIME(${paidAtTimestamp})
+              WHERE asaas_charge_id = ${input.payment.id}
+            `);
+
+            console.log('[webhooks.asaas] ✅ Pagamento confirmado:', input.payment.id);
+
+            // TODO: Enviar email de confirmação para cliente
+            // TODO: Atualizar fuel_budget (total_received)
+
+          } else if (input.event === 'PAYMENT_OVERDUE') {
+            // Pagamento vencido
+            await db.execute(sql`
+              UPDATE fuel_records
+              SET payment_status = 'overdue'
+              WHERE asaas_charge_id = ${input.payment.id}
+            `);
+
+            console.log('[webhooks.asaas] ⚠️ Pagamento vencido:', input.payment.id);
+
+          } else if (input.event === 'PAYMENT_DELETED') {
+            // Cobrança cancelada
+            await db.execute(sql`
+              UPDATE fuel_records
+              SET payment_status = 'cancelled'
+              WHERE asaas_charge_id = ${input.payment.id}
+            `);
+
+            console.log('[webhooks.asaas] 🚫 Cobrança cancelada:', input.payment.id);
+          }
+
+          return { success: true };
+        } catch (error: any) {
+          console.error('[webhooks.asaas] Erro ao processar webhook:', error);
+          return { success: false, message: error.message };
+        }
+      }),
   }),
 });
 

@@ -19,6 +19,7 @@ import EmployeeReservas from "./pages/employee/Reservas";
 import EmployeeManutencoes from "./pages/employee/Manutencoes";
 import EmployeeAbastecimentos from "./pages/employee/Abastecimentos";
 import EmployeeVistorias from "./pages/employee/Vistorias";
+import MeusAbastecimentos from "./pages/MeusAbastecimentos";
 import RoleRedirect from "./components/RoleRedirect";
 
 function Router() {
@@ -40,6 +41,7 @@ function Router() {
       <Route path={"/employee/manutencoes"} component={EmployeeManutencoes} />
       <Route path={"/employee/abastecimentos"} component={EmployeeAbastecimentos} />
       <Route path={"/employee/vistorias"} component={EmployeeVistorias} />
+      <Route path={"/dashboard/meus-abastecimentos"} component={MeusAbastecimentos} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

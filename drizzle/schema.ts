@@ -166,13 +166,6 @@ export const fuelRecords = mysqlTable("fuel_records", {
   pricePerLiter: int("price_per_liter").notNull(), // Preço por litro em centavos
   totalAmount: int("total_amount").notNull(), // Valor total em centavos
   notes: text("notes"),
-  // Campos de integração Asaas
-  asaasChargeId: varchar("asaas_charge_id", { length: 100 }), // ID da cobrança no Asaas
-  paymentStatus: mysqlEnum("payment_status", ["pending", "paid", "cancelled", "overdue"]).default("pending").notNull(),
-  paidAt: timestamp("paid_at"), // Data do pagamento
-  dueDate: timestamp("due_date").notNull(), // Data de vencimento
-  receiptUrl: text("receipt_url"), // URL do comprovante (foto do cupom)
-  recordedBy: varchar("recorded_by", { length: 320 }).notNull(), // Email de quem registrou
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -199,20 +192,3 @@ export const inspections = mysqlTable("inspections", {
 
 export type Inspection = typeof inspections.$inferSelect;
 export type InsertInspection = typeof inspections.$inferInsert;
-
-/**
- * Fuel Budget table - stores monthly fuel budget and spending tracking
- * Admin only - tracks total budget, spent, and received per month
- */
-export const fuelBudget = mysqlTable("fuel_budget", {
-  id: int("id").autoincrement().primaryKey(),
-  monthYear: varchar("month_year", { length: 7 }).notNull().unique(), // "2025-12"
-  totalBudget: int("total_budget").notNull().default(0), // Orçamento total do mês em centavos
-  totalSpent: int("total_spent").notNull().default(0), // Total gasto em centavos
-  totalReceived: int("total_received").notNull().default(0), // Total recebido em centavos
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
-});
-
-export type FuelBudget = typeof fuelBudget.$inferSelect;
-export type InsertFuelBudget = typeof fuelBudget.$inferInsert;
