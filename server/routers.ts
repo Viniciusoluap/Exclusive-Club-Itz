@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
+import { webhookRouter } from "./webhookRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -42,6 +43,7 @@ const allowedClientProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 
 export const appRouter = router({
   system: systemRouter,
+  webhooks: webhookRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -1332,13 +1334,55 @@ Nenhuma reserva foi afetada.
         const fuelCost = Math.round((input.liters * input.pricePerLiter) * 100); // em centavos
         const totalAmount = fuelCost + SERVICE_FEE;
 
+        // Criar ou buscar cliente no Asaas
+        const asaas = await import('./_core/asaas');
+        let asaasCustomerId = '';
+        let asaasChargeId = '';
+        let paymentUrl = '';
+        
+        try {
+          const customer = await asaas.getOrCreateCustomer({
+            name: booking.client_name,
+            email: booking.client_email,
+          });
+          asaasCustomerId = customer.id;
+
+          // Criar cobrança no Asaas
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + 7); // Vencimento em 7 dias
+          
+          const charge = await asaas.createCharge({
+            customer: asaasCustomerId,
+            billingType: 'UNDEFINED', // Cliente escolhe forma de pagamento
+            value: totalAmount / 100, // Converter centavos para reais
+            dueDate: asaas.formatDateForAsaas(dueDate),
+            description: `Abastecimento - ${booking.vessel_name_actual} - ${input.liters}L`,
+            externalReference: `booking_${input.bookingId}`,
+          });
+          
+          asaasChargeId = charge.id;
+          paymentUrl = charge.invoiceUrl || charge.bankSlipUrl || '';
+        } catch (error) {
+          console.error('[Asaas] Erro ao criar cobrança:', error);
+          // Continua mesmo se falhar - admin pode criar cobrança manualmente
+        }
+
         const notesValue = input.notes ? `'${input.notes.replace(/'/g, "''")}'` : 'NULL';
+        const asaasChargeIdValue = asaasChargeId ? `'${asaasChargeId}'` : 'NULL';
+        const asaasCustomerIdValue = asaasCustomerId ? `'${asaasCustomerId}'` : 'NULL';
+        const paymentUrlValue = paymentUrl ? `'${paymentUrl}'` : 'NULL';
+        
         await database.execute(`
-          INSERT INTO fuel_records (booking_id, vessel_id, vessel_name, client_email, client_name, liters, price_per_liter, total_amount, notes)
-          VALUES (${input.bookingId}, ${input.vesselId}, '${booking.vessel_name_actual}', '${booking.client_email}', '${booking.client_name}', ${litersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${notesValue})
+          INSERT INTO fuel_records (booking_id, vessel_id, vessel_name, client_email, client_name, liters, price_per_liter, total_amount, notes, asaas_charge_id, asaas_customer_id, payment_url, payment_status)
+          VALUES (${input.bookingId}, ${input.vesselId}, '${booking.vessel_name_actual}', '${booking.client_email}', '${booking.client_name}', ${litersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${notesValue}, ${asaasChargeIdValue}, ${asaasCustomerIdValue}, ${paymentUrlValue}, 'pending')
         `); 
 
-        return { success: true, totalCost: totalAmount / 100 };
+        return { 
+          success: true, 
+          totalCost: totalAmount / 100,
+          paymentUrl: paymentUrl || undefined,
+          asaasChargeId: asaasChargeId || undefined,
+        };
       }),
 
     list: publicProcedure
