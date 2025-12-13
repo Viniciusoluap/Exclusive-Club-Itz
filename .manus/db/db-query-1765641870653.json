@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS fuel_budget (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  month_year VARCHAR(7) NOT NULL UNIQUE,\n  total_budget INT NOT NULL DEFAULT 0,\n  total_spent INT NOT NULL DEFAULT 0,\n  total_received INT NOT NULL DEFAULT 0,\n  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute CREATE TABLE IF NOT EXISTS fuel_budget (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  month_year VARCHAR(7) NOT NULL UNIQUE,\n  total_budget INT NOT NULL DEFAULT 0,\n  total_spent INT NOT NULL DEFAULT 0,\n  total_received INT NOT NULL DEFAULT 0,\n  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 226
+}

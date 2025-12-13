@@ -1,0 +1,8 @@
+{
+  "query": "ALTER TABLE fuel_records \nADD COLUMN asaas_charge_id VARCHAR(100) NULL AFTER notes,\nADD COLUMN payment_status ENUM('pending', 'paid', 'cancelled', 'overdue') NOT NULL DEFAULT 'pending' AFTER asaas_charge_id,\nADD COLUMN paid_at TIMESTAMP NULL AFTER payment_status,\nADD COLUMN due_date TIMESTAMP NOT NULL AFTER paid_at,\nADD COLUMN receipt_url TEXT NULL AFTER due_date,\nADD COLUMN recorded_by VARCHAR(320) NOT NULL AFTER receipt_url",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute ALTER TABLE fuel_records \nADD COLUMN asaas_charge_id VARCHAR(100) NULL AFTER notes,\nADD COLUMN payment_status ENUM('pending', 'paid', 'cancelled', 'overdue') NOT NULL DEFAULT 'pending' AFTER asaas_charge_id,\nADD COLUMN paid_at TIMESTAMP NULL AFTER payment_status,\nADD COLUMN due_date TIMESTAMP NOT NULL AFTER paid_at,\nADD COLUMN receipt_url TEXT NULL AFTER due_date,\nADD COLUMN recorded_by VARCHAR(320) NOT NULL AFTER receipt_url",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'asaas_charge_id' in 'fuel_records'"
+  ]
+}
