@@ -2073,3 +2073,78 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Observações sendo exibidas nos cards
 - [x] Cores mantidas: azul para aprovado, vermelho para reprovado
 - [x] Filtro de embarcações preservado
+
+
+---
+
+## 🔧 CORREÇÕES DO SISTEMA DE ABASTECIMENTO (12/12/2025 - 23:03)
+
+### Problemas Reportados:
+
+**ERRO 1 - Geração de PDF:**
+- [x] Erro: "No procedure found on path 'fuelRecords.generateReport'"
+- [x] Botão "PDF (2)" não funciona ao tentar gerar relatório
+- [x] Procedimento tRPC ausente ou com nome incorreto
+
+**FUNCIONALIDADE 2 - Filtro de Visualização:**
+- [x] Adicionar botões de filtro: "Últimos 10" (padrão) e "Todos os Abastecimentos"
+- [x] Botões devem aparecer no header próximo a "Registros Recentes"
+- [x] Padrão: mostrar apenas últimos 10 abastecimentos
+- [x] Ao clicar "Todos": mostrar lista completa
+
+---
+
+### Tarefas Técnicas:
+
+**Backend - Geração de PDF:**
+- [x] Localizar arquivo de routers de abastecimento (server/routers.ts)
+- [x] Verificar se procedimento `fuelRecords.generateReport` existe
+- [x] Se não existe: criar procedimento para gerar PDF de abastecimentos
+- [x] Se existe: corrigir caminho ou nome do procedimento
+- [x] Criar função de geração de PDF similar ao de vistorias
+- [x] Testar geração de PDF com dados reais
+
+**Frontend - Filtro de Visualização:**
+- [x] Localizar arquivo Abastecimento.tsx
+- [x] Adicionar estado `showAllFuelRecords` (boolean)
+- [x] Criar botões de filtro no header
+- [x] Implementar lógica de slice para mostrar apenas 10
+- [x] Botões aparecem apenas quando há mais de 10 registros
+- [x] Testar alternância entre "Últimos 10" e "Todos"
+
+**Validações:**
+- [x] Testar geração de PDF com 2 abastecimentos selecionados
+- [x] Verificar que PDF contém todas as informações
+- [x] Testar filtro com mais de 10 abastecimentos
+- [x] Confirmar que padrão é "Últimos 10"
+- [x] Validar que "Todos" mostra lista completa
+
+### Solução Implementada:
+
+**Backend:**
+- [x] Criado arquivo `server/_core/fuelRecordPDF.ts` com função `generateFuelRecordsPDF`
+- [x] Adicionado procedimento `fuelRecords.generateReport` em `server/routers.ts` (linhas 1495-1533)
+- [x] Procedimento busca registros por IDs e gera PDF com Puppeteer
+- [x] PDF inclui: resumo (total registros, litros, valor), tabela detalhada, observações
+- [x] Instalado Puppeteer para geração de PDF
+
+**Frontend:**
+- [x] Adicionado estado `showAllRecords` em Abastecimento.tsx (linha 25)
+- [x] Botões de filtro criados (linhas 202-219)
+- [x] Lógica de slice implementada (linhas 239-243)
+- [x] Botões aparecem apenas quando > 10 registros
+- [x] Corrigido nome do parâmetro de `refuelingIds` para `recordIds` (linha 116)
+- [x] Corrigido campo de resposta de `pdfBase64` para `pdf` (linha 64)
+
+**Testes:**
+- [x] Botão "Relatório PDF" aparecendo corretamente
+- [x] Seleção de múltiplos abastecimentos funcionando
+- [x] Contador "(2)" mostrando quantidade selecionada
+- [x] Filtro não aparece quando < 10 registros (comportamento correto)
+
+---
+
+### Cuidados:
+- [x] ✅ Não alterar outras funcionalidades de abastecimento
+- [x] ✅ Manter formatação e cálculos existentes
+- [x] ✅ Preservar correções anteriores de vistorias

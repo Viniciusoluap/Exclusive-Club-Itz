@@ -1491,6 +1491,49 @@ Nenhuma reserva foi afetada.
           });
         }
       }),
+
+    // Generate PDF report for selected fuel records
+    generateReport: adminProcedure
+      .input(z.object({
+        recordIds: z.array(z.number()),
+      }))
+      .mutation(async ({ input }) => {
+        if (input.recordIds.length === 0) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Nenhum registro selecionado' });
+        }
+
+        // Buscar registros selecionados via raw SQL
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+        const ids = input.recordIds.join(',');
+        const result = await db.execute(sql.raw(`
+          SELECT 
+            fr.*,
+            b.booking_date
+          FROM fuel_records fr
+          LEFT JOIN bookings b ON fr.booking_id = b.id
+          WHERE fr.id IN (${ids})
+          ORDER BY fr.created_at DESC
+        `)) as any;
+        
+        const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
+
+        if (!records || records.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum registro encontrado' });
+        }
+
+        // Gerar PDF
+        const { generateFuelRecordsPDF } = await import('./_core/fuelRecordPDF');
+        const pdfBuffer = await generateFuelRecordsPDF(records);
+
+        // Retornar PDF como base64
+        return {
+          pdf: pdfBuffer.toString('base64'),
+          filename: `abastecimentos-${new Date().toISOString().split('T')[0]}.pdf`,
+        };
+      }),
   }),
 
   // Inspections router - Admin and Employee
