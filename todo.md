@@ -2494,3 +2494,23 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 ✅ 2/2 testes de PDF passando
 ✅ Sem dependências de Chromium/Puppeteer
 ✅ Todos os dados aparecem corretamente nos PDFs
+
+---
+
+## 🐛 Bug Reportado - Seleção de Vistorias (13/12/2025) ✅ RESOLVIDO
+
+### Botão "Selecionar Todas" não respeita filtro ativo
+- [x] Problema: Botão seleciona TODAS as vistorias, ignorando filtro
+- [x] Comportamento esperado:
+  * Filtro "Últimas 4" → Selecionar apenas as 4 visíveis
+  * Filtro "Mostrar Todas" → Selecionar todas as vistorias
+- [x] Corrigir função handleSelectAll em Vistorias.tsx
+- [x] Usar displayInspections (filtradas) ao invés de inspections completo
+- [x] Testar com ambos os filtros ativos
+
+**Solução Implementada:**
+- [x] Criado `useMemo` para calcular `displayedInspections` (linhas 132-140)
+- [x] Reescrito `toggleSelectAll` para usar apenas vistorias filtradas (linhas 142-162)
+- [x] Removido cálculo duplicado no render
+- [x] Teste automatizado criado e passando (2/2 testes)
+- [x] Lógica validada: mantém seleções fora do filtro ativo

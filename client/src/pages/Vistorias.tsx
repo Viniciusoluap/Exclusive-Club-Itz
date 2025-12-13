@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,11 +128,36 @@ export default function Vistorias() {
     );
   };
 
+  // Calcular vistorias exibidas com base no filtro
+  const displayedInspections = useMemo(() => {
+    if (!inspections) return [];
+    const sortedInspections = [...inspections].sort((a: any, b: any) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return dateB - dateA; // Mais recente primeiro
+    });
+    return showAllInspections ? sortedInspections : sortedInspections.slice(0, 4);
+  }, [inspections, showAllInspections]);
+
   const toggleSelectAll = () => {
-    if (selectedInspections.length === inspections?.length) {
-      setSelectedInspections([]);
+    // Usar displayedInspections (filtradas) ao invés de inspections (todas)
+    const displayedIds = displayedInspections.map((i: any) => i.id);
+    const allDisplayedSelected = displayedIds.every(id => selectedInspections.includes(id));
+    
+    if (allDisplayedSelected) {
+      // Desmarcar apenas as vistorias exibidas
+      setSelectedInspections(prev => prev.filter(id => !displayedIds.includes(id)));
     } else {
-      setSelectedInspections(inspections?.map((i: any) => i.id) || []);
+      // Selecionar apenas as vistorias exibidas
+      setSelectedInspections(prev => {
+        const newSelection = [...prev];
+        displayedIds.forEach(id => {
+          if (!newSelection.includes(id)) {
+            newSelection.push(id);
+          }
+        });
+        return newSelection;
+      });
     }
   };
 
@@ -315,20 +340,7 @@ export default function Vistorias() {
           </Card>
         ) : (
           <div className="grid gap-4">
-            {(() => {
-              // Ordenar por data mais recente primeiro
-              const sortedInspections = [...inspections].sort((a: any, b: any) => {
-                const dateA = new Date(a.createdAt).getTime();
-                const dateB = new Date(b.createdAt).getTime();
-                return dateB - dateA; // Mais recente primeiro
-              });
-              
-              // Aplicar filtro de visualização (últimas 4 ou todas)
-              const displayedInspections = showAllInspections 
-                ? sortedInspections 
-                : sortedInspections.slice(0, 4);
-              
-              return displayedInspections.map((inspection: any) => {
+            {displayedInspections.map((inspection: any) => {
               // inspectionData already comes as object from backend
               const formData = inspection.inspectionData || {};
               const approvedCount = Object.values(formData).filter(v => v === 'APROVADO').length;
@@ -393,8 +405,7 @@ export default function Vistorias() {
                   </CardContent>
                 </Card>
               );
-            });
-            })()}
+            })}
           </div>
         )}
       </div>
