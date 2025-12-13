@@ -263,7 +263,8 @@ export async function generateInspectionPDF(data: InspectionData): Promise<Buffe
   
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/lib/chromium-browser/chromium-browser',
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
   });
 
   try {
