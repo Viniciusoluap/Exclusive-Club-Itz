@@ -64,6 +64,7 @@ export default function Vistorias() {
   const [selectedInspections, setSelectedInspections] = useState<number[]>([]);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [emailRecipient, setEmailRecipient] = useState("");
+  const [showAllInspections, setShowAllInspections] = useState(false);
 
   const trpcAny = trpc as any;
   const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas reservas utilizadas
@@ -274,17 +275,37 @@ export default function Vistorias() {
 
       {/* Recent Inspections */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="text-xl font-semibold">Vistorias Recentes</h2>
-          {inspections && inspections.length > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={toggleSelectAll}
-            >
-              {selectedInspections.length === inspections.length ? 'Desmarcar Todas' : 'Selecionar Todas'}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {inspections && inspections.length > 4 && (
+              <div className="flex gap-1 border rounded-md p-1">
+                <Button 
+                  variant={!showAllInspections ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setShowAllInspections(false)}
+                >
+                  Últimas 4
+                </Button>
+                <Button 
+                  variant={showAllInspections ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setShowAllInspections(true)}
+                >
+                  Mostrar Todas
+                </Button>
+              </div>
+            )}
+            {inspections && inspections.length > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={toggleSelectAll}
+              >
+                {selectedInspections.length === inspections.length ? 'Desmarcar Todas' : 'Selecionar Todas'}
+              </Button>
+            )}
+          </div>
         </div>
         {!inspections || inspections.length === 0 ? (
           <Card>
@@ -294,7 +315,20 @@ export default function Vistorias() {
           </Card>
         ) : (
           <div className="grid gap-4">
-            {inspections.map((inspection: any) => {
+            {(() => {
+              // Ordenar por data mais recente primeiro
+              const sortedInspections = [...inspections].sort((a: any, b: any) => {
+                const dateA = new Date(a.createdAt).getTime();
+                const dateB = new Date(b.createdAt).getTime();
+                return dateB - dateA; // Mais recente primeiro
+              });
+              
+              // Aplicar filtro de visualização (últimas 4 ou todas)
+              const displayedInspections = showAllInspections 
+                ? sortedInspections 
+                : sortedInspections.slice(0, 4);
+              
+              return displayedInspections.map((inspection: any) => {
               // inspectionData already comes as object from backend
               const formData = inspection.inspectionData || {};
               const approvedCount = Object.values(formData).filter(v => v === 'APROVADO').length;
@@ -359,7 +393,8 @@ export default function Vistorias() {
                   </CardContent>
                 </Card>
               );
-            })}
+            });
+            })()}
           </div>
         )}
       </div>
@@ -411,15 +446,15 @@ export default function Vistorias() {
                 />
               </div>
 
-              {/* Client Name */}
+              {/* Inspector Name */}
               <div className="grid gap-2">
-                <Label htmlFor="clientName">Nome do Cliente *</Label>
+                <Label htmlFor="clientName">Nome do Vistoriador *</Label>
                 <Input
                   id="clientName"
                   type="text"
+                  placeholder="Nome de quem está fazendo a vistoria"
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Nome do cliente que usou"
                   required
                 />
               </div>
