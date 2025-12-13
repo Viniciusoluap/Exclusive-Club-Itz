@@ -1478,6 +1478,8 @@ Nenhuma reserva foi afetada.
         vesselId: z.number().optional(),
         startDate: z.number().optional(),
         endDate: z.number().optional(),
+        month: z.number().min(1).max(12).optional(), // Mês (1-12)
+        year: z.number().min(2020).max(2030).optional(), // Ano
       }))
       .query(async ({ input, ctx }) => {
         // Allow admin and employee to access
@@ -1507,12 +1509,19 @@ Nenhuma reserva foi afetada.
           queryStr += ` AND fr.vessel_id = ${input.vesselId}`;
         }
 
-        if (input.startDate) {
-          queryStr += ` AND fr.created_at >= FROM_UNIXTIME(${input.startDate / 1000})`;
-        }
+        // Se month e year forem fornecidos, filtrar por mês/ano
+        if (input.month && input.year) {
+          queryStr += ` AND MONTH(fr.created_at) = ${input.month}`;
+          queryStr += ` AND YEAR(fr.created_at) = ${input.year}`;
+        } else {
+          // Caso contrário, usar startDate/endDate se fornecidos
+          if (input.startDate) {
+            queryStr += ` AND fr.created_at >= FROM_UNIXTIME(${input.startDate / 1000})`;
+          }
 
-        if (input.endDate) {
-          queryStr += ` AND fr.created_at <= FROM_UNIXTIME(${input.endDate / 1000})`;
+          if (input.endDate) {
+            queryStr += ` AND fr.created_at <= FROM_UNIXTIME(${input.endDate / 1000})`;
+          }
         }
 
         queryStr += ' ORDER BY fr.created_at DESC';
@@ -1556,6 +1565,8 @@ Nenhuma reserva foi afetada.
         vesselId: z.number().optional(),
         startDate: z.number().optional(),
         endDate: z.number().optional(),
+        month: z.number().min(1).max(12).optional(), // Mês (1-12)
+        year: z.number().min(2020).max(2030).optional(), // Ano
       }))
       .query(async ({ input, ctx }) => {
         // Allow admin and employee to access
@@ -1569,9 +1580,11 @@ Nenhuma reserva foi afetada.
           SELECT 
             COUNT(*) as total_records,
             SUM(liters) as total_liters,
-            SUM(total_cost) as total_cost,
+            SUM(total_amount) as total_cost,
             AVG(liters) as avg_liters_per_refuel,
-            AVG(price_per_liter) as avg_price_per_liter
+            AVG(price_per_liter) as avg_price_per_liter,
+            SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) as total_received,
+            SUM(CASE WHEN payment_status = 'pending' THEN total_amount ELSE 0 END) as total_pending
           FROM fuel_records
           WHERE 1=1
         `;
@@ -1582,14 +1595,21 @@ Nenhuma reserva foi afetada.
           params.push(input.vesselId);
         }
 
-        if (input.startDate) {
-          query += ' AND recorded_at >= FROM_UNIXTIME(?)';
-          params.push(input.startDate / 1000);
-        }
+        // Se month e year forem fornecidos, filtrar por mês/ano
+        if (input.month && input.year) {
+          query += ` AND MONTH(created_at) = ${input.month}`;
+          query += ` AND YEAR(created_at) = ${input.year}`;
+        } else {
+          // Caso contrário, usar startDate/endDate se fornecidos
+          if (input.startDate) {
+            query += ' AND created_at >= FROM_UNIXTIME(?)';
+            params.push(input.startDate / 1000);
+          }
 
-        if (input.endDate) {
-          query += ' AND recorded_at <= FROM_UNIXTIME(?)';
-          params.push(input.endDate / 1000);
+          if (input.endDate) {
+            query += ' AND created_at <= FROM_UNIXTIME(?)';
+            params.push(input.endDate / 1000);
+          }
         }
 
         const { sql: sqlTag } = await import('drizzle-orm');
@@ -1599,9 +1619,11 @@ Nenhuma reserva foi afetada.
         return {
           totalRecords: Number(stats.total_records) || 0,
           totalLiters: Number(stats.total_liters) || 0,
-          totalCost: Number(stats.total_cost) || 0,
-          avgLitersPerRefuel: Number(stats.avg_liters_per_refuel) || 0,
-          avgPricePerLiter: Number(stats.avg_price_per_liter) || 0,
+          totalCost: Number(stats.total_cost) / 100 || 0, // Converter centavos para reais
+          totalReceived: Number(stats.total_received) / 100 || 0, // Converter centavos para reais
+          totalPending: Number(stats.total_pending) / 100 || 0, // Converter centavos para reais
+          avgLitersPerRefuel: Number(stats.avg_liters_per_refuel) / 100 || 0,
+          avgPricePerLiter: Number(stats.avg_price_per_liter) / 100 || 0,
         };
       }),
 

@@ -1,0 +1,19 @@
+{
+  "query": "SELECT * FROM fuel_budget LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT * FROM fuel_budget LIMIT 5",
+  "rows": [
+    {
+      "id": "1",
+      "month_year": "2025-12",
+      "total_budget": "31400",
+      "total_spent": "0",
+      "total_received": "0",
+      "created_at": "2025-12-13 16:42:30",
+      "updated_at": "2025-12-13 19:22:52"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tmonth_year\ttotal_budget\ttotal_spent\ttotal_received\tcreated_at\tupdated_at\n1\t2025-12\t31400\t0\t0\t2025-12-13 16:42:30\t2025-12-13 19:22:52\n",
+  "stderr": "",
+  "execution_time_ms": 66
+}
