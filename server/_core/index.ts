@@ -35,6 +35,41 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+
+  // Upload receipt endpoint
+  app.post('/api/upload-receipt', async (req, res) => {
+    try {
+      const multer = await import('multer');
+      const upload = multer.default({ storage: multer.memoryStorage() });
+      
+      upload.single('file')(req, res, async (err: any) => {
+        if (err) {
+          console.error('[upload-receipt] Multer error:', err);
+          return res.status(400).json({ error: 'Erro ao processar arquivo' });
+        }
+
+        const file = (req as any).file;
+        if (!file) {
+          return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+        }
+
+        try {
+          const { storagePut } = await import('../storage');
+          const fileKey = `receipts/${Date.now()}-${file.originalname}`;
+          const { url } = await storagePut(fileKey, file.buffer, file.mimetype);
+          
+          res.json({ url });
+        } catch (uploadError: any) {
+          console.error('[upload-receipt] S3 upload error:', uploadError);
+          res.status(500).json({ error: 'Erro ao fazer upload para S3' });
+        }
+      });
+    } catch (error: any) {
+      console.error('[upload-receipt] Error:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

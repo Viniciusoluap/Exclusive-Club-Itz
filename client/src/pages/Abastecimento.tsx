@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText, Mail } from "lucide-react";
+import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText, Mail, DollarSign, AlertCircle, ExternalLink, Settings } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 
@@ -25,11 +25,19 @@ export default function Abastecimento() {
   const [showAllRecords, setShowAllRecords] = useState(false);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
+  const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
+  const [budgetAmount, setBudgetAmount] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+
+  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
 
   const trpcAny = trpc as any;
   const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas as últimas 6 reservas utilizadas
   const { data: fuelRecords, refetch } = trpcAny.fuelRecords?.list.useQuery({}) || { data: [] };
   const { data: vessels } = trpc.vessels.list.useQuery();
+  const { data: financialStats } = trpcAny.fuelRecords?.financialStats.useQuery({ monthYear: currentMonth }) || { data: null };
+  const { data: budget } = trpcAny.fuelBudget?.get.useQuery({ monthYear: currentMonth }) || { data: null };
 
   // Debug: ver se recentBookings está vindo
   console.log('[Abastecimento] recentBookings:', recentBookings);
@@ -90,11 +98,26 @@ export default function Abastecimento() {
     },
   });
 
+  const setBudgetMutation = trpcAny.fuelBudget?.set.useMutation({
+    onSuccess: () => {
+      toast.success('Orçamento configurado com sucesso!');
+      setIsBudgetDialogOpen(false);
+      setBudgetAmount("");
+      // Refetch stats to update dashboard
+      trpcAny.fuelRecords?.financialStats.refetch?.();
+      trpcAny.fuelBudget?.get.refetch?.();
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao configurar orçamento: ${error.message}`);
+    },
+  });
+
   const resetForm = () => {
     setSelectedBookingId(null);
     setLiters("");
     setPricePerLiter("");
     setNotes("");
+    setReceiptFile(null);
   };
 
   const handleDeleteClick = (id: number) => {
@@ -137,17 +160,48 @@ export default function Abastecimento() {
     generateReportMutation.mutate({ recordIds: selectedIds });
   };
 
-  const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!selectedBookingId) {
-      toast.error("Selecione uma reserva");
+      toast.error('Selecione uma reserva');
       return;
     }
 
     const booking = recentBookings?.find((b: any) => b.id === selectedBookingId);
     if (!booking) {
-      toast.error("Reserva não encontrada");
+      toast.error('Reserva não encontrada');
       return;
+    }
+
+    let receiptUrl: string | undefined = undefined;
+
+    // Upload do comprovante se existir
+    if (receiptFile) {
+      try {
+        setIsUploadingReceipt(true);
+        const formData = new FormData();
+        formData.append('file', receiptFile);
+
+        // Upload para S3 via endpoint do servidor
+        const response = await fetch('/api/upload-receipt', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Erro ao fazer upload do comprovante');
+        }
+
+        const data = await response.json();
+        receiptUrl = data.url;
+      } catch (error: any) {
+        toast.error(`Erro ao fazer upload: ${error.message}`);
+        setIsUploadingReceipt(false);
+        return;
+      } finally {
+        setIsUploadingReceipt(false);
+      }
     }
 
     createMutation.mutate({
@@ -156,6 +210,7 @@ export default function Abastecimento() {
       liters: parseFloat(liters),
       pricePerLiter: parseFloat(pricePerLiter),
       notes: notes || undefined,
+      receiptUrl,
     });
   };
 
@@ -232,6 +287,134 @@ export default function Abastecimento() {
         </div>
       </div>
 
+      {/* Financial Dashboard */}
+      {financialStats && (
+        <div className="mb-8 space-y-4">
+          {/* Cards de Resumo */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Cobrado</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">R$ {financialStats.totalBilled.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {financialStats.totalRecords} abastecimento(s)
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Recebido</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">R$ {financialStats.totalReceived.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">
+                  Pagamentos confirmados
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pendente</CardTitle>
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">R$ {financialStats.totalPending.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {financialStats.totalOverdue > 0 && `R$ ${financialStats.totalOverdue.toFixed(2)} vencido`}
+                  {financialStats.totalOverdue === 0 && 'Nenhum vencido'}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Saldo</CardTitle>
+                <DollarSign className={`h-4 w-4 ${financialStats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${financialStats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  R$ {financialStats.balance.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Recebido - Cobrado
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Orçamento Mensal */}
+          {financialStats.totalBudget > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Orçamento Mensal</CardTitle>
+                    <CardDescription>
+                      {new Date(currentMonth + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setIsBudgetDialogOpen(true)}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    Configurar
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Gasto: R$ {financialStats.totalBilled.toFixed(2)}</span>
+                    <span>Orçamento: R$ {financialStats.totalBudget.toFixed(2)}</span>
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-2.5">
+                    <div 
+                      className={`h-2.5 rounded-full ${
+                        financialStats.budgetUsagePercent > 90 ? 'bg-red-600' :
+                        financialStats.budgetUsagePercent > 70 ? 'bg-yellow-600' :
+                        'bg-green-600'
+                      }`}
+                      style={{ width: `${Math.min(financialStats.budgetUsagePercent, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {financialStats.budgetUsagePercent.toFixed(1)}% utilizado
+                  </p>
+                  {financialStats.budgetUsagePercent > 90 && (
+                    <div className="flex items-center gap-2 text-sm text-red-600 mt-2">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Atenção: Orçamento quase esgotado!</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Botão para configurar orçamento se não existir */}
+          {(!financialStats.totalBudget || financialStats.totalBudget === 0) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Orçamento Mensal</CardTitle>
+                <CardDescription>
+                  Configure um orçamento para acompanhar os gastos
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => setIsBudgetDialogOpen(true)}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configurar Orçamento
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
       {/* Recent Fuel Records */}
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -306,15 +489,55 @@ export default function Abastecimento() {
                           <div className="whitespace-nowrap">= R$ {(Number(record.liters) * Number(record.price_per_liter)).toFixed(2)}</div>
                           <div className="whitespace-nowrap">Taxa: R$ 10,00</div>
                         </div>
+                        {/* Badge de Status de Pagamento */}
+                        <div className="mt-2">
+                          {record.payment_status === 'paid' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              ✓ Pago
+                            </span>
+                          )}
+                          {record.payment_status === 'pending' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              ⏳ Pendente
+                            </span>
+                          )}
+                          {record.payment_status === 'overdue' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              ⚠ Vencido
+                            </span>
+                          )}
+                          {record.payment_status === 'cancelled' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              ✕ Cancelado
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteClick(record.id)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex flex-col gap-2">
+                        {/* Botão Ver Cobrança Asaas */}
+                        {record.asaas_charge_id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const asaasUrl = `https://www.asaas.com/c/${record.asaas_charge_id}`;
+                              window.open(asaasUrl, '_blank');
+                            }}
+                            className="whitespace-nowrap"
+                          >
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            Ver Cobrança
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteClick(record.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
@@ -423,6 +646,42 @@ export default function Abastecimento() {
                   rows={3}
                 />
               </div>
+
+              {/* Campo de Upload de Comprovante */}
+              <div className="grid gap-2">
+                <Label htmlFor="receipt">Comprovante (Foto do Cupom Fiscal)</Label>
+                <Input
+                  id="receipt"
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      // Validar tamanho (max 5MB)
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error('Arquivo muito grande. Tamanho máximo: 5MB');
+                        e.target.value = '';
+                        return;
+                      }
+                      // Validar tipo
+                      if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+                        toast.error('Formato inválido. Use imagem ou PDF');
+                        e.target.value = '';
+                        return;
+                      }
+                      setReceiptFile(file);
+                    }
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Formatos aceitos: JPG, PNG, PDF (máx. 5MB)
+                </p>
+                {receiptFile && (
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <span>✓ Arquivo selecionado: {receiptFile.name}</span>
+                  </div>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button 
@@ -435,9 +694,9 @@ export default function Abastecimento() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Registrar
+              <Button type="submit" disabled={createMutation.isPending || isUploadingReceipt}>
+                {(createMutation.isPending || isUploadingReceipt) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {isUploadingReceipt ? 'Enviando comprovante...' : 'Registrar'}
               </Button>
             </DialogFooter>
           </form>
@@ -494,6 +753,66 @@ export default function Abastecimento() {
             >
               {sendEmailMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Enviar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de configuração de orçamento */}
+      <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configurar Orçamento Mensal</DialogTitle>
+            <DialogDescription>
+              Defina o orçamento para {new Date(currentMonth + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="budget">Valor do Orçamento (R$) *</Label>
+              <Input
+                id="budget"
+                type="number"
+                step="0.01"
+                min="0"
+                value={budgetAmount}
+                onChange={(e) => setBudgetAmount(e.target.value)}
+                placeholder="0.00"
+                required
+              />
+            </div>
+            {financialStats && financialStats.totalBilled > 0 && (
+              <div className="bg-muted p-3 rounded-md text-sm">
+                <p className="text-muted-foreground">
+                  <strong>Gasto atual:</strong> R$ {financialStats.totalBilled.toFixed(2)}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setIsBudgetDialogOpen(false);
+                setBudgetAmount("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => {
+                const amount = parseFloat(budgetAmount);
+                if (!amount || amount <= 0) {
+                  toast.error('Informe um valor válido');
+                  return;
+                }
+                setBudgetMutation.mutate({ monthYear: currentMonth, totalBudget: amount });
+              }}
+              disabled={setBudgetMutation.isPending || !budgetAmount}
+            >
+              {setBudgetMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>

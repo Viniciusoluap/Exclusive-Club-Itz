@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,7 +59,6 @@ export default function Vistorias() {
   const [vesselType, setVesselType] = useState<'jetski' | 'lancha' | null>(null);
   const [inspectionDate, setInspectionDate] = useState(new Date().toISOString().split('T')[0]);
   const [clientName, setClientName] = useState("");
-  const [inspectorName, setInspectorName] = useState(""); // Nome de quem está fazendo a vistoria
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [selectedInspections, setSelectedInspections] = useState<number[]>([]);
@@ -129,36 +128,11 @@ export default function Vistorias() {
     );
   };
 
-  // Calcular vistorias exibidas com base no filtro
-  const displayedInspections = useMemo(() => {
-    if (!inspections) return [];
-    const sortedInspections = [...inspections].sort((a: any, b: any) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
-      return dateB - dateA; // Mais recente primeiro
-    });
-    return showAllInspections ? sortedInspections : sortedInspections.slice(0, 4);
-  }, [inspections, showAllInspections]);
-
   const toggleSelectAll = () => {
-    // Usar displayedInspections (filtradas) ao invés de inspections (todas)
-    const displayedIds = displayedInspections.map((i: any) => i.id);
-    const allDisplayedSelected = displayedIds.every(id => selectedInspections.includes(id));
-    
-    if (allDisplayedSelected) {
-      // Desmarcar apenas as vistorias exibidas
-      setSelectedInspections(prev => prev.filter(id => !displayedIds.includes(id)));
+    if (selectedInspections.length === inspections?.length) {
+      setSelectedInspections([]);
     } else {
-      // Selecionar apenas as vistorias exibidas
-      setSelectedInspections(prev => {
-        const newSelection = [...prev];
-        displayedIds.forEach(id => {
-          if (!newSelection.includes(id)) {
-            newSelection.push(id);
-          }
-        });
-        return newSelection;
-      });
+      setSelectedInspections(inspections?.map((i: any) => i.id) || []);
     }
   };
 
@@ -183,7 +157,6 @@ export default function Vistorias() {
     setVesselType(null);
     setInspectionDate(new Date().toISOString().split('T')[0]);
     setClientName("");
-    setInspectorName("");
     setFormData({});
     setNotes("");
   };
@@ -222,11 +195,6 @@ export default function Vistorias() {
       return;
     }
 
-    if (!inspectorName.trim()) {
-      toast.error("Preencha o nome do vistoriador");
-      return;
-    }
-
     const booking = recentBookings?.find((b: any) => b.id === selectedBookingId);
     if (!booking) {
       toast.error("Reserva não encontrada");
@@ -245,8 +213,7 @@ export default function Vistorias() {
       bookingId: selectedBookingId,
       vesselId: booking.vesselId,
       vesselType,
-      clientName, // Nome do cliente (da reserva)
-      inspectorName, // Nome de quem está fazendo a vistoria
+      clientName,
       formData,
       observations: notes || undefined,
     });
@@ -348,7 +315,20 @@ export default function Vistorias() {
           </Card>
         ) : (
           <div className="grid gap-4">
-            {displayedInspections.map((inspection: any) => {
+            {(() => {
+              // Ordenar por data mais recente primeiro
+              const sortedInspections = [...inspections].sort((a: any, b: any) => {
+                const dateA = new Date(a.createdAt).getTime();
+                const dateB = new Date(b.createdAt).getTime();
+                return dateB - dateA; // Mais recente primeiro
+              });
+              
+              // Aplicar filtro de visualização (últimas 4 ou todas)
+              const displayedInspections = showAllInspections 
+                ? sortedInspections 
+                : sortedInspections.slice(0, 4);
+              
+              return displayedInspections.map((inspection: any) => {
               // inspectionData already comes as object from backend
               const formData = inspection.inspectionData || {};
               const approvedCount = Object.values(formData).filter(v => v === 'APROVADO').length;
@@ -413,7 +393,8 @@ export default function Vistorias() {
                   </CardContent>
                 </Card>
               );
-            })}
+            });
+            })()}
           </div>
         )}
       </div>
@@ -467,13 +448,13 @@ export default function Vistorias() {
 
               {/* Inspector Name */}
               <div className="grid gap-2">
-                <Label htmlFor="inspectorName">Nome do Vistoriador *</Label>
+                <Label htmlFor="clientName">Nome do Vistoriador *</Label>
                 <Input
-                  id="inspectorName"
+                  id="clientName"
                   type="text"
                   placeholder="Nome de quem está fazendo a vistoria"
-                  value={inspectorName}
-                  onChange={(e) => setInspectorName(e.target.value)}
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
                   required
                 />
               </div>
