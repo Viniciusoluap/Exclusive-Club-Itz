@@ -297,7 +297,7 @@ export default function Vistorias() {
             {inspections.map((inspection: any) => {
               // inspectionData already comes as object from backend
               const formData = inspection.inspectionData || {};
-              const approvedCount = Object.values(formData).filter(v => v === 'aprovado').length;
+              const approvedCount = Object.values(formData).filter(v => v === 'APROVADO').length;
               const totalFields = Object.keys(formData).length;
               const failedCount = totalFields - approvedCount;
               const isFullyApproved = failedCount === 0;
@@ -324,12 +324,12 @@ export default function Vistorias() {
                       <div className="flex items-start gap-4">
                         <div className="text-right flex-1">
                           {isFullyApproved ? (
-                            <div className="flex items-center gap-2 text-green-600">
+                            <div className="flex items-center gap-2 text-blue-600">
                               <CheckCircle2 className="w-5 h-5" />
                               <span className="font-semibold">Aprovado</span>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2 text-amber-600">
+                            <div className="flex items-center gap-2 text-red-600">
                               <XCircle className="w-5 h-5" />
                               <span className="font-semibold">
                                 Reprovado {failedCount}
