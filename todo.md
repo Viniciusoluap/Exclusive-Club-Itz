@@ -2148,3 +2148,130 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] ✅ Não alterar outras funcionalidades de abastecimento
 - [x] ✅ Manter formatação e cálculos existentes
 - [x] ✅ Preservar correções anteriores de vistorias
+
+
+---
+
+## 🔄 ALTERAÇÕES DO SISTEMA DE RESERVAS (12/12/2025 - 23:14)
+
+### Solicitações do Usuário:
+
+**ALTERAÇÃO 1 - Filtro de Reservas Passadas:**
+- [ ] Renomear "Passadas (últimas 20)" para "Reservas Passadas"
+- [ ] Remover limite de 20 reservas
+- [ ] Mostrar TODAS as reservas passadas do banco de dados
+- [ ] Filtro "Futuras" permanece inalterado
+
+**ALTERAÇÃO 2 - Botão de Cancelar Reserva:**
+- [ ] Adicionar botão/ícone "Cancelar Reserva" em cada card
+- [ ] Cancelar muda status para "Cancelada" (não deleta do banco)
+- [ ] Diferente do ícone de lixeira (que deleta permanentemente)
+- [ ] Funcionalidades existentes permanecem: Status, Marcar como Usada, Deletar
+
+---
+
+### Tarefas Técnicas:
+
+**Frontend (Admin.tsx ou Reservas.tsx):**
+- [ ] Localizar arquivo da página de reservas
+- [ ] Encontrar botão "Passadas (últimas 20)"
+- [ ] Renomear label para "Reservas Passadas"
+- [ ] Remover lógica de slice/limit de 20 registros
+- [ ] Adicionar ícone de cancelar (XCircle ou Ban) ao lado do lixeiro
+- [ ] Criar handler para cancelar reserva
+
+**Backend (server/routers.ts):**
+- [ ] Verificar se existe procedimento de cancelar reserva
+- [ ] Se não existe: criar procedimento `bookings.cancel`
+- [ ] Procedimento deve atualizar status para "cancelled"
+- [ ] Não deletar registro do banco
+
+**Validações:**
+- [ ] Testar filtro "Reservas Passadas" mostra todas
+- [ ] Verificar que não há limite de 20
+- [ ] Testar cancelar reserva confirmada
+- [ ] Verificar que status muda para "Cancelada"
+- [ ] Confirmar que registro não é deletado
+- [ ] Testar que deletar ainda funciona (ícone lixeira)
+
+### Cuidados:
+- [ ] ✅ Manter filtro "Futuras" inalterado
+- [ ] ✅ Preservar funcionalidades: Status, Marcar como Usada, Deletar
+- [ ] ✅ Não alterar outras páginas do sistema
+
+
+---
+
+## 🔄 ALTERAÇÕES DO SISTEMA DE RESERVAS (12/12/2025 - 23:12)
+
+### Problemas Reportados:
+
+**ALTERAÇÃO 1 - Renomear Filtro:**
+- [x] Texto do botão: "Passadas (últimas 20)" → "Reservas Passadas"
+- [x] Comportamento: Mostrar TODAS as reservas passadas (remover limite de 20)
+- [x] Filtro "Futuras" permanece inalterado
+
+**ALTERAÇÃO 2 - Adicionar Botão de Cancelar:**
+- [x] Adicionar botão/ícone "Cancelar Reserva" em cada card
+- [x] Deve aparecer ao lado do ícone de lixeira
+- [x] Muda status para "Cancelada" (sem deletar do banco)
+- [x] Diferente do ícone de lixeira (que deleta permanentemente)
+- [x] Apenas em reservas com status "Confirmada"
+
+---
+
+### Tarefas Técnicas:
+
+**Frontend (Admin.tsx):**
+- [x] Localizar linha 707 com texto "Passadas (últimas 20)"
+- [x] Renomear para "Reservas Passadas"
+- [x] Localizar seção de botões de ação em cada card (linhas 751-776)
+- [x] Adicionar botão de cancelar entre "Marcar como Usada" e lixeira
+- [x] Usar ícone X (lucide-react)
+- [x] Estilo: outline com cor laranja/amarela
+- [x] Confirmação: "Tem certeza que deseja cancelar esta reserva?"
+- [x] Chamar updateBookingStatus.mutate({ id, status: "cancelled" })
+
+**Backend (routers.ts):**
+- [x] Localizar procedimento listAll de bookings (linha 350-387)
+- [x] Linha 382: Remover "LIMIT 20" da query de reservas passadas
+- [x] Manter ordenação DESC (mais recente primeiro)
+- [x] Verificar que procedimento updateBookingStatus aceita status "cancelled"
+
+**Validações:**
+- [x] Testar filtro "Reservas Passadas" mostra todas (> 20 se houver)
+- [x] Testar botão de cancelar em reserva confirmada
+- [x] Verificar que status muda para "Cancelada" (badge vermelho)
+- [x] Confirmar que reserva NÃO é deletada do banco
+- [x] Testar que botão de lixeira ainda deleta permanentemente
+- [x] Verificar que botão de cancelar só aparece em "Confirmada"
+
+### Solução Implementada:
+
+**Frontend (Admin.tsx):**
+- [x] Linha 707: Texto alterado para "📜 Reservas Passadas"
+- [x] Linhas 765-781: Botão de cancelar adicionado
+- [x] Ícone X (lucide-react) com cor laranja (text-orange-600)
+- [x] Confirmação antes de cancelar
+- [x] Chama updateBookingStatus.mutate({ id, status: "cancelled" })
+- [x] Aparece apenas quando status === "confirmed"
+
+**Backend (routers.ts):**
+- [x] Linha 381-382: Removido "LIMIT 20" da query
+- [x] Comentário atualizado: "Passadas: data < hoje, ordenadas da mais recente"
+- [x] Ordenação DESC mantida
+- [x] Procedimento updateBookingStatus já aceita status "cancelled"
+
+**Testes Visuais:**
+- [x] Filtro "Reservas Passadas" renomeado corretamente
+- [x] 6+ reservas passadas exibidas (sem limite)
+- [x] Botão X laranja aparecendo em reservas confirmadas
+- [x] Botão posicionado entre "Marcar como Usada" e lixeira
+- [x] Status "Cancelada" em vermelho preservado
+- [x] Todas as funcionalidades anteriores preservadas
+
+### Cuidados:
+- [x] ✅ Preservar funcionalidades existentes (marcar como usada, deletar)
+- [x] ✅ Não alterar filtro "Futuras"
+- [x] ✅ Manter cores de status (verde, azul, vermelho)
+- [x] ✅ Não quebrar correções anteriores

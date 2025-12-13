@@ -704,7 +704,7 @@ export default function Admin() {
                     size="sm"
                     onClick={() => setBookingTimeFilter("past")}
                   >
-                    📜 Passadas (últimas 20)
+                    📜 Reservas Passadas
                   </Button>
                 </div>
               </CardHeader>
@@ -760,6 +760,23 @@ export default function Admin() {
                               }
                             >
                               Marcar como Usada
+                            </Button>
+                          )}
+                          {booking.status === "confirmed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-orange-600 hover:text-orange-700 border-orange-300"
+                              onClick={() => {
+                                if (confirm("Tem certeza que deseja cancelar esta reserva?")) {
+                                  updateBookingStatus.mutate({
+                                    id: booking.id,
+                                    status: "cancelled",
+                                  });
+                                }
+                              }}
+                            >
+                              <X className="h-4 w-4" />
                             </Button>
                           )}
                           <Button
