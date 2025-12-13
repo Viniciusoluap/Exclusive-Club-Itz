@@ -1,4 +1,5 @@
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 
 interface FuelRecordData {
   id: number;
@@ -199,9 +200,9 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
   const html = generateFuelRecordsHTML(records);
   
   const browser = await puppeteer.launch({
+    args: chromium.args,
+    executablePath: await chromium.executablePath(),
     headless: true,
-    executablePath: '/usr/lib/chromium-browser/chromium-browser',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
   });
 
   try {

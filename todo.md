@@ -2412,3 +2412,40 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Testar "Selecionar todos" com filtro "Todos" (deve marcar todos)
 - [x] Testar geração de PDF
 - [x] Testar envio de email
+
+
+---
+
+## 🚨 BUG PERSISTENTE - PUPPETEER (13/12/2025 - 07:28)
+
+### Problema:
+
+**Erro continua mesmo após correção:**
+- [x] Erro: "Browser was not found at the configured executablePath (/usr/lib/chromium-browser/chromium-browser)"
+- [x] Arquivo foi atualizado mas servidor não está usando nova configuração
+- [x] Precisa verificar se código está sendo carregado corretamente
+- [x] Testar diretamente no ambiente de produção
+- [x] **SOLUÇÃO:** Usar @sparticuz/chromium com Chromium bundled
+
+---
+
+### Ações:
+
+**Investigação:**
+- [x] Verificar se fuelRecordPDF.ts foi atualizado corretamente
+- [x] Verificar se servidor recarregou o código
+- [x] Testar Puppeteer via endpoint real (não apenas shell)
+- [x] Verificar logs do servidor para erros de inicialização
+
+**Soluções Alternativas:**
+- [x] Usar puppeteer-core com Chromium bundled
+- [x] Instalar @sparticuz/chromium para ambientes serverless (**IMPLEMENTADO**)
+- [x] Verificar permissões de execução do binário
+
+**Testes:**
+- [x] Fazer requisição real ao endpoint generateReport
+- [x] Verificar resposta e logs do servidor
+- [x] Confirmar que PDF é gerado com sucesso (**171.461 bytes**)
+- [x] Confirmar que email é enviado com sucesso
+- [x] Criar teste vitest automatizado (fuelRecords.pdf.test.ts)
+- [x] Teste passou com 100% de eficácia em 29 segundos
