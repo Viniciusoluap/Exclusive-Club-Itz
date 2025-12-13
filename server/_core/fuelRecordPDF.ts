@@ -28,7 +28,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
       doc.on('error', reject);
 
       // Cabeçalho
-      doc.fontSize(24).fillColor('#0891b2').text('⚓ EXCLUSIVE CLUB', { align: 'center' });
+      doc.fontSize(24).fillColor('#0891b2').text('EXCLUSIVE CLUB', { align: 'center' });
       doc.moveDown(0.3);
       doc.fontSize(18).fillColor('#1f2937').text('Relatório de Abastecimentos', { align: 'center' });
       doc.moveDown(0.2);
@@ -42,12 +42,13 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
       // Resumo
       const totalLiters = records.reduce((sum, r) => sum + r.liters, 0) / 100;
       const totalAmount = records.reduce((sum, r) => sum + r.totalAmount, 0) / 100;
+      const totalFees = records.length * 10.00; // Taxa fixa de R$ 10,00 por registro
 
       const summaryY = doc.y;
-      const boxWidth = 200;
+      const boxWidth = 160;
       const boxHeight = 60;
-      const gap = 30;
-      const startX = (792 - (boxWidth * 3 + gap * 2)) / 2;
+      const gap = 20;
+      const startX = (792 - (boxWidth * 4 + gap * 3)) / 2;
 
       // Box 1: Total de Registros
       doc.rect(startX, summaryY, boxWidth, boxHeight).fill('#0891b2');
@@ -59,10 +60,15 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
       doc.fillColor('#ffffff').fontSize(10).text('TOTAL DE LITROS', startX + boxWidth + gap, summaryY + 15, { width: boxWidth, align: 'center' });
       doc.fontSize(20).text(`${totalLiters.toFixed(2)}L`, startX + boxWidth + gap, summaryY + 32, { width: boxWidth, align: 'center' });
 
-      // Box 3: Valor Total
+      // Box 3: Total de Taxas
       doc.rect(startX + (boxWidth + gap) * 2, summaryY, boxWidth, boxHeight).fill('#0891b2');
-      doc.fillColor('#ffffff').fontSize(10).text('VALOR TOTAL', startX + (boxWidth + gap) * 2, summaryY + 15, { width: boxWidth, align: 'center' });
-      doc.fontSize(20).text(`R$ ${totalAmount.toFixed(2)}`, startX + (boxWidth + gap) * 2, summaryY + 32, { width: boxWidth, align: 'center' });
+      doc.fillColor('#ffffff').fontSize(10).text('TOTAL DE TAXAS', startX + (boxWidth + gap) * 2, summaryY + 15, { width: boxWidth, align: 'center' });
+      doc.fontSize(20).text(`R$ ${totalFees.toFixed(2)}`, startX + (boxWidth + gap) * 2, summaryY + 32, { width: boxWidth, align: 'center' });
+
+      // Box 4: Valor Total
+      doc.rect(startX + (boxWidth + gap) * 3, summaryY, boxWidth, boxHeight).fill('#0891b2');
+      doc.fillColor('#ffffff').fontSize(10).text('VALOR TOTAL', startX + (boxWidth + gap) * 3, summaryY + 15, { width: boxWidth, align: 'center' });
+      doc.fontSize(20).text(`R$ ${totalAmount.toFixed(2)}`, startX + (boxWidth + gap) * 3, summaryY + 32, { width: boxWidth, align: 'center' });
 
       doc.y = summaryY + boxHeight + 30;
 
