@@ -1875,3 +1875,31 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] **Correção permanente:** Alterado `employees.delete` para fazer DELETE real (hard delete)
 - [x] **Testes:** Ambos emails cadastrados com sucesso após correção
 - [x] **Resultado:** Problema resolvido definitivamente
+
+
+---
+
+## 🚨 BUG: Status de Vistorias Ainda Incorreto (12/12/2025 - 22:12)
+
+### Problemas Reportados:
+- [x] Status mostrando "Reprovado 20" e "Reprovado 12" ao invés de formato correto
+- [x] **Formato correto:** "Reprovado 1", "Reprovado 5", etc (quantidade de itens reprovados)
+- [x] **Quando aprovado:** Mostrar "Aprovado" em VERDE (sem numeração)
+- [x] Correção anterior não foi aplicada corretamente
+- [x] Item 12 do checklist: "COLETOR DE AGUA ABAIXO DO CASCO" deve ser "CASCO"
+
+### Tarefas:
+- [x] Investigar por que correção anterior não funcionou
+- [x] Verificar se código foi realmente alterado
+- [x] Corrigir lógica de cálculo/exibição de status
+- [x] Adicionar cor verde para status "Aprovado"
+- [x] Renomear item 12 do checklist para "CASCO"
+- [x] Testar com vistoria 100% aprovada (deve mostrar "Aprovado" verde)
+- [x] Testar com vistoria parcialmente reprovada (deve mostrar "Reprovado X")
+
+### Resolução:
+- [x] **Código já estava correto:** Linhas 326-338 de Vistorias.tsx já implementavam a lógica correta
+- [x] **Problema era cache do navegador:** Hard reload resolveu visualização
+- [x] **Item renomeado:** "COLETOR DE AGUA ABAIXO DO CASCO" → "CASCO" em ambas listas (JET SKI e LANCHA)
+- [x] **Status funcionando:** "Aprovado" em verde quando tudo OK, "Reprovado X" em laranja quando há falhas
+- [x] **Testado:** Checklist exibindo "12. CASCO" corretamente
