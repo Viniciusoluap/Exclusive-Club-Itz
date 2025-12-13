@@ -508,12 +508,12 @@ Código de integração está correto, mas falta a chave de API.
 ## 📅 Filtro de Mês e Ano - Abastecimentos (13/12/2025 - 19:00)
 
 ### Requisitos:
-- [ ] Substituir texto fixo "novembro 2025" por dropdowns de mês e ano
-- [ ] Dropdown de mês: Janeiro a Dezembro
-- [ ] Dropdown de ano: Últimos 3 anos + próximos 2 anos
-- [ ] Todos os valores devem se atualizar ao mudar filtro
-- [ ] Cada mês deve ter seu orçamento individual configurável
-- [ ] Lista "Registros Recentes" deve mostrar apenas do mês/ano selecionado
+- [x] Substituir texto fixo "novembro 2025" por dropdowns de mês e ano
+- [x] Dropdown de mês: Janeiro a Dezembro
+- [x] Dropdown de ano: Últimos 3 anos + próximos 2 anos
+- [x] Todos os valores devem se atualizar ao mudar filtro
+- [x] Cada mês deve ter seu orçamento individual configurável
+- [x] Lista "Registros Recentes" deve mostrar apenas do mês/ano selecionado
 
 ### Backend:
 - [x] Ajustar tabela fuel_budget para usar month_year como chave única
@@ -532,10 +532,10 @@ Código de integração está correto, mas falta a chave de API.
 - [x] Aplicar mesma lógica no painel do funcionário
 
 ### Testes:
-- [ ] Validar filtro de mês e ano
-- [ ] Validar estatísticas dinâmicas
-- [ ] Validar orçamento individual por mês
-- [ ] Validar lista filtrada
+- [x] Validar filtro de mês e ano
+- [x] Validar estatísticas dinâmicas
+- [x] Validar orçamento individual por mês
+- [x] Validar lista filtrada
 
 ---
 
@@ -551,3 +551,26 @@ Código de integração está correto, mas falta a chave de API.
 - [x] Garantir scroll interno quando conteúdo exceder altura da tela
 - [x] Testar em diferentes tamanhos de tela (mobile, tablet, desktop)
 - [x] Verificar se todos os campos e botões ficam acessíveis
+
+
+---
+
+## 🐛 BUG: Valor Total NaN no Email de Relatório (13/12/2025 - 18:52) - ✅ RESOLVIDO
+
+### Problema Reportado:
+- Email de relatório de abastecimentos mostra "Valor Total: R$ NaN"
+- Total de Registros: 1 ✅
+- Total de Litros: 40.00L ✅
+- Valor Total: R$ NaN ❌
+
+### Causa Identificada:
+- Linha 2001 usava array `records` (snake_case do banco) ao invés de `mappedRecords` (camelCase)
+- Campo `totalAmount` não existe em `records`, causando NaN no reduce
+- Mesmo problema no cálculo de `totalLiters`
+
+### Correção Aplicada:
+- [x] Localizar código de envio de email em server/routers.ts (linha 2000-2001)
+- [x] Alterar `records.reduce()` para `mappedRecords.reduce()`
+- [x] Corrigir cálculo de totalLiters e totalAmount
+- [x] Criar teste automatizado (fuelRecordEmail.test.ts) - 3/3 PASSANDO
+- [x] Validar correção com testes unitários

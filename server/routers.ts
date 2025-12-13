@@ -1997,8 +1997,8 @@ Nenhuma reserva foi afetada.
         // Enviar email com PDF anexado
         const { sendEmail } = await import('./_core/emailService');
         
-        const totalLiters = records.reduce((sum, r) => sum + r.liters, 0) / 100;
-        const totalAmount = records.reduce((sum, r) => sum + r.totalAmount, 0) / 100;
+        const totalLiters = mappedRecords.reduce((sum, r) => sum + r.liters, 0) / 100;
+        const totalAmount = mappedRecords.reduce((sum, r) => sum + r.totalAmount, 0) / 100;
 
         await sendEmail({
           to: input.email,
