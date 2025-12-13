@@ -2694,3 +2694,87 @@ const records = rawRecords.map((r: any) => ({
 ✅ Servidor rodando normalmente
 ✅ Lógica validada por testes automatizados
 ✅ Todos os campos aparecem corretamente no PDF
+
+
+---
+
+## 🐛 Bug - Taxa de Abastecimento Incorreta no PDF (13/12/2025) ✅ RESOLVIDO
+
+### Problema: Coluna "Taxa" mostra R$ 0.00 ao invés de R$ 10.00
+- [x] **Situação atual (ERRADA):**
+  * Coluna "Taxa": R$ 0.00 em todos os registros
+  * Total calculado: Subtotal + R$ 0.00
+
+- [x] **Comportamento esperado (CORRETO):**
+  * Coluna "Taxa": R$ 10.00 (taxa fixa de abastecimento)
+  * Total calculado: Subtotal + R$ 10.00
+
+- [x] **Fórmula correta:**
+  * Subtotal = Preço/L × Litros
+  * Taxa = R$ 10.00 (fixo)
+  * Total = Subtotal + Taxa
+
+### Tarefas de Correção:
+- [x] Alterar serviceFee de 0 para 1000 (R$ 10.00 em centavos)
+- [x] Testar cálculo de totais com taxa correta
+- [x] Validar que PDF exibe R$ 10.00 na coluna "Taxa"
+
+**Solução Implementada:**
+
+**Causa Raiz:**
+O campo `serviceFee` estava hardcoded com valor `0`, mas deveria ser `1000` (R$ 10.00 em centavos) para representar a taxa fixa de abastecimento.
+
+**Correções Aplicadas:**
+
+**Backend (server/routers.ts) - Linhas 1539 e 1599:**
+
+**Antes:**
+```typescript
+serviceFee: 0, // ❌ Taxa zerada
+```
+
+**Depois:**
+```typescript
+serviceFee: 1000, // ✅ Taxa fixa: R$ 10.00 em centavos
+```
+
+**Exemplo de Cálculo (Linha 2 do PDF):**
+- Preço/L: R$ 8.00
+- Litros: 79.00L
+- **Subtotal**: R$ 8.00 × 79.00 = R$ 632.00 ✅
+- **Taxa**: R$ 10.00 ✅ (antes: R$ 0.00 ❌)
+- **Total**: R$ 632.00 + R$ 10.00 = R$ 642.00 ✅
+
+**Arquivos Modificados:**
+- server/routers.ts - Alterado serviceFee de 0 para 1000 (2 endpoints)
+- server/fuelRecords.serviceFee.test.ts - Teste automatizado criado
+- todo.md - Bug marcado como resolvido
+
+**Testes Automatizados:**
+✅ 3/3 testes passando (100%)
+
+**Teste 1 - Aplicação da Taxa:**
+- ✅ Litros: 7900 (79.00L)
+- ✅ Preço/L: 800 (R$ 8.00)
+- ✅ Subtotal: 63200 (R$ 632.00)
+- ✅ Taxa: 1000 (R$ 10.00) ← Agora correto!
+- ✅ Total: 64200 (R$ 642.00)
+
+**Teste 2 - Exibição no PDF:**
+- ✅ Litros: 79.00L
+- ✅ Preço/L: R$ 8.00
+- ✅ Subtotal: R$ 632.00
+- ✅ Taxa: R$ 10.00 ← Agora mostra R$ 10.00!
+- ✅ Total: R$ 642.00
+
+**Teste 3 - Cálculo de Totais:**
+- ✅ Total de Litros: 239.00L
+- ✅ Total de Taxas: R$ 30.00 (3 × R$ 10.00) ← Correto!
+- ✅ Valor Total: R$ 1942.00
+
+**Validação:**
+✅ TypeScript: 0 erros
+✅ Servidor rodando normalmente
+✅ Lógica validada por testes automatizados
+✅ Coluna "Taxa" agora exibe R$ 10.00 corretamente
+✅ Total calculado corretamente: Subtotal + R$ 10.00
