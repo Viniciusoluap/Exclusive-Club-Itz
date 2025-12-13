@@ -1493,11 +1493,14 @@ Nenhuma reserva foi afetada.
       }),
 
     // Generate PDF report for selected fuel records
-    generateReport: adminProcedure
+    generateReport: publicProcedure
       .input(z.object({
         recordIds: z.array(z.number()),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
         if (input.recordIds.length === 0) {
           throw new TRPCError({ code: 'BAD_REQUEST', message: 'Nenhum registro selecionado' });
         }
