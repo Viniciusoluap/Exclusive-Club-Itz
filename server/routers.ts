@@ -1537,6 +1537,136 @@ Nenhuma reserva foi afetada.
           filename: `abastecimentos-${new Date().toISOString().split('T')[0]}.pdf`,
         };
       }),
+
+    sendReportByEmail: publicProcedure
+      .input(z.object({
+        recordIds: z.array(z.number()),
+        email: z.string().email(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+        if (input.recordIds.length === 0) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Nenhum registro selecionado' });
+        }
+
+        // Buscar registros selecionados via raw SQL
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+        const ids = input.recordIds.join(',');
+        const result = await db.execute(sql.raw(`
+          SELECT 
+            fr.*,
+            b.booking_date
+          FROM fuel_records fr
+          LEFT JOIN bookings b ON fr.booking_id = b.id
+          WHERE fr.id IN (${ids})
+          ORDER BY fr.created_at DESC
+        `)) as any;
+        
+        const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
+
+        if (!records || records.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum registro encontrado' });
+        }
+
+        // Gerar PDF
+        const { generateFuelRecordsPDF } = await import('./_core/fuelRecordPDF');
+        const pdfBuffer = await generateFuelRecordsPDF(records);
+        const filename = `abastecimentos-${new Date().toISOString().split('T')[0]}.pdf`;
+
+        // Enviar email com PDF anexado
+        const { sendEmail } = await import('./_core/emailService');
+        
+        const totalLiters = records.reduce((sum, r) => sum + r.liters, 0) / 100;
+        const totalAmount = records.reduce((sum, r) => sum + r.totalAmount, 0) / 100;
+
+        await sendEmail({
+          to: input.email,
+          subject: `Relatório de Abastecimentos - ${new Date().toLocaleDateString('pt-BR')}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: white; padding: 30px; text-align: center;">
+                <h1 style="margin: 0; font-size: 28px;">⚓ EXCLUSIVE CLUB</h1>
+                <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Sistema de Compartilhamento de Embarcações</p>
+              </div>
+              
+              <div style="padding: 30px; background: #f9fafb;">
+                <h2 style="color: #1f2937; margin-top: 0;">Relatório de Abastecimentos</h2>
+                
+                <p style="color: #6b7280; line-height: 1.6;">
+                  Prezado(a),
+                </p>
+                
+                <p style="color: #6b7280; line-height: 1.6;">
+                  Segue em anexo o relatório de abastecimentos solicitado, contendo <strong>${records.length} registro(s)</strong>.
+                </p>
+                
+                <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #0891b2;">
+                  <h3 style="margin: 0 0 15px 0; color: #0891b2;">Resumo</h3>
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                      <td style="padding: 8px 0; color: #6b7280;">Total de Registros:</td>
+                      <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #1f2937;">${records.length}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0; color: #6b7280;">Total de Litros:</td>
+                      <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #1f2937;">${totalLiters.toFixed(2)}L</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 12px;">Valor Total:</td>
+                      <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #0891b2; font-size: 18px; border-top: 1px solid #e5e7eb; padding-top: 12px;">R$ ${totalAmount.toFixed(2)}</td>
+                    </tr>
+                  </table>
+                </div>
+                
+                <p style="color: #6b7280; line-height: 1.6;">
+                  O relatório completo em PDF está anexado a este email.
+                </p>
+                
+                <p style="color: #6b7280; line-height: 1.6; margin-bottom: 0;">
+                  Atenciosamente,<br>
+                  <strong>Equipe Exclusive Club</strong>
+                </p>
+              </div>
+              
+              <div style="background: #1f2937; color: #9ca3af; padding: 20px; text-align: center; font-size: 12px;">
+                <p style="margin: 0;">
+                  Relatório gerado automaticamente em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                </p>
+                <p style="margin: 10px 0 0 0;">
+                  © ${new Date().getFullYear()} Exclusive Club - Todos os direitos reservados
+                </p>
+              </div>
+            </div>
+          `,
+          text: `
+RELATÓRIO DE ABASTECIMENTOS - EXCLUSIVE CLUB
+
+Resumo:
+- Total de Registros: ${records.length}
+- Total de Litros: ${totalLiters.toFixed(2)}L
+- Valor Total: R$ ${totalAmount.toFixed(2)}
+
+O relatório completo em PDF está anexado a este email.
+
+Atenciosamente,
+Equipe Exclusive Club
+
+Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+          `,
+          attachments: [{
+            filename,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          }],
+        });
+
+        return { success: true, email: input.email };
+      }),
   }),
 
   // Inspections router - Admin and Employee

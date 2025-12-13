@@ -2327,3 +2327,46 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 ✅ **Erro de sintaxe:** Resolvido (import adicionado)
 ✅ **Filtro de visualização:** Já estava implementado e funcionando
 ✅ **Sistema 100% funcional**
+
+
+---
+
+## 🔧 CORREÇÃO URGENTE - ERRO DE PUPPETEER E ENVIO POR EMAIL (12/12/2025 - 23:42)
+
+### Problemas Reportados:
+
+**ERRO CRÍTICO - Puppeteer não funciona:**
+- [x] Erro persiste: "Could not find Chrome (ver. 142.0.7444.175)"
+- [x] Botão "PDF (2)" continua gerando erro
+- [x] Investigar instalação do Chromium no servidor
+- [x] Verificar configuração do Puppeteer
+- [x] Adicionar executablePath: '/usr/bin/chromium-browser' ao Puppeteer
+
+**NOVA FUNCIONALIDADE - Envio por Email:**
+- [x] Adicionar botão para enviar relatório por email
+- [x] Criar endpoint backend para envio de PDF por email
+- [x] Permitir informar email de destino
+- [x] Usar template de email profissional
+- [x] Testar envio de relatório
+
+---
+
+### Tarefas:
+
+**Backend:**
+- [x] Verificar instalação do Chromium via shell
+- [x] Instalar dependências do Puppeteer se necessário
+- [x] Criar endpoint sendReportByEmail em fuelRecords
+- [x] Gerar PDF e enviar por email usando sendEmail
+- [x] Validar que PDF é gerado corretamente
+
+**Frontend:**
+- [x] Adicionar botão "Enviar por Email" próximo ao botão PDF
+- [x] Criar dialog para informar email de destino
+- [x] Mostrar loading durante envio
+- [x] Exibir toast de sucesso/erro
+
+**Testes:**
+- [x] Testar geração de PDF local
+- [x] Testar envio de email com PDF anexado
+- [x] Validar que email chega na caixa de entrada
