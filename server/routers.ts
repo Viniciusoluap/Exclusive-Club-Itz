@@ -1536,7 +1536,7 @@ Nenhuma reserva foi afetada.
           liters: r.liters || 0,
           pricePerLiter: r.price_per_liter || 0,
           subtotal: r.liters * r.price_per_liter / 100 || 0, // litros * preço (já em centavos)
-          serviceFee: 0, // Taxa de serviço (pode ser calculada se necessário)
+          serviceFee: 1000, // Taxa de serviço fixa: R$ 10.00 em centavos
           totalAmount: r.total_amount || 0,
           notes: r.notes,
         }));
@@ -1596,7 +1596,7 @@ Nenhuma reserva foi afetada.
           liters: r.liters || 0,
           pricePerLiter: r.price_per_liter || 0,
           subtotal: r.liters * r.price_per_liter / 100 || 0, // litros * preço (já em centavos)
-          serviceFee: 0, // Taxa de serviço (pode ser calculada se necessário)
+          serviceFee: 1000, // Taxa de serviço fixa: R$ 10.00 em centavos
           totalAmount: r.total_amount || 0,
           notes: r.notes,
         }));
