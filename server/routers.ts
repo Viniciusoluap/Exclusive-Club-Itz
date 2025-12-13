@@ -1629,9 +1629,23 @@ Nenhuma reserva foi afetada.
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum registro encontrado' });
         }
 
+        // Mapear snake_case para camelCase
+        const mappedRecords = records.map(r => ({
+          id: r.id,
+          vesselName: r.vessel_name,
+          employeeName: r.employee_name,
+          date: r.booking_date || r.created_at,
+          liters: r.liters,
+          pricePerLiter: r.price_per_liter,
+          subtotal: r.subtotal,
+          serviceFee: r.service_fee,
+          totalAmount: r.total_amount,
+          notes: r.notes
+        }));
+
         // Gerar PDF
         const { generateFuelRecordsPDF } = await import('./_core/fuelRecordPDF');
-        const pdfBuffer = await generateFuelRecordsPDF(records);
+        const pdfBuffer = await generateFuelRecordsPDF(mappedRecords);
 
         // Retornar PDF como base64
         return {
@@ -1675,9 +1689,23 @@ Nenhuma reserva foi afetada.
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum registro encontrado' });
         }
 
+        // Mapear snake_case para camelCase
+        const mappedRecords = records.map(r => ({
+          id: r.id,
+          vesselName: r.vessel_name,
+          employeeName: r.employee_name,
+          date: r.booking_date || r.created_at,
+          liters: r.liters,
+          pricePerLiter: r.price_per_liter,
+          subtotal: r.subtotal,
+          serviceFee: r.service_fee,
+          totalAmount: r.total_amount,
+          notes: r.notes
+        }));
+
         // Gerar PDF
         const { generateFuelRecordsPDF } = await import('./_core/fuelRecordPDF');
-        const pdfBuffer = await generateFuelRecordsPDF(records);
+        const pdfBuffer = await generateFuelRecordsPDF(mappedRecords);
         const filename = `abastecimentos-${new Date().toISOString().split('T')[0]}.pdf`;
 
         // Enviar email com PDF anexado
