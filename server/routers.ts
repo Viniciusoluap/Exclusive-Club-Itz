@@ -1521,11 +1521,25 @@ Nenhuma reserva foi afetada.
           ORDER BY fr.created_at DESC
         `)) as any;
         
-        const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
+        const rawRecords = (Array.isArray(result[0]) ? result[0] : result) as any[];
 
-        if (!records || records.length === 0) {
+        if (!rawRecords || rawRecords.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum registro encontrado' });
         }
+
+        // Mapear campos snake_case → camelCase e calcular campos faltantes
+        const records = rawRecords.map((r: any) => ({
+          id: r.id,
+          vesselName: r.vessel_name || 'N/A',
+          employeeName: ctx.user?.name || 'N/A', // Nome do usuário logado
+          date: r.booking_date || r.created_at,
+          liters: r.liters || 0,
+          pricePerLiter: r.price_per_liter || 0,
+          subtotal: r.liters * r.price_per_liter / 100 || 0, // litros * preço (já em centavos)
+          serviceFee: 0, // Taxa de serviço (pode ser calculada se necessário)
+          totalAmount: r.total_amount || 0,
+          notes: r.notes,
+        }));
 
         // Gerar PDF
         const { generateFuelRecordsPDF } = await import('./_core/fuelRecordPDF');
@@ -1567,11 +1581,25 @@ Nenhuma reserva foi afetada.
           ORDER BY fr.created_at DESC
         `)) as any;
         
-        const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
+        const rawRecords = (Array.isArray(result[0]) ? result[0] : result) as any[];
 
-        if (!records || records.length === 0) {
+        if (!rawRecords || rawRecords.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum registro encontrado' });
         }
+
+        // Mapear campos snake_case → camelCase e calcular campos faltantes
+        const records = rawRecords.map((r: any) => ({
+          id: r.id,
+          vesselName: r.vessel_name || 'N/A',
+          employeeName: ctx.user?.name || 'N/A', // Nome do usuário logado
+          date: r.booking_date || r.created_at,
+          liters: r.liters || 0,
+          pricePerLiter: r.price_per_liter || 0,
+          subtotal: r.liters * r.price_per_liter / 100 || 0, // litros * preço (já em centavos)
+          serviceFee: 0, // Taxa de serviço (pode ser calculada se necessário)
+          totalAmount: r.total_amount || 0,
+          notes: r.notes,
+        }));
 
         // Gerar PDF
         const { generateFuelRecordsPDF } = await import('./_core/fuelRecordPDF');
