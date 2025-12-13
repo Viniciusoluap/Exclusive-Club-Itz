@@ -37,6 +37,20 @@ function generateInspectionHTML(data: InspectionData): string {
     `;
   }).join('');
 
+  // Listar itens reprovados
+  const failedItems = Object.entries(data.formData)
+    .filter(([_, status]) => status === 'REPROVADO')
+    .map(([field]) => field);
+  
+  const failedItemsHTML = failedItems.length > 0 ? `
+    <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 16px; border-radius: 4px; margin-bottom: 20px;">
+      <div style="font-weight: 600; color: #991b1b; margin-bottom: 12px; font-size: 16px;">❌ Itens Reprovados (${failedItems.length})</div>
+      <ul style="margin: 0; padding-left: 20px; color: #7f1d1d; line-height: 1.8;">
+        ${failedItems.map(item => `<li>${item}</li>`).join('')}
+      </ul>
+    </div>
+  ` : '';
+
   return `
     <!DOCTYPE html>
     <html>
@@ -177,15 +191,23 @@ function generateInspectionHTML(data: InspectionData): string {
               <div class="info-label">Tipo</div>
               <div class="info-value">${data.vesselType === 'jet' ? 'Jet Ski' : 'Lancha'}</div>
             </div>
-          </div>
-          <div>
             <div class="info-item">
               <div class="info-label">Cliente</div>
               <div class="info-value">${data.clientName}</div>
             </div>
+          </div>
+          <div>
             <div class="info-item">
               <div class="info-label">Data da Vistoria</div>
-              <div class="info-value">${new Date(data.inspectionDate).toLocaleDateString('pt-BR')}</div>
+              <div class="info-value">${new Date(data.inspectionDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Horário</div>
+              <div class="info-value">${new Date(data.inspectionDate).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Vistoriado por</div>
+              <div class="info-value">${data.inspectedBy || 'N/A'}</div>
             </div>
           </div>
         </div>
@@ -210,6 +232,8 @@ function generateInspectionHTML(data: InspectionData): string {
           </tbody>
         </table>
 
+        ${failedItemsHTML}
+
         ${data.notes ? `
           <div class="notes">
             <div class="notes-title">📝 Observações</div>
@@ -222,7 +246,7 @@ function generateInspectionHTML(data: InspectionData): string {
             <strong>Vistoria realizada por:</strong> ${data.inspectedBy}
           </div>
           <div>
-            Relatório gerado automaticamente em ${new Date().toLocaleString('pt-BR')}
+            Relatório gerado automaticamente em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
           </div>
           <div style="margin-top: 12px;">
             © ${new Date().getFullYear()} Exclusive Club - Todos os direitos reservados
@@ -293,7 +317,7 @@ export async function sendInspectionReportEmail(
           <div style="background: white; padding: 20px; border-radius: 6px; margin-bottom: 20px;">
             <p style="margin: 8px 0;"><strong>Embarcação:</strong> ${data.vesselName}</p>
             <p style="margin: 8px 0;"><strong>Cliente:</strong> ${data.clientName}</p>
-            <p style="margin: 8px 0;"><strong>Data:</strong> ${new Date(data.inspectionDate).toLocaleDateString('pt-BR')}</p>
+            <p style="margin: 8px 0;"><strong>Data:</strong> ${new Date(data.inspectionDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
             <p style="margin: 8px 0;"><strong>Responsável:</strong> ${data.inspectedBy}</p>
           </div>
 

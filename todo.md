@@ -1987,3 +1987,89 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] **Ordenação customizada:** Sort por quotaNumber ASC, depois quotaType (full < half)
 - [x] **Testes visuais:** Filtro funcionando corretamente com Jetski e Focker
 - [x] **Mensagem vazia:** Exibe "Nenhum cliente encontrado" quando filtro não retorna resultados
+
+
+---
+
+## 🔧 CORREÇÕES DO SISTEMA DE VISTORIAS (12/12/2025 - 22:48)
+
+### Problemas Reportados:
+
+**PRINT 1 - Formulário de Nova Vistoria:**
+- [x] Campo "Nome do Cliente" deve ser "Nome do Vistoriador"
+- [x] Este nome deve aparecer em "Vistoriado por:" na lista de vistorias
+
+**PRINT 2 - Lista de Vistorias:**
+- [x] Ordenação deve ser: mais recente → mais antiga (inverter ordem)
+- [x] Adicionar filtro: "Últimas 4" (padrão) e "Mostrar Todas"
+- [x] Campo "Vistoriado por:" já está correto
+
+**PRINT 3 - Relatório PDF:**
+- [x] Adicionar nome do vistoriador (não pode ser "N/A")
+- [x] Incluir observações completas
+- [x] Listar itens reprovados detalhadamente
+- [x] Data/hora em tempo real no horário de Brasília (GMT-3)
+- [x] Coluna "Vistoriado por" deve aparecer preenchida
+
+### Tarefas Técnicas:
+
+**Formulário (Vistorias.tsx):**
+- [x] Localizar campo "Nome do Cliente" no formulário
+- [x] Renomear label para "Nome do Vistoriador"
+- [x] Atualizar placeholder do input
+- [x] Verificar que dados são salvos corretamente no backend
+
+**Lista de Vistorias (Vistorias.tsx):**
+- [x] Inverter ordenação: `sort((a, b) => b.createdAt - a.createdAt)`
+- [x] Adicionar estado para filtro (últimas 4 / todas)
+- [x] Criar botões de filtro no header
+- [x] Implementar lógica de slice para mostrar apenas 4
+
+**Relatório PDF (inspectionPDF.ts):**
+- [x] Adicionar campo "Vistoriador" no HTML do PDF
+- [x] Garantir que observações completas aparecem
+- [x] Criar seção específica listando itens reprovados
+- [x] Ajustar timezone para GMT-3 (America/Sao_Paulo)
+- [x] Testar geração de PDF com todos os dados
+
+**Validações:**
+- [x] Testar criação de vistoria com novo campo
+- [x] Verificar ordenação na lista
+- [x] Testar filtro "Últimas 4" e "Mostrar Todas"
+- [x] Gerar PDF e validar todas as informações
+- [x] Confirmar timezone correto (Brasília)
+
+### Cuidados:
+- [x] ✅ Manter correções anteriores (cores azul/vermelho)
+- [x] ✅ Preservar contagem correta de reprovações
+- [x] ✅ Não alterar filtro de embarcações
+
+### Solução Implementada:
+
+**Formulário (Vistorias.tsx):**
+- [x] Linha 416: Label alterado para "Nome do Vistoriador *"
+- [x] Linha 420: Placeholder atualizado para "Nome de quem está fazendo a vistoria"
+- [x] Campo continua usando `clientName` no backend (sem quebrar compatibilidade)
+
+**Lista de Vistorias (Vistorias.tsx):**
+- [x] Linha 67: Estado `showAllInspections` adicionado
+- [x] Linhas 281-298: Botões de filtro "Últimas 4" / "Mostrar Todas" (aparecem apenas quando > 4 vistorias)
+- [x] Linhas 320-330: Ordenação por `createdAt` DESC (mais recente primeiro)
+- [x] Linha 327-329: Lógica de slice para mostrar apenas 4 quando filtro ativo
+
+**Relatório PDF (inspectionPDF.ts):**
+- [x] Linhas 194-197: Campo "Vistoriado por" adicionado ao grid de informações
+- [x] Linhas 188-193: Data e horário com timezone America/Sao_Paulo
+- [x] Linhas 40-52: Seção de itens reprovados com lista detalhada
+- [x] Linha 235: Itens reprovados inseridos antes das observações
+- [x] Linha 237-242: Observações completas já estavam sendo exibidas
+- [x] Linha 246: Footer com nome do vistoriador
+- [x] Linha 249: Relatório gerado com timezone de Brasília
+
+**Testes Visuais:**
+- [x] Formulário mostra "Nome do Vistoriador" corretamente
+- [x] Lista ordenada por data mais recente (07/12 → 07/12 → 19/11)
+- [x] Campo "Vistoriado por:" aparece preenchido na lista
+- [x] Observações sendo exibidas nos cards
+- [x] Cores mantidas: azul para aprovado, vermelho para reprovado
+- [x] Filtro de embarcações preservado
