@@ -59,6 +59,7 @@ export default function Vistorias() {
   const [vesselType, setVesselType] = useState<'jetski' | 'lancha' | null>(null);
   const [inspectionDate, setInspectionDate] = useState(new Date().toISOString().split('T')[0]);
   const [clientName, setClientName] = useState("");
+  const [inspectorName, setInspectorName] = useState(""); // Nome de quem está fazendo a vistoria
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [selectedInspections, setSelectedInspections] = useState<number[]>([]);
@@ -182,6 +183,7 @@ export default function Vistorias() {
     setVesselType(null);
     setInspectionDate(new Date().toISOString().split('T')[0]);
     setClientName("");
+    setInspectorName("");
     setFormData({});
     setNotes("");
   };
@@ -220,6 +222,11 @@ export default function Vistorias() {
       return;
     }
 
+    if (!inspectorName.trim()) {
+      toast.error("Preencha o nome do vistoriador");
+      return;
+    }
+
     const booking = recentBookings?.find((b: any) => b.id === selectedBookingId);
     if (!booking) {
       toast.error("Reserva não encontrada");
@@ -238,7 +245,8 @@ export default function Vistorias() {
       bookingId: selectedBookingId,
       vesselId: booking.vesselId,
       vesselType,
-      clientName,
+      clientName, // Nome do cliente (da reserva)
+      inspectorName, // Nome de quem está fazendo a vistoria
       formData,
       observations: notes || undefined,
     });
@@ -459,13 +467,13 @@ export default function Vistorias() {
 
               {/* Inspector Name */}
               <div className="grid gap-2">
-                <Label htmlFor="clientName">Nome do Vistoriador *</Label>
+                <Label htmlFor="inspectorName">Nome do Vistoriador *</Label>
                 <Input
-                  id="clientName"
+                  id="inspectorName"
                   type="text"
                   placeholder="Nome de quem está fazendo a vistoria"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
+                  value={inspectorName}
+                  onChange={(e) => setInspectorName(e.target.value)}
                   required
                 />
               </div>

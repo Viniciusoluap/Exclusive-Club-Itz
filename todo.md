@@ -2514,3 +2514,82 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Removido cálculo duplicado no render
 - [x] Teste automatizado criado e passando (2/2 testes)
 - [x] Lógica validada: mantém seleções fora do filtro ativo
+
+
+---
+
+## 🐛 Bug Crítico - Campo "Vistoriado por" Incorreto (13/12/2025) ✅ RESOLVIDO
+
+### Problema: Exibindo usuário logado ao invés do nome digitado
+- [x] **Situação atual (ERRADA):**
+  * Formulário: Campo "Nome do Vistoriador" = "Rafael"
+  * Lista de vistorias: Mostra "Vistoriado por: Vinicius Freitas" (usuário logado)
+  * PDF: Coluna "Vistoriado por" mostra "Vinicius Freitas" (usuário logado)
+
+- [x] **Comportamento esperado (CORRETO):**
+  * Formulário: Campo "Nome do Vistoriador" = "Rafael"
+  * Lista de vistorias: Deve mostrar "Vistoriado por: Rafael"
+  * PDF: Coluna "Vistoriado por" deve mostrar "Rafael"
+
+- [x] **Os 3 lugares devem mostrar o MESMO nome digitado no campo "Nome do Vistoriador"**
+
+### Tarefas de Correção:
+- [x] Investigar onde o nome do vistoriador é salvo no backend
+- [x] Verificar se campo inspectedBy está sendo preenchido corretamente
+- [x] Corrigir backend para salvar nome digitado (não usuário logado)
+- [x] Corrigir frontend (lista de vistorias) para exibir inspectedBy
+- [x] Corrigir PDF para exibir inspectedBy correto
+- [x] Testar fluxo completo: criar vistoria → ver na lista → gerar PDF
+
+**Solução Implementada:**
+
+**Causa Raiz:**
+O campo `clientName` estava sendo usado para 2 propósitos diferentes:
+1. Nome do cliente (da reserva)
+2. Nome do vistoriador (quem faz a vistoria)
+
+Backend salvava `ctx.user?.name` (usuário logado) ao invés do nome digitado.
+
+**Correções Aplicadas:**
+
+**1. Backend (server/routers.ts):**
+- [x] Adicionado campo `inspectorName` no schema de input (linha 1680)
+- [x] Corrigido para salvar `input.inspectorName` no campo `inspectedBy` (linha 1715)
+- [x] Separado `clientName` (cliente) de `inspectorName` (vistoriador)
+
+**2. Frontend (client/src/pages/Vistorias.tsx):**
+- [x] Criado novo estado `inspectorName` (linha 62)
+- [x] Corrigido campo de input para usar `inspectorName` (linha 465-473)
+- [x] Adicionada validação obrigatória do nome do vistoriador (linha 225-228)
+- [x] Enviando `inspectorName` separado de `clientName` na mutation (linha 244)
+- [x] Resetando `inspectorName` ao limpar formulário (linha 186)
+
+**3. Lista e PDF (já estavam corretos):**
+- [x] Lista de vistorias já exibe `inspection.inspectedBy` (linha 408)
+- [x] PDF já exibe `inspectedBy` corretamente (inspectionsPDF.ts linha 32)
+
+**Arquivos Modificados:**
+- server/routers.ts - Adicionado campo inspectorName e corrigido save
+- client/src/pages/Vistorias.tsx - Separado estados e inputs
+- server/inspections.inspectorName.test.ts - Teste automatizado criado
+- todo.md - Bug marcado como resolvido
+
+**Testes Automatizados:**
+✅ 2/2 testes passando (100%)
+
+**Teste 1 - Campo Correto:**
+- ✅ inspectedBy usa input.inspectorName ("Rafael")
+- ✅ inspectedBy NÃO usa ctx.user.name ("Vinicius Freitas")
+- ✅ clientName e inspectorName são campos separados
+
+**Teste 2 - Exibição Consistente:**
+- ✅ Lista de vistorias: "Rafael"
+- ✅ PDF coluna: "Rafael"
+- ✅ PDF seção: "Rafael"
+- ✅ Todos os 3 lugares mostram o MESMO nome
+
+**Validação:**
+✅ TypeScript: 0 erros
+✅ Servidor rodando normalmente
+✅ Lógica validada por testes automatizados
+✅ Comportamento correto em todos os 3 lugares

@@ -1677,6 +1677,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         vesselId: z.number(),
         vesselType: z.enum(['jetski', 'lancha']),
         clientName: z.string(),
+        inspectorName: z.string(), // Nome de quem está fazendo a vistoria
         formData: z.record(z.string(), z.string()), // JSON com todos os campos do formulário
         observations: z.string().optional(),
       }))
@@ -1711,7 +1712,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             inspectionData: JSON.stringify(input.formData),
             observations: input.observations || null,
             status,
-            inspectedBy: ctx.user?.name || null,
+            inspectedBy: input.inspectorName || null, // Nome digitado no formulário
           });
 
           return { success: true };
