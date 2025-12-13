@@ -200,8 +200,8 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
   
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: '/usr/bin/chromium-browser',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    executablePath: '/usr/lib/chromium-browser/chromium-browser',
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
   });
 
   try {
