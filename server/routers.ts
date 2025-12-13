@@ -375,11 +375,11 @@ export const appRouter = router({
           WHERE `;
 
         if (timeFilter === "future") {
-          // Futuras: data >= hoje, ordenadas da mais próxima
-          query += `b.booking_date >= ${now} ORDER BY b.booking_date ASC`;
+          // Futuras: data > hoje (somente futuras), ordenadas da mais próxima
+          query += `b.booking_date > ${now} ORDER BY b.booking_date ASC`;
         } else {
-          // Passadas: data < hoje, ordenadas da mais recente
-          query += `b.booking_date < ${now} ORDER BY b.booking_date DESC`;
+          // Passadas: data <= hoje (hoje + passadas), ordenadas da mais recente
+          query += `b.booking_date <= ${now} ORDER BY b.booking_date DESC`;
         }
 
         const result = await dbInstance.execute(sqlTag.raw(query)) as any;
