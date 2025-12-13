@@ -1868,12 +1868,10 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 i.*,
                 v.name as vessel_name,
                 b.booking_date,
-                b.client_name as booking_client_name,
-                u.name as inspected_by_name
+                b.client_name as booking_client_name
               FROM inspections i
               JOIN vessels v ON i.vessel_id = v.id
               LEFT JOIN bookings b ON i.booking_id = b.id
-              LEFT JOIN users u ON i.inspected_by = u.id
               WHERE i.id IN (${ids})
               ORDER BY i.created_at DESC
             `)) as any;
@@ -1884,12 +1882,10 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 i.*,
                 v.name as vessel_name,
                 b.booking_date,
-                b.client_name as booking_client_name,
-                u.name as inspected_by_name
+                b.client_name as booking_client_name
               FROM inspections i
               JOIN vessels v ON i.vessel_id = v.id
               LEFT JOIN bookings b ON i.booking_id = b.id
-              LEFT JOIN users u ON i.inspected_by = u.id
               ORDER BY i.created_at DESC
               LIMIT 10
             `) as any;

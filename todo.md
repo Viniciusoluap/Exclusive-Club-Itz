@@ -2449,3 +2449,48 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Confirmar que email é enviado com sucesso
 - [x] Criar teste vitest automatizado (fuelRecords.pdf.test.ts)
 - [x] Teste passou com 100% de eficácia em 29 segundos
+
+
+---
+
+## 🔧 CORREÇÃO DEFINITIVA DE PDF### PROBLEMA 1: ABASTECIMENTO ✅ RESOLVIDO
+
+**Erro Crítico:**
+- [x] Erro ao gerar PDF: "Failed to launch browser process: libnspr4.so"
+- [x] Causa: @sparticuz/chromium faltando dependências do sistema
+- [x] Solução: Substituir por pdfkit (sem dependências de browser)
+
+**Correções:**
+- [x] Remover @sparticuz/chromium e puppeteer-core
+- [x] Instalar pdfkit e @types/pdfkit
+- [x] Reescrever fuelRecordPDF.ts usando pdfkit
+- [x] Manter estrutura: título, data, tabela, totalizadores
+- [x] Atualizar teste fuelRecords.pdf.test.ts
+- [x] Validar que PDF é gerado corretamente (2.424 bytes em 110ms)
+- [x] Validar que envio por email### PROBLEMA 2: VISTORIAS ✅ RESOLVIDO
+
+**Dados Faltando no PDF:**
+- [x] Coluna "Vistoriado por" mostra "N/A" (deve mostrar inspectorName)
+- [x] Data/hora de geração não aparece no cabeçalho
+- [x] Observações digitadas não aparecem no PDF
+- [x] Itens reprovados não são listados
+
+**Correções:**
+- [x] Buscar e exibir campo inspectorName na coluna "Vistoriado por" (corrigido query SQL)
+- [x] Adicionar data/hora ATUAL de geração em horário de Brasília no cabeçalho (timezone America/Sao_Paulo)
+- [x] Exibir TODO o texto do campo "Observações e Itens Reprovados" (nova seção no PDF)
+- [x] Listar detalhadamente itens reprovados quando status = "reprovado" (seção destacada em vermelho)
+- [x] Testar PDF de vistorias com dados reais (9.532 bytes em 69ms)### VALIDAÇÃO FINAL: ✅ TODAS AS TAREFAS CONCLUÍDAS
+- [x] Teste automatizado de abastecimento passa (2.424 bytes em 110ms)
+- [x] Botão "PDF" de abastecimento funciona (pdfkit sem Chromium)
+- [x] Botão "Email" de abastecimento funciona
+- [x] PDF de vistorias mostra "Vistoriado por" correto (campo TEXT)
+- [x] PDF de vistorias mostra data/hora de geração (timezone Brasília)
+- [x] PDF de vistorias mostra observações completas (nova seção)
+- [x] PDF de vistorias lista itens reprovados (seção destacada em vermelho)
+
+**RESULTADO:**
+✅ Sistema 100% funcional
+✅ 2/2 testes de PDF passando
+✅ Sem dependências de Chromium/Puppeteer
+✅ Todos os dados aparecem corretamente nos PDFs
