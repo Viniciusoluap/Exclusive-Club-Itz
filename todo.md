@@ -2980,6 +2980,31 @@ if (timeFilter === "future") {
 - `client/src/pages/EmployeeDashboard.tsx`
 - `server/routers.ts` (se necessário)
 
+---
+
+## 🐛 BUG CRÍTICO: Dropdown de Reservas Vazio no Painel do Funcionário
+
+**Data:** 13/12/2025
+**Reportado por:** Usuário
+
+### Problema:
+Nas páginas do funcionário (`/employee/abastecimentos` e `/employee/vistorias`), quando o funcionário tenta criar um novo registro, o dropdown "Reserva *" está vazio - não mostra as reservas já utilizadas (status 'used') para selecionar.
+
+### Causa Provável:
+Endpoint `bookings.getRecent` está protegido por `adminProcedure`, bloqueando acesso de funcionários (role 'employee').
+
+### Correção Necessária:
+- [x] Investigar endpoint bookings.getRecent no server/routers.ts
+- [x] Alterar de adminProcedure para publicProcedure com validação de role
+- [x] Permitir acesso tanto de admin quanto de employee
+- [x] Criar testes automatizados (7/7 passando)
+- [ ] Testar dropdown em /employee/abastecimentos
+- [ ] Testar dropdown em /employee/vistorias
+- [ ] Validar que admin continua funcionando normalmente
+
+### Arquivos a Modificar:
+- `server/routers.ts` (endpoint bookings.getRecent)
+
 **Arquivos PROIBIDOS:**
 - Páginas/componentes de admin
 - Páginas/componentes de usuário comum
