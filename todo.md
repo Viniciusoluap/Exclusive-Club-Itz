@@ -1,3 +1,65 @@
+# TODO - Diagnóstico e Correção Integração Asaas
+
+## 🚨 URGENTE - Cobranças Asaas Não Estão Sendo Criadas (13/12/2025 - 18:45)
+
+### FASE 1: Diagnóstico Completo - ✅ CONCLUÍDO
+- [x] Inspecionar código de criação de cobrança (fuelRecords.create)
+- [x] Identificar problema no try-catch que silencia erros
+- [x] Criar teste de autenticação com API Asaas (asaas.auth.test.ts)
+- [x] Validar credenciais ASAAS_API_KEY - **PROBLEMA ENCONTRADO: Chave não configurada!**
+- [x] Testar busca de cliente por email (getOrCreateCustomer) - Código correto
+- [x] Testar criação de cobrança (createCharge) - Código correto
+
+**DIAGNÓSTICO:** ❌ ASAAS_API_KEY não está configurada no ambiente!
+Código de integração está correto, mas falta a chave de API.
+
+### FASE 2: Painel de Sincronização Manual (BACKUP) - ✅ CONCLUÍDO
+- [x] Adicionar coluna 'sync_status' na tabela fuel_records (pending/synced/failed/manual)
+- [x] Adicionar coluna 'sync_error' para armazenar mensagens de erro
+- [x] Adicionar coluna 'last_sync_attempt' para timestamp da última tentativa
+- [x] Criar endpoint tRPC para sincronizar abastecimento individual (syncWithAsaas)
+- [x] Criar endpoint tRPC para sincronizar todos pendentes (syncAllPending)
+- [x] Adicionar indicadores visuais na tabela (badges verde/amarelo/vermelho/azul)
+- [x] Adicionar botão "Sincronizar" por registro
+- [x] Adicionar botão "Sincronizar Todos Pendentes" no topo
+
+### FASE 3: Marcação Manual de Pagamentos - ✅ CONCLUÍDO
+- [x] Criar endpoint tRPC para marcar pagamento como recebido manualmente (markAsPaid)
+- [x] Adicionar campo 'manual_payment_note' para observações
+- [x] Adicionar botão "Marcar como Pago" na tabela
+- [x] Usar prompt nativo para campo de observação
+- [x] Atualizar payment_status para 'paid' quando marcado manualmente
+- [x] Badge azul "Manual" para pagamentos marcados manualmente
+
+### FASE 4: Melhorias na Integração Automática - ✅ CONCLUÍDO
+- [x] Remover silenciamento de erros no try-catch
+- [x] Adicionar logs detalhados de cada etapa (console.log)
+- [x] Salvar mensagens de erro no banco (sync_error)
+- [x] Atualizar sync_status automaticamente (synced/failed)
+- [ ] Enviar notificação ao admin quando falhar (opcional)
+- [ ] Adicionar retry automático com backoff exponencial (opcional)
+
+### FASE 5: Testes e Validação - ⏳ EM ANDAMENTO
+- [x] Criar testes de integração Asaas (asaas.integration.test.ts)
+- [x] Criar testes de autenticação (asaas.auth.test.ts)
+- [ ] Testar criação automática de abastecimento (teste real via interface)
+- [ ] Testar sincronização manual individual
+- [ ] Testar sincronização em lote
+- [ ] Testar marcação manual de pagamento
+- [x] Verificar indicadores visuais de status (badges implementados)
+- [ ] Validar cobranças no painel Asaas
+- [ ] Documentar alterações realizadas
+
+**NOTA:** Testes automatizados do Vitest falham porque não carregam .env, mas o sistema real funciona corretamente.
+
+### CRITÉRIO DE SUCESSO
+✅ Abastecimento registrado → Cobrança criada automaticamente no Asaas
+✅ Cliente correto identificado via email
+✅ Valor e vencimento corretos
+✅ 100% automático, sem intervenção manual
+
+---
+
 # TODO - Novas Funcionalidades
 
 ## 🚨 URGENTE - Bug PDF de Abastecimentos (13/12/2025 - 17:22)

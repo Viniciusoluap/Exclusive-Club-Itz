@@ -113,6 +113,13 @@
       "when": 1765648456697,
       "tag": "0015_remarkable_magus",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1765659140000,
+      "tag": "0016_fast_whistler",
+      "breakpoints": true
     }
   ]
 }

@@ -1397,18 +1397,25 @@ Nenhuma reserva foi afetada.
         let asaasCustomerId = '';
         let asaasChargeId = '';
         let paymentUrl = '';
+        let syncStatus = 'pending';
+        let syncError = null;
         
         try {
+          console.log('[fuelRecords.create] Iniciando criação de cobrança Asaas...');
+          console.log('[fuelRecords.create] Cliente:', booking.client_name, booking.client_email);
+          
           const customer = await asaas.getOrCreateCustomer({
             name: booking.client_name,
             email: booking.client_email,
           });
           asaasCustomerId = customer.id;
+          console.log('[fuelRecords.create] Cliente Asaas ID:', asaasCustomerId);
 
           // Criar cobrança no Asaas
           const dueDate = new Date();
           dueDate.setDate(dueDate.getDate() + 7); // Vencimento em 7 dias
           
+          console.log('[fuelRecords.create] Criando cobrança...');
           const charge = await asaas.createCharge({
             customer: asaasCustomerId,
             billingType: 'UNDEFINED', // Cliente escolhe forma de pagamento
@@ -1420,20 +1427,43 @@ Nenhuma reserva foi afetada.
           
           asaasChargeId = charge.id;
           paymentUrl = charge.invoiceUrl || charge.bankSlipUrl || '';
-        } catch (error) {
-          console.error('[Asaas] Erro ao criar cobrança:', error);
-          // Continua mesmo se falhar - admin pode criar cobrança manualmente
+          syncStatus = 'synced';
+          
+          console.log('[fuelRecords.create] ✅ Cobrança criada com sucesso!');
+          console.log('[fuelRecords.create] Charge ID:', asaasChargeId);
+          console.log('[fuelRecords.create] Payment URL:', paymentUrl);
+        } catch (error: any) {
+          syncStatus = 'failed';
+          syncError = error.message;
+          console.error('[fuelRecords.create] ❌ ERRO ao criar cobrança Asaas:');
+          console.error('[fuelRecords.create] Mensagem:', error.message);
+          console.error('[fuelRecords.create] Stack:', error.stack);
+          console.error('[fuelRecords.create] Abastecimento será salvo, mas cobrança pode ser criada manualmente depois');
         }
 
         const notesValue = input.notes ? `'${input.notes.replace(/'/g, "''")}'` : 'NULL';
         const asaasChargeIdValue = asaasChargeId ? `'${asaasChargeId}'` : 'NULL';
         const asaasCustomerIdValue = asaasCustomerId ? `'${asaasCustomerId}'` : 'NULL';
         const paymentUrlValue = paymentUrl ? `'${paymentUrl}'` : 'NULL';
+        const syncErrorValue = syncError ? `'${syncError.replace(/'/g, "''")}'` : 'NULL';
         
         await database.execute(`
-          INSERT INTO fuel_records (booking_id, vessel_id, vessel_name, client_email, client_name, liters, price_per_liter, total_amount, notes, asaas_charge_id, asaas_customer_id, payment_url, payment_status)
-          VALUES (${input.bookingId}, ${input.vesselId}, '${booking.vessel_name_actual}', '${booking.client_email}', '${booking.client_name}', ${litersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${notesValue}, ${asaasChargeIdValue}, ${asaasCustomerIdValue}, ${paymentUrlValue}, 'pending')
-        `); 
+          INSERT INTO fuel_records (
+            booking_id, vessel_id, vessel_name, client_email, client_name, 
+            liters, price_per_liter, total_amount, notes, 
+            asaas_charge_id, asaas_customer_id, payment_url, payment_status,
+            sync_status, sync_error, last_sync_attempt
+          )
+          VALUES (
+            ${input.bookingId}, ${input.vesselId}, '${booking.vessel_name_actual}', 
+            '${booking.client_email}', '${booking.client_name}', 
+            ${litersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${notesValue}, 
+            ${asaasChargeIdValue}, ${asaasCustomerIdValue}, ${paymentUrlValue}, 'pending',
+            '${syncStatus}', ${syncErrorValue}, NOW()
+          )
+        `);
+        
+        console.log('[fuelRecords.create] Abastecimento salvo no banco com sync_status:', syncStatus); 
 
         return { 
           success: true, 
@@ -1463,7 +1493,11 @@ Nenhuma reserva foi afetada.
         let queryStr = `
           SELECT 
             fr.*,
-            b.booking_date
+            b.booking_date,
+            fr.sync_status,
+            fr.sync_error,
+            fr.last_sync_attempt,
+            fr.manual_payment_note
           FROM fuel_records fr
           JOIN bookings b ON fr.booking_id = b.id
           WHERE 1=1
@@ -1590,6 +1624,236 @@ Nenhuma reserva foi afetada.
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
             message: `Erro ao excluir abastecimento: ${error.message}` 
+          });
+        }
+      }),
+
+    // Sincronizar abastecimento individual com Asaas
+    syncWithAsaas: publicProcedure
+      .input(z.object({
+        id: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user || ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Apenas administradores podem sincronizar' });
+        }
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          // Buscar registro de abastecimento
+          const { sql } = await import('drizzle-orm');
+          const result = await db.execute(sql`
+            SELECT * FROM fuel_records WHERE id = ${input.id}
+          `) as any;
+          const record = (Array.isArray(result[0]) ? result[0][0] : result[0]);
+
+          if (!record) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Abastecimento não encontrado' });
+          }
+
+          // Se já está sincronizado, retornar sucesso
+          if (record.sync_status === 'synced' && record.asaas_charge_id) {
+            return { 
+              success: true, 
+              message: 'Abastecimento já sincronizado',
+              chargeId: record.asaas_charge_id,
+              paymentUrl: record.payment_url
+            };
+          }
+
+          // Tentar criar cobrança no Asaas
+          const asaas = await import('./_core/asaas');
+          
+          console.log('[syncWithAsaas] Buscando/criando cliente:', record.client_email);
+          const customer = await asaas.getOrCreateCustomer({
+            name: record.client_name,
+            email: record.client_email,
+          });
+          console.log('[syncWithAsaas] Cliente obtido:', customer.id);
+
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + 7); // Vencimento em 7 dias
+          
+          console.log('[syncWithAsaas] Criando cobrança...');
+          const charge = await asaas.createCharge({
+            customer: customer.id,
+            billingType: 'UNDEFINED',
+            value: record.total_amount / 100, // Converter centavos para reais
+            dueDate: asaas.formatDateForAsaas(dueDate),
+            description: `Abastecimento - ${record.vessel_name} - ${record.liters / 100}L`,
+            externalReference: `fuel_record_${record.id}`,
+          });
+          console.log('[syncWithAsaas] Cobrança criada:', charge.id);
+
+          // Atualizar registro com dados da cobrança
+          await db.execute(sql`
+            UPDATE fuel_records 
+            SET 
+              asaas_charge_id = ${charge.id},
+              asaas_customer_id = ${customer.id},
+              payment_url = ${charge.invoiceUrl || charge.bankSlipUrl || ''},
+              sync_status = 'synced',
+              sync_error = NULL,
+              last_sync_attempt = NOW()
+            WHERE id = ${input.id}
+          `);
+
+          return { 
+            success: true, 
+            message: 'Cobrança criada com sucesso no Asaas',
+            chargeId: charge.id,
+            paymentUrl: charge.invoiceUrl || charge.bankSlipUrl || ''
+          };
+        } catch (error: any) {
+          console.error('[syncWithAsaas] Erro:', error);
+          
+          // Salvar erro no banco
+          const { sql } = await import('drizzle-orm');
+          await db.execute(sql`
+            UPDATE fuel_records 
+            SET 
+              sync_status = 'failed',
+              sync_error = ${error.message},
+              last_sync_attempt = NOW()
+            WHERE id = ${input.id}
+          `);
+
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao sincronizar com Asaas: ${error.message}` 
+          });
+        }
+      }),
+
+    // Sincronizar todos os abastecimentos pendentes
+    syncAllPending: publicProcedure
+      .mutation(async ({ ctx }) => {
+        if (!ctx.user || ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Apenas administradores podem sincronizar' });
+        }
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          // Buscar todos os registros pendentes
+          const { sql } = await import('drizzle-orm');
+          const result = await db.execute(sql`
+            SELECT id FROM fuel_records 
+            WHERE sync_status = 'pending' OR sync_status = 'failed'
+            ORDER BY created_at ASC
+          `) as any;
+          const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
+
+          let successCount = 0;
+          let failCount = 0;
+          const errors: string[] = [];
+
+          // Sincronizar cada registro
+          for (const record of records) {
+            try {
+              // Reutilizar lógica do endpoint syncWithAsaas
+              const recordResult = await db.execute(sql`
+                SELECT * FROM fuel_records WHERE id = ${record.id}
+              `) as any;
+              const fullRecord = (Array.isArray(recordResult[0]) ? recordResult[0][0] : recordResult[0]);
+
+              if (!fullRecord) continue;
+
+              const asaas = await import('./_core/asaas');
+              const customer = await asaas.getOrCreateCustomer({
+                name: fullRecord.client_name,
+                email: fullRecord.client_email,
+              });
+
+              const dueDate = new Date();
+              dueDate.setDate(dueDate.getDate() + 7);
+              
+              const charge = await asaas.createCharge({
+                customer: customer.id,
+                billingType: 'UNDEFINED',
+                value: fullRecord.total_amount / 100,
+                dueDate: asaas.formatDateForAsaas(dueDate),
+                description: `Abastecimento - ${fullRecord.vessel_name} - ${fullRecord.liters / 100}L`,
+                externalReference: `fuel_record_${fullRecord.id}`,
+              });
+
+              await db.execute(sql`
+                UPDATE fuel_records 
+                SET 
+                  asaas_charge_id = ${charge.id},
+                  asaas_customer_id = ${customer.id},
+                  payment_url = ${charge.invoiceUrl || charge.bankSlipUrl || ''},
+                  sync_status = 'synced',
+                  sync_error = NULL,
+                  last_sync_attempt = NOW()
+                WHERE id = ${record.id}
+              `);
+
+              successCount++;
+            } catch (error: any) {
+              console.error(`[syncAllPending] Erro no registro ${record.id}:`, error);
+              failCount++;
+              errors.push(`Registro ${record.id}: ${error.message}`);
+              
+              await db.execute(sql`
+                UPDATE fuel_records 
+                SET 
+                  sync_status = 'failed',
+                  sync_error = ${error.message},
+                  last_sync_attempt = NOW()
+                WHERE id = ${record.id}
+              `);
+            }
+          }
+
+          return {
+            success: true,
+            total: records.length,
+            successCount,
+            failCount,
+            errors: errors.length > 0 ? errors : undefined
+          };
+        } catch (error: any) {
+          console.error('[syncAllPending] Erro:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao sincronizar abastecimentos: ${error.message}` 
+          });
+        }
+      }),
+
+    // Marcar pagamento como recebido manualmente
+    markAsPaid: publicProcedure
+      .input(z.object({
+        id: z.number(),
+        note: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user || ctx.user.role !== 'admin') {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Apenas administradores podem marcar pagamentos' });
+        }
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          await db.execute(sql`
+            UPDATE fuel_records 
+            SET 
+              payment_status = 'paid',
+              sync_status = 'manual',
+              paid_at = NOW(),
+              manual_payment_note = ${input.note || 'Pagamento recebido manualmente'}
+            WHERE id = ${input.id}
+          `);
+
+          return { success: true, message: 'Pagamento marcado como recebido' };
+        } catch (error: any) {
+          console.error('[markAsPaid] Erro:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao marcar pagamento: ${error.message}` 
           });
         }
       }),
