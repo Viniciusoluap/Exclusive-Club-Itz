@@ -1903,3 +1903,45 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] **Item renomeado:** "COLETOR DE AGUA ABAIXO DO CASCO" → "CASCO" em ambas listas (JET SKI e LANCHA)
 - [x] **Status funcionando:** "Aprovado" em verde quando tudo OK, "Reprovado X" em laranja quando há falhas
 - [x] **Testado:** Checklist exibindo "12. CASCO" corretamente
+
+
+---
+
+## 🚨 CORREÇÃO URGENTE: Cores e Relatório de Vistorias (12/12/2025 - 22:30)
+
+### Problemas Reportados pelo Usuário:
+- [x] **Focker 215 (07/12)**: Todos aprovados mas mostra "Reprovado 20" em laranja → DEVE mostrar "Aprovado" em AZUL
+- [x] **JETSKI (07/12)**: 1 reprovação mas mostra "Reprovado 12" em laranja → DEVE mostrar "Reprovado 1" em VERMELHO
+- [x] **JETSKI (19/11)**: 1 reprovação mas mostra "Reprovado 20" em laranja → DEVE mostrar "Reprovado 1" em VERMELHO
+- [x] **Relatório PDF**: Não mostra lista de itens reprovados nem observações completas
+
+### Regras Corretas de Exibição:
+- [x] **Aprovado (0 reprovações)**: Texto "Aprovado" em COR AZUL (#3b82f6 ou similar)
+- [x] **Reprovado (1+ reprovações)**: Texto "Reprovado X" em COR VERMELHA (#ef4444 ou similar)
+- [x] **Quantidade X**: Deve ser o número REAL de itens reprovados (não total de campos)
+
+### Relatório PDF Deve Incluir:
+- [x] Lista completa do checklist com status de cada item (APROVADO/REPROVADO)
+- [x] Destacar visualmente itens reprovados
+- [x] Incluir campo de observações completo
+- [x] Seção específica listando apenas itens reprovados
+
+### Tarefas:
+- [x] Analisar código atual de cálculo em Vistorias.tsx (linhas 326-338)
+- [x] Identificar por que está contando total de campos ao invés de reprovações
+- [x] Corrigir lógica: failedCount = campos com valor "REPROVADO"
+- [x] Alterar cores: bg-blue-500 para aprovado, bg-red-500 para reprovado
+- [x] Atualizar inspectionsPDF.ts para incluir checklist completo
+- [x] Adicionar seção de itens reprovados no PDF
+- [x] Incluir observações completas no PDF
+- [x] Testar com as 3 vistorias reportadas
+- [x] Verificar que cores e números estão corretos
+- [x] Gerar PDF e validar conteúdo completo
+
+### Solução Implementada:
+- [x] **Causa raiz identificada:** Código verificava `v === 'aprovado'` (minúsculas) mas dados salvos são `'APROVADO'` (maiúsculas)
+- [x] **Correção em Vistorias.tsx:** Linha 300 alterada para `v === 'APROVADO'`
+- [x] **Cores corrigidas:** text-blue-600 para aprovado, text-red-600 para reprovado
+- [x] **PDF atualizado:** inspectionPDF.ts corrigido para usar maiúsculas
+- [x] **Interface TypeScript:** Alterada para aceitar 'APROVADO' | 'REPROVADO'
+- [x] **Testes visuais:** Todas as 3 vistorias exibindo corretamente

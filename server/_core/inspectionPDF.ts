@@ -9,21 +9,21 @@ interface InspectionData {
   clientName: string;
   inspectionDate: string;
   inspectedBy: string;
-  formData: Record<string, 'approved' | 'disapproved'>;
+  formData: Record<string, 'APROVADO' | 'REPROVADO'>;
   notes?: string;
 }
 
 function generateInspectionHTML(data: InspectionData): string {
-  const approvedCount = Object.values(data.formData).filter(v => v === 'approved').length;
+  const approvedCount = Object.values(data.formData).filter(v => v === 'APROVADO').length;
   const totalFields = Object.keys(data.formData).length;
-  const approvalRate = ((approvedCount / totalFields) * 100).toFixed(0);
+  const approvalRate = totalFields > 0 ? ((approvedCount / totalFields) * 100).toFixed(0) : '0';
 
   const fieldsHTML = Object.entries(data.formData).map(([field, status]) => {
-    const icon = status === 'approved' 
+    const icon = status === 'APROVADO' 
       ? '✅' 
       : '❌';
-    const statusText = status === 'approved' ? 'APROVADO' : 'REPROVADO';
-    const statusColor = status === 'approved' ? '#10b981' : '#ef4444';
+    const statusText = status === 'APROVADO' ? 'APROVADO' : 'REPROVADO';
+    const statusColor = status === 'APROVADO' ? '#10b981' : '#ef4444';
 
     return `
       <tr>
@@ -269,10 +269,10 @@ export async function sendInspectionReportEmail(
 ): Promise<boolean> {
   const subject = `Vistoria Realizada - ${data.vesselName} - ${new Date(data.inspectionDate).toLocaleDateString('pt-BR')}`;
   
-  const approvedCount = Object.values(data.formData).filter(v => v === 'approved').length;
+  const approvedCount = Object.values(data.formData).filter(v => v === 'APROVADO').length;
   const totalFields = Object.keys(data.formData).length;
   const disapprovedItems = Object.entries(data.formData)
-    .filter(([_, status]) => status === 'disapproved')
+    .filter(([_, status]) => status === 'REPROVADO')
     .map(([field]) => field);
 
   const htmlBody = `
