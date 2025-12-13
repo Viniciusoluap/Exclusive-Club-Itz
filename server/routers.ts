@@ -1669,7 +1669,10 @@ Nenhuma reserva foi afetada.
       }),
 
     generateReport: publicProcedure
-      .mutation(async ({ ctx }) => {
+      .input(z.object({
+        inspectionIds: z.array(z.number()).optional(),
+      }).optional())
+      .mutation(async ({ input, ctx }) => {
         if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
         }
@@ -1678,22 +1681,43 @@ Nenhuma reserva foi afetada.
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         try {
-          // Buscar últimas 10 vistorias
           const { sql } = await import('drizzle-orm');
-          const result = await db.execute(sql`
-            SELECT 
-              i.*,
-              v.name as vessel_name,
-              b.booking_date,
-              b.client_name as booking_client_name,
-              u.name as inspected_by_name
-            FROM inspections i
-            JOIN vessels v ON i.vessel_id = v.id
-            LEFT JOIN bookings b ON i.booking_id = b.id
-            LEFT JOIN users u ON i.inspected_by = u.id
-            ORDER BY i.created_at DESC
-            LIMIT 10
-          `) as any;
+          
+          let result;
+          if (input?.inspectionIds && input.inspectionIds.length > 0) {
+            // Buscar vistorias específicas por IDs
+            const ids = input.inspectionIds.join(',');
+            result = await db.execute(sql.raw(`
+              SELECT 
+                i.*,
+                v.name as vessel_name,
+                b.booking_date,
+                b.client_name as booking_client_name,
+                u.name as inspected_by_name
+              FROM inspections i
+              JOIN vessels v ON i.vessel_id = v.id
+              LEFT JOIN bookings b ON i.booking_id = b.id
+              LEFT JOIN users u ON i.inspected_by = u.id
+              WHERE i.id IN (${ids})
+              ORDER BY i.created_at DESC
+            `)) as any;
+          } else {
+            // Buscar últimas 10 vistorias
+            result = await db.execute(sql`
+              SELECT 
+                i.*,
+                v.name as vessel_name,
+                b.booking_date,
+                b.client_name as booking_client_name,
+                u.name as inspected_by_name
+              FROM inspections i
+              JOIN vessels v ON i.vessel_id = v.id
+              LEFT JOIN bookings b ON i.booking_id = b.id
+              LEFT JOIN users u ON i.inspected_by = u.id
+              ORDER BY i.created_at DESC
+              LIMIT 10
+            `) as any;
+          }
 
           const inspections = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
             ...row,
@@ -1717,6 +1741,83 @@ Nenhuma reserva foi afetada.
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
             message: `Erro ao gerar relatório: ${error.message}` 
+          });
+        }
+      }),
+
+    sendReportByEmail: publicProcedure
+      .input(z.object({
+        inspectionIds: z.array(z.number()),
+        email: z.string().email(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+        
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const ids = input.inspectionIds.join(',');
+          
+          const result = await db.execute(sql.raw(`
+            SELECT 
+              i.*,
+              v.name as vessel_name,
+              b.booking_date,
+              b.client_name as booking_client_name,
+              u.name as inspected_by_name
+            FROM inspections i
+            JOIN vessels v ON i.vessel_id = v.id
+            LEFT JOIN bookings b ON i.booking_id = b.id
+            LEFT JOIN users u ON i.inspected_by = u.id
+            WHERE i.id IN (${ids})
+            ORDER BY i.created_at DESC
+          `)) as any;
+
+          const inspections = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
+            ...row,
+            inspection_data: typeof row.inspection_data === 'string' ? JSON.parse(row.inspection_data) : row.inspection_data
+          }));
+
+          // Gerar PDF
+          const { generateInspectionsReportPDF } = await import('./_core/inspectionsPDF');
+          const pdfBuffer = await generateInspectionsReportPDF(inspections);
+
+          // Enviar email
+          const { sendEmail } = await import('./_core/emailService');
+          await sendEmail({
+            to: input.email,
+            subject: `Relatório de Vistorias - ${new Date().toLocaleDateString('pt-BR')}`,
+            text: `Segue em anexo o relatório de ${inspections.length} vistoria(s).`,
+            html: `
+              <h2>Relatório de Vistorias</h2>
+              <p>Prezado(a),</p>
+              <p>Segue em anexo o relatório contendo ${inspections.length} vistoria(s) solicitada(s).</p>
+              <p>Atenciosamente,<br/>Exclusive Club</p>
+            `,
+            attachments: [{
+              filename: `relatorio-vistorias-${new Date().toISOString().split('T')[0]}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf',
+            }],
+          });
+
+          // Notificar owner
+          const { notifyOwner } = await import('./_core/notification');
+          await notifyOwner({
+            title: '📧 Relatório de Vistorias Enviado',
+            content: `Relatório de ${inspections.length} vistoria(s) enviado para ${input.email}.`,
+          });
+
+          return { success: true, count: inspections.length };
+        } catch (error: any) {
+          console.error('[inspections.sendReportByEmail] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao enviar relatório: ${error.message}` 
           });
         }
       }),
