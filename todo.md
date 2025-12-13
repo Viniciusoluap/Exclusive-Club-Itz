@@ -1808,3 +1808,39 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Criados 5 testes automatizados (100% passando)
 - [x] Testado: .com, .com.br, .net, .org, duplicação
 - [x] TypeScript: 0 erros
+
+
+---
+
+## 🚨 BUG REPORTADO: Exibição Incorreta de Status de Vistorias (12/12/2025 - 20:41)
+
+### Problemas Identificados:
+- [x] Status mostrando "Reprovações: 20" e "Reprovações: 12" ao invés de texto descritivo
+- [x] Deve mostrar "Aprovado" quando TODOS os itens do checklist foram aprovados
+- [x] Deve mostrar "Reprovado X" onde X é a quantidade de itens reprovados
+- [x] Falta funcionalidade de geração de relatório PDF de vistorias
+- [x] Falta funcionalidade de seleção de múltiplas vistorias para relatório
+- [x] Falta funcionalidade de envio de relatório por email
+
+### Tarefas:
+- [x] Corrigir lógica de cálculo de status (Aprovado vs Reprovado X)
+- [x] Atualizar exibição no frontend para mostrar texto ao invés de número
+- [x] Implementar geração de PDF com dados da vistoria
+- [x] Implementar seleção de múltiplas vistorias (checkboxes)
+- [x] Implementar envio de PDF por email
+- [x] Testar fluxo completo
+
+### Implementação Concluída:
+- [x] Frontend: Alterado "Reprovado: 1" e "Reprovações: X" para "Reprovado X"
+- [x] Frontend: Adicionado state para seleção de vistorias (selectedInspections)
+- [x] Frontend: Adicionado checkboxes nos cards de vistoria
+- [x] Frontend: Adicionado botão "Selecionar Todas" / "Desmarcar Todas"
+- [x] Frontend: Atualizado botão "Gerar PDF" para mostrar quantidade selecionada
+- [x] Frontend: Adicionado botão "Enviar por Email" com contador
+- [x] Frontend: Criado dialog de envio de email com campo de destinatário
+- [x] Backend: Atualizado endpoint generateReport para aceitar inspectionIds
+- [x] Backend: Criado endpoint sendReportByEmail com envio de PDF por email
+- [x] Backend: Implementado notificação ao owner após envio
+- [x] Testado: Seleção de vistorias funciona
+- [x] Testado: Geração de PDF com vistorias selecionadas funciona
+- [x] Testado: Dialog de email abre corretamente

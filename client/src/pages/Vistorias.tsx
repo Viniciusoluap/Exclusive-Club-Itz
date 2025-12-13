@@ -61,6 +61,9 @@ export default function Vistorias() {
   const [clientName, setClientName] = useState("");
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
+  const [selectedInspections, setSelectedInspections] = useState<number[]>([]);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [emailRecipient, setEmailRecipient] = useState("");
 
   const trpcAny = trpc as any;
   const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas reservas utilizadas
@@ -99,11 +102,54 @@ export default function Vistorias() {
       link.download = `relatorio-vistorias-${new Date().toISOString().split('T')[0]}.pdf`;
       link.click();
       toast.success(`Relatório de ${data.count} vistorias gerado com sucesso!`);
+      setSelectedInspections([]);
     },
     onError: (error: any) => {
       toast.error(`Erro ao gerar relatório: ${error.message}`);
     },
   });
+
+  const sendEmailMutation = trpcAny.inspections?.sendReportByEmail.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Relatório de ${data.count} vistoria(s) enviado para ${emailRecipient}!`);
+      setIsEmailDialogOpen(false);
+      setEmailRecipient("");
+      setSelectedInspections([]);
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao enviar relatório: ${error.message}`);
+    },
+  });
+
+  const toggleInspectionSelection = (id: number) => {
+    setSelectedInspections(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedInspections.length === inspections?.length) {
+      setSelectedInspections([]);
+    } else {
+      setSelectedInspections(inspections?.map((i: any) => i.id) || []);
+    }
+  };
+
+  const handleGenerateReport = () => {
+    if (selectedInspections.length === 0) {
+      toast.error("Selecione pelo menos uma vistoria");
+      return;
+    }
+    generateReportMutation.mutate({ inspectionIds: selectedInspections });
+  };
+
+  const handleSendEmail = () => {
+    if (selectedInspections.length === 0) {
+      toast.error("Selecione pelo menos uma vistoria");
+      return;
+    }
+    setIsEmailDialogOpen(true);
+  };
 
   const resetForm = () => {
     setSelectedBookingId(null);
@@ -193,8 +239,8 @@ export default function Vistorias() {
           <div className="flex flex-col sm:flex-row gap-2">
             <Button 
               variant="outline" 
-              onClick={() => generateReportMutation.mutate()}
-              disabled={generateReportMutation.isPending}
+              onClick={handleGenerateReport}
+              disabled={generateReportMutation.isPending || selectedInspections.length === 0}
               className="w-full sm:w-auto"
             >
               {generateReportMutation.isPending ? (
@@ -205,9 +251,18 @@ export default function Vistorias() {
               ) : (
                 <>
                   <FileText className="w-4 h-4 mr-2" />
-                  Relatório PDF
+                  Gerar PDF ({selectedInspections.length})
                 </>
               )}
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={handleSendEmail}
+              disabled={selectedInspections.length === 0}
+              className="w-full sm:w-auto"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Enviar por Email ({selectedInspections.length})
             </Button>
             <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
@@ -219,7 +274,18 @@ export default function Vistorias() {
 
       {/* Recent Inspections */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Vistorias Recentes</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Vistorias Recentes</h2>
+          {inspections && inspections.length > 0 && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={toggleSelectAll}
+            >
+              {selectedInspections.length === inspections.length ? 'Desmarcar Todas' : 'Selecionar Todas'}
+            </Button>
+          )}
+        </div>
         {!inspections || inspections.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
@@ -237,10 +303,16 @@ export default function Vistorias() {
               const isFullyApproved = failedCount === 0;
 
               return (
-                <Card key={inspection.id}>
+                <Card key={inspection.id} className={selectedInspections.includes(inspection.id) ? 'ring-2 ring-primary' : ''}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedInspections.includes(inspection.id)}
+                          onChange={() => toggleInspectionSelection(inspection.id)}
+                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                        />
                         <ClipboardCheck className="w-5 h-5 text-primary" />
                         <div>
                           <CardTitle className="text-lg">{inspection.vesselName}</CardTitle>
@@ -260,7 +332,7 @@ export default function Vistorias() {
                             <div className="flex items-center gap-2 text-amber-600">
                               <XCircle className="w-5 h-5" />
                               <span className="font-semibold">
-                                {failedCount === 1 ? 'Reprovado: 1' : `Reprovações: ${failedCount}`}
+                                Reprovado {failedCount}
                               </span>
                             </div>
                           )}
@@ -435,6 +507,57 @@ export default function Vistorias() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de envio de email */}
+      <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar Relatório por Email</DialogTitle>
+            <DialogDescription>
+              Digite o email do destinatário para enviar o relatório de {selectedInspections.length} vistoria(s) selecionada(s).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email do Destinatário</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="exemplo@email.com"
+                value={emailRecipient}
+                onChange={(e) => setEmailRecipient(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsEmailDialogOpen(false);
+                setEmailRecipient("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => sendEmailMutation.mutate({ 
+                inspectionIds: selectedInspections, 
+                email: emailRecipient 
+              })}
+              disabled={sendEmailMutation.isPending || !emailRecipient}
+            >
+              {sendEmailMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                'Enviar'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
