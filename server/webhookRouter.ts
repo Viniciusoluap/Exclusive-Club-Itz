@@ -18,23 +18,30 @@ export const webhookRouter = router({
       event: z.string(),
       payment: z.object({
         id: z.string(),
-        customer: z.string(),
-        value: z.number(),
+        customer: z.string().optional(),
+        value: z.number().optional(),
         status: z.string(),
         externalReference: z.string().optional(),
       }).passthrough(),
-    }))
+    }).passthrough())
     .mutation(async ({ input, ctx }) => {
+      // Log detalhado do payload recebido
+      console.log('[Webhook Asaas] Payload completo recebido:', JSON.stringify(input, null, 2));
+      console.log('[Webhook Asaas] Headers:', JSON.stringify(ctx.req.headers, null, 2));
+      
       // Validar token de autenticação do webhook
       const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
       const receivedToken = ctx.req.headers['asaas-access-token'] || ctx.req.headers['authorization']?.replace('Bearer ', '');
+      
+      console.log('[Webhook Asaas] Token esperado:', webhookToken ? 'Configurado' : 'NÃO CONFIGURADO');
+      console.log('[Webhook Asaas] Token recebido:', receivedToken ? 'Presente' : 'AUSENTE');
       
       if (!webhookToken || receivedToken !== webhookToken) {
         console.error('[Webhook Asaas] Token inválido ou ausente');
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Token inválido' });
       }
 
-      console.log('[Webhook Asaas] Evento recebido:', input.event, 'Payment ID:', input.payment.id);
+      console.log('[Webhook Asaas] Evento recebido:', input.event, 'Payment ID:', input.payment?.id);
 
       // Processar apenas eventos de pagamento relevantes
       const relevantEvents = ['PAYMENT_RECEIVED', 'PAYMENT_OVERDUE', 'PAYMENT_DELETED'];
