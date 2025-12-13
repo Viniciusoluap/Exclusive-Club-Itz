@@ -22,6 +22,7 @@ export default function Abastecimento() {
   const [pricePerLiter, setPricePerLiter] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [showAllRecords, setShowAllRecords] = useState(false);
 
   const trpcAny = trpc as any;
   const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas as últimas 6 reservas utilizadas
@@ -60,14 +61,14 @@ export default function Abastecimento() {
   const generateReportMutation = trpcAny.fuelRecords?.generateReport.useMutation({
     onSuccess: (data: any) => {
       // Download PDF
-      const linkSource = `data:application/pdf;base64,${data.pdfBase64}`;
+      const linkSource = `data:application/pdf;base64,${data.pdf}`;
       const downloadLink = document.createElement('a');
-      const fileName = `relatorio-abastecimentos-${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = data.filename || `relatorio-abastecimentos-${new Date().toISOString().split('T')[0]}.pdf`;
       downloadLink.href = linkSource;
       downloadLink.download = fileName;
       downloadLink.click();
       
-      toast.success(`Relatório gerado com ${data.count} abastecimento(s)!`);
+      toast.success(`Relatório gerado com ${selectedIds.length} abastecimento(s)!`);
       setSelectedIds([]);
     },
     onError: (error: any) => {
@@ -112,7 +113,7 @@ export default function Abastecimento() {
       toast.error('Selecione pelo menos um abastecimento');
       return;
     }
-    generateReportMutation.mutate({ refuelingIds: selectedIds });
+    generateReportMutation.mutate({ recordIds: selectedIds });
   };
 
   const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
@@ -195,9 +196,28 @@ export default function Abastecimento() {
 
       {/* Recent Fuel Records */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="text-xl font-semibold">Registros Recentes</h2>
-          {fuelRecords && fuelRecords.length > 0 && (
+          <div className="flex items-center gap-2">
+            {fuelRecords && fuelRecords.length > 10 && (
+              <div className="flex gap-2">
+                <Button
+                  variant={!showAllRecords ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowAllRecords(false)}
+                >
+                  Últimos 10
+                </Button>
+                <Button
+                  variant={showAllRecords ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowAllRecords(true)}
+                >
+                  Todos os Abastecimentos
+                </Button>
+              </div>
+            )}
+            {fuelRecords && fuelRecords.length > 0 && (
             <Button 
               variant="ghost" 
               size="sm"
@@ -205,7 +225,8 @@ export default function Abastecimento() {
             >
               {selectedIds.length === fuelRecords.length ? 'Desmarcar todos' : 'Selecionar todos'}
             </Button>
-          )}
+            )}
+          </div>
         </div>
         {!fuelRecords || fuelRecords.length === 0 ? (
           <Card>
@@ -215,7 +236,11 @@ export default function Abastecimento() {
           </Card>
         ) : (
           <div className="grid gap-4">
-            {fuelRecords.map((record: any) => (
+            {(() => {
+              // Aplicar filtro de visualização
+              const displayRecords = showAllRecords ? fuelRecords : fuelRecords.slice(0, 10);
+              
+              return displayRecords.map((record: any) => (
               <Card key={record.id} className={selectedIds.includes(record.id) ? 'ring-2 ring-primary' : ''}>
                 <CardHeader className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -266,7 +291,8 @@ export default function Abastecimento() {
                   </CardContent>
                 )}
               </Card>
-            ))}
+              ));
+            })()}
           </div>
         )}
       </div>
