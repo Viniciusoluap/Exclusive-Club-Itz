@@ -356,7 +356,10 @@ export const appRouter = router({
         if (!dbInstance) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         const { sql: sqlTag } = await import('drizzle-orm');
-        const now = Date.now();
+        // Normalizar para meia-noite para comparar apenas datas (sem horas)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const now = today.getTime();
         const timeFilter = input?.timeFilter || "future";
 
         let query = `
