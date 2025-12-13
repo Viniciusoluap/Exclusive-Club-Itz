@@ -1327,13 +1327,23 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const { employees } = await import('../drizzle/schema');
-        const { eq } = await import('drizzle-orm');
+        const { employees, users } = await import('../drizzle/schema');
+        const { eq, sql } = await import('drizzle-orm');
 
         try {
-          // Hard delete para liberar o email imediatamente
+          // 1. Buscar email do funcionário antes de deletar
+          const result = await db.execute(sql`SELECT email FROM employees WHERE id = ${input.id}`);
+          const employeeEmail = (result[0] as any)?.[0]?.email;
+
+          // 2. Hard delete da tabela employees para liberar o email imediatamente
           await db.delete(employees)
             .where(eq(employees.id, input.id));
+          
+          // 3. Remover também da tabela users (se existir) para evitar órfãos
+          if (employeeEmail) {
+            await db.delete(users)
+              .where(eq(users.email, employeeEmail));
+          }
           
           return { success: true };
         } catch (error: any) {
