@@ -1844,3 +1844,34 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Testado: Seleção de vistorias funciona
 - [x] Testado: Geração de PDF com vistorias selecionadas funciona
 - [x] Testado: Dialog de email abre corretamente
+
+
+---
+
+## 🚨 BUG CRÍTICO: Emails Bloqueados Após Exclusão (12/12/2025 - 21:21)
+
+### Problema Reportado:
+- [x] Email `contato@grupoefficaz.com.br` não pode ser cadastrado (erro: "já está cadastrado")
+- [x] Email `efficazcorrespondente@hotmail.com` não pode ser cadastrado (erro: "já está cadastrado")
+- [x] Funcionários com esses emails foram excluídos pela interface
+- [x] Mesmo após exclusão, emails continuam bloqueados
+- [x] Indica que registros não foram realmente deletados do banco
+
+### Investigação Necessária:
+- [x] Verificar se há registros órfãos no banco de dados
+- [x] Checar se exclusão está marcando `is_active = false` ao invés de DELETE
+- [x] Verificar se constraint UNIQUE do email considera registros inativos
+- [x] Analisar código do endpoint `employees.delete`
+
+### Correção:
+- [x] Limpar registros órfãos dos emails problemáticos
+- [x] Corrigir lógica de exclusão se necessário (soft delete vs hard delete)
+- [x] Testar cadastro dos emails após limpeza
+
+### Solução Implementada:
+- [x] **Causa raiz identificada:** Endpoint `employees.delete` fazia soft delete (UPDATE is_active = false) ao invés de hard delete
+- [x] **Registros órfãos:** Encontrados 5 registros com emails bloqueados no banco
+- [x] **Limpeza:** Deletados registros órfãos via SQL direto
+- [x] **Correção permanente:** Alterado `employees.delete` para fazer DELETE real (hard delete)
+- [x] **Testes:** Ambos emails cadastrados com sucesso após correção
+- [x] **Resultado:** Problema resolvido definitivamente

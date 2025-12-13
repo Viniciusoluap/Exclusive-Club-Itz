@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, name, email, is_active FROM employees WHERE email IN ('contato@grupoefficaz.com.br', 'efficazcorrespondente@hotmail.com') OR email LIKE '%efficaz%' OR email LIKE '%prospecta%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, name, email, is_active FROM employees WHERE email IN ('contato@grupoefficaz.com.br', 'efficazcorrespondente@hotmail.com') OR email LIKE '%efficaz%' OR email LIKE '%prospecta%'",
+  "rows": [
+    {
+      "id": "600001",
+      "name": "Teste novo",
+      "email": "efficazcorrespondente@hotmail.com",
+      "is_active": "0"
+    },
+    {
+      "id": "630003",
+      "name": "Teste",
+      "email": "contato@grupoefficaz.com.br",
+      "is_active": "0"
+    },
+    {
+      "id": "630021",
+      "name": "Teste Atualizado",
+      "email": "atualizado1765583469798@prospectaconstrucoes.com",
+      "is_active": "0"
+    },
+    {
+      "id": "630024",
+      "name": "Teste 2",
+      "email": "atendimento1765583469882@prospectaconstrucoes.com",
+      "is_active": "0"
+    },
+    {
+      "id": "660005",
+      "name": "Teste",
+      "email": "atendimento@prospectaconstrucoes.com",
+      "is_active": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tis_active\n600001\tTeste novo\tefficazcorrespondente@hotmail.com\t0\n630003\tTeste\tcontato@grupoefficaz.com.br\t0\n630021\tTeste Atualizado\tatualizado1765583469798@prospectaconstrucoes.com\t0\n630024\tTeste 2\tatendimento1765583469882@prospectaconstrucoes.com\t0\n660005\tTeste\tatendimento@prospectaconstrucoes.com\t1\n",
+  "stderr": "",
+  "execution_time_ms": 66
+}
