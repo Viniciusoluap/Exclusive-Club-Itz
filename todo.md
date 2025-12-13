@@ -2874,3 +2874,24 @@ if (timeFilter === "future") {
 ✅ Lógica validada por testes automatizados
 ✅ Reservas do dia atual aparecem em "Reservas Passadas"
 ✅ Filtro "Futuras" mostra apenas reservas com data futura
+
+
+---
+
+## 🐛 Bug - Relatório PDF de Abastecimento (13/12/2025)
+
+### Problema: Cabeçalho e resumo precisam de ajustes
+
+**Correções solicitadas:**
+- [x] Remover "&" do cabeçalho - deixar apenas "EXCLUSIVE CLUB" (atualmente: "& EXCLUSIVE CLUB")
+- [x] Adicionar card "TOTAL DE TAXAS" no resumo (ex: R$ 100,00 para 10 registros × R$ 10,00)
+
+**Localização:**
+- Arquivo: server/_core/fuelRecordPDF.ts
+- Seção: Cabeçalho (linha ~20-30)
+- Seção: Cards de resumo (linha ~40-60)
+
+**Exemplo de cálculo:**
+- 10 registros de abastecimento
+- Taxa fixa: R$ 10,00 por registro
+- TOTAL DE TAXAS: R$ 100,00 (10 × R$ 10,00)
