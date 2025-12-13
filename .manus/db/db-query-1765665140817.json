@@ -1,0 +1,21 @@
+{
+  "query": "\nSELECT \n  fr.id,\n  fr.vessel_id,\n  fr.booking_id,\n  fr.liters,\n  fr.price_per_liter,\n  fr.total_amount,\n  fr.payment_status,\n  fr.created_at,\n  v.name as vessel_name\nFROM fuel_records fr\nLEFT JOIN vessels v ON fr.vessel_id = v.id\nWHERE fr.total_amount = 4500\nORDER BY fr.created_at DESC\nLIMIT 5;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  fr.id,\n  fr.vessel_id,\n  fr.booking_id,\n  fr.liters,\n  fr.price_per_liter,\n  fr.total_amount,\n  fr.payment_status,\n  fr.created_at,\n  v.name as vessel_name\nFROM fuel_records fr\nLEFT JOIN vessels v ON fr.vessel_id = v.id\nWHERE fr.total_amount = 4500\nORDER BY fr.created_at DESC\nLIMIT 5;\n",
+  "rows": [
+    {
+      "id": "480002",
+      "vessel_id": "870001",
+      "booking_id": "1680001",
+      "liters": "500",
+      "price_per_liter": "700",
+      "total_amount": "4500",
+      "payment_status": "paid",
+      "created_at": "2025-12-13 21:37:50",
+      "vessel_name": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_id\tbooking_id\tliters\tprice_per_liter\ttotal_amount\tpayment_status\tcreated_at\tvessel_name\n480002\t870001\t1680001\t500\t700\t4500\tpaid\t2025-12-13 21:37:50\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

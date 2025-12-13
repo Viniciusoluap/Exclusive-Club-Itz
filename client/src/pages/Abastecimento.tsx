@@ -483,7 +483,7 @@ export default function Abastecimento() {
                   <div>
                     <CardTitle>Orçamento Mensal</CardTitle>
                     <CardDescription>
-                      {new Date(currentMonthYear + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                      {new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
                     </CardDescription>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setIsBudgetDialogOpen(true)}>

@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT \n  fr.id,\n  fr.vessel_id,\n  fr.booking_id,\n  fr.liters,\n  fr.price_per_liter,\n  fr.total_cost,\n  fr.payment_status,\n  fr.created_at,\n  v.name as vessel_name\nFROM fuel_records fr\nLEFT JOIN vessels v ON fr.vessel_id = v.id\nWHERE fr.total_cost = 4500\nORDER BY fr.created_at DESC\nLIMIT 5;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  fr.id,\n  fr.vessel_id,\n  fr.booking_id,\n  fr.liters,\n  fr.price_per_liter,\n  fr.total_cost,\n  fr.payment_status,\n  fr.created_at,\n  v.name as vessel_name\nFROM fuel_records fr\nLEFT JOIN vessels v ON fr.vessel_id = v.id\nWHERE fr.total_cost = 4500\nORDER BY fr.created_at DESC\nLIMIT 5;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'fr.total_cost' in 'where clause'"
+  ]
+}
