@@ -378,8 +378,8 @@ export const appRouter = router({
           // Futuras: data >= hoje, ordenadas da mais próxima
           query += `b.booking_date >= ${now} ORDER BY b.booking_date ASC`;
         } else {
-          // Passadas: data < hoje, últimas 20, ordenadas da mais recente
-          query += `b.booking_date < ${now} ORDER BY b.booking_date DESC LIMIT 20`;
+          // Passadas: data < hoje, ordenadas da mais recente
+          query += `b.booking_date < ${now} ORDER BY b.booking_date DESC`;
         }
 
         const result = await dbInstance.execute(sqlTag.raw(query)) as any;
