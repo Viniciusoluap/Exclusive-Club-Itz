@@ -413,3 +413,17 @@
 - [x] Validação final
 
 **SISTEMA 100% IMPLEMENTADO E FUNCIONAL!**
+
+
+---
+
+## 🚨 BUG CRÍTICO - Dropdown de Reservas Vazio (13/12/2025 - 16:19) - ✅ RESOLVIDO
+
+### Problema: Reservas utilizadas não aparecem no dropdown
+- [x] **Local:** /employee/abastecimentos e /employee/vistorias
+- [x] **Sintoma:** Dropdown "Selecione uma reserva" estava vazio
+- [x] **Esperado:** Mostrar reservas com status 'used' (já utilizadas)
+- [x] **Causa:** Endpoint bookings.getRecent usava adminProcedure bloqueando funcionários
+- [x] **Solução:** Alterado para publicProcedure com validação de role (admin/employee)
+- [x] **Teste:** Criado bookings.getRecent.test.ts - 4/4 PASSANDO
+- [x] **Resultado:** Funcionários agora conseguem acessar reservas utilizadas

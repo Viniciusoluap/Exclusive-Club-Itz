@@ -243,14 +243,19 @@ export const appRouter = router({
 
   // Bookings
   bookings: router({
-    // Get recent bookings for fuel registration and inspections (Admin only)
-    getRecent: adminProcedure
+    // Get recent bookings for fuel registration and inspections (Admin and Employee)
+    getRecent: publicProcedure
       .input(z.object({ 
         days: z.number().optional(), // Se não fornecido, retorna todas
         includeUsed: z.boolean().default(false), // Incluir reservas já usadas
         onlyUsed: z.boolean().default(false) // Apenas reservas já usadas (para abastecimento)
       }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        // Validar que apenas admin ou employee podem acessar
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Acesso negado. Apenas funcionários e administradores podem acessar.' });
+        }
+        
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
