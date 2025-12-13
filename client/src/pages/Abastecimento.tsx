@@ -115,10 +115,17 @@ export default function Abastecimento() {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.length === fuelRecords?.length) {
+    // Aplicar filtro de visualização
+    const displayRecords = showAllRecords ? fuelRecords : fuelRecords?.slice(0, 10);
+    const displayIds = displayRecords?.map((r: any) => r.id) || [];
+    
+    // Se todos os registros visíveis estão selecionados, desmarcar todos
+    const allDisplayedSelected = displayIds.every((id: number) => selectedIds.includes(id));
+    
+    if (allDisplayedSelected && selectedIds.length > 0) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(fuelRecords?.map((r: any) => r.id) || []);
+      setSelectedIds(displayIds);
     }
   };
 

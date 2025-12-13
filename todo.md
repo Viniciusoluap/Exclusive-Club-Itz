@@ -2370,3 +2370,45 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] Testar geração de PDF local
 - [x] Testar envio de email com PDF anexado
 - [x] Validar que email chega na caixa de entrada
+
+
+---
+
+## 🐛 BUGS CRÍTICOS - ABASTECIMENTO (12/12/2025 - 23:52)
+
+### Problemas Reportados:
+
+**BUG 1 - "Selecionar todos" ignora filtro:**
+- [x] Quando filtro está em "Últimos 10", botão "Selecionar todos" marca TODOS os 12 registros
+- [x] Deveria marcar apenas os 10 que aparecem na tela (respeitando filtro)
+- [x] Se filtro está em "Todos os Abastecimentos", aí sim marca todos
+- [x] Corrigir função handleSelectAll para usar displayRecords ao invés de fuelRecords
+
+**BUG 2 - Erro de executablePath do Puppeteer:**
+- [x] Erro: "Browser was not found at the configured executablePath (/usr/bin/chromium-browser)"
+- [x] Geração de PDF não funciona
+- [x] Envio de email não funciona (depende do PDF)
+- [x] Investigar caminho correto do Chromium no servidor
+- [x] Descoberto: /usr/bin/chromium-browser é script, binário real em /usr/lib/chromium-browser/chromium-browser
+- [x] Atualizado executablePath para usar binário real
+
+---
+
+### Tarefas:
+
+**Frontend (Abastecimento.tsx):**
+- [x] Modificar handleSelectAll para usar displayRecords (filtrados)
+- [x] Garantir que seleção respeita o filtro ativo (showAllRecords)
+- [x] Verificar se todos os registros visíveis estão selecionados antes de desmarcar
+
+**Backend (fuelRecordPDF.ts):**
+- [x] Verificar caminho correto do Chromium
+- [x] Testar execução do Puppeteer
+- [x] Atualizar para /usr/lib/chromium-browser/chromium-browser
+- [x] Adicionar flag --disable-dev-shm-usage
+
+**Testes:**
+- [x] Testar "Selecionar todos" com filtro "Últimos 10" (deve marcar 10)
+- [x] Testar "Selecionar todos" com filtro "Todos" (deve marcar todos)
+- [x] Testar geração de PDF
+- [x] Testar envio de email
