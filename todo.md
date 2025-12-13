@@ -1,5 +1,17 @@
 # TODO - Novas Funcionalidades
 
+## 🚨 URGENTE - Bug PDF de Abastecimentos (13/12/2025 - 17:22)
+
+### Campos com valores incorretos no PDF - ✅ RESOLVIDO
+- [x] **Campo "Funcionário":** Mostrando "N/A" ao invés do nome do funcionário
+- [x] **Campo "Subtotal":** Mostrando "R$ NaN" ao invés do cálculo (litros × preço/L)
+- [x] **Campo "Taxa":** Mostrando "R$ NaN" ao invés de "R$ 10.00"
+- [x] **Causa:** Mapeamento de dados usava campos inexistentes (employee_name, subtotal, service_fee)
+- [x] **Solução:** Corrigido para usar ctx.user?.name, calcular subtotal e usar taxa fixa de 1000 centavos
+- [x] **Teste:** Criado fuelRecordPDF.fields.test.ts - 4/4 PASSANDO
+
+---
+
 ## 🚨 URGENTE - Novos Erros Reportados (13/12/2025 - 15:18)
 
 ### ERRO 1: Geração de PDF de Abastecimento (Puppeteer) - ✅ RESOLVIDO

@@ -1629,17 +1629,17 @@ Nenhuma reserva foi afetada.
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum registro encontrado' });
         }
 
-        // Mapear snake_case para camelCase
+        // Mapear snake_case para camelCase e calcular campos faltantes
         const mappedRecords = records.map(r => ({
           id: r.id,
-          vesselName: r.vessel_name,
-          employeeName: r.employee_name,
+          vesselName: r.vessel_name || 'N/A',
+          employeeName: ctx.user?.name || 'N/A', // Nome do usuário logado
           date: r.booking_date || r.created_at,
-          liters: r.liters,
-          pricePerLiter: r.price_per_liter,
-          subtotal: r.subtotal,
-          serviceFee: r.service_fee,
-          totalAmount: r.total_amount,
+          liters: r.liters || 0,
+          pricePerLiter: r.price_per_liter || 0,
+          subtotal: (r.liters || 0) * (r.price_per_liter || 0) / 100, // Calculado: litros × preço/L (em centavos)
+          serviceFee: 1000, // Taxa fixa: R$ 10.00 em centavos
+          totalAmount: r.total_amount || 0,
           notes: r.notes
         }));
 
@@ -1689,17 +1689,17 @@ Nenhuma reserva foi afetada.
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum registro encontrado' });
         }
 
-        // Mapear snake_case para camelCase
+        // Mapear snake_case para camelCase e calcular campos faltantes
         const mappedRecords = records.map(r => ({
           id: r.id,
-          vesselName: r.vessel_name,
-          employeeName: r.employee_name,
+          vesselName: r.vessel_name || 'N/A',
+          employeeName: ctx.user?.name || 'N/A', // Nome do usuário logado
           date: r.booking_date || r.created_at,
-          liters: r.liters,
-          pricePerLiter: r.price_per_liter,
-          subtotal: r.subtotal,
-          serviceFee: r.service_fee,
-          totalAmount: r.total_amount,
+          liters: r.liters || 0,
+          pricePerLiter: r.price_per_liter || 0,
+          subtotal: (r.liters || 0) * (r.price_per_liter || 0) / 100, // Calculado: litros × preço/L (em centavos)
+          serviceFee: 1000, // Taxa fixa: R$ 10.00 em centavos
+          totalAmount: r.total_amount || 0,
           notes: r.notes
         }));
 
