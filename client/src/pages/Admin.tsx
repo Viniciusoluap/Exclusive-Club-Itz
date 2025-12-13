@@ -171,6 +171,7 @@ export default function Admin() {
 
   // Client Management State
   const [showClientDialog, setShowClientDialog] = useState(false);
+  const [selectedVesselFilter, setSelectedVesselFilter] = useState<number | "all">("all");
   const [clientForm, setClientForm] = useState({ 
     email: "", 
     name: "", 
@@ -476,6 +477,28 @@ export default function Admin() {
                     Adicionar Cliente
                   </Button>
                 </div>
+                {/* Filtro de Embarcação */}
+                <div className="flex items-center gap-2 mt-4">
+                  <Label htmlFor="vessel-filter" className="text-sm font-medium whitespace-nowrap">
+                    Filtrar por embarcação:
+                  </Label>
+                  <Select
+                    value={selectedVesselFilter.toString()}
+                    onValueChange={(value) => setSelectedVesselFilter(value === "all" ? "all" : parseInt(value))}
+                  >
+                    <SelectTrigger id="vessel-filter" className="w-[280px]">
+                      <SelectValue placeholder="Selecione uma embarcação" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas as embarcações</SelectItem>
+                      {vessels?.map((vessel) => (
+                        <SelectItem key={vessel.id} value={vessel.id.toString()}>
+                          {vessel.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardHeader>
               <CardContent>
                 {clientsLoading ? (
@@ -484,7 +507,57 @@ export default function Admin() {
                   </div>
                 ) : clients && clients.length > 0 ? (
                   <div className="space-y-2">
-                    {clients.map((client) => (
+                    {(() => {
+                      // Filtrar clientes por embarcação selecionada
+                      let filteredClients = clients;
+                      if (selectedVesselFilter !== "all") {
+                        filteredClients = clients.filter(client => 
+                          client.quotas?.some((q: any) => q.vesselId === selectedVesselFilter)
+                        );
+                      }
+
+                      // Ordenar por cotas sequenciais: #1 Inteira → #1 Meia → #2 Inteira → #2 Meia...
+                      const sortedClients = [...filteredClients].sort((a, b) => {
+                        // Pegar a primeira cota de cada cliente para ordenação
+                        const aQuota = a.quotas?.[0];
+                        const bQuota = b.quotas?.[0];
+                        
+                        if (!aQuota || !bQuota) return 0;
+                        
+                        // Se estiver filtrando por embarcação, usar apenas cotas dessa embarcação
+                        const aRelevantQuota = selectedVesselFilter !== "all" 
+                          ? a.quotas?.find((q: any) => q.vesselId === selectedVesselFilter) || aQuota
+                          : aQuota;
+                        const bRelevantQuota = selectedVesselFilter !== "all"
+                          ? b.quotas?.find((q: any) => q.vesselId === selectedVesselFilter) || bQuota
+                          : bQuota;
+                        
+                        // Primeiro ordenar por número da cota
+                        if (aRelevantQuota.quotaNumber !== bRelevantQuota.quotaNumber) {
+                          return aRelevantQuota.quotaNumber - bRelevantQuota.quotaNumber;
+                        }
+                        
+                        // Se número igual, ordenar por tipo (full antes de half)
+                        // "full" = Inteira (vem primeiro), "half" = Meia (vem depois)
+                        if (aRelevantQuota.quotaType === "full" && bRelevantQuota.quotaType === "half") {
+                          return -1;
+                        }
+                        if (aRelevantQuota.quotaType === "half" && bRelevantQuota.quotaType === "full") {
+                          return 1;
+                        }
+                        
+                        return 0;
+                      });
+
+                      if (sortedClients.length === 0) {
+                        return (
+                          <p className="text-center text-muted-foreground py-8">
+                            Nenhum cliente encontrado para esta embarcação
+                          </p>
+                        );
+                      }
+
+                      return sortedClients.map((client) => (
                       <div
                         key={client.id}
                         className="flex items-center justify-between p-4 border rounded-lg"
@@ -529,7 +602,8 @@ export default function Admin() {
                           </Button>
                         </div>
                       </div>
-                    ))}
+                      ));
+                    })()}
                   </div>
                 ) : (
                   <p className="text-center text-muted-foreground py-8">

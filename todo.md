@@ -1945,3 +1945,45 @@ params: 3, JETSKI SEADOO GTI SE 130HP, 1764414000000, 1764846000000, scheduled
 - [x] **PDF atualizado:** inspectionPDF.ts corrigido para usar maiúsculas
 - [x] **Interface TypeScript:** Alterada para aceitar 'APROVADO' | 'REPROVADO'
 - [x] **Testes visuais:** Todas as 3 vistorias exibindo corretamente
+
+
+---
+
+## 🎯 NOVA FUNCIONALIDADE: Filtro de Embarcações na Página de Clientes (12/12/2025 - 22:35)
+
+### Requisito do Usuário:
+- [x] Adicionar filtro dropdown de embarcações na página de Clientes Autorizados
+- [x] Ao selecionar embarcação, mostrar APENAS clientes que possuem cotas naquela embarcação
+- [x] Ordenar clientes por cotas sequenciais: #1 Inteira → #1 Meia → #2 Inteira → #2 Meia → #3 Inteira → #3 Meia...
+- [x] Opção "Todas as embarcações" para mostrar todos os clientes (padrão)
+- [x] Funcionar para qualquer embarcação cadastrada (atual e futura)
+
+### Exemplo de Funcionamento:
+**Filtro: "JETSKI SEADOO GTI SE 130HP"**
+- Cliente A: #1 Inteira
+- Cliente B: #1 Meia
+- Cliente C: #2 Inteira
+- Cliente D: #2 Meia
+- Cliente E: #3 Inteira
+- Cliente F: #3 Meia
+- Rodrigo: #5 Inteira
+- Vinicius: #4 Inteira
+
+### Tarefas Técnicas:
+- [x] Analisar código atual da página de Clientes (Admin.tsx)
+- [x] Buscar lista de embarcações cadastradas via tRPC (já existente)
+- [x] Criar dropdown de seleção de embarcação
+- [x] Implementar filtro para mostrar apenas clientes da embarcação selecionada
+- [x] Criar função de ordenação customizada por cotas sequenciais
+- [x] Lógica: ordenar por (número da cota ASC, tipo ASC onde Inteira < Meia)
+- [x] Testar com múltiplas embarcações
+- [x] Validar ordenação está correta
+- [x] Verificar que "Todas as embarcações" mostra todos os clientes
+
+### Solução Implementada:
+- [x] **Estado adicionado:** `selectedVesselFilter` para armazenar embarcação selecionada
+- [x] **Dropdown criado:** Select com opções dinâmicas baseadas em vessels
+- [x] **Filtro implementado:** `clients.filter()` para mostrar apenas clientes com cotas da embarcação
+- [x] **Ordenação customizada:** Sort por quotaNumber ASC, depois quotaType (full < half)
+- [x] **Testes visuais:** Filtro funcionando corretamente com Jetski e Focker
+- [x] **Mensagem vazia:** Exibe "Nenhum cliente encontrado" quando filtro não retorna resultados
