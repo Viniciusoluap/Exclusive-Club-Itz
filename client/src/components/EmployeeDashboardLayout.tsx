@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO, APP_TITLE } from "@/const";
 import { Button } from "@/components/ui/button";
-import { Calendar, Settings, LogOut, Menu, X, Fuel, ClipboardCheck } from "lucide-react";
+import { Calendar, Settings, LogOut, Menu, X, Fuel, ClipboardCheck, Home } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
@@ -28,7 +28,8 @@ export default function EmployeeDashboardLayout({ children }: EmployeeDashboardL
   };
 
   const menuItems = [
-    { path: "/employee/reservas", label: "Calendário de Reservas", icon: Calendar },
+    { path: "/", label: "Voltar para Home", icon: Home },
+    { path: "/employee/reservas", label: "Próximas Reservas", icon: Calendar },
     { path: "/employee/manutencoes", label: "Manutenções", icon: Settings },
     { path: "/employee/abastecimentos", label: "Abastecimentos", icon: Fuel },
     { path: "/employee/vistorias", label: "Vistorias", icon: ClipboardCheck },
