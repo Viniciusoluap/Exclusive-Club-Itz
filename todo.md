@@ -2895,3 +2895,28 @@ if (timeFilter === "future") {
 - 10 registros de abastecimento
 - Taxa fixa: R$ 10,00 por registro
 - TOTAL DE TAXAS: R$ 100,00 (10 × R$ 10,00)
+
+
+---
+
+## 🐛 Bug - Filtro de Reservas (13/12/2025)
+
+### Problema: Reservas de hoje aparecem em "Futuras" ao invés de "Reservas Passadas"
+
+**Comportamento atual:**
+- Reservas do dia 13/12/2025 (hoje) aparecem no filtro "Futuras"
+- Reservas canceladas de hoje também aparecem em "Futuras"
+
+**Comportamento esperado:**
+- Reservas de hoje devem aparecer em "Reservas Passadas"
+- Apenas reservas com data > hoje devem aparecer em "Futuras"
+
+**Correção necessária:**
+- [x] Ajustar lógica de comparação de datas no filtro
+- [x] "Futuras": date > hoje (apenas datas futuras)
+- [x] "Reservas Passadas": date <= hoje (hoje + passado)
+
+**Localização:**
+- Arquivo: server/routers.ts ou server/db.ts
+- Endpoint: admin.getAllBookings
+- Lógica de filtro por data
