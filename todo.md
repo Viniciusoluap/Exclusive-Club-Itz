@@ -3048,3 +3048,111 @@ Emails de funcionários continuavam aparecendo no sistema mesmo após exclusão 
 - `drizzle/schema.ts` (tabelas employees, users, inspections, fuelings)
 - `server/routers.ts` (endpoint employees.delete)
 - `server/db.ts` (funções de exclusão)
+
+
+---
+
+## 🚀 NOVA FEATURE: Sistema de Gestão Financeira de Abastecimentos com Asaas
+
+**Data de Início:** 13/12/2025
+**Status:** 🔄 Em Desenvolvimento
+
+### Objetivo:
+Implementar sistema completo de gestão financeira de abastecimentos com integração Asaas para cobranças automáticas, mantendo 100% das funcionalidades existentes do site.
+
+### Funcionalidades Principais:
+
+#### 1. Integração Asaas
+- [x] Criar serviço de integração (`server/_core/asaas.ts`)
+- [ ] Criar cobrança automática ao registrar abastecimento
+- [ ] Cancelar cobrança ao excluir abastecimento
+- [ ] Webhook para receber notificações de pagamento
+- [ ] Sincronização bidirecional (Site ↔ Asaas)
+
+#### 2. Schema do Banco de Dados
+- [x] Adicionar campos em `fuel_records`: asaasChargeId, paymentStatus, paidAt, receiptUrl, recordedBy, dueDate
+- [x] Criar tabela `fuel_budget` para orçamento mensal
+- [x] Executar migração (ALTER TABLE manual)
+
+#### 3. Backend - Endpoints
+- [ ] Modificar `fuelRecords.create` para criar cobrança Asaas
+- [ ] Modificar `fuelRecords.delete` para cancelar cobrança
+- [ ] Criar `fuelRecords.stats` (estatísticas financeiras)
+- [ ] Criar `fuelRecords.myRecords` (cliente vê seus abastecimentos)
+- [ ] Criar `fuelRecords.uploadReceipt` (upload de comprovante)
+- [ ] Criar router `fuelBudget` (configurar orçamento mensal)
+- [ ] Criar webhook `webhooks.asaas` (receber notificações)
+
+#### 4. Frontend Admin
+- [ ] Dashboard financeiro (Gasto vs Recebido vs Saldo)
+- [ ] Indicador de orçamento mensal
+- [ ] Alerta de orçamento baixo
+- [ ] Coluna de status de pagamento na tabela
+- [ ] Botão "Ver Cobrança Asaas"
+- [ ] Dialog de configuração de orçamento
+
+#### 5. Frontend Funcionário
+- [ ] Indicador de orçamento disponível
+- [ ] Campo de upload de comprovante (foto do cupom)
+- [ ] Validação de arquivo (tipo/tamanho)
+
+#### 6. Frontend Cliente (NOVA PÁGINA)
+- [ ] Criar página `/dashboard/abastecimentos`
+- [ ] Cards de resumo (Total a Pagar, Total Pago)
+- [ ] Tabela de abastecimentos do cliente
+- [ ] Botão "Pagar" (link para Asaas)
+- [ ] Botão "Ver Comprovante"
+- [ ] Adicionar link na navegação
+
+#### 7. Emails Automáticos
+- [ ] Template de email de nova cobrança
+- [ ] Envio automático ao criar abastecimento
+- [ ] Notificação de pagamento recebido (opcional)
+
+#### 8. Testes
+- [ ] Criar `server/fuelRecords.asaas.test.ts`
+- [ ] Testar criação de cobrança
+- [ ] Testar webhook de pagamento
+- [ ] Testar exclusão de cobrança
+- [ ] Testar cálculo de estatísticas
+- [ ] Testar permissões (cliente só vê seus registros)
+
+#### 9. Segurança
+- [ ] API Key Asaas em variável de ambiente
+- [ ] Validação de token no webhook
+- [ ] Cliente só acessa seus próprios abastecimentos
+- [ ] Validação de upload de arquivo
+- [ ] Logs de operações Asaas
+
+#### 10. Validação Final
+- [ ] Testar fluxo completo: registro → cobrança → pagamento
+- [ ] Validar dashboard financeiro
+- [ ] Validar página do cliente
+- [ ] Validar exclusão de cobrança
+- [ ] Confirmar que funcionalidades existentes não foram afetadas
+- [ ] Salvar checkpoint final
+
+### Especificações Técnicas:
+
+**API Asaas:**
+- Ambiente: Produção
+- Vencimento: 1 dia após criação
+- Notificações: Email habilitado
+
+**Regras de Negócio:**
+- Cobrança criada imediatamente ao registrar abastecimento
+- Vencimento padrão: D+1
+- Orçamento mensal: apenas alerta (não bloqueia)
+- Comprovante: obrigatório para funcionário
+- Cliente: apenas visualização (sem edição)
+- Exclusão: apenas admin, cancela cobrança no Asaas
+
+**Funcionalidades Mantidas (NÃO ALTERAR):**
+- ✅ Sistema de reservas
+- ✅ Calendário
+- ✅ Manutenções
+- ✅ Vistorias
+- ✅ Clientes
+- ✅ Embarcações
+- ✅ Funcionários
+- ✅ Todos os emails existentes
