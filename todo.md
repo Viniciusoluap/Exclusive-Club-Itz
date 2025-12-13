@@ -2998,9 +2998,10 @@ Endpoint `bookings.getRecent` está protegido por `adminProcedure`, bloqueando a
 - [x] Alterar de adminProcedure para publicProcedure com validação de role
 - [x] Permitir acesso tanto de admin quanto de employee
 - [x] Criar testes automatizados (7/7 passando)
-- [ ] Testar dropdown em /employee/abastecimentos
-- [ ] Testar dropdown em /employee/vistorias
-- [ ] Validar que admin continua funcionando normalmente
+- [x] Testar dropdown em /employee/abastecimentos
+- [x] Testar dropdown em /employee/vistorias
+- [x] Validar que admin continua funcionando normalmente
+- [x] Salvar checkpoint (versão 5655592b)
 
 ### Arquivos a Modificar:
 - `server/routers.ts` (endpoint bookings.getRecent)
@@ -3008,3 +3009,38 @@ Endpoint `bookings.getRecent` está protegido por `adminProcedure`, bloqueando a
 **Arquivos PROIBIDOS:**
 - Páginas/componentes de admin
 - Páginas/componentes de usuário comum
+
+
+---
+
+## 🐛 BUG CRÍTICO: Funcionários Não São Excluídos do Banco de Dados
+
+**Data:** 13/12/2025
+**Reportado por:** Usuário
+
+### Problema:
+Dois emails de funcionários continuam aparecendo no sistema mesmo após exclusão pela interface admin:
+- `contato@grupoeficaz.com.br`
+- `eficazcorrespondente@hotmail.com`
+
+Por mais que sejam excluídos do quadro de funcionários, eles continuam constando no sistema como funcionários ativos.
+
+### Causa Provável:
+- Registros residuais na tabela `employees` não removidos
+- Possível problema na lógica de exclusão do endpoint
+- Pode haver registros relacionados em outras tabelas impedindo exclusão
+
+### Investigação Necessária:
+- [x] Consultar tabela `employees` para verificar registros
+- [x] Consultar tabela `users` para verificar role 'employee'
+- [x] Verificar registros relacionados (vistorias, abastecimentos)
+- [x] Apresentar relatório completo ao usuário
+- [x] Executar limpeza autorizada no banco (3 registros removidos)
+- [x] Corrigir lógica de exclusão (endpoint agora remove de ambas as tabelas)
+- [x] Criar teste automatizado (3/3 passando)
+- [ ] Validar que exclusão funciona corretamente
+
+### Arquivos a Investigar:
+- `drizzle/schema.ts` (tabelas employees, users, inspections, fuelings)
+- `server/routers.ts` (endpoint employees.delete)
+- `server/db.ts` (funções de exclusão)
