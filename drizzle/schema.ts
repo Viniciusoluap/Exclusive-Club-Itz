@@ -172,6 +172,11 @@ export const fuelRecords = mysqlTable("fuel_records", {
   paymentStatus: mysqlEnum("payment_status", ["pending", "paid", "cancelled", "overdue"]).default("pending").notNull(),
   paymentUrl: text("payment_url"), // URL para pagamento no Asaas
   paidAt: timestamp("paid_at"), // Data do pagamento
+  // Campos de sincronização manual
+  syncStatus: mysqlEnum("sync_status", ["pending", "synced", "failed", "manual"]).default("pending").notNull(),
+  syncError: text("sync_error"), // Mensagem de erro da última tentativa
+  lastSyncAttempt: timestamp("last_sync_attempt"), // Timestamp da última tentativa de sync
+  manualPaymentNote: text("manual_payment_note"), // Observações de pagamento manual
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

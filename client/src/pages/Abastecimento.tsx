@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText, Mail, DollarSign, AlertCircle, ExternalLink, Settings } from "lucide-react";
+import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText, Mail, DollarSign, AlertCircle, ExternalLink, Settings, RefreshCw, CheckCircle, XCircle, Clock, Banknote } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 
@@ -97,6 +97,56 @@ export default function Abastecimento() {
       toast.error(`Erro ao enviar email: ${error.message}`);
     },
   });
+
+  const syncWithAsaasMutation = trpcAny.fuelRecords?.syncWithAsaas.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(data.message || 'Sincronizado com sucesso!');
+      refetch();
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao sincronizar: ${error.message}`);
+    },
+  });
+
+  const syncAllPendingMutation = trpcAny.fuelRecords?.syncAllPending.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Sincronização concluída! ${data.successCount} sucesso(s), ${data.failCount} falha(s)`);
+      if (data.errors && data.errors.length > 0) {
+        console.error('[Sync Errors]', data.errors);
+      }
+      refetch();
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao sincronizar em lote: ${error.message}`);
+    },
+  });
+
+  const markAsPaidMutation = trpcAny.fuelRecords?.markAsPaid.useMutation({
+    onSuccess: () => {
+      toast.success('Pagamento marcado como recebido!');
+      refetch();
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao marcar pagamento: ${error.message}`);
+    },
+  });
+
+  const handleSyncWithAsaas = (id: number) => {
+    syncWithAsaasMutation.mutate({ id });
+  };
+
+  const handleSyncAllPending = () => {
+    if (confirm('Deseja sincronizar todos os abastecimentos pendentes com o Asaas?')) {
+      syncAllPendingMutation.mutate();
+    }
+  };
+
+  const handleMarkAsPaid = (id: number) => {
+    const note = prompt('Observação sobre o pagamento (opcional):');
+    if (note !== null) { // null = cancelou, string vazia = confirmou sem observação
+      markAsPaidMutation.mutate({ id, note: note || undefined });
+    }
+  };
 
   const setBudgetMutation = trpcAny.fuelBudget?.set.useMutation({
     onSuccess: () => {
@@ -243,6 +293,20 @@ export default function Abastecimento() {
           <div className="flex gap-2 flex-wrap">
             {fuelRecords && fuelRecords.length > 0 && (
               <>
+                <Button 
+                  variant="outline"
+                  onClick={handleSyncAllPending}
+                  disabled={syncAllPendingMutation.isPending}
+                  className="flex-1 sm:flex-none bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                >
+                  {syncAllPendingMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  <span className="hidden sm:inline">Sincronizar Pendentes</span>
+                  <span className="sm:hidden">Sync</span>
+                </Button>
                 <Button 
                   variant="outline"
                   onClick={handleGenerateReport}
@@ -489,8 +553,9 @@ export default function Abastecimento() {
                           <div className="whitespace-nowrap">= R$ {(Number(record.liters) * Number(record.price_per_liter)).toFixed(2)}</div>
                           <div className="whitespace-nowrap">Taxa: R$ 10,00</div>
                         </div>
-                        {/* Badge de Status de Pagamento */}
-                        <div className="mt-2">
+                        {/* Badges de Status */}
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {/* Badge de Pagamento */}
                           {record.payment_status === 'paid' && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                               ✓ Pago
@@ -511,10 +576,64 @@ export default function Abastecimento() {
                               ✕ Cancelado
                             </span>
                           )}
+                          
+                          {/* Badge de Sincronização Asaas */}
+                          {record.sync_status === 'synced' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Sincronizado com Asaas">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Asaas OK
+                            </span>
+                          )}
+                          {record.sync_status === 'pending' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800" title="Aguardando sincronização">
+                              <Clock className="w-3 h-3 mr-1" />
+                              Sync Pendente
+                            </span>
+                          )}
+                          {record.sync_status === 'failed' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800" title={record.sync_error || 'Erro ao sincronizar'}>
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Sync Falhou
+                            </span>
+                          )}
+                          {record.sync_status === 'manual' && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800" title="Pagamento marcado manualmente">
+                              <Banknote className="w-3 h-3 mr-1" />
+                              Manual
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        {/* Botão Ver Cobrança Asaas */}
+                        {/* Botões de Ação */}
+                        {(record.sync_status === 'pending' || record.sync_status === 'failed') && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSyncWithAsaas(record.id)}
+                            disabled={syncWithAsaasMutation.isPending}
+                            className="whitespace-nowrap bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                          >
+                            {syncWithAsaasMutation.isPending ? (
+                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3 h-3 mr-1" />
+                            )}
+                            Sincronizar
+                          </Button>
+                        )}
+                        {record.payment_status !== 'paid' && record.sync_status !== 'manual' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleMarkAsPaid(record.id)}
+                            disabled={markAsPaidMutation.isPending}
+                            className="whitespace-nowrap"
+                          >
+                            <Banknote className="w-3 h-3 mr-1" />
+                            Marcar Pago
+                          </Button>
+                        )}
                         {record.asaas_charge_id && (
                           <Button
                             variant="outline"
