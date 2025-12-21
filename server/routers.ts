@@ -1506,7 +1506,8 @@ Nenhuma reserva foi afetada.
             liters_initial, weight_full, weight_after, weight_consumed, liters_calculated,
             photo_before_url, photo_after_url,
             asaas_charge_id, asaas_customer_id, payment_url, payment_status,
-            sync_status, sync_error, last_sync_attempt
+            sync_status, sync_error, last_sync_attempt,
+            recorded_by, recorded_at
           )
           VALUES (
             ${input.bookingId}, ${input.vesselId}, '${booking.vessel_name_actual}', 
@@ -1515,7 +1516,8 @@ Nenhuma reserva foi afetada.
             ${litersInitialInCents}, ${weightFullInGrams}, ${weightAfterInGrams}, ${weightConsumedInGrams}, ${litersCalculatedInCents},
             ${photoBeforeUrlValue}, ${photoAfterUrlValue},
             ${asaasChargeIdValue}, ${asaasCustomerIdValue}, ${paymentUrlValue}, 'pending',
-            '${syncStatus}', ${syncErrorValue}, NOW()
+            '${syncStatus}', ${syncErrorValue}, NOW(),
+            ${ctx.user?.id || 'NULL'}, NOW()
           )
         `);
         
@@ -1555,9 +1557,12 @@ Nenhuma reserva foi afetada.
             fr.sync_status,
             fr.sync_error,
             fr.last_sync_attempt,
-            fr.manual_payment_note
+            fr.manual_payment_note,
+            u.name as recorded_by_name,
+            fr.recorded_at
           FROM fuel_records fr
           JOIN bookings b ON fr.booking_id = b.id
+          LEFT JOIN users u ON fr.recorded_by = u.id
           WHERE 1=1
         `;
 
@@ -1592,6 +1597,8 @@ Nenhuma reserva foi afetada.
           liters: record.liters / 100,
           price_per_liter: record.price_per_liter / 100,
           total_cost: record.total_amount / 100,
+          recorded_by_name: record.recorded_by_name || 'Sistema', // Nome do usuário que registrou
+          recorded_at: record.recorded_at, // Data/hora de registro
         }));
       }),
 

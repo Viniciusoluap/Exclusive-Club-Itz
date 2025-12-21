@@ -185,6 +185,8 @@ export const fuelRecords = mysqlTable("fuel_records", {
   syncError: text("sync_error"), // Mensagem de erro da última tentativa
   lastSyncAttempt: timestamp("last_sync_attempt"), // Timestamp da última tentativa de sync
   manualPaymentNote: text("manual_payment_note"), // Observações de pagamento manual
+  recordedBy: int("recorded_by"), // ID do usuário (admin ou employee) que criou o registro
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(), // Data/hora de criação do registro
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
