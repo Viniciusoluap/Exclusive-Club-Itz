@@ -271,3 +271,25 @@ Código de integração está correto, mas falta a chave de API.
 - **Estoque disponível: 30,99 L** ✅
 
 </existing_content>
+
+---
+
+## ✅ CORREÇÃO CONCLUÍDA - Relatório PDF de Abastecimentos (21/12/2025 - 18:26)
+
+### Problemas Reportados
+- [x] Caracteres sem sentido "Ø=Ü÷" apareciam no PDF (causados por emojis não suportados)
+- [x] Fotos da balança apareciam como links ao invés de imagens incorporadas
+- [x] Nome do funcionário não aparecia corretamente
+
+### Soluções Implementadas
+- [x] Removidos todos os emojis (📷, ⚖️, 📊, 📝) do código do PDF
+- [x] Implementada incorporação de imagens via axios + Buffer
+- [x] Corrigida query SQL para buscar nome do funcionário via JOIN com tabela users
+- [x] Criados testes automatizados (fuelRecordPDF.fix.test.ts) - 4/4 passando
+
+### Resultado Final
+✅ PDF agora mostra:
+- Título limpo: "Comprovação por Fotos da Balança" (sem caracteres estranhos)
+- Fotos incorporadas diretamente no PDF (não apenas links)
+- Nome correto do funcionário: "Vinicius Freitas"
+- Labels limpos: "Foto ANTES (peso cheio)" e "Foto DEPOIS (peso após)"

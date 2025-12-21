@@ -2037,9 +2037,11 @@ Nenhuma reserva foi afetada.
         const result = await db.execute(sql.raw(`
           SELECT 
             fr.*,
-            b.booking_date
+            b.booking_date,
+            u.name as recorded_by_name
           FROM fuel_records fr
           LEFT JOIN bookings b ON fr.booking_id = b.id
+          LEFT JOIN users u ON fr.recorded_by = u.id
           WHERE fr.id IN (${ids})
           ORDER BY fr.created_at DESC
         `)) as any;
@@ -2054,7 +2056,7 @@ Nenhuma reserva foi afetada.
         const mappedRecords = records.map(r => ({
           id: r.id,
           vesselName: r.vessel_name || 'N/A',
-          employeeName: ctx.user?.name || 'N/A', // Nome do usuário logado
+          employeeName: r.recorded_by_name || 'Sistema', // Nome do funcionário que registrou
           date: r.booking_date || r.created_at,
           liters: r.liters || 0,
           pricePerLiter: r.price_per_liter || 0,
@@ -2105,9 +2107,11 @@ Nenhuma reserva foi afetada.
         const result = await db.execute(sql.raw(`
           SELECT 
             fr.*,
-            b.booking_date
+            b.booking_date,
+            u.name as recorded_by_name
           FROM fuel_records fr
           LEFT JOIN bookings b ON fr.booking_id = b.id
+          LEFT JOIN users u ON fr.recorded_by = u.id
           WHERE fr.id IN (${ids})
           ORDER BY fr.created_at DESC
         `)) as any;
@@ -2122,7 +2126,7 @@ Nenhuma reserva foi afetada.
         const mappedRecords = records.map(r => ({
           id: r.id,
           vesselName: r.vessel_name || 'N/A',
-          employeeName: ctx.user?.name || 'N/A', // Nome do usuário logado
+          employeeName: r.recorded_by_name || 'Sistema', // Nome do funcionário que registrou
           date: r.booking_date || r.created_at,
           liters: r.liters || 0,
           pricePerLiter: r.price_per_liter || 0,
