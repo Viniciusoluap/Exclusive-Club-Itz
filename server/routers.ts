@@ -2412,7 +2412,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         const usedResult = await db.execute(sql`
           SELECT COALESCE(SUM(liters), 0) as total_liters_used
           FROM fuel_records
-          WHERE DATE_FORMAT(created_at, '%Y-%u') = ${input.monthYear}
+          WHERE DATE_FORMAT(created_at, '%Y-%m') = ${input.monthYear}
         `) as any;
         const usedData = (Array.isArray(usedResult[0]) ? usedResult[0][0] : usedResult[0]);
         const totalLitersUsed = Number(usedData.total_liters_used) || 0; // Já em centésimos
