@@ -1,0 +1,258 @@
+{
+  "query": "DESCRIBE fuel_records",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute DESCRIBE fuel_records",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "booking_id",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "vessel_id",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "vessel_name",
+      "Type": "text",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "client_email",
+      "Type": "varchar(320)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "client_name",
+      "Type": "text",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "liters",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "price_per_liter",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "total_amount",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "notes",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "created_at",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "asaas_charge_id",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "payment_status",
+      "Type": "enum('pending','paid','cancelled','overdue')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "pending",
+      "Extra": ""
+    },
+    {
+      "Field": "paid_at",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "due_date",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "receipt_url",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "recorded_by",
+      "Type": "varchar(320)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "system@exclusive.club",
+      "Extra": ""
+    },
+    {
+      "Field": "recorded_at",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "asaas_customer_id",
+      "Type": "varchar(100)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "payment_url",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "sync_status",
+      "Type": "enum('pending','synced','failed','manual')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "pending",
+      "Extra": ""
+    },
+    {
+      "Field": "sync_error",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "last_sync_attempt",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "manual_payment_note",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "liters_initial",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "weight_full",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "weight_after",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "weight_consumed",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "liters_calculated",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "photo_before_url",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "photo_after_url",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint(11)\tNO\tPRI\tNULL\tauto_increment\nbooking_id\tint(11)\tNO\t\tNULL\t\nvessel_id\tint(11)\tNO\t\tNULL\t\nvessel_name\ttext\tNO\t\tNULL\t\nclient_email\tvarchar(320)\tNO\t\tNULL\t\nclient_name\ttext\tNO\t\tNULL\t\nliters\tint(11)\tNO\t\tNULL\t\nprice_per_liter\tint(11)\tNO\t\tNULL\t\ntotal_amount\tint(11)\tNO\t\tNULL\t\nnotes\ttext\tYES\t\tNULL\t\ncreated_at\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nasaas_charge_id\tvarchar(100)\tYES\t\tNULL\t\npayment_status\tenum('pending','paid','cancelled','overdue')\tNO\t\tpending\t\npaid_at\ttimestamp\tYES\t\tNULL\t\ndue_date\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nreceipt_url\ttext\tYES\t\tNULL\t\nrecorded_by\tvarchar(320)\tNO\t\tsystem@exclusive.club\t\nrecorded_at\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nasaas_customer_id\tvarchar(100)\tYES\t\tNULL\t\npayment_url\ttext\tYES\t\tNULL\t\nsync_status\tenum('pending','synced','failed','manual')\tNO\t\tpending\t\nsync_error\ttext\tYES\t\tNULL\t\nlast_sync_attempt\ttimestamp\tYES\t\tNULL\t\nmanual_payment_note\ttext\tYES\t\tNULL\t\nliters_initial\tint(11)\tYES\t\tNULL\t\nweight_full\tint(11)\tYES\t\tNULL\t\nweight_after\tint(11)\tYES\t\tNULL\t\nweight_consumed\tint(11)\tYES\t\tNULL\t\nliters_calculated\tint(11)\tYES\t\tNULL\t\nphoto_before_url\ttext\tYES\t\tNULL\t\nphoto_after_url\ttext\tYES\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}

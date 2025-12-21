@@ -59,12 +59,12 @@ export default function EmployeeAbastecimentos() {
     refetch();
   }, [selectedMonth, selectedYear]);
 
-  // Pré-preencher preço/L quando budget carregar
+  // Pré-preencher preço/L automaticamente ao abrir o dialog
   useEffect(() => {
-    if (budget?.lastPricePerLiter && !pricePerLiter) {
+    if (isCreateDialogOpen && budget?.lastPricePerLiter) {
       setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
     }
-  }, [budget]);
+  }, [isCreateDialogOpen, budget]);
 
   const createMutation = trpcAny.fuelRecords?.create.useMutation({
     onSuccess: (data: any) => {

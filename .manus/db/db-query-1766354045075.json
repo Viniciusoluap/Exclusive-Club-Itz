@@ -1,0 +1,43 @@
+{
+  "query": "SELECT * FROM fuel_records LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT * FROM fuel_records LIMIT 1",
+  "rows": [
+    {
+      "id": "750002",
+      "booking_id": "1620001",
+      "vessel_id": "4",
+      "vessel_name": "Focker 215 150HP",
+      "client_email": "via.vips@hotmail.com",
+      "client_name": "ERISVALDO ALVES SILVA",
+      "liters": "2900",
+      "price_per_liter": "657",
+      "total_amount": "20053",
+      "notes": "NULL",
+      "created_at": "2025-12-21 21:23:36",
+      "asaas_charge_id": "NULL",
+      "payment_status": "paid",
+      "paid_at": "2025-12-21 21:35:14",
+      "due_date": "2025-12-21 21:23:36",
+      "receipt_url": "NULL",
+      "recorded_by": "1",
+      "recorded_at": "2025-12-21 21:23:36",
+      "asaas_customer_id": "NULL",
+      "payment_url": "NULL",
+      "sync_status": "manual",
+      "sync_error": "ASAAS_API_KEY não configurada",
+      "last_sync_attempt": "2025-12-21 21:23:36",
+      "manual_payment_note": "Pagamento recebido manualmente",
+      "liters_initial": "NULL",
+      "weight_full": "NULL",
+      "weight_after": "NULL",
+      "weight_consumed": "NULL",
+      "liters_calculated": "NULL",
+      "photo_before_url": "NULL",
+      "photo_after_url": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tbooking_id\tvessel_id\tvessel_name\tclient_email\tclient_name\tliters\tprice_per_liter\ttotal_amount\tnotes\tcreated_at\tasaas_charge_id\tpayment_status\tpaid_at\tdue_date\treceipt_url\trecorded_by\trecorded_at\tasaas_customer_id\tpayment_url\tsync_status\tsync_error\tlast_sync_attempt\tmanual_payment_note\tliters_initial\tweight_full\tweight_after\tweight_consumed\tliters_calculated\tphoto_before_url\tphoto_after_url\n750002\t1620001\t4\tFocker 215 150HP\tvia.vips@hotmail.com\tERISVALDO ALVES SILVA\t2900\t657\t20053\tNULL\t2025-12-21 21:23:36\tNULL\tpaid\t2025-12-21 21:35:14\t2025-12-21 21:23:36\tNULL\t1\t2025-12-21 21:23:36\tNULL\tNULL\tmanual\tASAAS_API_KEY não configurada\t2025-12-21 21:23:36\tPagamento recebido manualmente\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 52
+}

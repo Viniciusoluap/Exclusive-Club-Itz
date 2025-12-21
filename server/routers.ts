@@ -1739,7 +1739,42 @@ Nenhuma reserva foi afetada.
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         try {
-          await db.execute(`DELETE FROM fuel_records WHERE id = ${input.id}`);
+          const { sql } = await import('drizzle-orm');
+          
+          // 1. Buscar informações do abastecimento e da reserva associada
+          const recordResult = await db.execute(sql`
+            SELECT 
+              fr.liters,
+              fr.booking_id,
+              b.booking_date
+            FROM fuel_records fr
+            INNER JOIN bookings b ON fr.booking_id = b.id
+            WHERE fr.id = ${input.id}
+          `) as any;
+          const record = (Array.isArray(recordResult[0]) ? recordResult[0][0] : recordResult[0]);
+          
+          if (!record) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Abastecimento não encontrado' });
+          }
+          
+          // 2. Calcular monthYear a partir da data da reserva (timestamp em milissegundos)
+          const bookingDate = new Date(Number(record.booking_date));
+          const monthYear = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}`;
+          
+          // 3. Devolver litros ao estoque (adicionar de volta)
+          const litersToReturn = record.liters; // Já está em centésimos
+          
+          await db.execute(sql`
+            UPDATE fuel_budget 
+            SET stock_liters = stock_liters + ${litersToReturn}
+            WHERE month_year = ${monthYear}
+          `);
+          
+          console.log(`[fuelRecords.delete] Devolvendo ${litersToReturn / 100}L ao estoque do mês ${monthYear}`);
+          
+          // 3. Excluir o registro
+          await db.execute(sql`DELETE FROM fuel_records WHERE id = ${input.id}`);
+          
           return { success: true };
         } catch (error: any) {
           console.error('[fuelRecords.delete] Error:', error);
@@ -2359,12 +2394,21 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         `) as any;
 
         const budget = (Array.isArray(result[0]) ? result[0][0] : result[0]);
+        
+        // Calcular orçamento total como soma das compras do histórico
+        const purchasesResult = await db.execute(sql`
+          SELECT COALESCE(SUM(amount_paid), 0) as total_purchases
+          FROM fuel_purchases
+          WHERE month_year = ${input.monthYear}
+        `) as any;
+        const purchasesData = (Array.isArray(purchasesResult[0]) ? purchasesResult[0][0] : purchasesResult[0]);
+        const totalBudget = Number(purchasesData.total_purchases) || 0; // Já em centavos
 
         if (!budget) {
           // Retornar valores zerados se não existir
           return {
             monthYear: input.monthYear,
-            totalBudget: 0,
+            totalBudget: totalBudget / 100, // Converter centavos para reais
             totalSpent: 0,
             totalReceived: 0,
             stockLiters: 0,
@@ -2374,7 +2418,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
         return {
           monthYear: budget.month_year,
-          totalBudget: budget.total_budget / 100, // Converter centavos para reais
+          totalBudget: totalBudget / 100, // Converter centavos para reais (calculado das compras)
           totalSpent: budget.total_spent / 100,
           totalReceived: budget.total_received / 100,
           stockLiters: budget.stock_liters / 100, // Converter centésimos para litros
@@ -2382,31 +2426,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         };
       }),
 
-    set: publicProcedure
-      .input(z.object({
-        monthYear: z.string(), // formato: YYYY-MM
-        totalBudget: z.number().positive(),
-      }))
-      .mutation(async ({ input, ctx }) => {
-        if (!ctx.user || ctx.user.role !== 'admin') {
-          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
-        }
-
-        const db = await import('./db').then(m => m.getDb());
-        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
-
-        const totalBudgetInCents = Math.round(input.totalBudget * 100);
-
-        const { sql } = await import('drizzle-orm');
-        // Upsert: atualiza se existe, cria se não existe
-        await db.execute(sql`
-          INSERT INTO fuel_budget (month_year, total_budget, total_spent, total_received)
-          VALUES (${input.monthYear}, ${totalBudgetInCents}, 0, 0)
-          ON DUPLICATE KEY UPDATE total_budget = ${totalBudgetInCents}
-        `);
-
-        return { success: true };
-      }),
+    // REMOVIDO: endpoint 'set' não é mais necessário
+    // Orçamento agora é calculado automaticamente como soma das compras
   }),
 
   // Fuel Purchases router - Admin only
