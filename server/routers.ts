@@ -2397,12 +2397,26 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         
         // Calcular orçamento total como soma das compras do histórico
         const purchasesResult = await db.execute(sql`
-          SELECT COALESCE(SUM(amount_paid), 0) as total_purchases
+          SELECT COALESCE(SUM(amount_paid), 0) as total_purchases,
+                 COALESCE(SUM(liters_purchased), 0) as total_liters_purchased
           FROM fuel_purchases
           WHERE month_year = ${input.monthYear}
         `) as any;
         const purchasesData = (Array.isArray(purchasesResult[0]) ? purchasesResult[0][0] : purchasesResult[0]);
         const totalBudget = Number(purchasesData.total_purchases) || 0; // Já em centavos
+        const totalLitersPurchased = Number(purchasesData.total_liters_purchased) || 0; // Já em centésimos
+
+        // Calcular total de litros já abastecidos (usados)
+        const usedResult = await db.execute(sql`
+          SELECT COALESCE(SUM(liters), 0) as total_liters_used
+          FROM fuel_records
+          WHERE DATE_FORMAT(created_at, '%Y-%u') = ${input.monthYear}
+        `) as any;
+        const usedData = (Array.isArray(usedResult[0]) ? usedResult[0][0] : usedResult[0]);
+        const totalLitersUsed = Number(usedData.total_liters_used) || 0; // Já em centésimos
+
+        // Estoque real = Total comprado - Total usado
+        const realStockLiters = totalLitersPurchased - totalLitersUsed;
 
         if (!budget) {
           // Retornar valores zerados se não existir
@@ -2411,7 +2425,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             totalBudget: totalBudget / 100, // Converter centavos para reais
             totalSpent: 0,
             totalReceived: 0,
-            stockLiters: 0,
+            stockLiters: realStockLiters / 100, // Converter centésimos para litros
             lastPricePerLiter: 0,
           };
         }
@@ -2421,7 +2435,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           totalBudget: totalBudget / 100, // Converter centavos para reais (calculado das compras)
           totalSpent: budget.total_spent / 100,
           totalReceived: budget.total_received / 100,
-          stockLiters: budget.stock_liters / 100, // Converter centésimos para litros
+          stockLiters: realStockLiters / 100, // Converter centésimos para litros (CORRIGIDO)
           lastPricePerLiter: budget.last_price_per_liter / 100, // Converter centavos para reais
         };
       }),

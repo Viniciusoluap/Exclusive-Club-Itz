@@ -239,3 +239,11 @@ Código de integração está correto, mas falta a chave de API.
 - [x] Preencher campo "Preço por Litro" automaticamente
 - [x] Permitir edição do campo (manter editável)
 - [x] Aplicar em ambas páginas (admin e funcionário)
+
+### Bug 4: Estoque mostra valor incorreto (22,01 L ao invés de 147,69 L) - ✅ RESOLVIDO
+- [x] Corrigir cálculo de estoque em fuelBudget.get
+- [x] Lógica correta: Estoque = Soma total de litros comprados - Soma total de litros abastecidos
+- [x] Exemplo: 147,69 L (compras) - litros usados = estoque real
+- [x] Testar com dados reais do histórico
+- [x] Criar testes automatizados (3/3 passando)
+- [x] Validar visualmente na interface (97,69 L ✅)
