@@ -204,12 +204,33 @@ export const fuelBudget = mysqlTable("fuel_budget", {
   totalBudget: int("total_budget").notNull().default(0), // Orçamento total em centavos
   totalSpent: int("total_spent").notNull().default(0), // Total gasto (calculado)
   totalReceived: int("total_received").notNull().default(0), // Total recebido (calculado)
+  stockLiters: int("stock_liters").notNull().default(0), // Estoque em centésimos de litro (ex: 15050 = 150.50L)
+  lastPricePerLiter: int("last_price_per_liter").notNull().default(0), // Último preço/L em centavos (ex: 650 = R$ 6.50)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
 
 export type FuelBudget = typeof fuelBudget.$inferSelect;
 export type InsertFuelBudget = typeof fuelBudget.$inferInsert;
+
+/**
+ * Fuel Purchases table - stores gasoline purchase records
+ * Admin only - tracks fuel purchases to control stock
+ */
+export const fuelPurchases = mysqlTable("fuel_purchases", {
+  id: int("id").autoincrement().primaryKey(),
+  monthYear: varchar("month_year", { length: 7 }).notNull(), // Format: "2025-12" (YYYY-MM)
+  litersPurchased: int("liters_purchased").notNull(), // Litros comprados em centésimos (ex: 10000 = 100.00L)
+  amountPaid: int("amount_paid").notNull(), // Valor pago em centavos (ex: 65000 = R$ 650.00)
+  pricePerLiter: int("price_per_liter").notNull(), // Preço/L calculado em centavos (ex: 650 = R$ 6.50)
+  purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
+  purchasedBy: int("purchased_by"), // references users.id
+  notes: text("notes"), // Observações (ex: "Posto Shell, NF 12345")
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type FuelPurchase = typeof fuelPurchases.$inferSelect;
+export type InsertFuelPurchase = typeof fuelPurchases.$inferInsert;
 
 /**
  * Inspections table - stores vessel inspection records

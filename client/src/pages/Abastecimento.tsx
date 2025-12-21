@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText, Mail, DollarSign, AlertCircle, ExternalLink, Settings, RefreshCw, CheckCircle, XCircle, Clock, Banknote } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
+import FuelManagementDialog from "@/components/FuelManagementDialog";
 
 export default function Abastecimento() {
   const utils = trpc.useUtils();
@@ -607,6 +608,27 @@ export default function Abastecimento() {
                       <span>Atenção: Orçamento quase esgotado!</span>
                     </div>
                   )}
+                  
+                  {/* Indicador de Estoque */}
+                  <div className="border-t pt-3 mt-3 space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1">
+                        <Fuel className="w-4 h-4 text-primary" />
+                        Estoque:
+                      </span>
+                      <span className="font-semibold">{budget?.stockLiters?.toFixed(2) || "0.00"} L</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Preço/L atual:</span>
+                      <span>R$ {budget?.lastPricePerLiter?.toFixed(2) || "0.00"}</span>
+                    </div>
+                    {budget?.stockLiters && budget.stockLiters < 5 && (
+                      <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
+                        <AlertCircle className="w-3 h-3" />
+                        <span>Estoque baixo! Compre mais combustível</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -623,8 +645,8 @@ export default function Abastecimento() {
               </CardHeader>
               <CardContent>
                 <Button onClick={() => setIsBudgetDialogOpen(true)}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Configurar Orçamento
+                  <Fuel className="w-4 h-4 mr-2" />
+                  Gestão de Combustível
                 </Button>
               </CardContent>
             </Card>
@@ -1224,65 +1246,12 @@ export default function Abastecimento() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de configuração de orçamento */}
-      <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Configurar Orçamento Mensal</DialogTitle>
-            <DialogDescription>
-              Defina o orçamento para {new Date(currentMonthYear + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="budget">Valor do Orçamento (R$) *</Label>
-              <Input
-                id="budget"
-                type="number"
-                step="0.01"
-                min="0"
-                value={budgetAmount}
-                onChange={(e) => setBudgetAmount(e.target.value)}
-                placeholder="0.00"
-                required
-              />
-            </div>
-            {financialStats && financialStats.totalBilled > 0 && (
-              <div className="bg-muted p-3 rounded-md text-sm">
-                <p className="text-muted-foreground">
-                  <strong>Gasto atual:</strong> R$ {financialStats.totalBilled.toFixed(2)}
-                </p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => {
-                setIsBudgetDialogOpen(false);
-                setBudgetAmount("");
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button 
-              onClick={() => {
-                const amount = parseFloat(budgetAmount);
-                if (!amount || amount <= 0) {
-                  toast.error('Informe um valor válido');
-                  return;
-                }
-                setBudgetMutation.mutate({ monthYear: currentMonthYear, totalBudget: amount });
-              }}
-              disabled={setBudgetMutation.isPending || !budgetAmount}
-            >
-              {setBudgetMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Salvar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Dialog de Gestão de Combustível */}
+      <FuelManagementDialog 
+        open={isBudgetDialogOpen} 
+        onOpenChange={setIsBudgetDialogOpen}
+        monthYear={currentMonthYear}
+      />
 
       {/* Dialog de confirmação de exclusão */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

@@ -1362,8 +1362,8 @@ Nenhuma reserva foi afetada.
       .input(z.object({
         bookingId: z.number(),
         vesselId: z.number(),
-        liters: z.number().positive(),
-        pricePerLiter: z.number().positive(),
+        liters: z.number().positive().optional(), // Opcional quando usa método por peso
+        pricePerLiter: z.number().positive().optional(), // Opcional - busca do estoque se não informado
         notes: z.string().optional(),
         // Campos opcionais do método de abastecimento por pesagem
         litersInitial: z.number().positive().optional(), // Litros iniciais no galão (ex: 50.05)
@@ -1415,13 +1415,37 @@ Nenhuma reserva foi afetada.
           }
         }
 
+        // Buscar preço/L do estoque (se não foi informado)
+        const currentDate = new Date();
+        const currentMonthYear = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+        
+        const budgetResult = await database.execute(sql`
+          SELECT last_price_per_liter, stock_liters FROM fuel_budget WHERE month_year = ${currentMonthYear}
+        `) as any;
+        const budget = (Array.isArray(budgetResult[0]) ? budgetResult[0][0] : budgetResult[0]);
+        
+        const defaultPricePerLiter = budget?.last_price_per_liter ? budget.last_price_per_liter / 100 : null;
+        const currentStockLiters = budget?.stock_liters ? budget.stock_liters / 100 : 0;
+        
+        // Usar preço do estoque se não foi informado
+        let finalPricePerLiter = input.pricePerLiter;
+        if (!finalPricePerLiter && defaultPricePerLiter) {
+          finalPricePerLiter = defaultPricePerLiter;
+          console.log('[fuelRecords.create] Preço/L aplicado do estoque:', finalPricePerLiter);
+        } else if (!finalPricePerLiter) {
+          throw new TRPCError({ 
+            code: 'BAD_REQUEST', 
+            message: 'Preço por litro não informado e não há preço no estoque. Configure o orçamento primeiro.' 
+          });
+        }
+
         // Calcular valores de peso e litros (se método de pesagem for usado)
         let litersInitialInCents = null;
         let weightFullInGrams = null;
         let weightAfterInGrams = null;
         let weightConsumedInGrams = null;
         let litersCalculatedInCents = null;
-        let finalLitersInCents = Math.round(input.liters * 100); // Padrão: usar litros informados manualmente
+        let finalLitersInCents = input.liters ? Math.round(input.liters * 100) : 0; // Padrão: usar litros informados manualmente
 
         if (hasWeightData && input.litersInitial && input.weightFull && input.weightAfter) {
           // Converter para unidades inteiras (centavos/gramas)
@@ -1438,9 +1462,22 @@ Nenhuma reserva foi afetada.
         }
 
         const SERVICE_FEE = 1000; // Taxa de abastecimento e aplicativo em centavos (R$ 10,00)
-        const pricePerLiterInCents = Math.round(input.pricePerLiter * 100); // Converter para centavos
-        const fuelCost = Math.round((finalLitersInCents / 100) * input.pricePerLiter * 100); // em centavos
+        const pricePerLiterInCents = Math.round(finalPricePerLiter * 100); // Converter para centavos
+        const fuelCost = Math.round((finalLitersInCents / 100) * finalPricePerLiter * 100); // em centavos
         const totalAmount = fuelCost + SERVICE_FEE;
+        
+        // Descontar litros do estoque
+        const finalLiters = finalLitersInCents / 100;
+        console.log('[fuelRecords.create] Descontando do estoque:', finalLiters, 'L');
+        console.log('[fuelRecords.create] Estoque antes:', currentStockLiters, 'L');
+        
+        await database.execute(sql`
+          UPDATE fuel_budget 
+          SET stock_liters = stock_liters - ${finalLitersInCents}
+          WHERE month_year = ${currentMonthYear}
+        `);
+        
+        console.log('[fuelRecords.create] Estoque após:', (currentStockLiters - finalLiters), 'L');
 
         // Criar ou buscar cliente no Asaas
         const asaas = await import('./_core/asaas');
@@ -2330,6 +2367,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             totalBudget: 0,
             totalSpent: 0,
             totalReceived: 0,
+            stockLiters: 0,
+            lastPricePerLiter: 0,
           };
         }
 
@@ -2338,6 +2377,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           totalBudget: budget.total_budget / 100, // Converter centavos para reais
           totalSpent: budget.total_spent / 100,
           totalReceived: budget.total_received / 100,
+          stockLiters: budget.stock_liters / 100, // Converter centésimos para litros
+          lastPricePerLiter: budget.last_price_per_liter / 100, // Converter centavos para reais
         };
       }),
 
@@ -2364,6 +2405,119 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           ON DUPLICATE KEY UPDATE total_budget = ${totalBudgetInCents}
         `);
 
+        return { success: true };
+      }),
+  }),
+
+  // Fuel Purchases router - Admin only
+  fuelPurchases: router({
+    create: adminProcedure
+      .input(z.object({
+        monthYear: z.string(), // formato: YYYY-MM
+        liters: z.number().positive(),
+        amountPaid: z.number().positive(),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+        
+        // Calcular preço por litro
+        const pricePerLiter = Math.round((input.amountPaid * 100) / input.liters); // em centavos
+        const litersPurchased = Math.round(input.liters * 100); // em centésimos
+        const amountPaid = Math.round(input.amountPaid * 100); // em centavos
+        
+        // Inserir compra
+        await db.execute(sql`
+          INSERT INTO fuel_purchases (
+            month_year, liters_purchased, amount_paid, price_per_liter, 
+            purchased_by, notes
+          )
+          VALUES (
+            ${input.monthYear}, ${litersPurchased}, ${amountPaid}, ${pricePerLiter},
+            ${ctx.user.id}, ${input.notes || null}
+          )
+        `);
+        
+        // Atualizar estoque e preço no fuel_budget
+        await db.execute(sql`
+          INSERT INTO fuel_budget (month_year, total_budget, total_spent, total_received, stock_liters, last_price_per_liter)
+          VALUES (${input.monthYear}, 0, 0, 0, ${litersPurchased}, ${pricePerLiter})
+          ON DUPLICATE KEY UPDATE 
+            stock_liters = stock_liters + ${litersPurchased},
+            last_price_per_liter = ${pricePerLiter}
+        `);
+        
+        return { success: true };
+      }),
+
+    list: adminProcedure
+      .input(z.object({
+        monthYear: z.string(), // formato: YYYY-MM
+      }))
+      .query(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+        const result = await db.execute(sql`
+          SELECT 
+            fp.*,
+            u.name as purchased_by_name
+          FROM fuel_purchases fp
+          LEFT JOIN users u ON fp.purchased_by = u.id
+          WHERE fp.month_year = ${input.monthYear}
+          ORDER BY fp.purchased_at DESC
+        `) as any;
+
+        const purchases = (Array.isArray(result[0]) ? result[0] : result) as any[];
+        
+        return purchases.map((p: any) => ({
+          id: p.id,
+          monthYear: p.month_year,
+          litersPurchased: p.liters_purchased / 100, // Converter para litros
+          amountPaid: p.amount_paid / 100, // Converter para reais
+          pricePerLiter: p.price_per_liter / 100, // Converter para reais
+          purchasedAt: p.purchased_at,
+          purchasedByName: p.purchased_by_name || 'Sistema',
+          notes: p.notes,
+        }));
+      }),
+
+    delete: adminProcedure
+      .input(z.object({
+        purchaseId: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+        
+        // Buscar compra para devolver litros ao estoque
+        const result = await db.execute(sql`
+          SELECT * FROM fuel_purchases WHERE id = ${input.purchaseId}
+        `) as any;
+        const purchase = (Array.isArray(result[0]) ? result[0][0] : result[0]);
+        
+        if (!purchase) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Compra não encontrada' });
+        }
+        
+        // Devolver litros ao estoque
+        await db.execute(sql`
+          UPDATE fuel_budget 
+          SET stock_liters = stock_liters - ${purchase.liters_purchased}
+          WHERE month_year = ${purchase.month_year}
+        `);
+        
+        // Deletar compra
+        await db.execute(sql`
+          DELETE FROM fuel_purchases WHERE id = ${input.purchaseId}
+        `);
+        
         return { success: true };
       }),
   }),

@@ -1,5 +1,41 @@
 # TODO - Exclusive Club Reservas
 
+## 🚀 NOVA FUNCIONALIDADE - Sistema de Controle de Estoque de Gasolina (21/12/2025 - 17:35)
+
+### Requisitos do Usuário
+- [ ] Adicionar campos no dialog de orçamento: "Quantos Litros" e "Valor Pago"
+- [ ] Calcular automaticamente o preço por litro (Valor Pago ÷ Litros)
+- [ ] Aplicar esse preço automaticamente nos próximos abastecimentos
+- [ ] Controlar estoque de gasolina (litros disponíveis)
+- [ ] Histórico de compras de gasolina (quantidade, valor, data)
+- [ ] Interface simples dentro do campo de configuração de orçamento
+
+### Estrutura Proposta (APROVADO - EM IMPLEMENTAÇÃO)
+**Usuário aprovou! Implementação em andamento...**
+
+#### PARTE 1: Correção Bug Funcionário
+- [x] Adicionar estados para campos de peso no formulário
+- [x] Adicionar cálculo automático por regra de 3
+- [x] Substituir formulário simples por formulário completo
+- [x] Adicionar upload de fotos da balança
+- [x] Adicionar indicador de estoque (somente visualização)
+- [x] Pré-preencher preço/L do estoque
+- [ ] Testar registro pelo funcionário
+
+#### PARTE 2: Sistema de Estoque
+- [x] Criar tabela fuel_purchases
+- [x] Adicionar colunas em fuel_budget (stock_liters, last_price_per_liter)
+- [x] Criar endpoints backend (fuelPurchases.create, list, delete)
+- [x] Modificar fuelRecords.create (buscar preço/L do estoque, descontar litros)
+- [x] Atualizar fuelBudget.get (retornar stockLiters e lastPricePerLiter)
+- [x] Implementar interface admin (dialog de gestão completo)
+- [x] Implementar indicador de estoque no card de orçamento (local circulado)
+- [x] Implementar indicador para funcionário (somente visualização)
+- [x] Corrigir formulário do funcionário (método por peso completo)
+- [x] Testar fluxo completo (7 testes passando com sucesso)
+
+---
+
 ## ✅ CORREÇÃO CONCLUÍDA - Campo "Registrado por" em Abastecimentos (21/12/2025 - 15:35)
 
 ### Problema Reportado
