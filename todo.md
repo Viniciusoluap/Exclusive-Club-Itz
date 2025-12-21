@@ -247,3 +247,14 @@ Código de integração está correto, mas falta a chave de API.
 - [x] Testar com dados reais do histórico
 - [x] Criar testes automatizados (3/3 passando)
 - [x] Validar visualmente na interface (97,69 L ✅)
+
+### Bug 5: Valores não zeram após exclusão de todos os registros - ✅ RESOLVIDO
+- [x] Investigar por que Saldo mostra R$ 928,50 quando não há registros
+- [x] Investigar por que Orçamento mostra R$ 928,50 quando não há compras
+- [x] Corrigir endpoint fuelBudget.get para calcular tudo dinamicamente
+- [x] Corrigir endpoint financialStats para buscar orçamento das compras
+- [x] Validar que Estoque já está correto (0.00 L)
+- [x] Validar que Preço/L zera quando não há compras
+- [x] Testar com banco completamente zerado - Saldo R$ 0.00 ✅
+
+</existing_content>
