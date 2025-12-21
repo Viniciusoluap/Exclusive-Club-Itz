@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Calendar, Check, ClipboardCheck, Fuel, Loader2, Plus, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
+import { BarChart3, Calendar, Check, ClipboardCheck, Fuel, Loader2, Pencil, Plus, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -171,6 +171,7 @@ export default function Admin() {
 
   // Client Management State
   const [showClientDialog, setShowClientDialog] = useState(false);
+  const [editingClientId, setEditingClientId] = useState<number | null>(null);
   const [selectedVesselFilter, setSelectedVesselFilter] = useState<number | "all">("all");
   const [clientForm, setClientForm] = useState({ 
     email: "", 
@@ -221,6 +222,20 @@ export default function Admin() {
       toast.success("Cliente adicionado com sucesso!");
       utils.allowedClients.list.invalidate();
       setShowClientDialog(false);
+      setEditingClientId(null);
+      setClientForm({ email: "", name: "", phone: "", quotas: [] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateClient = trpc.allowedClients.update.useMutation({
+    onSuccess: () => {
+      toast.success("Cliente atualizado com sucesso!");
+      utils.allowedClients.list.invalidate();
+      setShowClientDialog(false);
+      setEditingClientId(null);
       setClientForm({ email: "", name: "", phone: "", quotas: [] });
     },
     onError: (error) => {
@@ -307,7 +322,22 @@ export default function Admin() {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
-    createClient.mutate(clientForm);
+    if (editingClientId) {
+      updateClient.mutate({ id: editingClientId, ...clientForm });
+    } else {
+      createClient.mutate(clientForm);
+    }
+  };
+
+  const handleEditClient = (client: any) => {
+    setEditingClientId(client.id);
+    setClientForm({
+      email: client.email,
+      name: client.name,
+      phone: client.phone || "",
+      quotas: client.quotas || [],
+    });
+    setShowClientDialog(true);
   };
 
   const handleCreateBooking = () => {
@@ -577,6 +607,13 @@ export default function Admin() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditClient(client)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant={client.isActive ? "outline" : "default"}
                             size="sm"
@@ -901,11 +938,19 @@ export default function Admin() {
       </div>
 
       {/* Add Client Dialog */}
-      <Dialog open={showClientDialog} onOpenChange={setShowClientDialog}>
+      <Dialog open={showClientDialog} onOpenChange={(open) => {
+        setShowClientDialog(open);
+        if (!open) {
+          setEditingClientId(null);
+          setClientForm({ email: "", name: "", phone: "", quotas: [] });
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Adicionar Cliente</DialogTitle>
-            <DialogDescription>Cadastre um novo cliente autorizado</DialogDescription>
+            <DialogTitle>{editingClientId ? "Editar Cliente" : "Adicionar Cliente"}</DialogTitle>
+            <DialogDescription>
+              {editingClientId ? "Atualize os dados do cliente" : "Cadastre um novo cliente autorizado"}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -992,14 +1037,14 @@ export default function Admin() {
             <Button variant="outline" onClick={() => setShowClientDialog(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateClient} disabled={createClient.isPending}>
-              {createClient.isPending ? (
+            <Button onClick={handleCreateClient} disabled={createClient.isPending || updateClient.isPending}>
+              {(createClient.isPending || updateClient.isPending) ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adicionando...
+                  {editingClientId ? "Atualizando..." : "Adicionando..."}
                 </>
               ) : (
-                "Adicionar"
+                editingClientId ? "Atualizar" : "Adicionar"
               )}
             </Button>
           </DialogFooter>
