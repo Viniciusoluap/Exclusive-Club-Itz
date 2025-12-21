@@ -470,7 +470,7 @@ export default function Abastecimento() {
                   R$ {financialStats.balance.toFixed(2)}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Recebido - Cobrado
+                  Orçamento - Gasto
                 </p>
               </CardContent>
             </Card>

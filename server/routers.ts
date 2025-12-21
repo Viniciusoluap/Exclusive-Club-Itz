@@ -2205,10 +2205,9 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         const totalOverdue = Number(stats.total_overdue) || 0;
         const totalBudget = budget ? Number(budget.total_budget) : 0;
 
-        // Calcular saldo (Recebido - Gasto)
-        // Nota: "Gasto" seria o custo real do combustível, mas como não temos essa informação separada,
-        // vamos considerar que o "Gasto" é o valor total cobrado (que inclui taxa)
-        const balance = totalReceived - totalBilled;
+        // Calcular saldo (Orçamento - Gasto)
+        // Saldo = quanto ainda resta do orçamento mensal após os gastos
+        const balance = totalBudget - totalBilled;
 
         return {
           monthYear,
