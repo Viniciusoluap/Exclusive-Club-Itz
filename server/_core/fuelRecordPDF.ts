@@ -11,6 +11,14 @@ interface FuelRecordData {
   serviceFee: number; // em centavos
   totalAmount: number; // em centavos
   notes?: string;
+  // Campos de pesagem (opcionais)
+  litersInitial?: number | null; // em centavos
+  weightFull?: number | null; // em gramas (centavos)
+  weightAfter?: number | null; // em gramas (centavos)
+  weightConsumed?: number | null; // em gramas (centavos)
+  litersCalculated?: number | null; // em centavos
+  photoBeforeUrl?: string | null;
+  photoAfterUrl?: string | null;
 }
 
 export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise<Buffer> {
@@ -142,7 +150,82 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
         });
         doc.y = notesY + 22;
       }
+
+      // Informações de Pesagem (se houver)
+      if (record.weightFull) {
+        const weightY = doc.y;
+        doc.fillColor('#dbeafe').rect(40, weightY, doc.page.width - 80, 35).fill();
+        
+        const litersInitialValue = (record.litersInitial || 0) / 100;
+        const weightFullValue = (record.weightFull || 0) / 100;
+        const weightAfterValue = (record.weightAfter || 0) / 100;
+        const weightConsumedValue = (record.weightConsumed || 0) / 100;
+        const litersCalculatedValue = (record.litersCalculated || 0) / 100;
+        
+        doc.fillColor('#1e40af').fontSize(8).text(`⚖️ Abastecimento por Pesagem`, 45, weightY + 6);
+        doc.fillColor('#1e3a8a').fontSize(7).text(
+          `Litros Iniciais: ${litersInitialValue.toFixed(2)}L  |  Peso Cheio: ${weightFullValue.toFixed(2)}kg  |  Peso Após: ${weightAfterValue.toFixed(2)}kg  |  Consumido: ${weightConsumedValue.toFixed(2)}kg`,
+          45, weightY + 18
+        );
+        doc.fillColor('#1e3a8a').fontSize(7).text(
+          `📊 Litros Calculados: ${litersCalculatedValue.toFixed(2)}L`,
+          45, weightY + 28
+        );
+        doc.y = weightY + 37;
+      }
     });
+
+    // Seção de Fotos (se houver registros com fotos)
+    const recordsWithPhotos = records.filter(r => r.photoBeforeUrl || r.photoAfterUrl);
+    if (recordsWithPhotos.length > 0) {
+      doc.addPage({ size: 'A4', layout: 'landscape', margin: 40 });
+      doc.fontSize(16).fillColor('#0891b2').text('📷 Comprovação por Fotos da Balança', { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(10).fillColor('#6b7280').text('Fotos das pesagens realizadas', { align: 'center' });
+      doc.moveDown(1);
+
+      recordsWithPhotos.forEach((record, index) => {
+        const sectionY = doc.y;
+        
+        // Verificar se precisa de nova página
+        if (sectionY > doc.page.height - 200) {
+          doc.addPage({ size: 'A4', layout: 'landscape', margin: 40 });
+          doc.y = 40;
+        }
+
+        // Título do registro
+        doc.fillColor('#0891b2').fontSize(10).text(
+          `Registro #${record.id} - ${record.vesselName} - ${new Date(record.date).toLocaleDateString('pt-BR')}`,
+          40, doc.y
+        );
+        doc.moveDown(0.5);
+
+        // URLs das fotos (como texto clicável)
+        if (record.photoBeforeUrl) {
+          doc.fillColor('#374151').fontSize(8).text('📷 Foto ANTES (peso cheio):', 40, doc.y);
+          doc.fillColor('#0891b2').fontSize(7).text(record.photoBeforeUrl, 40, doc.y + 10, { 
+            link: record.photoBeforeUrl,
+            underline: true 
+          });
+          doc.moveDown(1.5);
+        }
+
+        if (record.photoAfterUrl) {
+          doc.fillColor('#374151').fontSize(8).text('📷 Foto DEPOIS (peso após):', 40, doc.y);
+          doc.fillColor('#0891b2').fontSize(7).text(record.photoAfterUrl, 40, doc.y + 10, { 
+            link: record.photoAfterUrl,
+            underline: true 
+          });
+          doc.moveDown(1.5);
+        }
+
+        // Linha separadora entre registros
+        if (index < recordsWithPhotos.length - 1) {
+          doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#e5e7eb').lineWidth(1).stroke();
+          doc.moveDown(1);
+        }
+      });
+    }
 
     // Rodapé
     doc.moveDown(2);

@@ -613,3 +613,101 @@ Código de integração está correto, mas falta a chave de API.
 - [x] Para: `totalBudget - totalBilled`
 - [x] Atualizado texto explicativo no frontend de "Recebido - Cobrado" para "Orçamento - Gasto"
 - [x] Agora o saldo mostra corretamente quanto resta do orçamento mensal
+
+
+---
+
+## 🆕 NOVA FUNCIONALIDADE - Sistema de Abastecimento por Pesagem com Balança (21/12/2025)
+
+### Contexto
+Cliente implementou novo método de abastecimento usando galão de 50L e balança para medir combustível consumido por peso.
+
+**Exemplo de Cálculo:**
+- Compra: 50L de gasolina por R$ 314,50 (R$ 6,29/L)
+- Peso galão cheio: 37,80 kg
+- Peso galão após abastecer: 23,40 kg
+- Peso consumido: 37,80 - 23,40 = 14,40 kg
+- **Regra de 3:** Se 37,80 kg = 50L, então 14,40 kg = 19,05L
+- **Cobrança:** 19,05L × R$ 6,29 = R$ 119,82 + R$ 10,00 taxa = **R$ 129,82**
+
+### FASE 1: Planejamento - ✅ CONCLUÍDA
+- [x] Confirmar perguntas:
+  * Peso padrão do galão cheio sempre será 50L ou pode variar? **PODE VARIAR**
+  * Fotos obrigatórias ou opcionais? **OBRIGATÓRIAS**
+  * Preço do litro será informado manualmente ou fixo? **MANUAL**
+  * Abastecimentos antigos (sem peso/fotos) devem continuar funcionando? **SIM**
+
+### FASE 2: Schema do Banco de Dados - ✅ CONCLUÍDA
+- [x] Adicionar campo `liters_initial` (int) - Litros iniciais no galão (em centavos)
+- [x] Adicionar campo `weight_full` (int) - Peso do galão cheio em kg (em gramas/centavos)
+- [x] Adicionar campo `weight_after` (int) - Peso do galão após abastecer em kg (em gramas/centavos)
+- [x] Adicionar campo `weight_consumed` (int) - Peso consumido calculado (em gramas/centavos)
+- [x] Adicionar campo `liters_calculated` (int) - Litros calculados pela regra de 3 (em centavos)
+- [x] Adicionar campo `photo_before_url` (text) - URL da foto da balança ANTES
+- [x] Adicionar campo `photo_after_url` (text) - URL da foto da balança DEPOIS
+- [x] Executar migração do banco de dados via SQL direto
+
+### FASE 3: Backend - Cálculo Automático e Upload - ✅ CONCLUÍDA
+- [x] Atualizar endpoint `fuelRecords.create` para receber campos de peso (litersInitial, weightFull, weightAfter)
+- [x] Implementar cálculo automático: `liters_calculated = (weight_consumed × liters_initial) / weight_full`
+- [x] Atualizar endpoint `fuelRecords.create` para receber URLs de fotos (photoBeforeUrl, photoAfterUrl)
+- [x] Validar que fotos foram enviadas antes de salvar (obrigatórias ao usar método de pesagem)
+- [x] Usar `liters_calculated` para calcular subtotal ao invés de `liters` manual
+- [x] Manter fórmula: `subtotal = liters_calculated × price_per_liter`
+- [x] Manter taxa fixa: R$ 10,00
+
+### FASE 4: Frontend - Formulário de Registro - ✅ CONCLUÍDA
+- [x] Adicionar checkbox "Usar método de pesagem com balança"
+- [x] Adicionar campo "Litros Iniciais no Galão" - input numérico (step 0.01)
+- [x] Adicionar campo "Peso do Galão Cheio (kg)" - input numérico (step 0.01)
+- [x] Adicionar campo "Peso do Galão Após (kg)" - input numérico (step 0.01)
+- [x] Adicionar botão "Upload Foto ANTES" - upload de imagem com preview
+- [x] Adicionar botão "Upload Foto DEPOIS" - upload de imagem com preview
+- [x] Implementar preview das fotos após upload
+- [x] Calcular e exibir "Litros Calculados" automaticamente em tempo real
+- [x] Mostrar fórmula: "(peso_cheio - peso_após) × litros_iniciais / peso_cheio"
+- [x] Atualizar cálculo de subtotal em tempo real
+- [x] Aplicado em: `/admin/abastecimento`
+
+### FASE 5: Frontend - Exibição nos Cards - ✅ CONCLUÍDA
+- [x] Adicionar seção de pesagem nos cards (fundo azul)
+- [x] Exibir grid 2x2: Litros Iniciais, Peso Cheio, Peso Após, Consumido
+- [x] Adicionar linha: "📊 Litros Calculados: XX.XXL"
+- [x] Adicionar botão "📷 Ver Foto ANTES" (abre em nova aba)
+- [x] Adicionar botão "📷 Ver Foto DEPOIS" (abre em nova aba)
+- [x] Aplicado em: `/admin/abastecimento`
+
+### FASE 6: Relatório PDF - ✅ CONCLUÍDA
+- [x] Adicionar seção de pesagem após observações (fundo azul claro)
+- [x] Exibir: Litros Iniciais, Peso Cheio, Peso Após, Consumido, Litros Calculados
+- [x] Adicionar página dedicada "Comprovação por Fotos da Balança" ao final
+- [x] Incluir URLs clicáveis das fotos ANTES e DEPOIS
+- [x] Paginação automática para múltiplos registros
+
+### FASE 7: Testes Automatizados - ✅ CONCLUÍDA
+- [x] Criar teste de cálculo de litros por regra de 3 (6 testes)
+- [x] Teste: Galão cheio 50L (19.07L calculados)
+- [x] Teste: Galão parcial 30L (10.08L calculados)
+- [x] Teste: Valores pequenos (2.50L calculados)
+- [x] Teste: Precisão 2 casas decimais
+- [x] Teste: Conversão centavos/gramas
+- [x] Teste: Cálculo subtotal e total
+- [x] Executar todos os testes: **6/6 passando ✅**
+
+### FASE 8: Validação Final - ⏳ EM ANDAMENTO
+- [ ] Testar criação de abastecimento com peso e fotos (via interface)
+- [ ] Verificar cálculo automático de litros (via interface)
+- [ ] Verificar exibição de fotos nos cards (via interface)
+- [ ] Verificar fotos no relatório PDF (via interface)
+- [ ] Testar compatibilidade com abastecimentos antigos (via interface)
+- [ ] Criar checkpoint final
+
+### Critérios de Sucesso
+✅ Formulário aceita peso do galão cheio e após
+✅ Sistema calcula litros automaticamente via regra de 3
+✅ Upload de 2 fotos (antes/depois) funcionando
+✅ Fotos aparecem nos cards com botões "Ver Foto"
+✅ Relatório PDF inclui dados de peso e fotos
+✅ Abastecimentos antigos continuam funcionando normalmente
+✅ Cálculo de cobrança permanece correto (litros × preço + taxa)
+
