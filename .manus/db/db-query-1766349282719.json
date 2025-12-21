@@ -1,0 +1,50 @@
+{
+  "query": "SELECT \n  fr.id,\n  fr.vessel_name,\n  fr.client_name,\n  fr.recorded_by,\n  u.name as recorded_by_name,\n  fr.recorded_at\nFROM fuel_records fr\nLEFT JOIN users u ON fr.recorded_by = u.id\nWHERE MONTH(fr.created_at) = 12 AND YEAR(fr.created_at) = 2025\nORDER BY fr.created_at DESC\nLIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  fr.id,\n  fr.vessel_name,\n  fr.client_name,\n  fr.recorded_by,\n  u.name as recorded_by_name,\n  fr.recorded_at\nFROM fuel_records fr\nLEFT JOIN users u ON fr.recorded_by = u.id\nWHERE MONTH(fr.created_at) = 12 AND YEAR(fr.created_at) = 2025\nORDER BY fr.created_at DESC\nLIMIT 5;",
+  "rows": [
+    {
+      "id": "720001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "Stenio Teixeiras",
+      "recorded_by": "system@exclusive.club",
+      "recorded_by_name": "NULL",
+      "recorded_at": "2025-12-21 20:31:50"
+    },
+    {
+      "id": "660001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "Laercio Oliveira",
+      "recorded_by": "system@exclusive.club",
+      "recorded_by_name": "NULL",
+      "recorded_at": "2025-12-21 20:31:50"
+    },
+    {
+      "id": "630001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "Laécio Silversat",
+      "recorded_by": "system@exclusive.club",
+      "recorded_by_name": "NULL",
+      "recorded_at": "2025-12-21 20:31:50"
+    },
+    {
+      "id": "570001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "ERISVALDO ALVES SILVA",
+      "recorded_by": "system@exclusive.club",
+      "recorded_by_name": "NULL",
+      "recorded_at": "2025-12-21 20:31:50"
+    },
+    {
+      "id": "480001",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP",
+      "client_name": "EDILSON DA CONCEIÇÃO COSTA",
+      "recorded_by": "system@exclusive.club",
+      "recorded_by_name": "NULL",
+      "recorded_at": "2025-12-21 20:31:50"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_name\tclient_name\trecorded_by\trecorded_by_name\trecorded_at\n720001\tFocker 215 150HP\tStenio Teixeiras\tsystem@exclusive.club\tNULL\t2025-12-21 20:31:50\n660001\tFocker 215 150HP\tLaercio Oliveira\tsystem@exclusive.club\tNULL\t2025-12-21 20:31:50\n630001\tFocker 215 150HP\tLaécio Silversat\tsystem@exclusive.club\tNULL\t2025-12-21 20:31:50\n570001\tFocker 215 150HP\tERISVALDO ALVES SILVA\tsystem@exclusive.club\tNULL\t2025-12-21 20:31:50\n480001\tJETSKI SEADOO GTI SE 130HP\tEDILSON DA CONCEIÇÃO COSTA\tsystem@exclusive.club\tNULL\t2025-12-21 20:31:50\n",
+  "stderr": "",
+  "execution_time_ms": 51
+}

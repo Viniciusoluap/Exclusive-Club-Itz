@@ -1,0 +1,50 @@
+{
+  "query": "SELECT id, vessel_name, client_name, recorded_by, recorded_at, created_at \nFROM fuel_records \nORDER BY created_at DESC \nLIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, vessel_name, client_name, recorded_by, recorded_at, created_at \nFROM fuel_records \nORDER BY created_at DESC \nLIMIT 5;",
+  "rows": [
+    {
+      "id": "720001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "Stenio Teixeiras",
+      "recorded_by": "system@exclusive.club",
+      "recorded_at": "2025-12-21 20:31:50",
+      "created_at": "2025-12-21 20:26:26"
+    },
+    {
+      "id": "660001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "Laercio Oliveira",
+      "recorded_by": "system@exclusive.club",
+      "recorded_at": "2025-12-21 20:31:50",
+      "created_at": "2025-12-21 13:51:29"
+    },
+    {
+      "id": "630001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "Laécio Silversat",
+      "recorded_by": "system@exclusive.club",
+      "recorded_at": "2025-12-21 20:31:50",
+      "created_at": "2025-12-20 16:01:41"
+    },
+    {
+      "id": "570001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "ERISVALDO ALVES SILVA",
+      "recorded_by": "system@exclusive.club",
+      "recorded_at": "2025-12-21 20:31:50",
+      "created_at": "2025-12-14 17:27:26"
+    },
+    {
+      "id": "480001",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP",
+      "client_name": "EDILSON DA CONCEIÇÃO COSTA",
+      "recorded_by": "system@exclusive.club",
+      "recorded_at": "2025-12-21 20:31:50",
+      "created_at": "2025-12-13 21:35:44"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_name\tclient_name\trecorded_by\trecorded_at\tcreated_at\n720001\tFocker 215 150HP\tStenio Teixeiras\tsystem@exclusive.club\t2025-12-21 20:31:50\t2025-12-21 20:26:26\n660001\tFocker 215 150HP\tLaercio Oliveira\tsystem@exclusive.club\t2025-12-21 20:31:50\t2025-12-21 13:51:29\n630001\tFocker 215 150HP\tLaécio Silversat\tsystem@exclusive.club\t2025-12-21 20:31:50\t2025-12-20 16:01:41\n570001\tFocker 215 150HP\tERISVALDO ALVES SILVA\tsystem@exclusive.club\t2025-12-21 20:31:50\t2025-12-14 17:27:26\n480001\tJETSKI SEADOO GTI SE 130HP\tEDILSON DA CONCEIÇÃO COSTA\tsystem@exclusive.club\t2025-12-21 20:31:50\t2025-12-13 21:35:44\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}

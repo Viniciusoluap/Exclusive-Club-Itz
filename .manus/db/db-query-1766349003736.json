@@ -1,0 +1,18 @@
+{
+  "query": "SHOW COLUMNS FROM fuel_records LIKE 'recorded%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SHOW COLUMNS FROM fuel_records LIKE 'recorded%';",
+  "rows": [
+    {
+      "Field": "recorded_by",
+      "Type": "varchar(320)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "system@exclusive.club",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nrecorded_by\tvarchar(320)\tNO\t\tsystem@exclusive.club\t\n",
+  "stderr": "",
+  "execution_time_ms": 79
+}
