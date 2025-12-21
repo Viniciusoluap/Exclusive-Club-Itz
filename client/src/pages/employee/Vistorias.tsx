@@ -60,8 +60,8 @@ export default function EmployeeVistorias() {
   const [vesselType, setVesselType] = useState<'jetski' | 'lancha' | null>(null);
   const [inspectionDate, setInspectionDate] = useState(new Date().toISOString().split('T')[0]);
   const [clientName, setClientName] = useState("");
-  const [inspectorName, setInspectorName] = useState(""); // Nome de quem está fazendo a vistoria
   const [formData, setFormData] = useState<Record<string, string>>({});
+  const [reprovationPhotos, setReprovationPhotos] = useState<Record<string, File | null>>({});
   const [notes, setNotes] = useState("");
   const [selectedInspections, setSelectedInspections] = useState<number[]>([]);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
@@ -184,8 +184,8 @@ export default function EmployeeVistorias() {
     setVesselType(null);
     setInspectionDate(new Date().toISOString().split('T')[0]);
     setClientName("");
-    setInspectorName("");
     setFormData({});
+    setReprovationPhotos({});
     setNotes("");
   };
 
@@ -215,16 +215,11 @@ export default function EmployeeVistorias() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!selectedBookingId || !vesselType) {
       toast.error("Selecione uma reserva");
-      return;
-    }
-
-    if (!inspectorName.trim()) {
-      toast.error("Preencha o nome do vistoriador");
       return;
     }
 
@@ -242,14 +237,48 @@ export default function EmployeeVistorias() {
       return;
     }
 
+    // Upload de fotos de itens reprovados
+    const uploadedPhotos: Array<{itemName: string, photoUrl: string}> = [];
+    const photoEntries = Object.entries(reprovationPhotos).filter(([_, file]) => file !== null);
+    
+    if (photoEntries.length > 0) {
+      toast.info(`Fazendo upload de ${photoEntries.length} foto(s)...`);
+      
+      for (const [itemName, file] of photoEntries) {
+        if (!file) continue;
+        
+        try {
+          const formData = new FormData();
+          formData.append('photo', file);
+          formData.append('itemName', itemName);
+          formData.append('vesselId', booking.vesselId.toString());
+          
+          const response = await fetch('/api/upload-inspection-photo', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Erro ao fazer upload da foto ${itemName}`);
+          }
+          
+          const data = await response.json();
+          uploadedPhotos.push({ itemName: data.itemName, photoUrl: data.photoUrl });
+        } catch (error: any) {
+          console.error(`Erro ao fazer upload da foto ${itemName}:`, error);
+          toast.error(`Erro ao fazer upload da foto ${itemName}`);
+        }
+      }
+    }
+
     createMutation.mutate({
       bookingId: selectedBookingId,
       vesselId: booking.vesselId,
       vesselType,
       clientName, // Nome do cliente (da reserva)
-      inspectorName, // Nome de quem está fazendo a vistoria
       formData,
       observations: notes || undefined,
+      reprovationPhotos: uploadedPhotos.length > 0 ? uploadedPhotos : undefined,
     });
   };
 
@@ -461,19 +490,6 @@ export default function EmployeeVistorias() {
                 />
               </div>
 
-              {/* Inspector Name */}
-              <div className="grid gap-2">
-                <Label htmlFor="inspectorName">Nome do Vistoriador *</Label>
-                <Input
-                  id="inspectorName"
-                  type="text"
-                  placeholder="Nome de quem está fazendo a vistoria"
-                  value={inspectorName}
-                  onChange={(e) => setInspectorName(e.target.value)}
-                  required
-                />
-              </div>
-
               {/* Vessel Type Selection */}
               <div className="grid gap-2">
                 <Label htmlFor="vesselType">Tipo de Embarcação *</Label>
@@ -522,6 +538,30 @@ export default function EmployeeVistorias() {
                           </Label>
                         </div>
                       </RadioGroup>
+                      
+                      {/* Upload de foto para item reprovado */}
+                      {formData[field] === 'REPROVADO' && (
+                        <div className="ml-4 mt-2 p-3 bg-muted rounded-md">
+                          <Label htmlFor={`photo-${field}`} className="text-sm text-muted-foreground">
+                            Foto da Reprovação (opcional)
+                          </Label>
+                          <Input
+                            id={`photo-${field}`}
+                            type="file"
+                            accept="image/*,application/pdf"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] || null;
+                              setReprovationPhotos(prev => ({ ...prev, [field]: file }));
+                            }}
+                            className="mt-1"
+                          />
+                          {reprovationPhotos[field] && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Arquivo: {reprovationPhotos[field]?.name}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

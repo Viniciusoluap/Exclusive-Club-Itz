@@ -1,0 +1,1 @@
+ALTER TABLE `inspections` ADD `reprovation_photos` text;

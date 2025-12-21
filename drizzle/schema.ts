@@ -247,6 +247,7 @@ export const inspections = mysqlTable("inspections", {
   observations: text("observations"),
   status: mysqlEnum("status", ["approved", "rejected"]).notNull(), // Overall status
   inspectedBy: text("inspected_by"), // Name of employee who performed inspection
+  reprovationPhotos: text("reprovation_photos"), // JSON array: [{itemName: string, photoUrl: string}]
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

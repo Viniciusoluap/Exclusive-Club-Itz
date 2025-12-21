@@ -2591,6 +2591,10 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         clientName: z.string(),
         formData: z.record(z.string(), z.string()), // JSON com todos os campos do formulário
         observations: z.string().optional(),
+        reprovationPhotos: z.array(z.object({
+          itemName: z.string(),
+          photoUrl: z.string(),
+        })).optional(), // [{itemName: string, photoUrl: string}]
       }))
       .mutation(async ({ input, ctx }) => {
         if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
@@ -2610,7 +2614,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         }
 
         // Determinar status geral (approved se todos aprovados, rejected se algum reprovado)
-        const hasRejected = Object.values(input.formData).some(v => v === 'reprovado');
+        const hasRejected = Object.values(input.formData).some(v => v === 'REPROVADO');
         const status = hasRejected ? 'rejected' : 'approved';
 
         try {
@@ -2624,6 +2628,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             observations: input.observations || null,
             status,
             inspectedBy: ctx.user?.name || null,
+            reprovationPhotos: input.reprovationPhotos && input.reprovationPhotos.length > 0 ? JSON.stringify(input.reprovationPhotos) : null,
           });
 
           return { success: true };
@@ -2781,7 +2786,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 v.name as vessel_name,
                 b.booking_date,
                 b.client_name as booking_client_name,
-                u.name as inspected_by_name
+                u.name as inspected_by_name,
+                i.reprovation_photos
               FROM inspections i
               JOIN vessels v ON i.vessel_id = v.id
               LEFT JOIN bookings b ON i.booking_id = b.id
@@ -2797,7 +2803,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 v.name as vessel_name,
                 b.booking_date,
                 b.client_name as booking_client_name,
-                u.name as inspected_by_name
+                u.name as inspected_by_name,
+                i.reprovation_photos
               FROM inspections i
               JOIN vessels v ON i.vessel_id = v.id
               LEFT JOIN bookings b ON i.booking_id = b.id

@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import axios from 'axios';
 
 export async function generateInspectionsReportPDF(inspections: any[]): Promise<Buffer> {
   const doc = new jsPDF();
@@ -53,7 +54,8 @@ export async function generateInspectionsReportPDF(inspections: any[]): Promise<
   // Adicionar seção de observações e itens reprovados para cada vistoria
   let yPos = (doc as any).lastAutoTable.finalY + 10;
   
-  inspections.forEach((insp, index) => {
+  for (let index = 0; index < inspections.length; index++) {
+    const insp = inspections[index];
     const formData = insp.inspection_data || insp.form_data || {};
     const formDataObj = typeof formData === 'string' ? JSON.parse(formData) : formData;
     
@@ -89,14 +91,58 @@ export async function generateInspectionsReportPDF(inspections: any[]): Promise<
         
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        rejectedItems.forEach(item => {
+        
+        // Parse fotos de reprovação
+        let reprovationPhotos: Array<{itemName: string, photoUrl: string}> = [];
+        try {
+          if (insp.reprovation_photos && typeof insp.reprovation_photos === 'string') {
+            reprovationPhotos = JSON.parse(insp.reprovation_photos);
+          } else if (Array.isArray(insp.reprovation_photos)) {
+            reprovationPhotos = insp.reprovation_photos;
+          }
+        } catch (e) {
+          console.error('[PDF] Erro ao parsear reprovation_photos:', e);
+        }
+        
+        for (const item of rejectedItems) {
           if (yPos > 280) {
             doc.addPage();
             yPos = 20;
           }
           doc.text(`• ${item}`, 18, yPos);
           yPos += 5;
-        });
+          
+          // Buscar foto do item reprovado
+          const photo = reprovationPhotos.find(p => p.itemName === item);
+          if (photo && photo.photoUrl) {
+            try {
+              // Download da imagem
+              const response = await axios.get(photo.photoUrl, { responseType: 'arraybuffer' });
+              const imageBuffer = Buffer.from(response.data);
+              const base64Image = imageBuffer.toString('base64');
+              const mimeType = response.headers['content-type'] || 'image/jpeg';
+              const imageData = `data:${mimeType};base64,${base64Image}`;
+              
+              // Verificar espaço para imagem (altura ~60mm)
+              if (yPos > 220) {
+                doc.addPage();
+                yPos = 20;
+              }
+              
+              // Adicionar imagem (largura 80mm, altura 60mm)
+              doc.addImage(imageData, 'JPEG', 18, yPos, 80, 60);
+              yPos += 65; // Espaço após imagem
+            } catch (imgError: any) {
+              console.error(`[PDF] Erro ao incorporar foto ${item}:`, imgError);
+              doc.setFontSize(8);
+              doc.setTextColor(100, 100, 100);
+              doc.text(`  (Erro ao carregar foto)`, 22, yPos);
+              yPos += 5;
+              doc.setFontSize(9);
+              doc.setTextColor(220, 38, 38);
+            }
+          }
+        }
         yPos += 3;
       }
       
@@ -130,7 +176,7 @@ export async function generateInspectionsReportPDF(inspections: any[]): Promise<
       
       yPos += 8; // Espaço entre vistorias
     }
-  });
+  }
   
   // Converter para Buffer
   const pdfOutput = doc.output('arraybuffer');
