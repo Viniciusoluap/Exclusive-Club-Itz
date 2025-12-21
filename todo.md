@@ -744,3 +744,26 @@ Cliente implementou novo método de abastecimento usando galão de 50L e balanç
   timeStyle: 'short'
 }) : 'Data não disponível'}
 ```
+
+## Nova Solicitação: Botão de Editar Embarcação (21/12/2025 - 10:00)
+
+- [ ] Adicionar botão de editar (ícone de lápis) ao lado do botão de excluir em cada card de embarcação
+- [ ] Criar dialog de edição reutilizando o mesmo dialog de criação
+- [ ] Pré-preencher campos ao clicar em editar (nome, tipo, descrição, quotaCount, imageUrl)
+- [ ] Título dinâmico: "Adicionar Embarcação" ou "Editar Embarcação"
+- [ ] Botão de submit dinâmico: "Adicionar" ou "Atualizar"
+- [ ] Validar que endpoint vessels.update existe no backend
+- [ ] Testar funcionalidade completa
+
+## ✅ CONCLUÍDO - Botão de Editar Embarcação (21/12/2025 - 10:30)
+
+- [x] Adicionar botão de editar (ícone de lápis) ao lado do botão de excluir em cada card de embarcação
+- [x] Criar dialog de edição reutilizando o mesmo dialog de criação
+- [x] Pré-preencher campos ao clicar em editar (nome, tipo, descrição, quotaCount, imageUrl)
+- [x] Título dinâmico: "Adicionar Embarcação" ou "Editar Embarcação"
+- [x] Botão de submit dinâmico: "Adicionar" ou "Atualizar"
+- [x] Validar que endpoint vessels.update existe no backend
+- [x] Testar funcionalidade completa
+
+### Resultado
+✅ Funcionalidade implementada com sucesso e testada visualmente no navegador.
