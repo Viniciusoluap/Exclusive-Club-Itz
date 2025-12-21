@@ -1365,6 +1365,12 @@ Nenhuma reserva foi afetada.
         liters: z.number().positive(),
         pricePerLiter: z.number().positive(),
         notes: z.string().optional(),
+        // Campos opcionais do método de abastecimento por pesagem
+        litersInitial: z.number().positive().optional(), // Litros iniciais no galão (ex: 50.05)
+        weightFull: z.number().positive().optional(), // Peso do galão cheio em kg (ex: 37.80)
+        weightAfter: z.number().positive().optional(), // Peso do galão após em kg (ex: 23.40)
+        photoBeforeUrl: z.string().url().optional(), // URL da foto ANTES
+        photoAfterUrl: z.string().url().optional(), // URL da foto DEPOIS
       }))
       .mutation(async ({ ctx, input }) => {
         if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
@@ -1386,10 +1392,54 @@ Nenhuma reserva foi afetada.
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Reserva não encontrada' });
         }
 
+        // Validar campos de peso (se um for informado, todos devem ser)
+        const hasWeightData = input.litersInitial || input.weightFull || input.weightAfter;
+        if (hasWeightData) {
+          if (!input.litersInitial || !input.weightFull || !input.weightAfter) {
+            throw new TRPCError({ 
+              code: 'BAD_REQUEST', 
+              message: 'Se usar o método de pesagem, todos os campos (litros iniciais, peso cheio e peso após) são obrigatórios' 
+            });
+          }
+          if (!input.photoBeforeUrl || !input.photoAfterUrl) {
+            throw new TRPCError({ 
+              code: 'BAD_REQUEST', 
+              message: 'As fotos da balança (antes e depois) são obrigatórias ao usar o método de pesagem' 
+            });
+          }
+          if (input.weightAfter >= input.weightFull) {
+            throw new TRPCError({ 
+              code: 'BAD_REQUEST', 
+              message: 'O peso após deve ser menor que o peso cheio' 
+            });
+          }
+        }
+
+        // Calcular valores de peso e litros (se método de pesagem for usado)
+        let litersInitialInCents = null;
+        let weightFullInGrams = null;
+        let weightAfterInGrams = null;
+        let weightConsumedInGrams = null;
+        let litersCalculatedInCents = null;
+        let finalLitersInCents = Math.round(input.liters * 100); // Padrão: usar litros informados manualmente
+
+        if (hasWeightData && input.litersInitial && input.weightFull && input.weightAfter) {
+          // Converter para unidades inteiras (centavos/gramas)
+          litersInitialInCents = Math.round(input.litersInitial * 100); // 50.05L -> 5005
+          weightFullInGrams = Math.round(input.weightFull * 100); // 37.80kg -> 3780 (gramas em centavos)
+          weightAfterInGrams = Math.round(input.weightAfter * 100); // 23.40kg -> 2340
+          weightConsumedInGrams = weightFullInGrams - weightAfterInGrams; // 3780 - 2340 = 1440
+
+          // Regra de 3: litros_consumidos = (peso_consumido * litros_iniciais) / peso_cheio
+          litersCalculatedInCents = Math.round((weightConsumedInGrams * litersInitialInCents) / weightFullInGrams);
+          
+          // Usar litros calculados ao invés de litros manuais
+          finalLitersInCents = litersCalculatedInCents;
+        }
+
         const SERVICE_FEE = 1000; // Taxa de abastecimento e aplicativo em centavos (R$ 10,00)
-        const litersInCents = Math.round(input.liters * 100); // Converter para centavos
         const pricePerLiterInCents = Math.round(input.pricePerLiter * 100); // Converter para centavos
-        const fuelCost = Math.round((input.liters * input.pricePerLiter) * 100); // em centavos
+        const fuelCost = Math.round((finalLitersInCents / 100) * input.pricePerLiter * 100); // em centavos
         const totalAmount = fuelCost + SERVICE_FEE;
 
         // Criar ou buscar cliente no Asaas
@@ -1442,6 +1492,8 @@ Nenhuma reserva foi afetada.
         }
 
         const notesValue = input.notes ? `'${input.notes.replace(/'/g, "''")}'` : 'NULL';
+        const photoBeforeUrlValue = input.photoBeforeUrl ? `'${input.photoBeforeUrl}'` : 'NULL';
+        const photoAfterUrlValue = input.photoAfterUrl ? `'${input.photoAfterUrl}'` : 'NULL';
         const asaasChargeIdValue = asaasChargeId ? `'${asaasChargeId}'` : 'NULL';
         const asaasCustomerIdValue = asaasCustomerId ? `'${asaasCustomerId}'` : 'NULL';
         const paymentUrlValue = paymentUrl ? `'${paymentUrl}'` : 'NULL';
@@ -1451,13 +1503,17 @@ Nenhuma reserva foi afetada.
           INSERT INTO fuel_records (
             booking_id, vessel_id, vessel_name, client_email, client_name, 
             liters, price_per_liter, total_amount, notes, 
+            liters_initial, weight_full, weight_after, weight_consumed, liters_calculated,
+            photo_before_url, photo_after_url,
             asaas_charge_id, asaas_customer_id, payment_url, payment_status,
             sync_status, sync_error, last_sync_attempt
           )
           VALUES (
             ${input.bookingId}, ${input.vesselId}, '${booking.vessel_name_actual}', 
             '${booking.client_email}', '${booking.client_name}', 
-            ${litersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${notesValue}, 
+            ${finalLitersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${notesValue}, 
+            ${litersInitialInCents}, ${weightFullInGrams}, ${weightAfterInGrams}, ${weightConsumedInGrams}, ${litersCalculatedInCents},
+            ${photoBeforeUrlValue}, ${photoAfterUrlValue},
             ${asaasChargeIdValue}, ${asaasCustomerIdValue}, ${paymentUrlValue}, 'pending',
             '${syncStatus}', ${syncErrorValue}, NOW()
           )
@@ -1926,7 +1982,15 @@ Nenhuma reserva foi afetada.
           subtotal: (r.liters || 0) * (r.price_per_liter || 0) / 100, // Calculado: litros × preço/L (em centavos)
           serviceFee: 1000, // Taxa fixa: R$ 10.00 em centavos
           totalAmount: r.total_amount || 0,
-          notes: r.notes
+          notes: r.notes,
+          // Campos de pesagem (opcionais)
+          litersInitial: r.liters_initial || null,
+          weightFull: r.weight_full || null,
+          weightAfter: r.weight_after || null,
+          weightConsumed: r.weight_consumed || null,
+          litersCalculated: r.liters_calculated || null,
+          photoBeforeUrl: r.photo_before_url || null,
+          photoAfterUrl: r.photo_after_url || null,
         }));
 
         // Gerar PDF
@@ -1986,7 +2050,15 @@ Nenhuma reserva foi afetada.
           subtotal: (r.liters || 0) * (r.price_per_liter || 0) / 100, // Calculado: litros × preço/L (em centavos)
           serviceFee: 1000, // Taxa fixa: R$ 10.00 em centavos
           totalAmount: r.total_amount || 0,
-          notes: r.notes
+          notes: r.notes,
+          // Campos de pesagem (opcionais)
+          litersInitial: r.liters_initial || null,
+          weightFull: r.weight_full || null,
+          weightAfter: r.weight_after || null,
+          weightConsumed: r.weight_consumed || null,
+          litersCalculated: r.liters_calculated || null,
+          photoBeforeUrl: r.photo_before_url || null,
+          photoAfterUrl: r.photo_after_url || null,
         }));
 
         // Gerar PDF

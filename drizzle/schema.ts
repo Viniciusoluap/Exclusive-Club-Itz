@@ -162,9 +162,17 @@ export const fuelRecords = mysqlTable("fuel_records", {
   vesselName: text("vessel_name").notNull(),
   clientEmail: varchar("client_email", { length: 320 }).notNull(),
   clientName: text("client_name").notNull(),
-  liters: int("liters").notNull(), // Litros abastecidos
+  liters: int("liters").notNull(), // Litros abastecidos (método manual) ou litros calculados (método por peso)
   pricePerLiter: int("price_per_liter").notNull(), // Preço por litro em centavos
   totalAmount: int("total_amount").notNull(), // Valor total em centavos
+  // Campos do método de abastecimento por pesagem (opcionais - para compatibilidade com registros antigos)
+  litersInitial: int("liters_initial"), // Litros iniciais no galão (em centésimos, ex: 5005 = 50.05L)
+  weightFull: int("weight_full"), // Peso do galão cheio em gramas (ex: 37800 = 37.80kg)
+  weightAfter: int("weight_after"), // Peso do galão após abastecer em gramas (ex: 23400 = 23.40kg)
+  weightConsumed: int("weight_consumed"), // Peso consumido em gramas (calculado: weightFull - weightAfter)
+  litersCalculated: int("liters_calculated"), // Litros calculados pela regra de 3 (em centésimos)
+  photoBeforeUrl: text("photo_before_url"), // URL da foto da balança ANTES do abastecimento
+  photoAfterUrl: text("photo_after_url"), // URL da foto da balança DEPOIS do abastecimento
   notes: text("notes"),
   // Campos de pagamento Asaas
   asaasChargeId: varchar("asaas_charge_id", { length: 100 }), // ID da cobrança no Asaas

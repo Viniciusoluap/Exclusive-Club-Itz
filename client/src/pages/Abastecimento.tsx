@@ -30,6 +30,17 @@ export default function Abastecimento() {
   const [budgetAmount, setBudgetAmount] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  
+  // Estados para método de abastecimento por pesagem
+  const [useWeightMethod, setUseWeightMethod] = useState(false);
+  const [litersInitial, setLitersInitial] = useState("");
+  const [weightFull, setWeightFull] = useState("");
+  const [weightAfter, setWeightAfter] = useState("");
+  const [photoBefore, setPhotoBefore] = useState<File | null>(null);
+  const [photoAfter, setPhotoAfter] = useState<File | null>(null);
+  const [photoBeforeUrl, setPhotoBeforeUrl] = useState<string | null>(null);
+  const [photoAfterUrl, setPhotoAfterUrl] = useState<string | null>(null);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
 
   // Estado de filtro de mês/ano
   const currentDate = new Date();
@@ -181,6 +192,15 @@ export default function Abastecimento() {
     setPricePerLiter("");
     setNotes("");
     setReceiptFile(null);
+    // Limpar campos de pesagem
+    setUseWeightMethod(false);
+    setLitersInitial("");
+    setWeightFull("");
+    setWeightAfter("");
+    setPhotoBefore(null);
+    setPhotoAfter(null);
+    setPhotoBeforeUrl(null);
+    setPhotoAfterUrl(null);
   };
 
   const handleDeleteClick = (id: number) => {
@@ -237,16 +257,33 @@ export default function Abastecimento() {
       return;
     }
 
-    let receiptUrl: string | undefined = undefined;
+    // Validar campos de pesagem se o método estiver ativo
+    if (useWeightMethod) {
+      if (!litersInitial || !weightFull || !weightAfter) {
+        toast.error('Preencha todos os campos de peso (litros iniciais, peso cheio e peso após)');
+        return;
+      }
+      if (!photoBefore || !photoAfter) {
+        toast.error('As fotos da balança (antes e depois) são obrigatórias');
+        return;
+      }
+      if (parseFloat(weightAfter) >= parseFloat(weightFull)) {
+        toast.error('O peso após deve ser menor que o peso cheio');
+        return;
+      }
+    }
 
-    // Upload do comprovante se existir
-    if (receiptFile) {
-      try {
+    let receiptUrl: string | undefined = undefined;
+    let uploadedPhotoBeforeUrl: string | undefined = undefined;
+    let uploadedPhotoAfterUrl: string | undefined = undefined;
+
+    try {
+      // Upload do comprovante se existir
+      if (receiptFile) {
         setIsUploadingReceipt(true);
         const formData = new FormData();
         formData.append('file', receiptFile);
 
-        // Upload para S3 via endpoint do servidor
         const response = await fetch('/api/upload-receipt', {
           method: 'POST',
           body: formData,
@@ -258,32 +295,84 @@ export default function Abastecimento() {
 
         const data = await response.json();
         receiptUrl = data.url;
-      } catch (error: any) {
-        toast.error(`Erro ao fazer upload: ${error.message}`);
-        setIsUploadingReceipt(false);
-        return;
-      } finally {
         setIsUploadingReceipt(false);
       }
+
+      // Upload das fotos da balança se o método de pesagem estiver ativo
+      if (useWeightMethod && photoBefore && photoAfter) {
+        setIsUploadingPhotos(true);
+        
+        // Upload foto ANTES
+        const formDataBefore = new FormData();
+        formDataBefore.append('file', photoBefore);
+        const responseBefore = await fetch('/api/upload-receipt', {
+          method: 'POST',
+          body: formDataBefore,
+        });
+        if (!responseBefore.ok) {
+          throw new Error('Erro ao fazer upload da foto ANTES');
+        }
+        const dataBefore = await responseBefore.json();
+        uploadedPhotoBeforeUrl = dataBefore.url;
+
+        // Upload foto DEPOIS
+        const formDataAfter = new FormData();
+        formDataAfter.append('file', photoAfter);
+        const responseAfter = await fetch('/api/upload-receipt', {
+          method: 'POST',
+          body: formDataAfter,
+        });
+        if (!responseAfter.ok) {
+          throw new Error('Erro ao fazer upload da foto DEPOIS');
+        }
+        const dataAfter = await responseAfter.json();
+        uploadedPhotoAfterUrl = dataAfter.url;
+        
+        setIsUploadingPhotos(false);
+      }
+    } catch (error: any) {
+      toast.error(`Erro ao fazer upload: ${error.message}`);
+      setIsUploadingReceipt(false);
+      setIsUploadingPhotos(false);
+      return;
+    }
+
+    // Calcular litros consumidos se usar método de pesagem
+    let finalLiters = parseFloat(liters);
+    if (useWeightMethod && litersInitial && weightFull && weightAfter) {
+      const pesoConsumed = parseFloat(weightFull) - parseFloat(weightAfter);
+      const litersCalculated = (pesoConsumed * parseFloat(litersInitial)) / parseFloat(weightFull);
+      finalLiters = parseFloat(litersCalculated.toFixed(2));
     }
 
     createMutation.mutate({
       bookingId: selectedBookingId,
       vesselId: booking.vesselId,
-      liters: parseFloat(liters),
+      liters: finalLiters,
       pricePerLiter: parseFloat(pricePerLiter),
       notes: notes || undefined,
       receiptUrl,
+      // Campos de pesagem (opcionais)
+      litersInitial: useWeightMethod ? parseFloat(litersInitial) : undefined,
+      weightFull: useWeightMethod ? parseFloat(weightFull) : undefined,
+      weightAfter: useWeightMethod ? parseFloat(weightAfter) : undefined,
+      photoBeforeUrl: uploadedPhotoBeforeUrl,
+      photoAfterUrl: uploadedPhotoAfterUrl,
     });
   };
 
   const SERVICE_FEE = 10.00; // Taxa de abastecimento e aplicativo
   
-  const subtotal = liters && pricePerLiter 
-    ? parseFloat(liters) * parseFloat(pricePerLiter)
+  // Calcular litros (manual ou por pesagem)
+  const calculatedLiters = useWeightMethod && litersInitial && weightFull && weightAfter
+    ? ((parseFloat(weightFull) - parseFloat(weightAfter)) * parseFloat(litersInitial)) / parseFloat(weightFull)
+    : (liters ? parseFloat(liters) : 0);
+  
+  const subtotal = pricePerLiter 
+    ? calculatedLiters * parseFloat(pricePerLiter)
     : 0;
   
-  const totalCost = liters && pricePerLiter
+  const totalCost = pricePerLiter
     ? (subtotal + SERVICE_FEE).toFixed(2)
     : "0.00";
 
@@ -724,12 +813,67 @@ export default function Abastecimento() {
                     </div>
                   </div>
                 </CardHeader>
-                {record.notes && (
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      <strong>Observações:</strong> {record.notes}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
+                {(record.notes || record.weight_full) && (
+                  <CardContent className="space-y-3">
+                    {/* Informações de Pesagem */}
+                    {record.weight_full && (
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-2">
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                          ⚖️ Abastecimento por Pesagem
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-blue-700 dark:text-blue-300">
+                          <div>
+                            <span className="font-medium">Litros Iniciais:</span> {(record.liters_initial / 100).toFixed(2)} L
+                          </div>
+                          <div>
+                            <span className="font-medium">Peso Cheio:</span> {(record.weight_full / 100).toFixed(2)} kg
+                          </div>
+                          <div>
+                            <span className="font-medium">Peso Após:</span> {(record.weight_after / 100).toFixed(2)} kg
+                          </div>
+                          <div>
+                            <span className="font-medium">Consumido:</span> {(record.weight_consumed / 100).toFixed(2)} kg
+                          </div>
+                        </div>
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          📊 <span className="font-medium">Litros Calculados:</span> {(record.liters_calculated / 100).toFixed(2)} L
+                        </p>
+                        {/* Botões para ver fotos */}
+                        {(record.photo_before_url || record.photo_after_url) && (
+                          <div className="flex gap-2 mt-2">
+                            {record.photo_before_url && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(record.photo_before_url, '_blank')}
+                                className="text-xs"
+                              >
+                                📷 Ver Foto ANTES
+                              </Button>
+                            )}
+                            {record.photo_after_url && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(record.photo_after_url, '_blank')}
+                                className="text-xs"
+                              >
+                                📷 Ver Foto DEPOIS
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Observações */}
+                    {record.notes && (
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Observações:</strong> {record.notes}
+                      </p>
+                    )}
+                    
+                    <p className="text-xs text-muted-foreground">
                       Registrado por: {record.recorded_by_name} • {new Date(record.recorded_at).toLocaleString('pt-BR')}
                     </p>
                   </CardContent>
@@ -774,19 +918,155 @@ export default function Abastecimento() {
                 </Select>
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="liters">Litros Abastecidos *</Label>
-                <Input
-                  id="liters"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={liters}
-                  onChange={(e) => setLiters(e.target.value)}
-                  placeholder="Ex: 25.5"
-                  required
+              {/* Checkbox para ativar método de pesagem */}
+              <div className="flex items-center space-x-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <Checkbox 
+                  id="useWeightMethod" 
+                  checked={useWeightMethod}
+                  onCheckedChange={(checked) => setUseWeightMethod(checked as boolean)}
                 />
+                <Label htmlFor="useWeightMethod" className="text-sm font-medium cursor-pointer">
+                  Usar método de pesagem com balança
+                </Label>
               </div>
+
+              {/* Campos de pesagem (aparecem apenas se checkbox estiver marcado) */}
+              {useWeightMethod && (
+                <>
+                  <div className="grid gap-2">
+                    <Label htmlFor="litersInitial">Litros Iniciais no Galão *</Label>
+                    <Input
+                      id="litersInitial"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={litersInitial}
+                      onChange={(e) => setLitersInitial(e.target.value)}
+                      placeholder="Ex: 50,05"
+                      required={useWeightMethod}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Quantidade de litros que havia no galão antes do abastecimento
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="weightFull">Peso do Galão Cheio (kg) *</Label>
+                    <Input
+                      id="weightFull"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={weightFull}
+                      onChange={(e) => setWeightFull(e.target.value)}
+                      placeholder="Ex: 37,80"
+                      required={useWeightMethod}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="weightAfter">Peso do Galão Após (kg) *</Label>
+                    <Input
+                      id="weightAfter"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={weightAfter}
+                      onChange={(e) => setWeightAfter(e.target.value)}
+                      placeholder="Ex: 23,40"
+                      required={useWeightMethod}
+                    />
+                  </div>
+
+                  {/* Preview do cálculo */}
+                  {litersInitial && weightFull && weightAfter && (
+                    <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                        ⚖️ Cálculo Automático:
+                      </p>
+                      <p className="text-xs text-green-700 dark:text-green-300">
+                        Peso consumido: {(parseFloat(weightFull) - parseFloat(weightAfter)).toFixed(2)} kg
+                      </p>
+                      <p className="text-xs text-green-700 dark:text-green-300">
+                        Litros consumidos: {calculatedLiters.toFixed(2)} L
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Upload foto ANTES */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="photoBefore">Foto da Balança - ANTES *</Label>
+                    <Input
+                      id="photoBefore"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error('Arquivo muito grande. Tamanho máximo: 5MB');
+                            e.target.value = '';
+                            return;
+                          }
+                          setPhotoBefore(file);
+                          setPhotoBeforeUrl(URL.createObjectURL(file));
+                        }
+                      }}
+                      required={useWeightMethod}
+                    />
+                    {photoBeforeUrl && (
+                      <div className="mt-2">
+                        <img src={photoBeforeUrl} alt="Preview ANTES" className="w-full h-32 object-cover rounded-lg border" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Upload foto DEPOIS */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="photoAfter">Foto da Balança - DEPOIS *</Label>
+                    <Input
+                      id="photoAfter"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error('Arquivo muito grande. Tamanho máximo: 5MB');
+                            e.target.value = '';
+                            return;
+                          }
+                          setPhotoAfter(file);
+                          setPhotoAfterUrl(URL.createObjectURL(file));
+                        }
+                      }}
+                      required={useWeightMethod}
+                    />
+                    {photoAfterUrl && (
+                      <div className="mt-2">
+                        <img src={photoAfterUrl} alt="Preview DEPOIS" className="w-full h-32 object-cover rounded-lg border" />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Campo de litros (apenas se NÃO usar método de pesagem) */}
+              {!useWeightMethod && (
+                <div className="grid gap-2">
+                  <Label htmlFor="liters">Litros Abastecidos *</Label>
+                  <Input
+                    id="liters"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={liters}
+                    onChange={(e) => setLiters(e.target.value)}
+                    placeholder="Ex: 25,50"
+                    required={!useWeightMethod}
+                  />
+                </div>
+              )}
 
               <div className="grid gap-2">
                 <Label htmlFor="pricePerLiter">Preço por Litro (R$) *</Label>
@@ -802,10 +1082,10 @@ export default function Abastecimento() {
                 />
               </div>
 
-              {liters && pricePerLiter && (
+              {((useWeightMethod && litersInitial && weightFull && weightAfter) || (!useWeightMethod && liters)) && pricePerLiter && (
                 <div className="p-4 bg-primary/10 rounded-lg space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span>Combustível ({liters}L × R$ {parseFloat(pricePerLiter).toFixed(2)}):</span>
+                    <span>Combustível ({calculatedLiters.toFixed(2)}L × R$ {parseFloat(pricePerLiter).toFixed(2)}):</span>
                     <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
@@ -877,9 +1157,9 @@ export default function Abastecimento() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={createMutation.isPending || isUploadingReceipt}>
-                {(createMutation.isPending || isUploadingReceipt) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {isUploadingReceipt ? 'Enviando comprovante...' : 'Registrar'}
+              <Button type="submit" disabled={createMutation.isPending || isUploadingReceipt || isUploadingPhotos}>
+                {(createMutation.isPending || isUploadingReceipt || isUploadingPhotos) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {isUploadingPhotos ? 'Enviando fotos...' : isUploadingReceipt ? 'Enviando comprovante...' : 'Registrar'}
               </Button>
             </DialogFooter>
           </form>

@@ -134,6 +134,13 @@
       "when": 1765663170815,
       "tag": "0018_special_hemingway",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1766327270498,
+      "tag": "0019_good_mandrill",
+      "breakpoints": true
     }
   ]
 }
