@@ -182,6 +182,7 @@ export default function Admin() {
 
   // Vessel Management State
   const [showVesselDialog, setShowVesselDialog] = useState(false);
+  const [editingVesselId, setEditingVesselId] = useState<number | null>(null);
   
   // Booking Management State
   const [showBookingDialog, setShowBookingDialog] = useState(false);
@@ -268,6 +269,20 @@ export default function Admin() {
       toast.success("Embarcação adicionada com sucesso!");
       utils.vessels.listAll.invalidate();
       setShowVesselDialog(false);
+      setEditingVesselId(null);
+      setVesselForm({ name: "", type: "lancha", description: "", capacity: "", quotaCount: "6" });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateVessel = trpc.vessels.update.useMutation({
+    onSuccess: () => {
+      toast.success("Embarcação atualizada com sucesso!");
+      utils.vessels.listAll.invalidate();
+      setShowVesselDialog(false);
+      setEditingVesselId(null);
       setVesselForm({ name: "", type: "lancha", description: "", capacity: "", quotaCount: "6" });
     },
     onError: (error) => {
@@ -368,13 +383,39 @@ export default function Admin() {
       toast.error("Quantidade de cotas deve ser entre 1 e 10");
       return;
     }
-    createVessel.mutate({
-      name: vesselForm.name,
-      type: vesselForm.type,
-      description: vesselForm.description || undefined,
-      capacity: vesselForm.capacity ? parseInt(vesselForm.capacity) : undefined,
-      quotaCount: quotaCountNum,
-    } as any);
+    
+    if (editingVesselId) {
+      // Atualizar embarcação existente
+      updateVessel.mutate({
+        id: editingVesselId,
+        name: vesselForm.name,
+        type: vesselForm.type,
+        description: vesselForm.description || undefined,
+        capacity: vesselForm.capacity ? parseInt(vesselForm.capacity) : undefined,
+        quotaCount: quotaCountNum,
+      } as any);
+    } else {
+      // Criar nova embarcação
+      createVessel.mutate({
+        name: vesselForm.name,
+        type: vesselForm.type,
+        description: vesselForm.description || undefined,
+        capacity: vesselForm.capacity ? parseInt(vesselForm.capacity) : undefined,
+        quotaCount: quotaCountNum,
+      } as any);
+    }
+  };
+
+  const handleEditVessel = (vessel: any) => {
+    setEditingVesselId(vessel.id);
+    setVesselForm({
+      name: vessel.name,
+      type: vessel.type,
+      description: vessel.description || "",
+      capacity: vessel.capacity ? vessel.capacity.toString() : "",
+      quotaCount: vessel.quotaCount ? vessel.quotaCount.toString() : "6",
+    });
+    setShowVesselDialog(true);
   };
 
   const addQuota = (vesselId: number, quotaNumber: number, quotaType: "full" | "half") => {
@@ -689,17 +730,26 @@ export default function Admin() {
                             </div>
                           )}
                         </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm("Tem certeza que deseja remover esta embarcação?")) {
-                              deleteVessel.mutate({ id: vessel.id });
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditVessel(vessel)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm("Tem certeza que deseja remover esta embarcação?")) {
+                                deleteVessel.mutate({ id: vessel.id });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1052,11 +1102,19 @@ export default function Admin() {
       </Dialog>
 
       {/* Add Vessel Dialog */}
-      <Dialog open={showVesselDialog} onOpenChange={setShowVesselDialog}>
+      <Dialog open={showVesselDialog} onOpenChange={(open) => {
+        setShowVesselDialog(open);
+        if (!open) {
+          setEditingVesselId(null);
+          setVesselForm({ name: "", type: "lancha", description: "", capacity: "", quotaCount: "6" });
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar Embarcação</DialogTitle>
-            <DialogDescription>Cadastre uma nova embarcação no sistema</DialogDescription>
+            <DialogTitle>{editingVesselId ? "Editar Embarcação" : "Adicionar Embarcação"}</DialogTitle>
+            <DialogDescription>
+              {editingVesselId ? "Atualize as informações da embarcação" : "Cadastre uma nova embarcação no sistema"}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1124,14 +1182,14 @@ export default function Admin() {
             <Button variant="outline" onClick={() => setShowVesselDialog(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateVessel} disabled={createVessel.isPending}>
-              {createVessel.isPending ? (
+            <Button onClick={handleCreateVessel} disabled={createVessel.isPending || updateVessel.isPending}>
+              {(createVessel.isPending || updateVessel.isPending) ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adicionando...
+                  {editingVesselId ? "Atualizando..." : "Adicionando..."}
                 </>
               ) : (
-                "Adicionar"
+                editingVesselId ? "Atualizar" : "Adicionar"
               )}
             </Button>
           </DialogFooter>
