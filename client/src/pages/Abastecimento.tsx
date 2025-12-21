@@ -28,7 +28,7 @@ export default function Abastecimento() {
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
-  const [budgetAmount, setBudgetAmount] = useState("");
+  // budgetAmount removido - orçamento agora é calculado automaticamente
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   
@@ -173,19 +173,14 @@ export default function Abastecimento() {
     }
   };
 
-  const setBudgetMutation = trpcAny.fuelBudget?.set.useMutation({
-    onSuccess: () => {
-      toast.success('Orçamento configurado com sucesso!');
-      setIsBudgetDialogOpen(false);
-      setBudgetAmount("");
-      // Invalidar cache para forçar refetch
-      utils.fuelRecords.financialStats.invalidate();
-      utils.fuelBudget.get.invalidate();
-    },
-    onError: (error: any) => {
-      toast.error(`Erro ao configurar orçamento: ${error.message}`);
-    },
-  });
+  // setBudgetMutation removido - orçamento agora é calculado automaticamente
+
+  // Preencher preço por litro automaticamente ao abrir o dialog
+  useEffect(() => {
+    if (isCreateDialogOpen && budget?.lastPricePerLiter) {
+      setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
+    }
+  }, [isCreateDialogOpen, budget]);
 
   const resetForm = () => {
     setSelectedBookingId(null);

@@ -16,7 +16,7 @@ interface FuelManagementDialogProps {
 }
 
 export default function FuelManagementDialog({ open, onOpenChange, monthYear }: FuelManagementDialogProps) {
-  const [budgetAmount, setBudgetAmount] = useState("");
+  // budgetAmount removido - orçamento agora é calculado automaticamente
   const [purchaseLiters, setPurchaseLiters] = useState("");
   const [purchaseAmount, setPurchaseAmount] = useState("");
   const [purchaseNotes, setPurchaseNotes] = useState("");
@@ -28,24 +28,9 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
   const { data: budget, refetch: refetchBudget } = trpcAny.fuelBudget?.get.useQuery({ monthYear }) || { data: null };
   const { data: purchases, refetch: refetchPurchases } = trpcAny.fuelPurchases?.list.useQuery({ monthYear }) || { data: [] };
 
-  // Pré-preencher orçamento quando carregar
-  useEffect(() => {
-    if (budget?.totalBudget) {
-      setBudgetAmount(budget.totalBudget.toFixed(2));
-    }
-  }, [budget]);
+  // useEffect removido - orçamento agora é calculado automaticamente
 
-  // Mutations
-  const setBudgetMutation = trpcAny.fuelBudget?.set.useMutation({
-    onSuccess: () => {
-      toast.success('Orçamento configurado com sucesso!');
-      refetchBudget();
-      utils.fuelRecords.financialStats.invalidate();
-    },
-    onError: (error: any) => {
-      toast.error(`Erro ao configurar orçamento: ${error.message}`);
-    },
-  });
+  // Mutations (setBudgetMutation removido - orçamento agora é calculado automaticamente)
 
   const createPurchaseMutation = trpcAny.fuelPurchases?.create.useMutation({
     onSuccess: () => {
@@ -72,14 +57,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
     },
   });
 
-  const handleSaveBudget = () => {
-    const amount = parseFloat(budgetAmount);
-    if (!amount || amount <= 0) {
-      toast.error('Informe um valor válido para o orçamento');
-      return;
-    }
-    setBudgetMutation.mutate({ monthYear, totalBudget: amount });
-  };
+  // handleSaveBudget removido - orçamento agora é calculado automaticamente
 
   const handleCreatePurchase = () => {
     const liters = parseFloat(purchaseLiters);
@@ -151,38 +129,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
             </CardContent>
           </Card>
 
-          {/* Configurar Orçamento */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Orçamento Mensal</CardTitle>
-              <CardDescription>Defina o orçamento para controle de gastos</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Label htmlFor="budget">Valor do Orçamento (R$)</Label>
-                  <Input
-                    id="budget"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={budgetAmount}
-                    onChange={(e) => setBudgetAmount(e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button 
-                    onClick={handleSaveBudget}
-                    disabled={setBudgetMutation.isPending || !budgetAmount}
-                  >
-                    {setBudgetMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Salvar
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Seção de Orçamento REMOVIDA - agora é calculado automaticamente como soma das compras */}
 
           {/* Registrar Compra de Gasolina */}
           <Card>

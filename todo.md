@@ -217,3 +217,25 @@ Código de integração está correto, mas falta a chave de API.
 
 ### Resultado
 ✅ Funcionalidade implementada com sucesso e testada visualmente no navegador.
+
+---
+
+## 🐛 CORREÇÕES URGENTES - Sistema de Estoque (21/12/2025 - 18:40)
+
+### Bug 1: Excluir abastecimento não devolve litros ao estoque
+- [x] Modificar endpoint fuelRecords.delete para devolver litros ao estoque
+- [x] Atualizar stock_liters em fuel_budget ao excluir
+- [x] Testar devolução de litros ✅ **APROVADO!**
+
+### Bug 2: Orçamento mensal deve ser calculado automaticamente
+- [x] Remover campo editável "Valor do Orçamento"
+- [x] Calcular orçamento como soma total das compras do histórico
+- [x] Atualizar fuelBudget.get para retornar soma das compras
+- [x] Remover endpoint fuelBudget.set (não é mais necessário)
+- [x] Atualizar interface para mostrar orçamento como valor calculado
+
+### Bug 3: Preço por litro não preenche automaticamente no formulário
+- [x] Buscar lastPricePerLiter do estoque ao abrir formulário
+- [x] Preencher campo "Preço por Litro" automaticamente
+- [x] Permitir edição do campo (manter editável)
+- [x] Aplicar em ambas páginas (admin e funcionário)
