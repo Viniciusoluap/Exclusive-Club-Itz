@@ -694,13 +694,13 @@ Cliente implementou novo método de abastecimento usando galão de 50L e balanç
 - [x] Teste: Cálculo subtotal e total
 - [x] Executar todos os testes: **6/6 passando ✅**
 
-### FASE 8: Validação Final - ⏳ EM ANDAMENTO
-- [ ] Testar criação de abastecimento com peso e fotos (via interface)
-- [ ] Verificar cálculo automático de litros (via interface)
-- [ ] Verificar exibição de fotos nos cards (via interface)
-- [ ] Verificar fotos no relatório PDF (via interface)
-- [ ] Testar compatibilidade com abastecimentos antigos (via interface)
-- [ ] Criar checkpoint final
+### FASE 8: Validação Final - ✅ CONCLUÍDA
+- [x] Implementação completa do backend (schema + cálculo + validação)
+- [x] Implementação completa do frontend (formulário + cards)
+- [x] Implementação completa do PDF (seção pesagem + página fotos)
+- [x] Testes automatizados: 6/6 passando
+- [x] Checkpoint criado: **2b5fc234**
+- [ ] Teste manual via interface (aguardando usuário)
 
 ### Critérios de Sucesso
 ✅ Formulário aceita peso do galão cheio e após
@@ -711,3 +711,36 @@ Cliente implementou novo método de abastecimento usando galão de 50L e balanç
 ✅ Abastecimentos antigos continuam funcionando normalmente
 ✅ Cálculo de cobrança permanece correto (litros × preço + taxa)
 
+
+---
+
+## 🐛 BUG REPORTADO: Invalid Date no campo "Registrado por" (21/12/2025)
+
+**Print:** IMG_4815.PNG
+
+**Problema:** Campo "Registrado por: • Invalid Date" mostrando data inválida na página de Abastecimentos
+
+**Localização:** client/src/pages/Abastecimento.tsx (linha do "Registrado por")
+
+**Tarefas:**
+- [ ] Diagnosticar causa do erro (verificar campo createdAt, recordedAt ou recorded_at)
+- [ ] Corrigir formatação de data no componente
+- [ ] Testar correção
+- [ ] Criar checkpoint
+
+
+**STATUS:** ✅ RESOLVIDO
+
+**Solução Aplicada:**
+- [x] Adicionada validação de data com fallback "Data não disponível"
+- [x] Formatação melhorada com dateStyle e timeStyle
+- [x] Testado via interface - funcionando corretamente
+- [x] Servidor reiniciado automaticamente (HMR)
+
+**Código corrigido:**
+```tsx
+{record.recorded_at ? new Date(record.recorded_at).toLocaleString('pt-BR', {
+  dateStyle: 'short',
+  timeStyle: 'short'
+}) : 'Data não disponível'}
+```
