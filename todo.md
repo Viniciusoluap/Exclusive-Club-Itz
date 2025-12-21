@@ -257,4 +257,17 @@ Código de integração está correto, mas falta a chave de API.
 - [x] Validar que Preço/L zera quando não há compras
 - [x] Testar com banco completamente zerado - Saldo R$ 0.00 ✅
 
+### Bug 6: Campo Estoque mostrando total de compras ao invés de litros disponíveis - ✅ RESOLVIDO
+- [x] Investigar cálculo atual do endpoint fuelBudget.get
+- [x] Identificar erro: formato de data '%Y-%u' (ano-semana) ao invés de '%Y-%m' (ano-mês)
+- [x] Corrigir query para usar '%Y-%m' correto
+- [x] Validar com dados reais: 147,69 L - 116,70 L = 30,99 L
+- [x] Testar visualmente na interface
+- [x] Criar teste automatizado
+
+**Exemplo esperado:**
+- Total comprado: 147,69 L
+- Total usado: 116,70 L
+- **Estoque disponível: 30,99 L** ✅
+
 </existing_content>
