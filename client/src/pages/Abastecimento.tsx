@@ -874,7 +874,10 @@ export default function Abastecimento() {
                     )}
                     
                     <p className="text-xs text-muted-foreground">
-                      Registrado por: {record.recorded_by_name} • {new Date(record.recorded_at).toLocaleString('pt-BR')}
+                      Registrado por: {record.recorded_by_name} • {record.recorded_at ? new Date(record.recorded_at).toLocaleString('pt-BR', {
+                        dateStyle: 'short',
+                        timeStyle: 'short'
+                      }) : 'Data não disponível'}
                     </p>
                   </CardContent>
                 )}
