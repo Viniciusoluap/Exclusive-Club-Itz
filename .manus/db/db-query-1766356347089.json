@@ -1,0 +1,22 @@
+{
+  "query": "SELECT id, liters_purchased, amount_paid, purchased_at FROM fuel_purchases ORDER BY purchased_at DESC LIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, liters_purchased, amount_paid, purchased_at FROM fuel_purchases ORDER BY purchased_at DESC LIMIT 5",
+  "rows": [
+    {
+      "id": "6",
+      "liters_purchased": "5000",
+      "amount_paid": "32500",
+      "purchased_at": "2025-12-21 21:05:53"
+    },
+    {
+      "id": "5",
+      "liters_purchased": "10000",
+      "amount_paid": "65000",
+      "purchased_at": "2025-12-21 21:05:53"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tliters_purchased\tamount_paid\tpurchased_at\n6\t5000\t32500\t2025-12-21 21:05:53\n5\t10000\t65000\t2025-12-21 21:05:53\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

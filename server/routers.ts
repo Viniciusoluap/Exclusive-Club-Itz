@@ -2343,18 +2343,20 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
         const stats = (Array.isArray(result[0]) ? result[0][0] : result[0]);
 
-        // Buscar orçamento do mês
+        // Buscar orçamento do mês (soma das compras de combustível)
         const budgetResult = await db.execute(sql`
-          SELECT total_budget FROM fuel_budget WHERE month_year = ${monthYear}
+          SELECT COALESCE(SUM(amount_paid), 0) as total_budget
+          FROM fuel_purchases
+          WHERE month_year = ${monthYear}
         `) as any;
 
-        const budget = (Array.isArray(budgetResult[0]) ? budgetResult[0][0] : budgetResult[0]);
+        const budgetData = (Array.isArray(budgetResult[0]) ? budgetResult[0][0] : budgetResult[0]);
 
         const totalReceived = Number(stats.total_received) || 0;
         const totalBilled = Number(stats.total_billed) || 0;
         const totalPending = Number(stats.total_pending) || 0;
         const totalOverdue = Number(stats.total_overdue) || 0;
-        const totalBudget = budget ? Number(budget.total_budget) : 0;
+        const totalBudget = Number(budgetData.total_budget) || 0;
 
         // Calcular saldo (Orçamento - Gasto)
         // Saldo = quanto ainda resta do orçamento mensal após os gastos
@@ -2418,25 +2420,43 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         // Estoque real = Total comprado - Total usado
         const realStockLiters = totalLitersPurchased - totalLitersUsed;
 
-        if (!budget) {
-          // Retornar valores zerados se não existir
-          return {
-            monthYear: input.monthYear,
-            totalBudget: totalBudget / 100, // Converter centavos para reais
-            totalSpent: 0,
-            totalReceived: 0,
-            stockLiters: realStockLiters / 100, // Converter centésimos para litros
-            lastPricePerLiter: 0,
-          };
-        }
+        // Buscar último preço por litro da compra mais recente
+        const lastPriceResult = await db.execute(sql`
+          SELECT price_per_liter
+          FROM fuel_purchases
+          WHERE month_year = ${input.monthYear}
+          ORDER BY purchased_at DESC
+          LIMIT 1
+        `) as any;
+        const lastPriceData = (Array.isArray(lastPriceResult[0]) ? lastPriceResult[0][0] : lastPriceResult[0]);
+        const lastPricePerLiter = lastPriceData ? Number(lastPriceData.price_per_liter) : 0;
+
+        // Calcular total gasto (soma dos abastecimentos)
+        const spentResult = await db.execute(sql`
+          SELECT COALESCE(SUM(total_amount), 0) as total_spent
+          FROM fuel_records
+          WHERE DATE_FORMAT(created_at, '%Y-%m') = ${input.monthYear}
+        `) as any;
+        const spentData = (Array.isArray(spentResult[0]) ? spentResult[0][0] : spentResult[0]);
+        const totalSpent = Number(spentData.total_spent) || 0;
+
+        // Calcular total recebido (pagamentos confirmados)
+        const receivedResult = await db.execute(sql`
+          SELECT COALESCE(SUM(total_amount), 0) as total_received
+          FROM fuel_records
+          WHERE DATE_FORMAT(created_at, '%Y-%m') = ${input.monthYear}
+            AND payment_status = 'paid'
+        `) as any;
+        const receivedData = (Array.isArray(receivedResult[0]) ? receivedResult[0][0] : receivedResult[0]);
+        const totalReceived = Number(receivedData.total_received) || 0;
 
         return {
-          monthYear: budget.month_year,
-          totalBudget: totalBudget / 100, // Converter centavos para reais (calculado das compras)
-          totalSpent: budget.total_spent / 100,
-          totalReceived: budget.total_received / 100,
-          stockLiters: realStockLiters / 100, // Converter centésimos para litros (CORRIGIDO)
-          lastPricePerLiter: budget.last_price_per_liter / 100, // Converter centavos para reais
+          monthYear: input.monthYear,
+          totalBudget: totalBudget / 100, // Orçamento = soma das compras
+          totalSpent: totalSpent / 100, // Gasto = soma dos abastecimentos
+          totalReceived: totalReceived / 100, // Recebido = pagamentos confirmados
+          stockLiters: realStockLiters / 100, // Estoque = comprado - usado
+          lastPricePerLiter: lastPricePerLiter / 100, // Último preço/L das compras
         };
       }),
 

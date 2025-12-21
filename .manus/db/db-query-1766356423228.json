@@ -1,0 +1,21 @@
+{
+  "query": "SELECT * FROM fuel_budget WHERE month_year = '2025-12'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT * FROM fuel_budget WHERE month_year = '2025-12'",
+  "rows": [
+    {
+      "id": "1",
+      "month_year": "2025-12",
+      "total_budget": "92850",
+      "total_spent": "0",
+      "total_received": "0",
+      "created_at": "2025-12-13 16:42:30",
+      "updated_at": "2025-12-21 22:30:24",
+      "stock_liters": "-7568",
+      "last_price_per_liter": "629"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tmonth_year\ttotal_budget\ttotal_spent\ttotal_received\tcreated_at\tupdated_at\tstock_liters\tlast_price_per_liter\n1\t2025-12\t92850\t0\t0\t2025-12-13 16:42:30\t2025-12-21 22:30:24\t-7568\t629\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}
