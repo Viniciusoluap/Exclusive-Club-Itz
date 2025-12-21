@@ -70,6 +70,49 @@ async function startServer() {
     }
   });
 
+  // Upload inspection photo endpoint
+  app.post('/api/upload-inspection-photo', async (req, res) => {
+    try {
+      const multer = await import('multer');
+      const upload = multer.default({ 
+        storage: multer.memoryStorage(),
+        limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+      });
+      
+      upload.single('photo')(req, res, async (err: any) => {
+        if (err) {
+          console.error('[upload-inspection-photo] Multer error:', err);
+          return res.status(400).json({ error: 'Erro ao processar arquivo' });
+        }
+
+        const file = (req as any).file;
+        if (!file) {
+          return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+        }
+
+        const { itemName, vesselId } = req.body;
+        if (!itemName || !vesselId) {
+          return res.status(400).json({ error: 'itemName e vesselId são obrigatórios' });
+        }
+
+        try {
+          const { storagePut } = await import('../storage');
+          const ext = file.originalname.split('.').pop() || 'jpg';
+          const fileKey = `inspections/${vesselId}/${Date.now()}-${itemName.replace(/\s+/g, '-')}.${ext}`;
+          const { url } = await storagePut(fileKey, file.buffer, file.mimetype);
+          
+          res.json({ success: true, itemName, photoUrl: url });
+        } catch (uploadError: any) {
+          console.error('[upload-inspection-photo] S3 upload error:', uploadError);
+          res.status(500).json({ error: 'Erro ao fazer upload para S3' });
+        }
+      });
+    } catch (error: any) {
+      console.error('[upload-inspection-photo] Error:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

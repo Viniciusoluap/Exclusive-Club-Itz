@@ -293,3 +293,39 @@ Código de integração está correto, mas falta a chave de API.
 - Fotos incorporadas diretamente no PDF (não apenas links)
 - Nome correto do funcionário: "Vinicius Freitas"
 - Labels limpos: "Foto ANTES (peso cheio)" e "Foto DEPOIS (peso após)"
+
+
+---
+
+## 📸 SISTEMA DE FOTOS PARA ITENS REPROVADOS EM VISTORIAS (21/12/2025 - 20:35)
+
+### Alterações Solicitadas
+
+**1. Remover campo manual "Nome do Vistoriador":**
+- [x] Remover campo de input do formulário (frontend)
+- [x] Manter campo `inspected_by` no banco (salva ctx.user.name automaticamente)
+- [x] Manter exibição nos cards e PDF
+
+**2. Upload de fotos para itens reprovados:**
+- [x] Adicionar campo `reprovation_photos` (JSON) no schema
+- [x] Interface dinâmica: ao marcar "REPROVADO" → aparecer upload de foto
+- [x] Permitir múltiplos uploads (um por item reprovado)
+- [x] Salvar array: `[{itemName: string, photoUrl: string}]`
+
+**3. Backend:**
+- [x] Atualizar endpoint inspections.create para salvar fotos
+- [x] Upload de imagens para S3
+- [x] Validação de tipos de arquivo (jpg, png, pdf)
+- [x] Criar endpoint REST /api/upload-inspection-photo
+
+**4. PDF com fotos incorporadas:**
+- [x] Download de imagens via axios (igual fuelRecordPDF.ts)
+- [x] Incorporar fotos no PDF (não apenas links)
+- [x] Exibir foto abaixo do nome do item reprovado
+- [x] Paginação automática se muitas fotos
+
+**5. Testes:**
+- [x] Teste de upload de foto (inspections.photos.test.ts - 4/4 passando)
+- [x] Teste de salvamento no banco
+- [x] Teste de geração de PDF com fotos
+- [ ] Validação visual em mobile e desktop (aguardando teste do usuário)
