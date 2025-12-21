@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import axios from 'axios';
 
 interface FuelRecordData {
   id: number;
@@ -22,11 +23,12 @@ interface FuelRecordData {
 }
 
 export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const doc = new PDFDocument({ 
       size: 'A4', 
       layout: 'landscape',
-      margin: 40 
+      margin: 40,
+      bufferPages: true // Necessário para adicionar imagens
     });
     const chunks: Buffer[] = [];
 
@@ -119,8 +121,8 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
       xPos = 40;
       const rowData = [
         { text: (index + 1).toString(), align: 'center' },
-        { text: record.vesselName || 'N/A', align: 'left' },
-        { text: record.employeeName || 'N/A', align: 'left' },
+        { text: (record.vesselName || 'N/A').normalize('NFC'), align: 'left' },
+        { text: (record.employeeName || 'N/A').normalize('NFC'), align: 'left' },
         { text: dateStr, align: 'center' },
         { text: `${litersValue.toFixed(2)}L`, align: 'center' },
         { text: `R$ ${pricePerLiterValue.toFixed(2)}`, align: 'right' },
@@ -145,7 +147,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
       if (record.notes) {
         const notesY = doc.y;
         doc.fillColor('#fef3c7').rect(40, notesY, doc.page.width - 80, 20).fill();
-        doc.fillColor('#78350f').fontSize(8).text(`📝 Observações: ${record.notes}`, 45, notesY + 6, { 
+        doc.fillColor('#78350f').fontSize(8).text(`Observações: ${record.notes}`, 45, notesY + 6, { 
           width: doc.page.width - 90 
         });
         doc.y = notesY + 22;
@@ -162,13 +164,13 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
         const weightConsumedValue = (record.weightConsumed || 0) / 100;
         const litersCalculatedValue = (record.litersCalculated || 0) / 100;
         
-        doc.fillColor('#1e40af').fontSize(8).text(`⚖️ Abastecimento por Pesagem`, 45, weightY + 6);
+        doc.fillColor('#1e40af').fontSize(8).text(`Abastecimento por Pesagem`, 45, weightY + 6);
         doc.fillColor('#1e3a8a').fontSize(7).text(
           `Litros Iniciais: ${litersInitialValue.toFixed(2)}L  |  Peso Cheio: ${weightFullValue.toFixed(2)}kg  |  Peso Após: ${weightAfterValue.toFixed(2)}kg  |  Consumido: ${weightConsumedValue.toFixed(2)}kg`,
           45, weightY + 18
         );
         doc.fillColor('#1e3a8a').fontSize(7).text(
-          `📊 Litros Calculados: ${litersCalculatedValue.toFixed(2)}L`,
+          `Litros Calculados: ${litersCalculatedValue.toFixed(2)}L`,
           45, weightY + 28
         );
         doc.y = weightY + 37;
@@ -179,44 +181,58 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
     const recordsWithPhotos = records.filter(r => r.photoBeforeUrl || r.photoAfterUrl);
     if (recordsWithPhotos.length > 0) {
       doc.addPage({ size: 'A4', layout: 'landscape', margin: 40 });
-      doc.fontSize(16).fillColor('#0891b2').text('📷 Comprovação por Fotos da Balança', { align: 'center' });
+      doc.fontSize(16).fillColor('#0891b2').text('Comprovação por Fotos da Balança', { align: 'center' });
       doc.moveDown(0.5);
       doc.fontSize(10).fillColor('#6b7280').text('Fotos das pesagens realizadas', { align: 'center' });
       doc.moveDown(1);
 
-      recordsWithPhotos.forEach((record, index) => {
+      // Processar fotos de forma assíncrona
+      for (let index = 0; index < recordsWithPhotos.length; index++) {
+        const record = recordsWithPhotos[index];
         const sectionY = doc.y;
         
         // Verificar se precisa de nova página
-        if (sectionY > doc.page.height - 200) {
+        if (sectionY > doc.page.height - 400) {
           doc.addPage({ size: 'A4', layout: 'landscape', margin: 40 });
           doc.y = 40;
         }
 
         // Título do registro
         doc.fillColor('#0891b2').fontSize(10).text(
-          `Registro #${record.id} - ${record.vesselName} - ${new Date(record.date).toLocaleDateString('pt-BR')}`,
+          `Registro #${record.id} - ${record.vesselName.normalize('NFC')} - ${new Date(record.date).toLocaleDateString('pt-BR')}`,
           40, doc.y
         );
         doc.moveDown(0.5);
 
-        // URLs das fotos (como texto clicável)
-        if (record.photoBeforeUrl) {
-          doc.fillColor('#374151').fontSize(8).text('📷 Foto ANTES (peso cheio):', 40, doc.y);
-          doc.fillColor('#0891b2').fontSize(7).text(record.photoBeforeUrl, 40, doc.y + 10, { 
-            link: record.photoBeforeUrl,
-            underline: true 
-          });
-          doc.moveDown(1.5);
-        }
+        // Baixar e incorporar fotos
+        try {
+          if (record.photoBeforeUrl) {
+            doc.fillColor('#374151').fontSize(8).text('Foto ANTES (peso cheio):', 40, doc.y);
+            doc.moveDown(0.3);
+            
+            const beforeResponse = await axios.get(record.photoBeforeUrl, { responseType: 'arraybuffer' });
+            const beforeBuffer = Buffer.from(beforeResponse.data);
+            
+            // Adicionar imagem (largura máxima 300px)
+            doc.image(beforeBuffer, 40, doc.y, { width: 300 });
+            doc.moveDown(10); // Espaço após imagem (ajustar conforme altura)
+          }
 
-        if (record.photoAfterUrl) {
-          doc.fillColor('#374151').fontSize(8).text('📷 Foto DEPOIS (peso após):', 40, doc.y);
-          doc.fillColor('#0891b2').fontSize(7).text(record.photoAfterUrl, 40, doc.y + 10, { 
-            link: record.photoAfterUrl,
-            underline: true 
-          });
-          doc.moveDown(1.5);
+          if (record.photoAfterUrl) {
+            doc.fillColor('#374151').fontSize(8).text('Foto DEPOIS (peso após):', 40, doc.y);
+            doc.moveDown(0.3);
+            
+            const afterResponse = await axios.get(record.photoAfterUrl, { responseType: 'arraybuffer' });
+            const afterBuffer = Buffer.from(afterResponse.data);
+            
+            // Adicionar imagem (largura máxima 300px)
+            doc.image(afterBuffer, 40, doc.y, { width: 300 });
+            doc.moveDown(10); // Espaço após imagem
+          }
+        } catch (error) {
+          console.error(`Erro ao baixar fotos do registro #${record.id}:`, error);
+          doc.fillColor('#dc2626').fontSize(8).text('⚠️ Erro ao carregar fotos', 40, doc.y);
+          doc.moveDown(1);
         }
 
         // Linha separadora entre registros
@@ -224,7 +240,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
           doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#e5e7eb').lineWidth(1).stroke();
           doc.moveDown(1);
         }
-      });
+      }
     }
 
     // Rodapé
