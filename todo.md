@@ -587,3 +587,29 @@ Código de integração está correto, mas falta a chave de API.
 - [x] Corrigir cálculo de totalLiters e totalAmount
 - [x] Criar teste automatizado (fuelRecordEmail.test.ts) - 3/3 PASSANDO
 - [x] Validar correção com testes unitários
+
+
+---
+
+## 🐛 BUG CRÍTICO: Cálculo Incorreto do Campo Saldo (21/12/2025 - 10:52)
+
+### Problema Reportado:
+- [x] Campo "Saldo" na página de Abastecimentos mostra valor incorreto
+- [x] Fórmula atual (INCORRETA): Recebido - Cobrado
+- [x] Exemplo atual: R$ 0.00 - R$ 620.88 = R$ -620.88 ❌
+- [x] Fórmula correta: Orçamento - Gasto
+- [x] Exemplo correto: R$ 928.50 - R$ 821.41 = R$ 107.09 ✅
+
+### Campos que DEVEM permanecer inalterados:
+- Total Cobrado ✅
+- Total Recebido ✅
+- Pendente ✅
+- Orçamento Mensal (Gasto e Orçamento) ✅
+- Registros Recentes ✅
+
+### Correção Aplicada:
+- [x] Localizado cálculo do campo "Saldo" no backend (server/routers.ts linha 2210)
+- [x] Alterado de: `totalReceived - totalBilled`
+- [x] Para: `totalBudget - totalBilled`
+- [x] Atualizado texto explicativo no frontend de "Recebido - Cobrado" para "Orçamento - Gasto"
+- [x] Agora o saldo mostra corretamente quanto resta do orçamento mensal
