@@ -1,5 +1,18 @@
 # TODO - Exclusive Club Reservas
 
+## 🐛 BUG URGENTE - PDF de Vistorias Não Faz Download (21/12/2025 - 21:08)
+
+### Problema Reportado
+- [ ] Botão "Gerar PDF" de vistorias mostra mensagem de sucesso mas não faz download
+- [ ] Print: IMG_4846.PNG
+- [ ] Mesmo problema que ocorria em abastecimentos (já corrigido)
+
+### Solução
+- [x] Aplicar mesma correção do abastecimentos: base64 → Blob → URL → Download
+- [x] Adicionar limpeza automática de memória (URL.revokeObjectURL)
+- [ ] Testar em mobile e desktop (aguardando teste do usuário)
+- [x] Criar testes automatizados (4/4 passando)
+
 ## 🚀 NOVA FUNCIONALIDADE - Sistema de Controle de Estoque de Gasolina (21/12/2025 - 17:35)
 
 ### Requisitos do Usuário
