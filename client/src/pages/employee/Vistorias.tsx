@@ -99,11 +99,24 @@ export default function EmployeeVistorias() {
 
   const generateReportMutation = trpcAny.inspections?.generateReport.useMutation({
     onSuccess: (data: any) => {
-      // Baixar PDF automaticamente
+      // Converter base64 para Blob e fazer download
+      const byteCharacters = atob(data.pdfBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+      
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = `data:application/pdf;base64,${data.pdfBase64}`;
+      link.href = url;
       link.download = `relatorio-vistorias-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
       toast.success(`Relatório de ${data.count} vistorias gerado com sucesso!`);
       setSelectedInspections([]);
     },
