@@ -180,65 +180,127 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
     // Seção de Fotos (se houver registros com fotos)
     const recordsWithPhotos = records.filter(r => r.photoBeforeUrl || r.photoAfterUrl);
     if (recordsWithPhotos.length > 0) {
-      doc.addPage({ size: 'A4', layout: 'landscape', margin: 40 });
+      doc.addPage({ size: 'A4', layout: 'portrait', margin: 40 });
       doc.fontSize(16).fillColor('#0891b2').text('Comprovação por Fotos da Balança', { align: 'center' });
       doc.moveDown(0.5);
       doc.fontSize(10).fillColor('#6b7280').text('Fotos das pesagens realizadas', { align: 'center' });
       doc.moveDown(1);
 
+      // Configurações de layout
+      const pageWidth = doc.page.width - 80; // Largura útil (descontando margens)
+      const photoWidth = pageWidth / 2 - 10; // 2 fotos por linha com espaçamento
+      const photoHeight = photoWidth * 0.75; // Proporção 4:3 (altura = 75% da largura)
+      const maxPhotosPerPage = 4; // 2 linhas × 2 colunas = 4 fotos por página
+      let photosOnCurrentPage = 0;
+
       // Processar fotos de forma assíncrona
       for (let index = 0; index < recordsWithPhotos.length; index++) {
         const record = recordsWithPhotos[index];
-        const sectionY = doc.y;
         
-        // Verificar se precisa de nova página
-        if (sectionY > doc.page.height - 400) {
-          doc.addPage({ size: 'A4', layout: 'landscape', margin: 40 });
-          doc.y = 40;
-        }
-
-        // Título do registro
-        doc.fillColor('#0891b2').fontSize(10).text(
-          `Registro #${record.id} - ${record.vesselName.normalize('NFC')} - ${new Date(record.date).toLocaleDateString('pt-BR')}`,
-          40, doc.y
-        );
-        doc.moveDown(0.5);
-
-        // Baixar e incorporar fotos
+        // Baixar fotos primeiro
+        let beforeBuffer: Buffer | null = null;
+        let afterBuffer: Buffer | null = null;
+        
         try {
           if (record.photoBeforeUrl) {
-            doc.fillColor('#374151').fontSize(8).text('Foto ANTES (peso cheio):', 40, doc.y);
-            doc.moveDown(0.3);
-            
             const beforeResponse = await axios.get(record.photoBeforeUrl, { responseType: 'arraybuffer' });
-            const beforeBuffer = Buffer.from(beforeResponse.data);
-            
-            // Adicionar imagem (largura máxima 300px)
-            doc.image(beforeBuffer, 40, doc.y, { width: 300 });
-            doc.moveDown(10); // Espaço após imagem (ajustar conforme altura)
+            beforeBuffer = Buffer.from(beforeResponse.data);
           }
-
           if (record.photoAfterUrl) {
-            doc.fillColor('#374151').fontSize(8).text('Foto DEPOIS (peso após):', 40, doc.y);
-            doc.moveDown(0.3);
-            
             const afterResponse = await axios.get(record.photoAfterUrl, { responseType: 'arraybuffer' });
-            const afterBuffer = Buffer.from(afterResponse.data);
-            
-            // Adicionar imagem (largura máxima 300px)
-            doc.image(afterBuffer, 40, doc.y, { width: 300 });
-            doc.moveDown(10); // Espaço após imagem
+            afterBuffer = Buffer.from(afterResponse.data);
           }
         } catch (error) {
           console.error(`Erro ao baixar fotos do registro #${record.id}:`, error);
-          doc.fillColor('#dc2626').fontSize(8).text('⚠️ Erro ao carregar fotos', 40, doc.y);
-          doc.moveDown(1);
         }
+
+        // Contar quantas fotos temos neste registro
+        const photosInRecord = (beforeBuffer ? 1 : 0) + (afterBuffer ? 1 : 0);
+        
+        // Verificar se precisa de nova página
+        if (photosOnCurrentPage + photosInRecord > maxPhotosPerPage) {
+          doc.addPage({ size: 'A4', layout: 'portrait', margin: 40 });
+          doc.y = 40;
+          photosOnCurrentPage = 0;
+        }
+
+        // Título do registro (sempre no topo da seção)
+        const titleY = doc.y;
+        doc.fillColor('#0891b2').fontSize(9).text(
+          `Registro #${record.id} - ${record.vesselName.normalize('NFC')} - ${new Date(record.date).toLocaleDateString('pt-BR')}`,
+          40, titleY,
+          { width: pageWidth, align: 'left' }
+        );
+        doc.moveDown(0.5);
+
+        // Adicionar fotos lado a lado
+        const rowY = doc.y;
+        let currentX = 40;
+
+        if (beforeBuffer) {
+          // Verificar se cabe na página atual
+          if (doc.y + photoHeight + 30 > doc.page.height - 40) {
+            doc.addPage({ size: 'A4', layout: 'portrait', margin: 40 });
+            doc.y = 40;
+            photosOnCurrentPage = 0;
+            currentX = 40;
+          }
+
+          // Label da foto
+          doc.fillColor('#374151').fontSize(8).text('Foto ANTES (peso cheio)', currentX, doc.y, { width: photoWidth, align: 'center' });
+          const labelHeight = 15;
+          
+          // Imagem
+          doc.image(beforeBuffer, currentX, doc.y + labelHeight, { 
+            width: photoWidth, 
+            height: photoHeight,
+            fit: [photoWidth, photoHeight],
+            align: 'center'
+          });
+          
+          currentX += photoWidth + 20; // Próxima coluna
+          photosOnCurrentPage++;
+        }
+
+        if (afterBuffer) {
+          // Verificar se cabe na mesma linha ou precisa de nova linha
+          if (currentX > 40 + photoWidth) {
+            // Mesma linha (lado a lado)
+            doc.fillColor('#374151').fontSize(8).text('Foto DEPOIS (peso após)', currentX, rowY, { width: photoWidth, align: 'center' });
+            const labelHeight = 15;
+            doc.image(afterBuffer, currentX, rowY + labelHeight, { 
+              width: photoWidth, 
+              height: photoHeight,
+              fit: [photoWidth, photoHeight],
+              align: 'center'
+            });
+            photosOnCurrentPage++;
+          } else {
+            // Nova linha (foto ANTES não existe)
+            if (doc.y + photoHeight + 30 > doc.page.height - 40) {
+              doc.addPage({ size: 'A4', layout: 'portrait', margin: 40 });
+              doc.y = 40;
+              photosOnCurrentPage = 0;
+            }
+            doc.fillColor('#374151').fontSize(8).text('Foto DEPOIS (peso após)', 40, doc.y, { width: photoWidth, align: 'center' });
+            const labelHeight = 15;
+            doc.image(afterBuffer, 40, doc.y + labelHeight, { 
+              width: photoWidth, 
+              height: photoHeight,
+              fit: [photoWidth, photoHeight],
+              align: 'center'
+            });
+            photosOnCurrentPage++;
+          }
+        }
+
+        // Avançar para próxima linha
+        doc.y = rowY + photoHeight + 30;
 
         // Linha separadora entre registros
         if (index < recordsWithPhotos.length - 1) {
           doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#e5e7eb').lineWidth(1).stroke();
-          doc.moveDown(1);
+          doc.moveDown(0.5);
         }
       }
     }

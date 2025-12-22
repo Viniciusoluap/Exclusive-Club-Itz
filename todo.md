@@ -329,3 +329,23 @@ Código de integração está correto, mas falta a chave de API.
 - [x] Teste de salvamento no banco
 - [x] Teste de geração de PDF com fotos
 - [ ] Validação visual em mobile e desktop (aguardando teste do usuário)
+
+## ✅ CORREÇÕES CONCLUÍDAS - PDF DE ABASTECIMENTOS (21/12/2025 - 21:05)
+
+### Bug 1: Botão PDF não faz download - ✅ RESOLVIDO
+- [x] Botão "PDF" mostra mensagem "Relatório gerado com sucesso" mas não entrega arquivo
+- [x] Implementar download automático do PDF no navegador
+- [x] Melhorado: Conversão base64 → Blob → URL → Download
+- [x] Compatibilidade com mobile e desktop
+
+### Bug 2: Layout das fotos no PDF - ✅ RESOLVIDO
+- [x] Fotos muito grandes (ocupando página inteira) → CORRIGIDO
+- [x] Fotos sobrepostas umas nas outras → CORRIGIDO
+- [x] Fotos sobrepondo texto → CORRIGIDO
+- [x] **Solução implementada:**
+  * ✅ Fotos ocupam até 1/3 da página A4 (proporção 4:3)
+  * ✅ Fotos ficam lado a lado (2 por linha)
+  * ✅ Nunca sobrepor imagens ou textos (controle rigoroso de posicionamento)
+  * ✅ Limite de 4 fotos por página A4 (2 linhas × 2 colunas)
+  * ✅ Paginação automática quando excede limite
+  * ✅ Página em modo retrato (portrait) para melhor visualização
