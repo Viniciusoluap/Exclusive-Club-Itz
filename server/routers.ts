@@ -2612,14 +2612,15 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
       }),
   }),
 
-  // Fuel Budget router - Admin only
+  // Fuel Budget router - Admin and Employee access
   fuelBudget: router({
     get: publicProcedure
       .input(z.object({
         monthYear: z.string(), // formato: YYYY-MM
       }))
       .query(async ({ input, ctx }) => {
-        if (!ctx.user || ctx.user.role !== 'admin') {
+        // Permitir acesso para admin e employee (funcionários precisam do preço/L)
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
         }
 

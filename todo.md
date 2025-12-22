@@ -277,3 +277,53 @@ O relatório PDF de abastecimentos não mostra o nome do cliente que usou a emba
 **Resultado:**
 ✅ PDF agora mostra: #, Embarcação, **Cliente**, Funcionário, Data, Litros, Preço/L, Subtotal, Taxa, Total
 ✅ Exemplo validado: Cliente "Laercio Oliveira" aparece corretamente no PDF
+
+---
+
+## ✅ BUG CORRIGIDO - Preço por Litro Preenchimento Automático (22/12/2025 - 23:27)
+
+### Problema Reportado pelo Usuário (NOVAMENTE)
+Apesar de 2 correções anteriores (checkpoints 5fa88199 e b1a9a465), o campo "Preço por Litro (R$)" ainda não estava preenchendo automaticamente no painel do funcionário.
+
+**Evidência:**
+- Screenshot do usuário mostrava campo vazio com placeholder "Ex: 6.50"
+- Cálculo automático funcionando (23,48 L calculado corretamente)
+- Apenas o campo de preço não preenchia
+
+### Causa Raiz Identificada
+🎯 **Problema real:** Endpoint `fuelBudget.get` estava bloqueado para funcionários!
+
+```typescript
+// ANTES (bloqueava funcionários)
+if (!ctx.user || ctx.user.role !== 'admin') {
+  throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+}
+
+// DEPOIS (permite funcionários)
+if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+  throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+}
+```
+
+### Solução Implementada
+- [x] Permitir acesso de funcionários ao endpoint `fuelBudget.get`
+- [x] Funcionários agora podem buscar `lastPricePerLiter` do estoque
+- [x] Campo "Preço por Litro" preenche automaticamente ao abrir dialog
+- [x] Criar 5 testes automatizados (todos passando)
+
+**Arquivos modificados:**
+- [x] server/routers.ts - Permissão de acesso atualizada (linha 2622-2625)
+- [x] server/fuelBudget.get.test.ts - 5 testes criados e passando
+
+**Testes criados:**
+1. ✅ Funcionário pode acessar dados do orçamento
+2. ✅ Admin pode acessar dados do orçamento
+3. ✅ Cliente comum é bloqueado (UNAUTHORIZED)
+4. ✅ lastPricePerLiter retorna número válido
+5. ✅ monthYear retorna formato correto
+
+**Resultado:**
+✅ Funcionários agora conseguem buscar preço/L do estoque
+✅ Campo preenche automaticamente ao abrir dialog
+✅ 5/5 testes passando (100%)
+✅ Bug finalmente resolvido após 3 tentativas!

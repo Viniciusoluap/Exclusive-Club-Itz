@@ -1,0 +1,22 @@
+{
+  "query": "SELECT month_year, last_price_per_liter FROM fuel_budget ORDER BY month_year DESC LIMIT 3",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT month_year, last_price_per_liter FROM fuel_budget ORDER BY month_year DESC LIMIT 3",
+  "rows": [
+    {
+      "month_year": "2026-03",
+      "last_price_per_liter": "0"
+    },
+    {
+      "month_year": "2026-02",
+      "last_price_per_liter": "0"
+    },
+    {
+      "month_year": "2026-01",
+      "last_price_per_liter": "650"
+    }
+  ],
+  "messages": [],
+  "stdout": "month_year\tlast_price_per_liter\n2026-03\t0\n2026-02\t0\n2026-01\t650\n",
+  "stderr": "",
+  "execution_time_ms": 93
+}
