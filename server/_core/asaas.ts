@@ -1,11 +1,40 @@
 /**
  * Serviço de integração com API do Asaas
  * Documentação: https://docs.asaas.com/reference
+ * 
+ * WORKAROUND: Busca chave API do banco de dados devido a bug do Manus
+ * que não injeta ASAAS_API_KEY corretamente no ambiente.
  */
+import { getSetting } from "../systemSettings";
 
-const ASAAS_API_URL = process.env.ASAAS_API_KEY?.startsWith('$aact_prod_')
-  ? 'https://api.asaas.com/v3'
-  : 'https://sandbox.asaas.com/api/v3';
+/**
+ * Busca chave API do Asaas (banco de dados ou env)
+ */
+async function getAsaasApiKey(): Promise<string> {
+  // Primeiro tenta buscar do banco (workaround)
+  const keyFromDb = await getSetting("asaas_api_key");
+  if (keyFromDb) {
+    return keyFromDb;
+  }
+
+  // Fallback para env (caso Manus corrija o bug)
+  const keyFromEnv = process.env.ASAAS_API_KEY;
+  if (keyFromEnv) {
+    return keyFromEnv;
+  }
+
+  throw new Error("ASAAS_API_KEY não configurada. Configure em /admin/configuracoes");
+}
+
+/**
+ * Determina URL da API baseado na chave
+ */
+async function getAsaasApiUrl(): Promise<string> {
+  const apiKey = await getAsaasApiKey();
+  return apiKey.startsWith("$aact_prod_")
+    ? "https://api.asaas.com/v3"
+    : "https://sandbox.asaas.com/api/v3";
+}
 
 /**
  * Cria uma cobrança no Asaas
@@ -18,12 +47,10 @@ export async function createCharge(params: {
   description: string;
   externalReference?: string; // Referência externa (ID do abastecimento)
 }) {
-  const apiKey = process.env.ASAAS_API_KEY;
-  if (!apiKey) {
-    throw new Error('ASAAS_API_KEY não configurada');
-  }
+  const apiKey = await getAsaasApiKey();
+  const apiUrl = await getAsaasApiUrl();
 
-  const response = await fetch(`${ASAAS_API_URL}/payments`, {
+  const response = await fetch(`${apiUrl}/payments`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -44,12 +71,10 @@ export async function createCharge(params: {
  * Cancela uma cobrança no Asaas
  */
 export async function deleteCharge(chargeId: string) {
-  const apiKey = process.env.ASAAS_API_KEY;
-  if (!apiKey) {
-    throw new Error('ASAAS_API_KEY não configurada');
-  }
+  const apiKey = await getAsaasApiKey();
+  const apiUrl = await getAsaasApiUrl();
 
-  const response = await fetch(`${ASAAS_API_URL}/payments/${chargeId}`, {
+  const response = await fetch(`${apiUrl}/payments/${chargeId}`, {
     method: 'DELETE',
     headers: {
       'access_token': apiKey,
@@ -68,12 +93,10 @@ export async function deleteCharge(chargeId: string) {
  * Busca uma cobrança no Asaas
  */
 export async function getCharge(chargeId: string) {
-  const apiKey = process.env.ASAAS_API_KEY;
-  if (!apiKey) {
-    throw new Error('ASAAS_API_KEY não configurada');
-  }
+  const apiKey = await getAsaasApiKey();
+  const apiUrl = await getAsaasApiUrl();
 
-  const response = await fetch(`${ASAAS_API_URL}/payments/${chargeId}`, {
+  const response = await fetch(`${apiUrl}/payments/${chargeId}`, {
     method: 'GET',
     headers: {
       'access_token': apiKey,
@@ -97,14 +120,12 @@ export async function getOrCreateCustomer(params: {
   cpfCnpj?: string;
   phone?: string;
 }) {
-  const apiKey = process.env.ASAAS_API_KEY;
-  if (!apiKey) {
-    throw new Error('ASAAS_API_KEY não configurada');
-  }
+  const apiKey = await getAsaasApiKey();
+  const apiUrl = await getAsaasApiUrl();
 
   // Primeiro tenta buscar cliente existente por email
   const searchResponse = await fetch(
-    `${ASAAS_API_URL}/customers?email=${encodeURIComponent(params.email)}`,
+    `${apiUrl}/customers?email=${encodeURIComponent(params.email)}`,
     {
       method: 'GET',
       headers: {
@@ -121,7 +142,7 @@ export async function getOrCreateCustomer(params: {
   }
 
   // Se não encontrou, cria novo cliente
-  const createResponse = await fetch(`${ASAAS_API_URL}/customers`, {
+  const createResponse = await fetch(`${apiUrl}/customers`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

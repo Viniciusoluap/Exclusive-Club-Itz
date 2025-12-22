@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, bigint, decimal } from "drizzle-orm/mysql-core";
+import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar, bigint, decimal } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -279,3 +279,20 @@ export const inspectionCharges = mysqlTable("inspection_charges", {
 
 export type InspectionCharge = typeof inspectionCharges.$inferSelect;
 export type InsertInspectionCharge = typeof inspectionCharges.$inferInsert;
+
+/**
+ * System Settings table - stores encrypted configuration values
+ * Workaround for Manus env injection bug with ASAAS_API_KEY
+ */
+export const systemSettings = mysqlTable("system_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(), // Setting key (ex: "asaas_api_key")
+  value: text("value").notNull(), // Encrypted value
+  description: text("description"), // Human-readable description
+  updatedBy: varchar("updated_by", { length: 320 }), // Email of admin who updated
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SystemSetting = typeof systemSettings.$inferSelect;
+export type InsertSystemSetting = typeof systemSettings.$inferInsert;

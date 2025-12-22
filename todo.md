@@ -402,8 +402,65 @@ Ao gerar relatório PDF de abastecimentos, a seção "Comprovação por Fotos da
 - [ ] Validar que fotos aparecem no PDF gerado - AGUARDANDO USUÁRIO
 
 **Instruções para teste:**
-1. Criar novo abastecimento com método de pesagem
-2. Fazer upload de fotos da balança (ANTES e DEPOIS)
+1. Criar novo abastecimento com fotos da balança
+2. Gerar relatório PDF
+3. Verificar se fotos aparecem no PDF
+
+---
+
+## 🔧 WORKAROUND - Chave API Asaas via Interface Admin (22/12/2025)
+
+### Problema Identificado
+Bug do sistema Manus: variável `ASAAS_API_KEY` configurada no painel Secrets não está sendo injetada no ambiente Node.js.
+
+**Evidências:**
+- ✅ ASAAS_WEBHOOK_TOKEN funciona (64 chars)
+- ❌ ASAAS_API_KEY sempre vazia (length: 0)
+- Testado múltiplas vezes: deletar/recriar, reiniciar servidor, etc.
+
+### Solução Alternativa
+Criar sistema de configurações no banco de dados para armazenar chave API criptografada.
+
+**Implementação:**
+- [x] Criar tabela `system_settings` no banco
+- [x] Criar procedures tRPC para salvar/buscar configurações (apenas admin)
+- [x] Criar página de configurações no painel admin (/admin/configuracoes)
+- [x] Atualizar serviço Asaas para buscar chave do banco
+- [x] Testar integração completa com Asaas
+- [x] Documentar workaround no README
+
+**Resultado:**
+✅ Workaround implementado com sucesso!
+✅ Chave API agora pode ser configurada em `/admin/configuracoes`
+✅ Sistema busca chave do banco de dados (criptografada)
+✅ Fallback para env caso Manus corrija o bug no futuro
+✅ Testes confirmam que integração está funcionando de fotos da balança (antes e depois)
+3. Gerar relatório PDF
+4. Verificar se fotos aparecem na seção "Comprovação por Fotos da Balança"
+
+---
+
+## 🐛 BUG REPORTADO - Exibição "Invalid Date" no Formulário de Nova Cobrança (22/12/2025)
+
+### Problema Reportado pelo Usuário
+Ao abrir o formulário "Nova Cobrança de Danos", o dropdown de vistorias mostra "-- - Invalid Date" ao invés da data da vistoria.
+
+**Evidência:**
+- Screenshot mostra campo "Vistoria Reprovada *" com botão "-- - Invalid Date"
+- Formulário tem campos: Vistoria Reprovada, Valor Total, Data de Vencimento
+
+### Causa Raiz Identificada
+- [ ] Investigar formatação de data no SelectItem (linha 358)
+- [ ] Verificar se `inspection.created_at` está retornando timestamp válido
+- [ ] Validar se `new Date(inspection.created_at)` está funcionando
+
+### Solução a Implementar
+- [ ] Corrigir formatação de data no dropdown de vistorias
+- [ ] Testar com vistoria reprovada existente
+- [ ] Validar que data aparece corretamente (ex: "22/12/2025")
+
+**Arquivo a modificar:**
+- [ ] client/src/pages/admin/CobrancasDanos.tsx (linha 358) de fotos da balança (ANTES e DEPOIS)
 3. Salvar registro
 4. Gerar PDF com esse registro
 5. Verificar se fotos aparecem na seção "Comprovação por Fotos da Balança"

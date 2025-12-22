@@ -352,12 +352,18 @@ export default function CobrancasDanos() {
                 </SelectTrigger>
                 <SelectContent>
                   {rejectedInspections.length > 0 ? (
-                    rejectedInspections.map((inspection: any) => (
-                      <SelectItem key={inspection.id} value={inspection.id.toString()}>
-                        {inspection.vessel_name} - {inspection.client_name} -{" "}
-                        {new Date(inspection.created_at).toLocaleDateString("pt-BR")}
-                      </SelectItem>
-                    ))
+                    rejectedInspections.map((inspection: any) => {
+                      const date = inspection.created_at
+                        ? new Date(inspection.created_at).toLocaleDateString("pt-BR", {
+                            timeZone: "America/Sao_Paulo",
+                          })
+                        : "Data não disponível";
+                      return (
+                        <SelectItem key={inspection.id} value={inspection.id.toString()}>
+                          {inspection.vessel_name} - {inspection.client_name} - {date}
+                        </SelectItem>
+                      );
+                    })
                   ) : (
                     <SelectItem value="none" disabled>
                       Nenhuma vistoria reprovada disponível
