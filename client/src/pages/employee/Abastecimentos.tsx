@@ -188,16 +188,32 @@ export default function EmployeeAbastecimentos() {
   const handlePhotoUpload = async (file: File, type: 'before' | 'after') => {
     setUploadingPhotos(true);
     try {
-      // TODO: Implementar upload real para S3
-      // Por enquanto, usar URL temporária
-      const tempUrl = URL.createObjectURL(file);
-      if (type === 'before') {
-        setPhotoBeforeUrl(tempUrl);
-      } else {
-        setPhotoAfterUrl(tempUrl);
+      // Fazer upload real para S3
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'fuel-records');
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao fazer upload da foto');
       }
-      toast.success(`Foto ${type === 'before' ? 'ANTES' : 'DEPOIS'} carregada!`);
+      
+      const data = await response.json();
+      const s3Url = data.url;
+      
+      if (type === 'before') {
+        setPhotoBeforeUrl(s3Url);
+      } else {
+        setPhotoAfterUrl(s3Url);
+      }
+      
+      toast.success(`Foto ${type === 'before' ? 'ANTES' : 'DEPOIS'} enviada com sucesso!`);
     } catch (error) {
+      console.error('Erro ao fazer upload:', error);
       toast.error('Erro ao fazer upload da foto');
     } finally {
       setUploadingPhotos(false);

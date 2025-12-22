@@ -128,6 +128,49 @@ async function startServer() {
     }
   });
 
+  // Generic upload endpoint for fuel record photos
+  app.post('/api/upload', async (req, res) => {
+    try {
+      const multer = await import('multer');
+      const upload = multer.default({ 
+        storage: multer.memoryStorage(),
+        limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+      });
+      
+      upload.single('file')(req, res, async (err: any) => {
+        if (err) {
+          console.error('[upload] Multer error:', err);
+          return res.status(400).json({ error: 'Erro ao processar arquivo' });
+        }
+
+        const file = (req as any).file;
+        if (!file) {
+          return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+        }
+
+        const { folder } = req.body;
+        const folderPath = folder || 'uploads';
+
+        try {
+          const { storagePut } = await import('../storage');
+          const ext = file.originalname.split('.').pop() || 'jpg';
+          const randomSuffix = Math.random().toString(36).substring(2, 15);
+          const fileKey = `${folderPath}/${Date.now()}-${randomSuffix}.${ext}`;
+          const { url } = await storagePut(fileKey, file.buffer, file.mimetype);
+          
+          console.log(`[upload] File uploaded successfully: ${fileKey}`);
+          res.json({ success: true, url, key: fileKey });
+        } catch (uploadError: any) {
+          console.error('[upload] S3 upload error:', uploadError);
+          res.status(500).json({ error: 'Erro ao fazer upload para S3' });
+        }
+      });
+    } catch (error: any) {
+      console.error('[upload] Error:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
   // Upload inspection photo endpoint
   app.post('/api/upload-inspection-photo', async (req, res) => {
     try {

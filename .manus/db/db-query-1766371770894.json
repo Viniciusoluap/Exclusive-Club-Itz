@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, vessel_name, photo_before_url, photo_after_url \nFROM fuel_records \nWHERE id IN (840004, 840005) \nORDER BY id DESC",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, vessel_name, photo_before_url, photo_after_url \nFROM fuel_records \nWHERE id IN (840004, 840005) \nORDER BY id DESC",
+  "rows": [
+    {
+      "id": "840005",
+      "vessel_name": "Focker 215 150HP",
+      "photo_before_url": "blob:https://exclusiveclubitz.manus.space/366afa81-fad6-4a8f-9406-a738a9724858",
+      "photo_after_url": "blob:https://exclusiveclubitz.manus.space/69b22815-e4d5-47d7-b9cc-749498815dcf"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_name\tphoto_before_url\tphoto_after_url\n840005\tFocker 215 150HP\tblob:https://exclusiveclubitz.manus.space/366afa81-fad6-4a8f-9406-a738a9724858\tblob:https://exclusiveclubitz.manus.space/69b22815-e4d5-47d7-b9cc-749498815dcf\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

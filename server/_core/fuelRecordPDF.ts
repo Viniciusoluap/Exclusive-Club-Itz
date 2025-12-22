@@ -24,7 +24,7 @@ interface FuelRecordData {
 }
 
 export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise<Buffer> {
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ 
       size: 'A4', 
       layout: 'landscape',
@@ -179,9 +179,12 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
       }
     });
 
-    // Seção de Fotos (se houver registros com fotos)
-    const recordsWithPhotos = records.filter(r => r.photoBeforeUrl || r.photoAfterUrl);
-    if (recordsWithPhotos.length > 0) {
+    // Processar fotos de forma assíncrona antes de finalizar
+    const processPhotos = async () => {
+      const recordsWithPhotos = records.filter(r => r.photoBeforeUrl || r.photoAfterUrl);
+      if (recordsWithPhotos.length === 0) return;
+      
+      console.log(`[PDF] Encontrados ${recordsWithPhotos.length} registros com fotos`);
       doc.addPage({ size: 'A4', layout: 'portrait', margin: 40 });
       doc.fontSize(16).fillColor('#0891b2').text('Comprovação por Fotos da Balança', { align: 'center' });
       doc.moveDown(0.5);
@@ -204,16 +207,25 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
         let afterBuffer: Buffer | null = null;
         
         try {
+          console.log(`[PDF] Processando fotos do registro #${record.id}`);
+          console.log(`[PDF] photoBeforeUrl: ${record.photoBeforeUrl}`);
+          console.log(`[PDF] photoAfterUrl: ${record.photoAfterUrl}`);
+          
           if (record.photoBeforeUrl) {
-            const beforeResponse = await axios.get(record.photoBeforeUrl, { responseType: 'arraybuffer' });
+            console.log(`[PDF] Baixando foto ANTES...`);
+            const beforeResponse = await axios.get(record.photoBeforeUrl, { responseType: 'arraybuffer', timeout: 10000 });
             beforeBuffer = Buffer.from(beforeResponse.data);
+            console.log(`[PDF] ✅ Foto ANTES baixada: ${beforeBuffer.length} bytes`);
           }
           if (record.photoAfterUrl) {
-            const afterResponse = await axios.get(record.photoAfterUrl, { responseType: 'arraybuffer' });
+            console.log(`[PDF] Baixando foto DEPOIS...`);
+            const afterResponse = await axios.get(record.photoAfterUrl, { responseType: 'arraybuffer', timeout: 10000 });
             afterBuffer = Buffer.from(afterResponse.data);
+            console.log(`[PDF] ✅ Foto DEPOIS baixada: ${afterBuffer.length} bytes`);
           }
         } catch (error) {
-          console.error(`Erro ao baixar fotos do registro #${record.id}:`, error);
+          console.error(`[PDF] ❌ Erro ao baixar fotos do registro #${record.id}:`, error);
+          console.error(`[PDF] Detalhes do erro:`, error instanceof Error ? error.message : error);
         }
 
         // Contar quantas fotos temos neste registro
@@ -305,18 +317,26 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
           doc.moveDown(0.5);
         }
       }
-    }
+    };
 
-    // Rodapé
+    // Executar processamento assíncrono de fotos
+    processPhotos().then(() => {
+      console.log('[PDF] ✅ Todas as fotos processadas, finalizando documento...');
+      
+      // Rodapé
     doc.moveDown(2);
     const footerY = doc.y;
     doc.moveTo(40, footerY).lineTo(doc.page.width - 40, footerY).strokeColor('#e5e7eb').lineWidth(1).stroke();
     doc.moveDown(0.5);
     
     const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-    doc.fillColor('#6b7280').fontSize(8).text(`Relatório gerado automaticamente em ${now}`, { align: 'center' });
-    doc.fontSize(8).text(`© ${new Date().getFullYear()} Exclusive Club - Todos os direitos reservados`, { align: 'center' });
+      doc.fillColor('#6b7280').fontSize(8).text(`Relatório gerado automaticamente em ${now}`, { align: 'center' });
+      doc.fontSize(8).text(`© ${new Date().getFullYear()} Exclusive Club - Todos os direitos reservados`, { align: 'center' });
 
-    doc.end();
+      doc.end();
+    }).catch((error) => {
+      console.error('[PDF] ❌ Erro ao processar fotos:', error);
+      reject(error);
+    });
   });
 }
