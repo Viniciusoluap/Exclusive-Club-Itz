@@ -61,11 +61,15 @@ export default function EmployeeAbastecimentos() {
 
   // Pré-preencher preço/L automaticamente ao abrir o dialog
   useEffect(() => {
-    if (isCreateDialogOpen) {
-      if (budget?.lastPricePerLiter) {
+    if (isCreateDialogOpen && budget) {
+      // Preencher se houver preço válido (maior que zero)
+      if (budget.lastPricePerLiter && budget.lastPricePerLiter > 0) {
         setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
+        console.log('✅ Preço/L preenchido automaticamente:', budget.lastPricePerLiter.toFixed(2));
+      } else {
+        console.warn('⚠️ Nenhum preço/L disponível no estoque. Budget:', budget);
       }
-    } else {
+    } else if (!isCreateDialogOpen) {
       // Resetar ao fechar o dialog
       resetForm();
     }
