@@ -3,12 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X, CheckCircle2, XCircle } from "lucide-react";
+import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X, CheckCircle2, XCircle, Fuel, DollarSign, Copy, QrCode } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import { useMemo } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 
 function ActiveBookingsSection() {
   const { user } = useAuth();
@@ -112,6 +115,354 @@ function ActiveBookingsSection() {
         );
       })}
     </div>
+  );
+}
+
+function FuelRecordsSection() {
+  const [selectedRecords, setSelectedRecords] = useState<number[]>([]);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [paymentData, setPaymentData] = useState<any>(null);
+  const utils = trpc.useUtils();
+
+  // Buscar abastecimentos do cliente
+  const { data: fuelRecords, isLoading } = trpc.fuelRecords.myRecords.useQuery();
+
+  // Mutation para gerar pagamento PIX
+  const generatePayment = trpc.fuelRecords.generatePayment.useMutation({
+    onSuccess: (data) => {
+      setPaymentData(data);
+      setShowPaymentDialog(true);
+      toast.success('PIX gerado com sucesso!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Erro ao gerar pagamento');
+    },
+  });
+
+  // Calcular totais
+  const totals = useMemo(() => {
+    if (!fuelRecords) return { totalOpen: 0, totalPaid: 0 };
+    
+    const totalOpen = fuelRecords
+      .filter((r: any) => r.paymentStatus === 'pending' || r.paymentStatus === 'overdue')
+      .reduce((sum: number, r: any) => sum + r.totalAmount, 0);
+    
+    const totalPaid = fuelRecords
+      .filter((r: any) => r.paymentStatus === 'paid')
+      .reduce((sum: number, r: any) => sum + r.totalAmount, 0);
+    
+    return { totalOpen, totalPaid };
+  }, [fuelRecords]);
+
+  // Filtrar apenas registros pendentes/vencidos para seleção
+  const pendingRecords = useMemo(() => {
+    if (!fuelRecords) return [];
+    return fuelRecords.filter((r: any) => 
+      r.paymentStatus === 'pending' || r.paymentStatus === 'overdue'
+    );
+  }, [fuelRecords]);
+
+  // Toggle seleção de registro
+  const toggleRecord = (recordId: number) => {
+    setSelectedRecords(prev => 
+      prev.includes(recordId) 
+        ? prev.filter(id => id !== recordId)
+        : [...prev, recordId]
+    );
+  };
+
+  // Selecionar todos
+  const toggleSelectAll = () => {
+    if (selectedRecords.length === pendingRecords.length) {
+      setSelectedRecords([]);
+    } else {
+      setSelectedRecords(pendingRecords.map((r: any) => r.id));
+    }
+  };
+
+  // Gerar pagamento
+  const handleGeneratePayment = () => {
+    if (selectedRecords.length === 0) {
+      toast.error('Selecione pelo menos um abastecimento');
+      return;
+    }
+    generatePayment.mutate({ recordIds: selectedRecords });
+  };
+
+  // Copiar código PIX
+  const copyPixCode = () => {
+    if (paymentData?.payload) {
+      navigator.clipboard.writeText(paymentData.payload);
+      toast.success('Código PIX copiado!');
+    }
+  };
+
+  // Fechar dialog e limpar seleção
+  const closePaymentDialog = () => {
+    setShowPaymentDialog(false);
+    setPaymentData(null);
+    setSelectedRecords([]);
+    utils.fuelRecords.myRecords.invalidate();
+  };
+
+  // Badge de status
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">Pendente</Badge>;
+      case 'overdue':
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">Vencido</Badge>;
+      case 'paid':
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Pago</Badge>;
+      case 'cancelled':
+        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">Cancelado</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Fuel className="h-5 w-5" />
+            Meus Abastecimentos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!fuelRecords || fuelRecords.length === 0) {
+    return (
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Fuel className="h-5 w-5" />
+            Meus Abastecimentos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            Você ainda não possui abastecimentos registrados.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Fuel className="h-5 w-5" />
+            Meus Abastecimentos
+          </CardTitle>
+          <CardDescription>
+            Acompanhe seus abastecimentos e realize pagamentos via PIX
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Resumo Financeiro */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="p-4 border rounded-lg bg-red-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Total em Aberto</p>
+                  <p className="text-2xl font-bold text-red-700">
+                    R$ {totals.totalOpen.toFixed(2)}
+                  </p>
+                </div>
+                <DollarSign className="h-8 w-8 text-red-500" />
+              </div>
+            </div>
+            <div className="p-4 border rounded-lg bg-green-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Total Pago</p>
+                  <p className="text-2xl font-bold text-green-700">
+                    R$ {totals.totalPaid.toFixed(2)}
+                  </p>
+                </div>
+                <CheckCircle2 className="h-8 w-8 text-green-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* Botão Pagar Selecionados */}
+          {pendingRecords.length > 0 && (
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={selectedRecords.length === pendingRecords.length && pendingRecords.length > 0}
+                  onCheckedChange={toggleSelectAll}
+                />
+                <span className="text-sm text-gray-600">
+                  {selectedRecords.length > 0 
+                    ? `${selectedRecords.length} selecionado(s)` 
+                    : 'Selecionar todos'}
+                </span>
+              </div>
+              <Button
+                onClick={handleGeneratePayment}
+                disabled={selectedRecords.length === 0 || generatePayment.isPending}
+              >
+                <QrCode className="mr-2 h-4 w-4" />
+                {generatePayment.isPending ? 'Gerando...' : 'Pagar Selecionados'}
+              </Button>
+            </div>
+          )}
+
+          {/* Tabela de Abastecimentos */}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Embarcação</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Litros</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Valor</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {fuelRecords.map((record: any) => {
+                    const canSelect = record.paymentStatus === 'pending' || record.paymentStatus === 'overdue';
+                    const isSelected = selectedRecords.includes(record.id);
+                    
+                    return (
+                      <tr key={record.id} className={isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}>
+                        <td className="px-4 py-3">
+                          {canSelect && (
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleRecord(record.id)}
+                            />
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {new Date(record.createdAt).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-medium">
+                          {record.vesselName}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right">
+                          {record.liters.toFixed(2)}L
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-semibold">
+                          R$ {record.totalAmount.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {getStatusBadge(record.paymentStatus)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dialog de Pagamento PIX */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5" />
+              Pagamento via PIX
+            </DialogTitle>
+            <DialogDescription>
+              Escaneie o QR Code ou copie o código PIX para realizar o pagamento
+            </DialogDescription>
+          </DialogHeader>
+          
+          {paymentData && (
+            <div className="space-y-4">
+              {/* Valor Total */}
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-gray-600 mb-1">Valor Total</p>
+                <p className="text-3xl font-bold text-blue-700">
+                  R$ {paymentData.totalValue.toFixed(2)}
+                </p>
+                {paymentData.chargeDetails.length > 1 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {paymentData.chargeDetails.length} abastecimentos
+                  </p>
+                )}
+              </div>
+
+              {/* QR Code */}
+              {paymentData.qrCode && (
+                <div className="flex justify-center">
+                  <img 
+                    src={`data:image/png;base64,${paymentData.qrCode}`} 
+                    alt="QR Code PIX" 
+                    className="w-64 h-64 border-2 border-gray-200 rounded-lg"
+                  />
+                </div>
+              )}
+
+              {/* Código PIX */}
+              {paymentData.payload && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Código PIX (Copia e Cola)
+                  </label>
+                  <div className="flex gap-2">
+                    <Input 
+                      value={paymentData.payload} 
+                      readOnly 
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={copyPixCode}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Detalhes dos Abastecimentos */}
+              {paymentData.chargeDetails && paymentData.chargeDetails.length > 0 && (
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Abastecimentos incluídos:</p>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {paymentData.chargeDetails.map((detail: any) => (
+                      <div key={detail.id} className="text-xs text-gray-600 flex justify-between">
+                        <span>{detail.vesselName}</span>
+                        <span className="font-semibold">R$ {detail.currentAmount.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Botão Fechar */}
+              <Button
+                className="w-full"
+                onClick={closePaymentDialog}
+              >
+                Já Paguei
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -514,6 +865,9 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Meus Abastecimentos Section */}
+        <FuelRecordsSection />
       </main>
     </div>
   );
