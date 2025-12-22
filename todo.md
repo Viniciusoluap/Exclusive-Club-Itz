@@ -244,3 +244,36 @@ Apesar da correção anterior, o campo "Preço por Litro" ainda não estava pree
 
 **Arquivo modificado:**
 - [x] client/src/pages/employee/Abastecimentos.tsx (useEffect linha 63-76)
+
+---
+
+## 🐛 BUG REPORTADO - Relatório PDF de Abastecimentos (22/12/2025 - 23:14)
+
+### Problema: Falta Coluna "Cliente" no PDF
+
+**Descrição:**
+O relatório PDF de abastecimentos não mostra o nome do cliente que usou a embarcação. Atualmente mostra apenas:
+- Embarcação
+- Funcionário (quem registrou)
+- Data
+- Litros
+- Preço/L
+- Subtotal
+- Taxa
+- Total
+
+**Solução implementada:**
+- [x] Coluna "Cliente" adicionada ao PDF de abastecimentos
+- [x] Query SQL atualizada para buscar b.client_name da reserva
+- [x] Interface FuelRecordData atualizada com campo clientName
+- [x] Tabela do PDF ajustada para 10 colunas (incluindo Cliente)
+- [x] Testes automatizados criados e passando (5/5)
+
+**Arquivos modificados:**
+- [x] server/routers.ts - Query SQL atualizada (2 endpoints: generateReport e sendReportByEmail)
+- [x] server/_core/fuelRecordPDF.ts - Interface e tabela atualizadas
+- [x] server/fuelRecords.generatePDF.test.ts - 5 testes criados e passando
+
+**Resultado:**
+✅ PDF agora mostra: #, Embarcação, **Cliente**, Funcionário, Data, Litros, Preço/L, Subtotal, Taxa, Total
+✅ Exemplo validado: Cliente "Laercio Oliveira" aparece corretamente no PDF

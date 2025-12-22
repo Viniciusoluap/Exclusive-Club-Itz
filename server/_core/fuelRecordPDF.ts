@@ -4,6 +4,7 @@ import axios from 'axios';
 interface FuelRecordData {
   id: number;
   vesselName: string;
+  clientName?: string;
   employeeName?: string;
   date: Date | string;
   liters: number; // em centavos
@@ -83,8 +84,8 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
 
     // Tabela de registros
     const tableTop = doc.y;
-    const colWidths = [30, 140, 100, 70, 60, 70, 70, 70, 80]; // Ajustado para 9 colunas
-    const headers = ['#', 'Embarcação', 'Funcionário', 'Data', 'Litros', 'Preço/L', 'Subtotal', 'Taxa', 'Total'];
+    const colWidths = [30, 120, 100, 90, 60, 50, 60, 60, 60, 70]; // Ajustado para 10 colunas
+    const headers = ['#', 'Embarcação', 'Cliente', 'Funcionário', 'Data', 'Litros', 'Preço/L', 'Subtotal', 'Taxa', 'Total'];
     
     // Cabeçalho da tabela
     let xPos = 40;
@@ -93,7 +94,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
     headers.forEach((header, i) => {
       doc.fillColor('#374151').fontSize(9).text(header, xPos + 5, tableTop + 8, { 
         width: colWidths[i] - 10, 
-        align: i === 0 || i === 3 || i >= 4 ? 'center' : 'left' 
+        align: i === 0 || i === 4 || i >= 5 ? 'center' : 'left' 
       });
       xPos += colWidths[i];
     });
@@ -122,6 +123,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
       const rowData = [
         { text: (index + 1).toString(), align: 'center' },
         { text: (record.vesselName || 'N/A').normalize('NFC'), align: 'left' },
+        { text: (record.clientName || 'N/A').normalize('NFC'), align: 'left' },
         { text: (record.employeeName || 'N/A').normalize('NFC'), align: 'left' },
         { text: dateStr, align: 'center' },
         { text: `${litersValue.toFixed(2)}L`, align: 'center' },
