@@ -194,6 +194,29 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    deleteDocument: adminProcedure
+      .input(z.object({
+        clientId: z.number(),
+        documentType: z.enum(["contract", "contract2", "document"]),
+      }))
+      .mutation(async ({ input }) => {
+        const { clientId, documentType } = input;
+        
+        // Map document type to database column
+        const columnMap = {
+          contract: "contractUrl",
+          contract2: "contract2Url",
+          document: "documentUrl",
+        };
+        
+        const column = columnMap[documentType];
+        
+        // Update client to set document URL to null
+        await db.updateAllowedClient(clientId, { [column]: null });
+        
+        return { success: true };
+      }),
+
     generateReport: adminProcedure
       .input(z.object({ clientId: z.number() }))
       .mutation(async ({ input }) => {

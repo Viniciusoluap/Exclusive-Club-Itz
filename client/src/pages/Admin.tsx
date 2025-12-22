@@ -175,14 +175,22 @@ export default function Admin() {
   const [selectedClientForReport, setSelectedClientForReport] = useState<number | null>(null);
   const [editingClientId, setEditingClientId] = useState<number | null>(null);
   const [selectedVesselFilter, setSelectedVesselFilter] = useState<number | "all">("all");
-  const [clientForm, setClientForm] = useState({ 
+  const [clientForm, setClientForm] = useState<{
+    email: string;
+    name: string;
+    phone: string;
+    contractUrl?: string;
+    contract2Url?: string;
+    documentUrl?: string;
+    quotas: Array<{ vesselId: number, quotaNumber: number, quotaType: "full" | "half" }>;
+  }>({ 
     email: "", 
     name: "", 
     phone: "",
     contractUrl: "",
     contract2Url: "",
     documentUrl: "",
-    quotas: [] as Array<{ vesselId: number, quotaNumber: number, quotaType: "full" | "half" }>
+    quotas: []
   });
 
   // Vessel Management State
@@ -260,6 +268,15 @@ export default function Admin() {
   });
 
   const generateReport = trpc.allowedClients.generateReport.useMutation();
+
+  const deleteDocumentMutation = trpc.allowedClients.deleteDocument.useMutation({
+    onSuccess: () => {
+      utils.allowedClients.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
   const toggleClientStatus = trpc.allowedClients.update.useMutation({
     onSuccess: () => {
@@ -1100,13 +1117,37 @@ export default function Admin() {
                     }}
                   />
                   {clientForm.contractUrl && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(clientForm.contractUrl, '_blank')}
-                    >
-                      Ver
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(clientForm.contractUrl, '_blank')}
+                      >
+                        Ver
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (!editingClientId) return;
+                          
+                          if (!confirm('Tem certeza que deseja excluir este documento?')) return;
+                          
+                          try {
+                            await deleteDocumentMutation.mutateAsync({
+                              clientId: editingClientId,
+                              documentType: 'contract',
+                            });
+                            setClientForm({ ...clientForm, contractUrl: undefined });
+                            toast.success('Documento excluído com sucesso!');
+                          } catch (error) {
+                            toast.error('Erro ao excluir documento');
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1150,13 +1191,37 @@ export default function Admin() {
                     }}
                   />
                   {clientForm.contract2Url && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(clientForm.contract2Url, '_blank')}
-                    >
-                      Ver
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(clientForm.contract2Url, '_blank')}
+                      >
+                        Ver
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (!editingClientId) return;
+                          
+                          if (!confirm('Tem certeza que deseja excluir este documento?')) return;
+                          
+                          try {
+                            await deleteDocumentMutation.mutateAsync({
+                              clientId: editingClientId,
+                              documentType: 'contract2',
+                            });
+                            setClientForm({ ...clientForm, contract2Url: undefined });
+                            toast.success('Documento excluído com sucesso!');
+                          } catch (error) {
+                            toast.error('Erro ao excluir documento');
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1200,13 +1265,37 @@ export default function Admin() {
                     }}
                   />
                   {clientForm.documentUrl && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(clientForm.documentUrl, '_blank')}
-                    >
-                      Ver
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(clientForm.documentUrl, '_blank')}
+                      >
+                        Ver
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (!editingClientId) return;
+                          
+                          if (!confirm('Tem certeza que deseja excluir este documento?')) return;
+                          
+                          try {
+                            await deleteDocumentMutation.mutateAsync({
+                              clientId: editingClientId,
+                              documentType: 'document',
+                            });
+                            setClientForm({ ...clientForm, documentUrl: undefined });
+                            toast.success('Documento excluído com sucesso!');
+                          } catch (error) {
+                            toast.error('Erro ao excluir documento');
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
