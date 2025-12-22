@@ -2114,6 +2114,7 @@ Nenhuma reserva foi afetada.
           SELECT 
             fr.*,
             b.booking_date,
+            b.client_name,
             u.name as recorded_by_name
           FROM fuel_records fr
           LEFT JOIN bookings b ON fr.booking_id = b.id
@@ -2132,6 +2133,7 @@ Nenhuma reserva foi afetada.
         const mappedRecords = records.map(r => ({
           id: r.id,
           vesselName: r.vessel_name || 'N/A',
+          clientName: r.client_name || 'N/A', // Nome do cliente que usou a embarcação
           employeeName: r.recorded_by_name || 'Sistema', // Nome do funcionário que registrou
           date: r.booking_date || r.created_at,
           liters: r.liters || 0,
@@ -2184,6 +2186,7 @@ Nenhuma reserva foi afetada.
           SELECT 
             fr.*,
             b.booking_date,
+            b.client_name,
             u.name as recorded_by_name
           FROM fuel_records fr
           LEFT JOIN bookings b ON fr.booking_id = b.id
@@ -2202,6 +2205,7 @@ Nenhuma reserva foi afetada.
         const mappedRecords = records.map(r => ({
           id: r.id,
           vesselName: r.vessel_name || 'N/A',
+          clientName: r.client_name || 'N/A', // Nome do cliente que usou a embarcação
           employeeName: r.recorded_by_name || 'Sistema', // Nome do funcionário que registrou
           date: r.booking_date || r.created_at,
           liters: r.liters || 0,
