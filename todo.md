@@ -420,3 +420,40 @@ Código de integração está correto, mas falta a chave de API.
 - Relatório PDF completo com dados e documentos incorporados
 - Download automático do PDF
 - 5 testes automatizados passando
+
+
+---
+
+## 🐛 CORREÇÕES - Relatório PDF de Clientes (21/12/2025 - 21:50)
+
+### Problemas Identificados pelo Usuário
+
+**Layout e Identidade Visual:**
+- [x] Falta logo da Exclusive Club no cabeçalho
+- [x] Falta cores da empresa (azul #0891b2)
+- [x] Layout sem identidade visual profissional
+
+**Documentos Não Aparecem:**
+- [x] Documento Pessoal: Apenas texto "Documento anexado (PDF). Visualize separadamente."
+- [x] Contrato do Cliente: Apenas texto "Contrato anexado (PDF). Visualize separadamente."
+- [x] Contrato 2: Não aparece quando existe
+
+### Implementação das Correções
+
+**Backend (server/_core/clientReportPDF.ts):**
+- [x] Adicionar logo da Exclusive Club no cabeçalho (client/public/logo-exclusive-round.png)
+- [x] Aplicar cores da marca: azul #0891b2 (cabeçalho, títulos)
+- [x] Implementar download de imagens via axios (igual fuelRecordPDF.ts e inspectionsPDF.ts)
+- [x] Incorporar imagens dos documentos diretamente no PDF (não apenas links)
+- [x] Layout profissional em A4:
+  * Página 1: Logo + Ficha com dados básicos
+  * Página 2: Documento pessoal (imagem incorporada)
+  * Página 3: Contrato (imagem/PDF incorporado)
+  * Página 4: Contrato 2 (se houver - imagem/PDF incorporado)
+
+**Testes:**
+- [x] Validar logo aparece corretamente
+- [x] Validar cores azul #0891b2 aplicadas
+- [x] Validar imagens dos documentos incorporadas
+- [x] Validar layout em A4 sem sobreposição
+- [x] Criar testes automatizados (clientReportPDF.fix.test.ts) - 4/4 passando
