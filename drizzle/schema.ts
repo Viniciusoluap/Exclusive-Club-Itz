@@ -26,6 +26,9 @@ export const allowedClients = mysqlTable("allowed_clients", {
   email: varchar("email", { length: 320 }).notNull().unique(),
   name: text("name").notNull(),
   phone: varchar("phone", { length: 20 }),
+  contractUrl: text("contract_url"), // URL do contrato principal (obrigatório)
+  contract2Url: text("contract2_url"), // URL do segundo contrato (opcional)
+  documentUrl: text("document_url"), // URL do documento pessoal (obrigatório)
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),

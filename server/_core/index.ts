@@ -70,6 +70,64 @@ async function startServer() {
     }
   });
 
+  // Upload client document endpoint
+  app.post('/api/upload-client-document', async (req, res) => {
+    try {
+      const multer = await import('multer');
+      const upload = multer.default({ 
+        storage: multer.memoryStorage(),
+        limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+      });
+      
+      upload.single('file')(req, res, async (err: any) => {
+        if (err) {
+          console.error('[upload-client-document] Multer error:', err);
+          return res.status(400).json({ error: 'Erro ao processar arquivo' });
+        }
+
+        const file = (req as any).file;
+        if (!file) {
+          return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+        }
+
+        const { clientId, documentType } = req.body;
+        if (!clientId || !documentType) {
+          return res.status(400).json({ error: 'clientId e documentType são obrigatórios' });
+        }
+
+        // Validar tipo de documento
+        const validTypes = ['contract', 'contract2', 'document'];
+        if (!validTypes.includes(documentType)) {
+          return res.status(400).json({ error: "documentType deve ser 'contract', 'contract2' ou 'document'" });
+        }
+
+        // Validar tipo de arquivo
+        const allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+          return res.status(400).json({ error: 'Tipo de arquivo inválido. Permitidos: PDF, JPG, PNG' });
+        }
+
+        try {
+          const { storagePut } = await import('../storage');
+          const timestamp = Date.now();
+          const randomSuffix = Math.random().toString(36).substring(2, 8);
+          const extension = file.originalname.split('.').pop() || 'pdf';
+          const fileKey = `client-documents/${clientId}/${documentType}-${timestamp}-${randomSuffix}.${extension}`;
+          const { url } = await storagePut(fileKey, file.buffer, file.mimetype);
+          
+          console.log(`[Upload] Documento ${documentType} do cliente ${clientId} enviado: ${url}`);
+          res.json({ success: true, url, fileKey, documentType, clientId });
+        } catch (uploadError: any) {
+          console.error('[upload-client-document] S3 upload error:', uploadError);
+          res.status(500).json({ error: 'Erro ao fazer upload para S3' });
+        }
+      });
+    } catch (error: any) {
+      console.error('[upload-client-document] Error:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  });
+
   // Upload inspection photo endpoint
   app.post('/api/upload-inspection-photo', async (req, res) => {
     try {

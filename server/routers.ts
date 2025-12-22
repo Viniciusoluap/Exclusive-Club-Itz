@@ -152,6 +152,9 @@ export const appRouter = router({
         email: z.string().min(1).refine((val) => val.includes('@'), { message: 'Email inválido' }).optional(),
         name: z.string().min(1).optional(),
         phone: z.string().optional(),
+        contractUrl: z.string().optional(),
+        contract2Url: z.string().optional(),
+        documentUrl: z.string().optional(),
         isActive: z.boolean().optional(),
         quotas: z.array(z.object({
           vesselId: z.number(),
@@ -189,6 +192,52 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await db.deleteAllowedClient(input.id);
         return { success: true };
+      }),
+
+    generateReport: adminProcedure
+      .input(z.object({ clientId: z.number() }))
+      .mutation(async ({ input }) => {
+        // Buscar dados do cliente
+        const client = await db.getAllowedClientById(input.clientId);
+        if (!client) {
+          throw new TRPCError({ 
+            code: 'NOT_FOUND', 
+            message: 'Cliente não encontrado' 
+          });
+        }
+
+        // Buscar cotas do cliente
+        const quotas = await db.getClientQuotasByClientId(input.clientId);
+        const quotasWithVessels = await Promise.all(
+          quotas.map(async (quota) => {
+            const vessel = await db.getVesselById(quota.vesselId);
+            return {
+              vesselName: vessel?.name || 'Embarcação desconhecida',
+              quotaNumber: quota.quotaNumber,
+              quotaType: quota.quotaType,
+            };
+          })
+        );
+
+        // Gerar PDF
+        const { generateClientReport } = await import('./_core/clientReportPDF');
+        const pdfBuffer = await generateClientReport({
+          name: client.name,
+          email: client.email,
+          phone: client.phone || undefined,
+          quotas: quotasWithVessels,
+          contractUrl: client.contractUrl || undefined,
+          contract2Url: client.contract2Url || undefined,
+          documentUrl: client.documentUrl || undefined,
+        });
+
+        // Retornar PDF em base64
+        const base64 = pdfBuffer.toString('base64');
+        return { 
+          success: true, 
+          pdf: base64,
+          filename: `cliente-${client.name.replace(/\s+/g, '-')}-${Date.now()}.pdf`
+        };
       }),
   }),
 
