@@ -95,16 +95,42 @@ export default function Abastecimento() {
 
   const generateReportMutation = trpcAny.fuelRecords?.generateReport.useMutation({
     onSuccess: (data: any) => {
-      // Download PDF
-      const linkSource = `data:application/pdf;base64,${data.pdf}`;
-      const downloadLink = document.createElement('a');
-      const fileName = data.filename || `relatorio-abastecimentos-${new Date().toISOString().split('T')[0]}.pdf`;
-      downloadLink.href = linkSource;
-      downloadLink.download = fileName;
-      downloadLink.click();
-      
-      toast.success(`Relatório gerado com ${selectedIds.length} abastecimento(s)!`);
-      setSelectedIds([]);
+      try {
+        // Converter base64 para Blob
+        const byteCharacters = atob(data.pdf);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        
+        // Criar URL do blob
+        const blobUrl = URL.createObjectURL(blob);
+        const fileName = data.filename || `relatorio-abastecimentos-${new Date().toISOString().split('T')[0]}.pdf`;
+        
+        // Criar link de download
+        const downloadLink = document.createElement('a');
+        downloadLink.href = blobUrl;
+        downloadLink.download = fileName;
+        downloadLink.style.display = 'none';
+        
+        // Adicionar ao DOM, clicar e remover
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        
+        // Limpar após um delay
+        setTimeout(() => {
+          document.body.removeChild(downloadLink);
+          URL.revokeObjectURL(blobUrl);
+        }, 100);
+        
+        toast.success(`Relatório gerado com ${selectedIds.length} abastecimento(s)!`);
+        setSelectedIds([]);
+      } catch (error: any) {
+        console.error('[PDF Download Error]', error);
+        toast.error(`Erro ao fazer download do PDF: ${error.message}`);
+      }
     },
     onError: (error: any) => {
       toast.error(`Erro ao gerar relatório: ${error.message}`);
