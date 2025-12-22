@@ -1663,6 +1663,8 @@ Nenhuma reserva foi afetada.
           SELECT 
             fr.*,
             b.booking_date,
+            b.client_name,
+            b.vessel_name,
             fr.sync_status,
             fr.sync_error,
             fr.last_sync_attempt,
@@ -1703,6 +1705,8 @@ Nenhuma reserva foi afetada.
         return records.map((record: any) => ({
           ...record,
           date: record.booking_date, // Mapear booking_date para date
+          clientName: record.client_name, // Nome do cliente
+          vesselName: record.vessel_name, // Nome da embarcação
           liters: record.liters / 100,
           price_per_liter: record.price_per_liter / 100,
           total_cost: record.total_amount / 100,

@@ -61,8 +61,13 @@ export default function EmployeeAbastecimentos() {
 
   // Pré-preencher preço/L automaticamente ao abrir o dialog
   useEffect(() => {
-    if (isCreateDialogOpen && budget?.lastPricePerLiter) {
-      setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
+    if (isCreateDialogOpen) {
+      if (budget?.lastPricePerLiter) {
+        setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
+      }
+    } else {
+      // Resetar ao fechar o dialog
+      resetForm();
     }
   }, [isCreateDialogOpen, budget]);
 
@@ -495,7 +500,7 @@ export default function EmployeeAbastecimentos() {
                     </div>
                   )}
                   <div className="mt-2 text-xs text-muted-foreground border-t pt-2">
-                    Registrado por: {record.recorded_by_name || 'Sistema'} • {record.recorded_at ? new Date(record.recorded_at).toLocaleString('pt-BR') : 'Data não disponível'}
+                    Registrado por: {record.recorded_by_name || 'Sistema'} • {record.recorded_at ? new Date(record.recorded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'Data não disponível'}
                   </div>
                 </CardContent>
               </Card>

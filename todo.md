@@ -177,3 +177,50 @@ Biblioteca `pdf-to-img` está convertendo apenas a primeira página do PDF.
 - [x] server/_core/clientReportPDF.ts (função de conversão de PDF)
 - [x] Criada função incorporateAllPdfPages() para processar todas as páginas
 - [x] Aplicada correção em todos os 3 documentos (document_url, contract_url, contract2_url)
+
+
+---
+
+## 🐛 BUGS REPORTADOS - Abastecimentos Funcionário (22/12/2025 - 22:47)
+
+### BUG 1: Campo "Preço por Litro" não preenche automaticamente
+- [ ] Campo está vazio (placeholder "Ex: 6.50")
+- [ ] Deveria buscar lastPricePerLiter do estoque automaticamente ao abrir dialog
+- [ ] Arquivo: client/src/pages/employee/Abastecimentos.tsx
+- [ ] Solução: useEffect para buscar preço do estoque e preencher campo
+
+### BUG 2: Cards de abastecimento não mostram informações essenciais
+- [ ] Faltam: Nome do cliente, Nome da embarcação
+- [ ] Mostra apenas: Data, Litros, Preço/L, Total, Status
+- [ ] Arquivo: client/src/pages/employee/Abastecimentos.tsx
+- [ ] Solução: Adicionar campos client_name e vessel_name na query do backend
+
+### BUG 3: Horário registrado está incorreto
+- [ ] Mostra: "22/12/2025, 01:47:12" (horário errado)
+- [ ] Deveria mostrar horário correto de Brasília (GMT-3)
+- [ ] Arquivo: client/src/pages/employee/Abastecimentos.tsx
+- [ ] Solução: Corrigir timezone na exibição do horário
+
+
+---
+
+## ✅ BUGS CORRIGIDOS - Abastecimentos Funcionário (22/12/2025 - 22:56)
+
+### BUG 1: Campo "Preço por Litro" preenchimento automático ✅
+- [x] Campo agora preenche automaticamente do estoque ao abrir dialog
+- [x] useEffect atualizado para preencher pricePerLiter quando dialog abre
+- [x] resetForm() chamado ao fechar dialog para limpar estado
+
+### BUG 2: Cards de abastecimento mostram informações completas ✅
+- [x] Query SQL atualizada para incluir b.client_name e b.vessel_name
+- [x] Backend retorna clientName e vesselName nos registros
+- [x] Cards agora exibem: Cliente, Embarcação, Data, Litros, Preço, Total, Status
+
+### BUG 3: Horário registrado corrigido ✅
+- [x] Timezone GMT-3 (America/Sao_Paulo) aplicado na exibição
+- [x] toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+- [x] Horário agora mostra corretamente (ex: 22:47:12 ao invés de 01:47:12)
+
+**Arquivos modificados:**
+- [x] server/routers.ts (query SQL + mapeamento de campos)
+- [x] client/src/pages/employee/Abastecimentos.tsx (preenchimento automático + timezone)
