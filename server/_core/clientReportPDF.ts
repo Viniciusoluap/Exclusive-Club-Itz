@@ -19,6 +19,65 @@ interface ClientData {
 }
 
 /**
+ * Converte todas as páginas de um PDF para imagens e incorpora no documento
+ */
+async function incorporateAllPdfPages(
+  doc: PDFKit.PDFDocument,
+  pdfBuffer: Buffer,
+  title: string
+): Promise<void> {
+  try {
+    const pdfDocument = await pdf(pdfBuffer, { scale: 2.0 });
+    const pages: Buffer[] = [];
+    
+    // Coletar todas as páginas
+    for await (const page of pdfDocument) {
+      pages.push(page);
+    }
+    
+    if (pages.length === 0) {
+      doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+        "PDF sem páginas.",
+        { align: "center" }
+      );
+      doc.fillColor("#000000");
+      return;
+    }
+    
+    // Incorporar cada página
+    for (let i = 0; i < pages.length; i++) {
+      // Adicionar nova página para cada página do PDF (exceto a primeira)
+      if (i > 0) {
+        doc.addPage();
+        // Adicionar título apenas na primeira página
+        if (i === 1) {
+          doc.fillColor("#0891b2").fontSize(18).font("Helvetica-Bold").text(title + " (continuação)", { align: "center" });
+          doc.fillColor("#000000");
+          doc.moveDown(1);
+        }
+      }
+      
+      const maxWidth = 450;
+      const maxHeight = 600;
+      const x = (doc.page.width - maxWidth) / 2;
+      const y = doc.y + 10;
+      
+      doc.image(pages[i], x, y, {
+        fit: [maxWidth, maxHeight],
+        align: "center",
+      });
+    }
+  } catch (pdfError) {
+    console.error(`[PDF] Erro ao converter ${title}:`, pdfError);
+    doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+      "Erro ao processar PDF.",
+      { align: "center" }
+    );
+    doc.fillColor("#000000");
+  }
+}
+
+/**
  * Gera PDF com relatório completo do cliente
  * Inclui: dados básicos, documento pessoal, contrato(s)
  */
@@ -84,7 +143,7 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
       }
       doc.moveDown(2);
 
-      // ========== PÁGINA 2: DOCUMENTO PESSOAL ==========
+      // ========== DOCUMENTO PESSOAL (TODAS AS PÁGINAS) ==========
       if (client.documentUrl) {
         doc.addPage();
         doc.fillColor("#0891b2").fontSize(18).font("Helvetica-Bold").text("Documento Pessoal", { align: "center" });
@@ -112,42 +171,8 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
               align: "center",
             });
           } else if (contentType.includes("pdf")) {
-            // Converter primeira página do PDF para imagem e incorporar
-            try {
-              const pdfDocument = await pdf(documentBuffer, { scale: 2.0 });
-              let firstPageBuffer: Buffer | null = null;
-              
-              // Obter primeira página
-              for await (const page of pdfDocument) {
-                firstPageBuffer = page;
-                break; // Apenas primeira página
-              }
-              
-              if (firstPageBuffer) {
-                const maxWidth = 450;
-                const maxHeight = 600;
-                const x = (doc.page.width - maxWidth) / 2;
-                const y = doc.y + 10;
-                
-                doc.image(firstPageBuffer, x, y, {
-                  fit: [maxWidth, maxHeight],
-                  align: "center",
-                });
-              } else {
-                doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
-                  "PDF sem páginas.",
-                  { align: "center" }
-                );
-                doc.fillColor("#000000");
-              }
-            } catch (pdfError) {
-              console.error("[PDF] Erro ao converter PDF do documento:", pdfError);
-              doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
-                "Erro ao processar PDF.",
-                { align: "center" }
-              );
-              doc.fillColor("#000000");
-            }
+            // Converter TODAS as páginas do PDF para imagens e incorporar
+            await incorporateAllPdfPages(doc, documentBuffer, "Documento Pessoal");
           } else {
             doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
               "Formato de documento não suportado para visualização.",
@@ -164,7 +189,7 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
         }
       }
 
-      // ========== PÁGINA 3: CONTRATO PRINCIPAL ==========
+      // ========== CONTRATO PRINCIPAL (TODAS AS PÁGINAS) ==========
       if (client.contractUrl) {
         doc.addPage();
         doc.fillColor("#0891b2").fontSize(18).font("Helvetica-Bold").text("Contrato do Cliente", { align: "center" });
@@ -192,42 +217,8 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
               align: "center",
             });
           } else if (contentType.includes("pdf")) {
-            // Converter primeira página do PDF para imagem e incorporar
-            try {
-              const pdfDocument = await pdf(contractBuffer, { scale: 2.0 });
-              let firstPageBuffer: Buffer | null = null;
-              
-              // Obter primeira página
-              for await (const page of pdfDocument) {
-                firstPageBuffer = page;
-                break; // Apenas primeira página
-              }
-              
-              if (firstPageBuffer) {
-                const maxWidth = 450;
-                const maxHeight = 600;
-                const x = (doc.page.width - maxWidth) / 2;
-                const y = doc.y + 10;
-                
-                doc.image(firstPageBuffer, x, y, {
-                  fit: [maxWidth, maxHeight],
-                  align: "center",
-                });
-              } else {
-                doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
-                  "PDF sem páginas.",
-                  { align: "center" }
-                );
-                doc.fillColor("#000000");
-              }
-            } catch (pdfError) {
-              console.error("[PDF] Erro ao converter PDF do contrato:", pdfError);
-              doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
-                "Erro ao processar PDF.",
-                { align: "center" }
-              );
-              doc.fillColor("#000000");
-            }
+            // Converter TODAS as páginas do PDF para imagens e incorporar
+            await incorporateAllPdfPages(doc, contractBuffer, "Contrato do Cliente");
           } else {
             doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
               "Formato de contrato não suportado para visualização.",
@@ -244,7 +235,7 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
         }
       }
 
-      // ========== PÁGINA 4: CONTRATO 2 (SE HOUVER) ==========
+      // ========== CONTRATO 2 (TODAS AS PÁGINAS) ==========
       if (client.contract2Url) {
         doc.addPage();
         doc.fillColor("#0891b2").fontSize(18).font("Helvetica-Bold").text("Contrato 2 do Cliente", { align: "center" });
@@ -272,42 +263,8 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
               align: "center",
             });
           } else if (contentType.includes("pdf")) {
-            // Converter primeira página do PDF para imagem e incorporar
-            try {
-              const pdfDocument = await pdf(contract2Buffer, { scale: 2.0 });
-              let firstPageBuffer: Buffer | null = null;
-              
-              // Obter primeira página
-              for await (const page of pdfDocument) {
-                firstPageBuffer = page;
-                break; // Apenas primeira página
-              }
-              
-              if (firstPageBuffer) {
-                const maxWidth = 450;
-                const maxHeight = 600;
-                const x = (doc.page.width - maxWidth) / 2;
-                const y = doc.y + 10;
-                
-                doc.image(firstPageBuffer, x, y, {
-                  fit: [maxWidth, maxHeight],
-                  align: "center",
-                });
-              } else {
-                doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
-                  "PDF sem páginas.",
-                  { align: "center" }
-                );
-                doc.fillColor("#000000");
-              }
-            } catch (pdfError) {
-              console.error("[PDF] Erro ao converter PDF do contrato 2:", pdfError);
-              doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
-                "Erro ao processar PDF.",
-                { align: "center" }
-              );
-              doc.fillColor("#000000");
-            }
+            // Converter TODAS as páginas do PDF para imagens e incorporar
+            await incorporateAllPdfPages(doc, contract2Buffer, "Contrato 2 do Cliente");
           } else {
             doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
               "Formato de contrato não suportado para visualização.",

@@ -150,3 +150,30 @@ Adicionar botão de exclusão (ícone de lixeira) ao lado do botão "Ver" nos ca
 ✅ Campo no banco setado para null após exclusão
 ✅ Interface atualiza automaticamente (botão desaparece)
 ✅ 4 testes automatizados passando (100%)
+
+
+---
+
+## 🐛 BUG CRÍTICO - Relatório PDF de Clientes - Páginas Incompletas (21/12/2025 - 22:43)
+
+### Problema Reportado pelo Usuário
+Relatório PDF do cliente mostra apenas **primeira página** de cada documento PDF, mas deve mostrar **TODAS as páginas**.
+
+**Exemplo:**
+- Contrato tem 11 páginas → PDF mostra apenas 1 página
+- Screenshot do usuário mostra "2 de 3" (falta a página 3)
+
+### Causa Raiz
+Biblioteca `pdf-to-img` está convertendo apenas a primeira página do PDF.
+
+### Correção Necessária
+- [x] Detectar número total de páginas de cada PDF
+- [x] Converter TODAS as páginas (não apenas a primeira)
+- [x] Incorporar todas as páginas sequencialmente no relatório final
+- [x] Testar com documento de 11 páginas
+- [x] Validar que todas as páginas aparecem no PDF gerado
+
+### Arquivos Modificados
+- [x] server/_core/clientReportPDF.ts (função de conversão de PDF)
+- [x] Criada função incorporateAllPdfPages() para processar todas as páginas
+- [x] Aplicada correção em todos os 3 documentos (document_url, contract_url, contract2_url)
