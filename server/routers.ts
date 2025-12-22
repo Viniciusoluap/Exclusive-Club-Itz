@@ -2311,6 +2311,158 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         return { success: true, email: input.email };
       }),
 
+    // Novo endpoint: generatePayment - Gerar pagamento PIX para abastecimentos selecionados
+    generatePayment: publicProcedure
+      .input(z.object({
+        recordIds: z.array(z.number()).min(1, 'Selecione pelo menos um abastecimento'),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Usuário não autenticado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+        const asaas = await import('./_core/asaas');
+
+        // Buscar abastecimentos selecionados
+        const result = await db.execute(sql`
+          SELECT 
+            id,
+            client_name as clientName,
+            client_email as clientEmail,
+            vessel_name as vesselName,
+            liters,
+            total_amount as totalAmount,
+            asaas_charge_id as asaasChargeId,
+            payment_status as paymentStatus
+          FROM fuel_records
+          WHERE id IN (${sql.raw(input.recordIds.join(','))})
+            AND client_email = ${ctx.user.email}
+            AND payment_status IN ('pending', 'overdue')
+        `) as any;
+
+        const records = (Array.isArray(result[0]) ? result[0] : result);
+
+        if (records.length === 0) {
+          throw new TRPCError({ 
+            code: 'BAD_REQUEST', 
+            message: 'Nenhum abastecimento pendente encontrado para pagamento' 
+          });
+        }
+
+        // Buscar valores atualizados no Asaas (com multas/juros)
+        let totalValue = 0;
+        const chargeDetails: any[] = [];
+
+        for (const record of records) {
+          if (record.asaasChargeId) {
+            try {
+              // Buscar cobrança atualizada no Asaas
+              const charge = await asaas.getCharge(record.asaasChargeId);
+              totalValue += parseFloat(charge.value);
+              chargeDetails.push({
+                id: record.id,
+                vesselName: record.vesselName,
+                originalAmount: record.totalAmount / 100,
+                currentAmount: parseFloat(charge.value),
+                asaasChargeId: record.asaasChargeId,
+              });
+            } catch (error) {
+              console.error('[generatePayment] Erro ao buscar cobrança:', error);
+              // Se falhar, usar valor original
+              totalValue += record.totalAmount / 100;
+              chargeDetails.push({
+                id: record.id,
+                vesselName: record.vesselName,
+                originalAmount: record.totalAmount / 100,
+                currentAmount: record.totalAmount / 100,
+                asaasChargeId: record.asaasChargeId,
+              });
+            }
+          } else {
+            // Se não tem cobrança no Asaas, usar valor original
+            totalValue += record.totalAmount / 100;
+            chargeDetails.push({
+              id: record.id,
+              vesselName: record.vesselName,
+              originalAmount: record.totalAmount / 100,
+              currentAmount: record.totalAmount / 100,
+              asaasChargeId: null,
+            });
+          }
+        }
+
+        // Buscar ou criar cliente no Asaas
+        const customer = await asaas.getOrCreateCustomer({
+          name: records[0].clientName,
+          email: records[0].clientEmail,
+        });
+
+        // Criar descrição da cobrança
+        const description = records.length === 1
+          ? `Abastecimento - ${records[0].vesselName}`
+          : `${records.length} abastecimentos - Exclusive Club`;
+
+        // Criar cobrança única no Asaas com PIX
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 1); // Vencimento em 1 dia
+
+        const charge = await asaas.createCharge({
+          customer: customer.id,
+          billingType: 'PIX',
+          value: totalValue,
+          dueDate: asaas.formatDateForAsaas(dueDate),
+          description,
+          externalReference: `MULTI-${input.recordIds.join('-')}`,
+        });
+
+        // Buscar QR Code PIX
+        const apiKey = process.env.ASAAS_API_KEY;
+        const ASAAS_API_URL = apiKey?.startsWith('$aact_prod_')
+          ? 'https://api.asaas.com/v3'
+          : 'https://sandbox.asaas.com/api/v3';
+
+        const pixResponse = await fetch(`${ASAAS_API_URL}/payments/${charge.id}/pixQrCode`, {
+          method: 'GET',
+          headers: {
+            'access_token': apiKey!,
+          },
+        });
+
+        if (!pixResponse.ok) {
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: 'Erro ao gerar QR Code PIX' 
+          });
+        }
+
+        const pixData = await pixResponse.json();
+
+        // Atualizar registros com ID da cobrança consolidada
+        for (const recordId of input.recordIds) {
+          await db.execute(sql`
+            UPDATE fuel_records
+            SET 
+              asaas_charge_id = ${charge.id},
+              due_date = ${dueDate}
+            WHERE id = ${recordId}
+          `);
+        }
+
+        return {
+          success: true,
+          chargeId: charge.id,
+          totalValue,
+          qrCode: pixData.encodedImage, // Base64 da imagem QR Code
+          payload: pixData.payload, // Código PIX copia-e-cola
+          expirationDate: pixData.expirationDate,
+          chargeDetails,
+        };
+      }),
+
     // Novo endpoint: myRecords - Cliente vê seus próprios abastecimentos
     myRecords: publicProcedure
       .query(async ({ ctx }) => {
