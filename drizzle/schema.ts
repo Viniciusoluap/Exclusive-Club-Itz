@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, bigint } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, bigint, decimal } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -258,3 +258,24 @@ export const inspections = mysqlTable("inspections", {
 
 export type Inspection = typeof inspections.$inferSelect;
 export type InsertInspection = typeof inspections.$inferInsert;
+
+/**
+ * Inspection Charges table - stores charges for damages found during inspections
+ */
+export const inspectionCharges = mysqlTable("inspection_charges", {
+  id: int("id").autoincrement().primaryKey(),
+  inspectionId: int("inspection_id").notNull(), // references inspections.id
+  clientEmail: varchar("client_email", { length: 320 }).notNull(),
+  vesselName: text("vessel_name").notNull(),
+  failedItems: text("failed_items").notNull(), // JSON array of failed items with descriptions
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // Total charge amount
+  dueDate: timestamp("due_date").notNull(), // Payment due date
+  asaasChargeId: varchar("asaas_charge_id", { length: 255 }), // Asaas charge ID
+  paymentStatus: mysqlEnum("payment_status", ["pending", "paid", "overdue", "cancelled"]).default("pending").notNull(),
+  receiptUrl: text("receipt_url"), // URL of payment receipt
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type InspectionCharge = typeof inspectionCharges.$inferSelect;
+export type InsertInspectionCharge = typeof inspectionCharges.$inferInsert;

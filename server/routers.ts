@@ -3213,6 +3213,350 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         }
       }),
   }),
+
+  // Inspection Charges - Cobranças de Danos
+  inspectionCharges: router({
+    // Admin: Criar cobrança após orçamento aprovado
+    create: adminProcedure
+      .input(z.object({
+        inspectionId: z.number(),
+        failedItems: z.array(z.object({
+          name: z.string(),
+          status: z.string(),
+        })),
+        amount: z.number().positive(),
+        dueDate: z.number().optional(), // Unix timestamp
+      }))
+      .mutation(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const { inspectionCharges } = await import('../drizzle/schema');
+          
+          // Buscar dados da vistoria
+          const inspectionResult = await db.execute(sql.raw(`
+            SELECT i.*, b.client_email, v.name as vessel_name
+            FROM inspections i
+            LEFT JOIN bookings b ON i.booking_id = b.id
+            JOIN vessels v ON i.vessel_id = v.id
+            WHERE i.id = ${input.inspectionId}
+          `)) as any;
+          
+          const inspection = (Array.isArray(inspectionResult[0]) ? inspectionResult[0][0] : inspectionResult[0]);
+          if (!inspection) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Vistoria não encontrada' });
+          }
+          
+          // Calcular data de vencimento (7 dias padrão)
+          const dueDate = input.dueDate || Date.now() + (7 * 24 * 60 * 60 * 1000);
+          
+          // Criar cobrança no Asaas
+          const { createCharge } = await import('./_core/asaas');
+          const asaasCharge = await createCharge({
+            customer: inspection.client_email,
+            billingType: 'PIX',
+            value: input.amount,
+            dueDate: new Date(dueDate).toISOString().split('T')[0],
+            description: `Conserto de Danos - Vistoria ${new Date(inspection.created_at).toLocaleDateString('pt-BR')}`,
+          });
+          
+          // Salvar no banco
+          await db.insert(inspectionCharges).values({
+            inspectionId: input.inspectionId,
+            clientEmail: inspection.client_email,
+            vesselName: inspection.vessel_name,
+            failedItems: JSON.stringify(input.failedItems),
+            amount: input.amount.toString(),
+            dueDate: new Date(dueDate),
+            asaasChargeId: asaasCharge.id,
+            paymentStatus: 'pending',
+          });
+          
+          return { 
+            success: true, 
+            chargeId: asaasCharge.id,
+            pixQrCode: asaasCharge.pixQrCode,
+            pixCopyPaste: asaasCharge.pixCopyPaste,
+          };
+        } catch (error: any) {
+          console.error('[inspectionCharges.create] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao criar cobrança: ${error.message}` 
+          });
+        }
+      }),
+
+    // Admin: Listar todas as cobranças
+    listAll: adminProcedure
+      .query(async () => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const result = await db.execute(sql.raw(`
+            SELECT 
+              ic.*,
+              i.created_at as inspection_date
+            FROM inspection_charges ic
+            JOIN inspections i ON ic.inspection_id = i.id
+            ORDER BY ic.created_at DESC
+          `)) as any;
+          
+          const charges = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
+            ...row,
+            failed_items: typeof row.failed_items === 'string' ? JSON.parse(row.failed_items) : row.failed_items,
+          }));
+          
+          return charges;
+        } catch (error: any) {
+          console.error('[inspectionCharges.listAll] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao listar cobranças: ${error.message}` 
+          });
+        }
+      }),
+
+    // Admin: Atualizar cobrança (prorrogar/amortizar)
+    update: adminProcedure
+      .input(z.object({
+        chargeId: z.number(),
+        newAmount: z.number().positive().optional(),
+        newDueDate: z.number().optional(), // Unix timestamp
+      }))
+      .mutation(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const { inspectionCharges } = await import('../drizzle/schema');
+          
+          // Buscar cobrança
+          const chargeResult = await db.execute(sql.raw(`
+            SELECT * FROM inspection_charges WHERE id = ${input.chargeId}
+          `)) as any;
+          
+          const charge = (Array.isArray(chargeResult[0]) ? chargeResult[0][0] : chargeResult[0]);
+          if (!charge) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cobrança não encontrada' });
+          }
+          
+          if (charge.payment_status === 'paid' || charge.payment_status === 'cancelled') {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Não é possível editar cobrança paga ou cancelada' });
+          }
+          
+          // Atualizar campos
+          const updates: any = {};
+          if (input.newAmount) updates.amount = input.newAmount.toString();
+          if (input.newDueDate) updates.dueDate = new Date(input.newDueDate);
+          
+          if (Object.keys(updates).length > 0) {
+            await db.update(inspectionCharges)
+              .set(updates)
+              .where(sql`id = ${input.chargeId}`);
+          }
+          
+          return { success: true };
+        } catch (error: any) {
+          console.error('[inspectionCharges.update] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao atualizar cobrança: ${error.message}` 
+          });
+        }
+      }),
+
+    // Admin: Cancelar cobrança
+    delete: adminProcedure
+      .input(z.object({
+        chargeId: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const { inspectionCharges } = await import('../drizzle/schema');
+          
+          // Buscar cobrança
+          const chargeResult = await db.execute(sql.raw(`
+            SELECT * FROM inspection_charges WHERE id = ${input.chargeId}
+          `)) as any;
+          
+          const charge = (Array.isArray(chargeResult[0]) ? chargeResult[0][0] : chargeResult[0]);
+          if (!charge) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cobrança não encontrada' });
+          }
+          
+          if (charge.payment_status === 'paid') {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Não é possível cancelar cobrança paga' });
+          }
+          
+          // Cancelar no Asaas
+          if (charge.asaas_charge_id) {
+            const { deleteCharge } = await import('./_core/asaas');
+            await deleteCharge(charge.asaas_charge_id);
+          }
+          
+          // Atualizar status
+          await db.update(inspectionCharges)
+            .set({ paymentStatus: 'cancelled' })
+            .where(sql`id = ${input.chargeId}`);
+          
+          return { success: true };
+        } catch (error: any) {
+          console.error('[inspectionCharges.delete] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao cancelar cobrança: ${error.message}` 
+          });
+        }
+      }),
+
+    // Cliente: Listar minhas cobranças
+    myCharges: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (!ctx.user?.email) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Usuário não autenticado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const result = await db.execute(sql.raw(`
+            SELECT 
+              ic.*,
+              i.created_at as inspection_date
+            FROM inspection_charges ic
+            JOIN inspections i ON ic.inspection_id = i.id
+            WHERE ic.client_email = '${ctx.user.email}'
+            ORDER BY ic.created_at DESC
+          `)) as any;
+          
+          const charges = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
+            ...row,
+            failed_items: typeof row.failed_items === 'string' ? JSON.parse(row.failed_items) : row.failed_items,
+          }));
+          
+          return charges;
+        } catch (error: any) {
+          console.error('[inspectionCharges.myCharges] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao buscar cobranças: ${error.message}` 
+          });
+        }
+      }),
+
+    // Cliente: Estatísticas
+    getStats: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (!ctx.user?.email) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Usuário não autenticado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const result = await db.execute(sql.raw(`
+            SELECT 
+              COUNT(*) as total_charges,
+              SUM(CASE WHEN payment_status = 'paid' THEN amount ELSE 0 END) as total_paid,
+              SUM(CASE WHEN payment_status = 'pending' THEN amount ELSE 0 END) as total_pending,
+              SUM(CASE WHEN payment_status = 'overdue' THEN amount ELSE 0 END) as total_overdue
+            FROM inspection_charges
+            WHERE client_email = '${ctx.user.email}'
+          `)) as any;
+          
+          const stats = (Array.isArray(result[0]) ? result[0][0] : result[0]);
+          
+          return {
+            totalCharges: parseInt(stats.total_charges) || 0,
+            totalPaid: parseFloat(stats.total_paid) || 0,
+            totalPending: parseFloat(stats.total_pending) || 0,
+            totalOverdue: parseFloat(stats.total_overdue) || 0,
+          };
+        } catch (error: any) {
+          console.error('[inspectionCharges.getStats] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao calcular estatísticas: ${error.message}` 
+          });
+        }
+      }),
+
+    // Cliente: Gerar pagamento PIX
+    generatePayment: protectedProcedure
+      .input(z.object({
+        chargeIds: z.array(z.number()).min(1, 'Selecione pelo menos uma cobrança'),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user?.email) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Usuário não autenticado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const ids = input.chargeIds.join(',');
+          
+          // Buscar cobranças
+          const result = await db.execute(sql.raw(`
+            SELECT * FROM inspection_charges
+            WHERE id IN (${ids}) AND client_email = '${ctx.user.email}'
+          `)) as any;
+          
+          const charges = (Array.isArray(result[0]) ? result[0] : result);
+          if (charges.length === 0) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhuma cobrança encontrada' });
+          }
+          
+          // Buscar valores atualizados no Asaas (multas/juros)
+          const { getCharge } = await import('./_core/asaas');
+          let totalAmount = 0;
+          const pixData: any = {};
+          
+          for (const charge of charges) {
+            if (charge.asaas_charge_id) {
+              const asaasCharge = await getCharge(charge.asaas_charge_id);
+              totalAmount += parseFloat(asaasCharge.value);
+              
+              // Usar PIX da primeira cobrança (ou criar cobrança única se múltiplas)
+              if (!pixData.qrCode && asaasCharge.pixQrCode) {
+                pixData.qrCode = asaasCharge.pixQrCode;
+                pixData.copyPaste = asaasCharge.pixCopyPaste;
+              }
+            } else {
+              totalAmount += parseFloat(charge.amount);
+            }
+          }
+          
+          return {
+            totalAmount,
+            pixQrCode: pixData.qrCode || null,
+            pixCopyPaste: pixData.copyPaste || null,
+          };
+        } catch (error: any) {
+          console.error('[inspectionCharges.generatePayment] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao gerar pagamento: ${error.message}` 
+          });
+        }
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

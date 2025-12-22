@@ -176,6 +176,13 @@
       "when": 1766373647743,
       "tag": "0024_peaceful_firebrand",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1766377473316,
+      "tag": "0025_fair_joshua_kane",
+      "breakpoints": true
     }
   ]
 }

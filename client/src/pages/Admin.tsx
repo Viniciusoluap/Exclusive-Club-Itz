@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Calendar, Check, ClipboardCheck, Fuel, Loader2, Pencil, Plus, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
+import { BarChart3, Calendar, Check, ClipboardCheck, DollarSign, Fuel, Loader2, Pencil, Plus, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -990,24 +990,44 @@ export default function Admin() {
 
           {/* Inspections Tab */}
           <TabsContent value="inspections" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Vistorias</CardTitle>
-                <CardDescription>
-                  Registre vistorias das embarcações antes e após o uso e visualize o histórico.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-center">
-                  <Button asChild>
-                    <Link href="/admin/vistorias">
-                      <ClipboardCheck className="h-4 w-4 mr-2" />
-                      Gerenciar Vistorias
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Vistorias</CardTitle>
+                  <CardDescription>
+                    Registre vistorias das embarcações antes e após o uso e visualize o histórico.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-center">
+                    <Button asChild>
+                      <Link href="/admin/vistorias">
+                        <ClipboardCheck className="h-4 w-4 mr-2" />
+                        Gerenciar Vistorias
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cobranças de Danos</CardTitle>
+                  <CardDescription>
+                    Gerencie cobranças de reparos após vistorias reprovadas.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-center">
+                    <Button asChild variant="outline">
+                      <Link href="/admin/cobrancas-danos">
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Gerenciar Cobranças
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Fuel Tab */}

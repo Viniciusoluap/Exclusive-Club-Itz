@@ -15,6 +15,7 @@ import AdminManutencao from "./pages/AdminManutencao";
 import Funcionarios from "./pages/Funcionarios";
 import Abastecimento from "./pages/Abastecimento";
 import Vistorias from "./pages/Vistorias";
+import CobrancasDanos from "./pages/admin/CobrancasDanos";
 import EmployeeReservas from "./pages/employee/Reservas";
 import EmployeeManutencoes from "./pages/employee/Manutencoes";
 import EmployeeAbastecimentos from "./pages/employee/Abastecimentos";
@@ -37,6 +38,7 @@ function Router() {
       <Route path={"/admin/funcionarios"} component={Funcionarios} />
       <Route path={"/admin/abastecimento"} component={Abastecimento} />
       <Route path={"/admin/vistorias"} component={Vistorias} />
+      <Route path={"/admin/cobrancas-danos"} component={CobrancasDanos} />
       <Route path={"/employee/reservas"} component={EmployeeReservas} />
       <Route path={"/employee/manutencoes"} component={EmployeeManutencoes} />
       <Route path={"/employee/abastecimentos"} component={EmployeeAbastecimentos} />
