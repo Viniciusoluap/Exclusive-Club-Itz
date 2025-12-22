@@ -224,3 +224,23 @@ Biblioteca `pdf-to-img` está convertendo apenas a primeira página do PDF.
 **Arquivos modificados:**
 - [x] server/routers.ts (query SQL + mapeamento de campos)
 - [x] client/src/pages/employee/Abastecimentos.tsx (preenchimento automático + timezone)
+
+---
+
+## ✅ BUG CORRIGIDO - Preço por Litro Preenchimento Automático (22/12/2025 - 23:00)
+
+### Problema Confirmado pelo Usuário
+Apesar da correção anterior, o campo "Preço por Litro" ainda não estava preenchendo automaticamente do estoque.
+
+### Causa Raiz
+- useEffect verificava `budget?.lastPricePerLiter` mas não validava corretamente valores maiores que zero
+- Faltava log para debug em caso de problemas futuros
+
+### Solução Implementada
+- [x] Adicionar validação explícita: `budget.lastPricePerLiter > 0`
+- [x] Adicionar console.log para debug (sucesso e warning)
+- [x] Testar visualmente no navegador
+- [x] Campo agora preenche corretamente com R$ 6.29 do estoque
+
+**Arquivo modificado:**
+- [x] client/src/pages/employee/Abastecimentos.tsx (useEffect linha 63-76)
