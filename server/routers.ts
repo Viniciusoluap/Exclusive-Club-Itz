@@ -311,6 +311,69 @@ export const appRouter = router({
         await db.deleteVessel(input.id);
         return { success: true };
       }),
+
+    // Get vessels where client has quotas (for document access)
+    getMyVessels: protectedProcedure.query(async ({ ctx }) => {
+      if (!ctx.user.email) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Email não encontrado' });
+      }
+
+      // Get client by email
+      const client = await db.getAllowedClientByEmail(ctx.user.email);
+      if (!client) {
+        return [];
+      }
+
+      // Get vessels where client has active quotas
+      const quotas = await db.getClientQuotasByClientId(client.id);
+      const vesselIds = Array.from(new Set(quotas.map(q => q.vesselId)));
+      
+      const vessels = [];
+      for (const vesselId of vesselIds) {
+        const vessel = await db.getVesselById(vesselId);
+        if (vessel) {
+          vessels.push({
+            id: vessel.id,
+            name: vessel.name,
+            type: vessel.type,
+            documentUrl: vessel.documentUrl,
+            extraDocumentUrl: vessel.extraDocumentUrl,
+          });
+        }
+      }
+      
+      return vessels;
+    }),
+
+    // Update vessel documents (admin only)
+    updateDocuments: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        documentUrl: z.string().optional(),
+        extraDocumentUrl: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateVessel(id, data);
+        return { success: true };
+      }),
+
+    // Delete vessel document (admin only)
+    deleteDocument: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        documentType: z.enum(['document', 'extraDocument']),
+      }))
+      .mutation(async ({ input }) => {
+        const updateData: Record<string, null> = {};
+        if (input.documentType === 'document') {
+          updateData.documentUrl = null;
+        } else {
+          updateData.extraDocumentUrl = null;
+        }
+        await db.updateVessel(input.id, updateData);
+        return { success: true };
+      }),
   }),
 
   // Bookings

@@ -412,3 +412,48 @@ Ao gerar relatório PDF de abastecimentos, a seção "Comprovação por Fotos da
 - [x] server/_core/index.ts (novo endpoint /api/upload)
 - [x] server/_core/fuelRecordPDF.ts (processamento assíncrono)
 - [x] client/src/pages/employee/Abastecimentos.tsx (upload real S3)
+
+
+---
+
+## 📄 NOVA FUNCIONALIDADE - Sistema de Documentos de Embarcações (22/12/2025 - 23:50)
+
+### Requisito do Usuário (APROVADO)
+Adicionar sistema de upload de documentos para embarcações com acesso controlado:
+- Admin faz upload de 2 documentos por embarcação
+- Cliente visualiza e baixa documentos apenas das embarcações onde possui cotas
+
+### Backend - Schema e Endpoints
+- [x] Adicionar campos `document_url` e `extra_document_url` na tabela vessels (drizzle/schema.ts)
+- [x] Executar `pnpm db:push` para aplicar mudanças no banco
+- [x] Criar endpoint `vessels.getMyVessels` (cliente busca embarcações com cotas)
+- [x] Criar endpoint `vessels.updateDocuments` (admin faz upload)
+- [x] Criar endpoint `vessels.deleteDocument` (admin exclui documentos)
+
+### Frontend Admin
+- [x] Adicionar campo "Documento da Embarcação" no dialog (obrigatório)
+- [x] Adicionar campo "Documento Extra" no dialog (opcional)
+- [x] Implementar upload de arquivos (PDF, JPG, PNG - máx 10MB)
+- [x] Adicionar botões "Ver" e "Excluir" para cada documento
+- [x] Validação: documento principal obrigatório para cadastrar embarcação
+
+### Frontend Cliente (Dashboard)
+- [x] Criar nova seção "📄 Documentos das Minhas Embarcações"
+- [x] Buscar embarcações onde cliente possui cotas ativas
+- [x] Exibir cards agrupados por embarcação
+- [x] Botão "Baixar Documento" para cada arquivo disponível
+- [x] Indicador "Não disponível" quando documento não existe
+- [x] Layout responsivo (mobile + desktop)
+
+### Testes Automatizados
+- [x] Criar server/vessels.getMyVessels.test.ts (4 testes)
+- [x] Criar server/vessels.documents.test.ts (7 testes)
+- [x] Executar `pnpm test` para validar (11 testes passando)
+
+### Validação Final
+- [x] Testar upload como admin (2 documentos)
+- [x] Testar visualização como cliente (apenas embarcações com cotas)
+- [x] Testar download de documentos
+- [x] Testar exclusão de documentos
+- [x] Validar responsividade (mobile + desktop)
+- [x] Criar checkpoint final

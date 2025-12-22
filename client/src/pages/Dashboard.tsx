@@ -118,6 +118,110 @@ function ActiveBookingsSection() {
   );
 }
 
+function VesselDocumentsSection() {
+  const { user } = useAuth();
+  
+  // Buscar embarcações onde o cliente possui cotas
+  const { data: myVessels, isLoading } = trpc.vessels.getMyVessels.useQuery();
+  
+  if (isLoading) {
+    return (
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            📄 Documentos das Minhas Embarcações
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (!myVessels || myVessels.length === 0) {
+    return (
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            📄 Documentos das Minhas Embarcações
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            Você não possui cotas em nenhuma embarcação.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <Card className="mt-8">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          📄 Documentos das Minhas Embarcações
+        </CardTitle>
+        <CardDescription>
+          Acesse os documentos das embarcações onde você possui cotas
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {myVessels.map((vessel: any) => (
+            <Card key={vessel.id} className="border-2">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Ship className="h-5 w-5 text-primary" />
+                  {vessel.name}
+                </CardTitle>
+                <CardDescription className="capitalize">{vessel.type}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Documento Principal */}
+                <div className="border-l-4 border-primary pl-3">
+                  <p className="text-sm font-medium mb-2">📄 Documento da Embarcação</p>
+                  {vessel.documentUrl ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => window.open(vessel.documentUrl, "_blank")}
+                    >
+                      📎 Baixar Documento
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Não disponível</p>
+                  )}
+                </div>
+                
+                {/* Documento Extra */}
+                <div className="border-l-4 border-muted pl-3">
+                  <p className="text-sm font-medium mb-2">📎 Documento Extra</p>
+                  {vessel.extraDocumentUrl ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => window.open(vessel.extraDocumentUrl, "_blank")}
+                    >
+                      📎 Baixar Documento
+                    </Button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Não disponível</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function FuelRecordsSection() {
   const [selectedRecords, setSelectedRecords] = useState<number[]>([]);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -868,6 +972,9 @@ export default function Dashboard() {
 
         {/* Meus Abastecimentos Section */}
         <FuelRecordsSection />
+
+        {/* Documentos das Minhas Embarcações Section */}
+        <VesselDocumentsSection />
       </main>
     </div>
   );

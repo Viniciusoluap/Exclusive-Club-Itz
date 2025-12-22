@@ -212,6 +212,8 @@ export default function Admin() {
     description: "",
     capacity: "",
     quotaCount: "6",
+    documentUrl: "",
+    extraDocumentUrl: "",
   });
 
   // Fetch data
@@ -294,7 +296,7 @@ export default function Admin() {
       utils.vessels.listAll.invalidate();
       setShowVesselDialog(false);
       setEditingVesselId(null);
-      setVesselForm({ name: "", type: "lancha", description: "", capacity: "", quotaCount: "6" });
+      setVesselForm({ name: "", type: "lancha", description: "", capacity: "", quotaCount: "6", documentUrl: "", extraDocumentUrl: "" });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -307,7 +309,7 @@ export default function Admin() {
       utils.vessels.listAll.invalidate();
       setShowVesselDialog(false);
       setEditingVesselId(null);
-      setVesselForm({ name: "", type: "lancha", description: "", capacity: "", quotaCount: "6" });
+      setVesselForm({ name: "", type: "lancha", description: "", capacity: "", quotaCount: "6", documentUrl: "", extraDocumentUrl: "" });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -317,6 +319,16 @@ export default function Admin() {
   const deleteVessel = trpc.vessels.delete.useMutation({
     onSuccess: () => {
       toast.success("Embarcação removida com sucesso!");
+      utils.vessels.listAll.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateDocumentsMutation = trpc.vessels.updateDocuments.useMutation({
+    onSuccess: () => {
+      toast.success("Documentos atualizados com sucesso!");
       utils.vessels.listAll.invalidate();
     },
     onError: (error) => {
@@ -400,11 +412,18 @@ export default function Admin() {
     });
   };
 
-  const handleCreateVessel = () => {
-    if (!vesselForm.name || !vesselForm.type || !vesselForm.quotaCount) {
+   const handleCreateVessel = () => {
+    if (!vesselForm.name || !vesselForm.type) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
+
+    // Validar documento obrigatório
+    if (!editingVesselId && !vesselForm.documentUrl) {
+      toast.error("Documento da embarcação é obrigatório");
+      return;
+    }
+
     const quotaCountNum = parseInt(vesselForm.quotaCount);
     if (isNaN(quotaCountNum) || quotaCountNum < 1 || quotaCountNum > 10) {
       toast.error("Quantidade de cotas deve ser entre 1 e 10");
@@ -421,6 +440,15 @@ export default function Admin() {
         capacity: vesselForm.capacity ? parseInt(vesselForm.capacity) : undefined,
         quotaCount: quotaCountNum,
       } as any);
+      
+      // Atualizar documentos separadamente se houver mudanças
+      if (vesselForm.documentUrl || vesselForm.extraDocumentUrl) {
+        updateDocumentsMutation.mutate({
+          id: editingVesselId,
+          documentUrl: vesselForm.documentUrl || undefined,
+          extraDocumentUrl: vesselForm.extraDocumentUrl || undefined,
+        });
+      }
     } else {
       // Criar nova embarcação
       createVessel.mutate({
@@ -429,6 +457,8 @@ export default function Admin() {
         description: vesselForm.description || undefined,
         capacity: vesselForm.capacity ? parseInt(vesselForm.capacity) : undefined,
         quotaCount: quotaCountNum,
+        documentUrl: vesselForm.documentUrl,
+        extraDocumentUrl: vesselForm.extraDocumentUrl || undefined,
       } as any);
     }
   };
@@ -441,6 +471,8 @@ export default function Admin() {
       description: vessel.description || "",
       capacity: vessel.capacity ? vessel.capacity.toString() : "",
       quotaCount: vessel.quotaCount ? vessel.quotaCount.toString() : "6",
+      documentUrl: vessel.documentUrl || "",
+      extraDocumentUrl: vessel.extraDocumentUrl || "",
     });
     setShowVesselDialog(true);
   };
@@ -1463,7 +1495,7 @@ export default function Admin() {
         setShowVesselDialog(open);
         if (!open) {
           setEditingVesselId(null);
-          setVesselForm({ name: "", type: "lancha", description: "", capacity: "", quotaCount: "6" });
+          setVesselForm({ name: "", type: "lancha", description: "", capacity: "", quotaCount: "6", documentUrl: "", extraDocumentUrl: "" });
         }
       }}>
         <DialogContent>
@@ -1532,6 +1564,130 @@ export default function Admin() {
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Número de cotas disponíveis para esta embarcação
+              </p>
+            </div>
+
+            {/* Documento da Embarcação */}
+            <div>
+              <Label htmlFor="vessel-document">📄 Documento da Embarcação *</Label>
+              <Input
+                id="vessel-document"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (file.size > 10 * 1024 * 1024) {
+                      toast.error("Arquivo muito grande. Máximo: 10 MB");
+                      return;
+                    }
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    try {
+                      const response = await fetch("/api/upload", {
+                        method: "POST",
+                        body: formData,
+                      });
+                      const data = await response.json();
+                      if (data.url) {
+                        setVesselForm({ ...vesselForm, documentUrl: data.url });
+                        toast.success("Documento enviado com sucesso!");
+                      }
+                    } catch (error) {
+                      toast.error("Erro ao enviar documento");
+                    }
+                  }
+                }}
+              />
+              {vesselForm.documentUrl && (
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(vesselForm.documentUrl, "_blank")}
+                  >
+                    👁️ Ver
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      if (confirm("Tem certeza que deseja excluir este documento?")) {
+                        setVesselForm({ ...vesselForm, documentUrl: "" });
+                        toast.success("Documento removido");
+                      }
+                    }}
+                  >
+                    🗑️ Excluir
+                  </Button>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                PDF, JPG ou PNG (máx 10 MB)
+              </p>
+            </div>
+
+            {/* Documento Extra */}
+            <div>
+              <Label htmlFor="vessel-extra-document">📎 Documento Extra (opcional)</Label>
+              <Input
+                id="vessel-extra-document"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (file.size > 10 * 1024 * 1024) {
+                      toast.error("Arquivo muito grande. Máximo: 10 MB");
+                      return;
+                    }
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    try {
+                      const response = await fetch("/api/upload", {
+                        method: "POST",
+                        body: formData,
+                      });
+                      const data = await response.json();
+                      if (data.url) {
+                        setVesselForm({ ...vesselForm, extraDocumentUrl: data.url });
+                        toast.success("Documento extra enviado com sucesso!");
+                      }
+                    } catch (error) {
+                      toast.error("Erro ao enviar documento extra");
+                    }
+                  }
+                }}
+              />
+              {vesselForm.extraDocumentUrl && (
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(vesselForm.extraDocumentUrl, "_blank")}
+                  >
+                    👁️ Ver
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      if (confirm("Tem certeza que deseja excluir este documento?")) {
+                        setVesselForm({ ...vesselForm, extraDocumentUrl: "" });
+                        toast.success("Documento extra removido");
+                      }
+                    }}
+                  >
+                    🗑️ Excluir
+                  </Button>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                PDF, JPG ou PNG (máx 10 MB)
               </p>
             </div>
           </div>
