@@ -363,3 +363,52 @@ Frontend do funcionário não está invalidando a query `fuelBudget.get` após c
 ✅ Estoque atualiza automaticamente após excluir abastecimento (devolve litros)
 ✅ Lógica idêntica à página do admin
 ✅ Interface responsiva e em tempo real
+
+---
+
+## 🐛 BUG REPORTADO - Fotos da Balança Não Aparecem no PDF de Abastecimentos (22/12/2025 - 23:41)
+
+### Problema Reportado pelo Usuário
+Ao gerar relatório PDF de abastecimentos, a seção "Comprovação por Fotos da Balança" aparece vazia (sem as fotos).
+
+**Evidência:**
+- Screenshot mostra seção com título "Comprovação por Fotos da Balança"
+- Área circulada em vermelho está vazia (sem imagens)
+- Registro #44004 tem fotos (peso cheio e peso após) mas não aparecem no PDF
+
+**Comportamento esperado:**
+- Fotos "ANTES (peso cheio)" e "DEPOIS (peso após)" devem aparecer no PDF
+- Similar ao relatório de clientes que já incorpora documentos corretamente
+
+### Causa Raiz Provável
+- Código de geração do PDF não está baixando/incorporando as imagens das URLs
+- Possível problema com fetch/download das imagens do S3
+- Ou imagens não estão sendo passadas corretamente para a função de geração
+
+### Causa Raiz Identificada
+🐞 **Problema real:** Frontend estava salvando URLs `blob:` (temporárias do navegador) ao invés de fazer upload real para S3.
+
+**Evidência:**
+- Logs do servidor: `AxiosError: Unsupported protocol blob:`
+- URLs no banco: `blob:https://...` (inválidas para download)
+- Código tinha TODO: "Implementar upload real para S3"
+
+### Solução Implementada
+- [x] Criar endpoint `/api/upload` para fazer upload de arquivos para S3
+- [x] Implementar upload real no frontend (substituir URL.createObjectURL)
+- [x] Refatorar função `generateFuelRecordsPDF` para processar fotos assíncronas
+- [x] Adicionar logs de debug para rastreamento
+- [ ] Testar com novo registro (upload real para S3) - AGUARDANDO USUÁRIO
+- [ ] Validar que fotos aparecem no PDF gerado - AGUARDANDO USUÁRIO
+
+**Instruções para teste:**
+1. Criar novo abastecimento com método de pesagem
+2. Fazer upload de fotos da balança (ANTES e DEPOIS)
+3. Salvar registro
+4. Gerar PDF com esse registro
+5. Verificar se fotos aparecem na seção "Comprovação por Fotos da Balança"
+
+**Arquivos modificados:**
+- [x] server/_core/index.ts (novo endpoint /api/upload)
+- [x] server/_core/fuelRecordPDF.ts (processamento assíncrono)
+- [x] client/src/pages/employee/Abastecimentos.tsx (upload real S3)
