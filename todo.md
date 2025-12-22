@@ -362,3 +362,61 @@ Código de integração está correto, mas falta a chave de API.
   * ✅ Limite de 4 fotos por página A4 (2 linhas × 2 colunas)
   * ✅ Paginação automática quando excede limite
   * ✅ Página em modo retrato (portrait) para melhor visualização
+
+
+---
+
+## ✅ CONCLUÍDO - Sistema de Documentos de Clientes (21/12/2025 - 21:30)
+
+### Requisitos do Usuário
+
+**PRINT 2 (Dialog "Editar Cliente")** - Adicionar campos de upload:
+- [x] Campo de upload: Contrato do Cliente (obrigatório)
+- [x] Campo de upload: Contrato 2 do Cliente (opcional)
+- [x] Campo de upload: Documento Pessoal (obrigatório)
+
+**PRINT 1 (Página Clientes Autorizados)** - Botão de relatório:
+- [x] Adicionar botão "Gerar Relatório PDF" ao lado de "Adicionar Cliente"
+- [x] Botão deve estar na área circulada em vermelho no print
+
+**Conteúdo do Relatório PDF:**
+- [x] Ficha com dados básicos do cliente (nome, email, telefone, cotas)
+- [x] Foto do documento pessoal incorporada
+- [x] Contrato completo incorporado
+- [x] Contrato 2 incorporado (se houver upload)
+
+### Implementação Técnica
+
+**Backend:**
+- [x] Adicionar 3 campos na tabela allowed_clients: contract_url, contract2_url, document_url
+- [x] Criar endpoint REST /api/upload-client-document para upload de arquivos
+- [x] Criar função generateClientReport em server/_core/clientReportPDF.ts
+- [x] Criar endpoint allowedClients.generateReport no router
+- [x] Criar função getAllowedClientById no db.ts
+
+**Frontend:**
+- [x] Adicionar 3 campos de upload no dialog de edição (Admin.tsx)
+- [x] Validação: Mensagem de erro se tentar fazer upload antes de salvar cliente
+- [x] Adicionar botão "Gerar Relatório PDF" na página de Clientes
+- [x] Dialog de seleção de cliente para gerar relatório
+- [x] Download automático do PDF (base64 → Blob → URL → Download)
+
+**PDF:**
+- [x] Seção 1: Dados básicos (nome, email, telefone, cotas)
+- [x] Seção 2: Documento pessoal (foto incorporada)
+- [x] Seção 3: Contrato (PDF/imagem incorporada)
+- [x] Seção 4: Contrato 2 (se houver - PDF/imagem incorporada)
+
+### Testes
+- [x] Criados 5 testes automatizados (clientReportPDF.test.ts)
+- [x] Todos os testes passando (5/5)
+- [x] Validação de geração de PDF sem erros
+- [x] Validação de estrutura do PDF (header %PDF)
+
+### Resultado Final
+✅ **Funcionalidade implementada com sucesso!**
+- Upload de documentos: Contrato, Contrato 2 (opcional) e Documento Pessoal
+- Botão "Gerar Relatório PDF" na página de Clientes Autorizados
+- Relatório PDF completo com dados e documentos incorporados
+- Download automático do PDF
+- 5 testes automatizados passando

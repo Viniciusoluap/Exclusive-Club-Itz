@@ -171,12 +171,17 @@ export default function Admin() {
 
   // Client Management State
   const [showClientDialog, setShowClientDialog] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [selectedClientForReport, setSelectedClientForReport] = useState<number | null>(null);
   const [editingClientId, setEditingClientId] = useState<number | null>(null);
   const [selectedVesselFilter, setSelectedVesselFilter] = useState<number | "all">("all");
   const [clientForm, setClientForm] = useState({ 
     email: "", 
     name: "", 
     phone: "",
+    contractUrl: "",
+    contract2Url: "",
+    documentUrl: "",
     quotas: [] as Array<{ vesselId: number, quotaNumber: number, quotaType: "full" | "half" }>
   });
 
@@ -224,7 +229,7 @@ export default function Admin() {
       utils.allowedClients.list.invalidate();
       setShowClientDialog(false);
       setEditingClientId(null);
-      setClientForm({ email: "", name: "", phone: "", quotas: [] });
+      setClientForm({ email: "", name: "", phone: "", contractUrl: "", contract2Url: "", documentUrl: "", quotas: [] });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -237,7 +242,7 @@ export default function Admin() {
       utils.allowedClients.list.invalidate();
       setShowClientDialog(false);
       setEditingClientId(null);
-      setClientForm({ email: "", name: "", phone: "", quotas: [] });
+      setClientForm({ email: "", name: "", phone: "", contractUrl: "", contract2Url: "", documentUrl: "", quotas: [] });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -253,6 +258,8 @@ export default function Admin() {
       toast.error(error.message);
     },
   });
+
+  const generateReport = trpc.allowedClients.generateReport.useMutation();
 
   const toggleClientStatus = trpc.allowedClients.update.useMutation({
     onSuccess: () => {
@@ -350,6 +357,9 @@ export default function Admin() {
       email: client.email,
       name: client.name,
       phone: client.phone || "",
+      contractUrl: client.contractUrl || "",
+      contract2Url: client.contract2Url || "",
+      documentUrl: client.documentUrl || "",
       quotas: client.quotas || [],
     });
     setShowClientDialog(true);
@@ -543,10 +553,25 @@ export default function Admin() {
                       Gerencie os emails autorizados a fazer reservas
                     </CardDescription>
                   </div>
-                  <Button onClick={() => setShowClientDialog(true)}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Adicionar Cliente
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        if (!clients || clients.length === 0) {
+                          toast.error('Nenhum cliente cadastrado');
+                          return;
+                        }
+                        setShowReportDialog(true);
+                      }}
+                    >
+                      <ClipboardCheck className="h-4 w-4 mr-2" />
+                      Gerar Relatório PDF
+                    </Button>
+                    <Button onClick={() => setShowClientDialog(true)}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Adicionar Cliente
+                    </Button>
+                  </div>
                 </div>
                 {/* Filtro de Embarcação */}
                 <div className="flex items-center gap-2 mt-4">
@@ -992,7 +1017,7 @@ export default function Admin() {
         setShowClientDialog(open);
         if (!open) {
           setEditingClientId(null);
-          setClientForm({ email: "", name: "", phone: "", quotas: [] });
+          setClientForm({ email: "", name: "", phone: "", contractUrl: "", contract2Url: "", documentUrl: "", quotas: [] });
         }
       }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1031,6 +1056,162 @@ export default function Admin() {
                 placeholder="(99) 99999-9999"
               />
             </div>
+            
+            {/* Campos de Upload de Documentos */}
+            <div className="border-t pt-4 space-y-4">
+              <div className="font-medium text-sm">Documentos do Cliente</div>
+              
+              {/* Contrato Principal (Obrigatório) */}
+              <div>
+                <Label htmlFor="contract">Contrato do Cliente *</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="contract"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      
+                      if (!editingClientId) {
+                        toast.error("Salve o cliente primeiro antes de fazer upload de documentos");
+                        return;
+                      }
+                      
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      formData.append('clientId', editingClientId.toString());
+                      formData.append('documentType', 'contract');
+                      
+                      try {
+                        const response = await fetch('/api/upload-client-document', {
+                          method: 'POST',
+                          body: formData,
+                        });
+                        
+                        if (!response.ok) throw new Error('Erro ao fazer upload');
+                        
+                        const data = await response.json();
+                        setClientForm({ ...clientForm, contractUrl: data.url });
+                        toast.success('Contrato enviado com sucesso!');
+                      } catch (error) {
+                        toast.error('Erro ao fazer upload do contrato');
+                      }
+                    }}
+                  />
+                  {clientForm.contractUrl && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(clientForm.contractUrl, '_blank')}
+                    >
+                      Ver
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              {/* Contrato 2 (Opcional) */}
+              <div>
+                <Label htmlFor="contract2">Contrato 2 do Cliente (opcional)</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="contract2"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      
+                      if (!editingClientId) {
+                        toast.error("Salve o cliente primeiro antes de fazer upload de documentos");
+                        return;
+                      }
+                      
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      formData.append('clientId', editingClientId.toString());
+                      formData.append('documentType', 'contract2');
+                      
+                      try {
+                        const response = await fetch('/api/upload-client-document', {
+                          method: 'POST',
+                          body: formData,
+                        });
+                        
+                        if (!response.ok) throw new Error('Erro ao fazer upload');
+                        
+                        const data = await response.json();
+                        setClientForm({ ...clientForm, contract2Url: data.url });
+                        toast.success('Contrato 2 enviado com sucesso!');
+                      } catch (error) {
+                        toast.error('Erro ao fazer upload do contrato 2');
+                      }
+                    }}
+                  />
+                  {clientForm.contract2Url && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(clientForm.contract2Url, '_blank')}
+                    >
+                      Ver
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              {/* Documento Pessoal (Obrigatório) */}
+              <div>
+                <Label htmlFor="document">Documento Pessoal *</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="document"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      
+                      if (!editingClientId) {
+                        toast.error("Salve o cliente primeiro antes de fazer upload de documentos");
+                        return;
+                      }
+                      
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      formData.append('clientId', editingClientId.toString());
+                      formData.append('documentType', 'document');
+                      
+                      try {
+                        const response = await fetch('/api/upload-client-document', {
+                          method: 'POST',
+                          body: formData,
+                        });
+                        
+                        if (!response.ok) throw new Error('Erro ao fazer upload');
+                        
+                        const data = await response.json();
+                        setClientForm({ ...clientForm, documentUrl: data.url });
+                        toast.success('Documento enviado com sucesso!');
+                      } catch (error) {
+                        toast.error('Erro ao fazer upload do documento');
+                      }
+                    }}
+                  />
+                  {clientForm.documentUrl && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(clientForm.documentUrl, '_blank')}
+                    >
+                      Ver
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            
             <div>
               <Label>Cotas *</Label>
               <div className="space-y-2 mt-2">
@@ -1095,6 +1276,93 @@ export default function Admin() {
                 </>
               ) : (
                 editingClientId ? "Atualizar" : "Adicionar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Report Dialog - Selecionar Cliente para Gerar Relatório */}
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Gerar Relatório PDF</DialogTitle>
+            <DialogDescription>
+              Selecione um cliente para gerar o relatório completo com documentos
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Cliente</Label>
+            <Select
+              value={selectedClientForReport?.toString() || ""}
+              onValueChange={(value) => setSelectedClientForReport(parseInt(value))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients?.map((client) => (
+                  <SelectItem key={client.id} value={client.id.toString()}>
+                    {client.name} ({client.email})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowReportDialog(false);
+              setSelectedClientForReport(null);
+            }}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={async () => {
+                if (!selectedClientForReport) {
+                  toast.error('Selecione um cliente');
+                  return;
+                }
+                
+                try {
+                  const result = await generateReport.mutateAsync({ 
+                    clientId: selectedClientForReport 
+                  });
+                  
+                  // Converter base64 para Blob
+                  const byteCharacters = atob(result.pdf);
+                  const byteNumbers = new Array(byteCharacters.length);
+                  for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                  }
+                  const byteArray = new Uint8Array(byteNumbers);
+                  const blob = new Blob([byteArray], { type: 'application/pdf' });
+                  
+                  // Criar URL e fazer download
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = result.filename;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                  
+                  toast.success('Relatório gerado com sucesso!');
+                  setShowReportDialog(false);
+                  setSelectedClientForReport(null);
+                } catch (error: any) {
+                  toast.error(error.message || 'Erro ao gerar relatório');
+                }
+              }}
+              disabled={!selectedClientForReport || generateReport.isPending}
+            >
+              {generateReport.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Gerando...
+                </>
+              ) : (
+                'Gerar Relatório'
               )}
             </Button>
           </DialogFooter>
