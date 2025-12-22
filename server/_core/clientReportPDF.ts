@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import axios from "axios";
 import path from "path";
 import fs from "fs";
+import { pdf } from "pdf-to-img";
 
 interface ClientData {
   name: string;
@@ -39,13 +40,14 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
 
       // ========== PÁGINA 1: CABEÇALHO COM LOGO + DADOS BÁSICOS ==========
       
-      // Logo da Exclusive Club
+      // Logo da Exclusive Club (centralizada)
       const logoPath = path.join(process.cwd(), "client/public/logo-exclusive-round.png");
       if (fs.existsSync(logoPath)) {
         const logoSize = 80;
         const logoX = (doc.page.width - logoSize) / 2;
         doc.image(logoPath, logoX, 50, { width: logoSize, height: logoSize });
-        doc.moveDown(5);
+        // Ajustar posição Y após logo para evitar sobreposição
+        doc.y = 50 + logoSize + 20; // Logo + espaçamento
       }
 
       // Título com cor da marca
@@ -110,12 +112,42 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
               align: "center",
             });
           } else if (contentType.includes("pdf")) {
-            // Para PDFs, tentar converter primeira página ou indicar
-            doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
-              "Documento em formato PDF. Visualize o arquivo original separadamente.",
-              { align: "center" }
-            );
-            doc.fillColor("#000000");
+            // Converter primeira página do PDF para imagem e incorporar
+            try {
+              const pdfDocument = await pdf(documentBuffer, { scale: 2.0 });
+              let firstPageBuffer: Buffer | null = null;
+              
+              // Obter primeira página
+              for await (const page of pdfDocument) {
+                firstPageBuffer = page;
+                break; // Apenas primeira página
+              }
+              
+              if (firstPageBuffer) {
+                const maxWidth = 450;
+                const maxHeight = 600;
+                const x = (doc.page.width - maxWidth) / 2;
+                const y = doc.y + 10;
+                
+                doc.image(firstPageBuffer, x, y, {
+                  fit: [maxWidth, maxHeight],
+                  align: "center",
+                });
+              } else {
+                doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+                  "PDF sem páginas.",
+                  { align: "center" }
+                );
+                doc.fillColor("#000000");
+              }
+            } catch (pdfError) {
+              console.error("[PDF] Erro ao converter PDF do documento:", pdfError);
+              doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+                "Erro ao processar PDF.",
+                { align: "center" }
+              );
+              doc.fillColor("#000000");
+            }
           } else {
             doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
               "Formato de documento não suportado para visualização.",
@@ -160,12 +192,42 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
               align: "center",
             });
           } else if (contentType.includes("pdf")) {
-            // Para PDFs, tentar converter primeira página ou indicar
-            doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
-              "Contrato em formato PDF. Visualize o arquivo original separadamente.",
-              { align: "center" }
-            );
-            doc.fillColor("#000000");
+            // Converter primeira página do PDF para imagem e incorporar
+            try {
+              const pdfDocument = await pdf(contractBuffer, { scale: 2.0 });
+              let firstPageBuffer: Buffer | null = null;
+              
+              // Obter primeira página
+              for await (const page of pdfDocument) {
+                firstPageBuffer = page;
+                break; // Apenas primeira página
+              }
+              
+              if (firstPageBuffer) {
+                const maxWidth = 450;
+                const maxHeight = 600;
+                const x = (doc.page.width - maxWidth) / 2;
+                const y = doc.y + 10;
+                
+                doc.image(firstPageBuffer, x, y, {
+                  fit: [maxWidth, maxHeight],
+                  align: "center",
+                });
+              } else {
+                doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+                  "PDF sem páginas.",
+                  { align: "center" }
+                );
+                doc.fillColor("#000000");
+              }
+            } catch (pdfError) {
+              console.error("[PDF] Erro ao converter PDF do contrato:", pdfError);
+              doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+                "Erro ao processar PDF.",
+                { align: "center" }
+              );
+              doc.fillColor("#000000");
+            }
           } else {
             doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
               "Formato de contrato não suportado para visualização.",
@@ -210,12 +272,42 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
               align: "center",
             });
           } else if (contentType.includes("pdf")) {
-            // Para PDFs, tentar converter primeira página ou indicar
-            doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
-              "Contrato 2 em formato PDF. Visualize o arquivo original separadamente.",
-              { align: "center" }
-            );
-            doc.fillColor("#000000");
+            // Converter primeira página do PDF para imagem e incorporar
+            try {
+              const pdfDocument = await pdf(contract2Buffer, { scale: 2.0 });
+              let firstPageBuffer: Buffer | null = null;
+              
+              // Obter primeira página
+              for await (const page of pdfDocument) {
+                firstPageBuffer = page;
+                break; // Apenas primeira página
+              }
+              
+              if (firstPageBuffer) {
+                const maxWidth = 450;
+                const maxHeight = 600;
+                const x = (doc.page.width - maxWidth) / 2;
+                const y = doc.y + 10;
+                
+                doc.image(firstPageBuffer, x, y, {
+                  fit: [maxWidth, maxHeight],
+                  align: "center",
+                });
+              } else {
+                doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+                  "PDF sem páginas.",
+                  { align: "center" }
+                );
+                doc.fillColor("#000000");
+              }
+            } catch (pdfError) {
+              console.error("[PDF] Erro ao converter PDF do contrato 2:", pdfError);
+              doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+                "Erro ao processar PDF.",
+                { align: "center" }
+              );
+              doc.fillColor("#000000");
+            }
           } else {
             doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
               "Formato de contrato não suportado para visualização.",
