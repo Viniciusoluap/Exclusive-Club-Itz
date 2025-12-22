@@ -11,6 +11,7 @@ import { sendWelcomeEmail } from "./_core/welcomeEmail";
 import * as db from "./db";
 import * as stats from "./stats";
 import * as weather from "./weather";
+import * as systemSettings from "./systemSettings";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -3555,6 +3556,43 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             message: `Erro ao gerar pagamento: ${error.message}` 
           });
         }
+      }),
+  }),
+
+  // System Settings (Admin only) - Workaround for Manus env injection bug
+  systemSettings: router({
+    get: adminProcedure
+      .input(z.object({ key: z.string() }))
+      .query(async ({ input }) => {
+        const value = await systemSettings.getSetting(input.key);
+        return { value };
+      }),
+    
+    set: adminProcedure
+      .input(z.object({
+        key: z.string(),
+        value: z.string(),
+        description: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await systemSettings.setSetting(
+          input.key,
+          input.value,
+          input.description,
+          ctx.user.email || undefined
+        );
+        return { success: true };
+      }),
+    
+    list: adminProcedure.query(async () => {
+      return await systemSettings.listSettings();
+    }),
+    
+    delete: adminProcedure
+      .input(z.object({ key: z.string() }))
+      .mutation(async ({ input }) => {
+        await systemSettings.deleteSetting(input.key);
+        return { success: true };
       }),
   }),
 });

@@ -21,6 +21,7 @@ import EmployeeManutencoes from "./pages/employee/Manutencoes";
 import EmployeeAbastecimentos from "./pages/employee/Abastecimentos";
 import EmployeeVistorias from "./pages/employee/Vistorias";
 import MeusAbastecimentos from "./pages/MeusAbastecimentos";
+import SystemSettings from "./pages/SystemSettings";
 import RoleRedirect from "./components/RoleRedirect";
 
 function Router() {
@@ -39,6 +40,7 @@ function Router() {
       <Route path={"/admin/abastecimento"} component={Abastecimento} />
       <Route path={"/admin/vistorias"} component={Vistorias} />
       <Route path={"/admin/cobrancas-danos"} component={CobrancasDanos} />
+      <Route path={"/admin/configuracoes"} component={SystemSettings} />
       <Route path={"/employee/reservas"} component={EmployeeReservas} />
       <Route path={"/employee/manutencoes"} component={EmployeeManutencoes} />
       <Route path={"/employee/abastecimentos"} component={EmployeeAbastecimentos} />
