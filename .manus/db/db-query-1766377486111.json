@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `inspection_charges` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `inspection_id` int NOT NULL,\n  `client_email` varchar(320) NOT NULL,\n  `vessel_name` text NOT NULL,\n  `failed_items` text NOT NULL,\n  `amount` decimal(10,2) NOT NULL,\n  `due_date` timestamp NOT NULL,\n  `asaas_charge_id` varchar(255),\n  `payment_status` enum('pending','paid','overdue','cancelled') NOT NULL DEFAULT 'pending',\n  `receipt_url` text,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `inspection_charges_id` PRIMARY KEY(`id`)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute CREATE TABLE IF NOT EXISTS `inspection_charges` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `inspection_id` int NOT NULL,\n  `client_email` varchar(320) NOT NULL,\n  `vessel_name` text NOT NULL,\n  `failed_items` text NOT NULL,\n  `amount` decimal(10,2) NOT NULL,\n  `due_date` timestamp NOT NULL,\n  `asaas_charge_id` varchar(255),\n  `payment_status` enum('pending','paid','overdue','cancelled') NOT NULL DEFAULT 'pending',\n  `receipt_url` text,\n  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `inspection_charges_id` PRIMARY KEY(`id`)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 224
+}

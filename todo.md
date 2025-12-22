@@ -457,3 +457,341 @@ Adicionar sistema de upload de documentos para embarcações com acesso controla
 - [x] Testar exclusão de documentos
 - [x] Validar responsividade (mobile + desktop)
 - [x] Criar checkpoint final
+
+
+---
+
+## 🚀 NOVA FUNCIONALIDADE - Sistema de Vistorias Avançado com Cobranças de Danos (22/12/2025 - 23:50)
+
+### Requisitos do Usuário
+
+**Contexto:**
+Quando uma vistoria é reprovada (algum item marcado como "Reprovado"), o sistema deve:
+1. Enviar emails automáticos (admin + cliente) com PDF da vistoria
+2. Permitir cadastro de cobrança após orçamento aprovado
+3. Gerar cobrança no Asaas com prazo de 7 dias
+4. Permitir edição da cobrança (prorrogar/amortizar)
+5. Cliente visualiza e paga débitos no dashboard
+
+**Decisões de Design:**
+- ❌ Sem tabela pré-definida de valores (orçamento sob demanda)
+- ✅ Prazo padrão: 7 dias (editável)
+- ✅ Multas/juros: configurados no painel Asaas
+- ✅ Tom educativo nos emails com dicas de prevenção
+- ✅ Dashboard mostra últimas 10 vistorias reprovadas
+- ✅ Descrição Asaas: "Conserto de Danos - Vistoria [Data]"
+- ✅ Mesma conta Asaas do sistema de abastecimentos
+
+---
+
+### Backend - Schema e Banco de Dados
+
+- [ ] Criar tabela `inspection_charges` no schema:
+  ```typescript
+  {
+    id: int (PK, auto-increment)
+    inspection_id: int (FK → inspections.id)
+    client_email: varchar(320)
+    vessel_name: varchar(255)
+    failed_items: text (JSON array de itens reprovados)
+    amount: decimal(10,2) (valor total da cobrança)
+    due_date: timestamp (data de vencimento)
+    asaas_charge_id: varchar(255) (ID da cobrança no Asaas)
+    payment_status: enum('pending', 'paid', 'overdue', 'cancelled')
+    receipt_url: text (URL do comprovante)
+    created_at: timestamp
+    updated_at: timestamp
+  }
+  ```
+- [ ] Executar `pnpm db:push` para aplicar migrations
+
+---
+
+### Backend - Sistema de Emails Automáticos
+
+- [ ] Criar arquivo `server/_core/inspectionEmails.ts`
+- [ ] Implementar função `sendInspectionFailureEmails(inspection, failedItems)`
+- [ ] Template de email para ADMIN:
+  - [ ] Assunto: "🔴 Vistoria Reprovada - [Embarcação] - [Cliente]"
+  - [ ] Corpo: Data, Cliente, Embarcação, Lista de itens reprovados
+  - [ ] Anexo: PDF da vistoria completo
+  - [ ] CTA: "Realizar orçamento e cadastrar cobrança no sistema"
+- [ ] Template de email para CLIENTE (tom educativo):
+  - [ ] Assunto: "⚠️ Vistoria Reprovada - [Embarcação] - Ação Necessária"
+  - [ ] Corpo: 
+    * Mensagem educativa sobre cuidados com a embarcação
+    * Lista de itens reprovados com descrições
+    * Próximos passos (aguardar orçamento)
+    * Dicas de prevenção de danos
+  - [ ] Anexo: PDF da vistoria completo
+- [ ] Modificar endpoint `inspections.create`:
+  - [ ] Detectar itens com status "Reprovado"
+  - [ ] Se houver itens reprovados → chamar `sendInspectionFailureEmails()`
+  - [ ] Enviar emails para admin e cliente automaticamente
+- [ ] Criar testes automatizados (5 testes):
+  - [ ] Teste: Detectar vistoria reprovada
+  - [ ] Teste: Enviar email para admin com PDF
+  - [ ] Teste: Enviar email para cliente com PDF
+  - [ ] Teste: Vistoria aprovada não envia emails
+  - [ ] Teste: Validar anexo PDF nos emails
+
+---
+
+### Backend - Endpoints de Cobranças
+
+- [ ] Criar router `inspectionCharges` em `server/routers.ts`:
+
+**1. inspectionCharges.create (admin)** - Cadastrar cobrança após orçamento
+- [ ] Input: inspectionId, failedItems (array), amount, dueDate (opcional)
+- [ ] Validação: apenas admin pode criar
+- [ ] Buscar dados da vistoria (client_email, vessel_name)
+- [ ] Criar cobrança no Asaas via `createCharge()`:
+  - [ ] Descrição: "Conserto de Danos - Vistoria [Data]"
+  - [ ] Vencimento: dueDate ou 7 dias após hoje
+  - [ ] Valor: amount
+  - [ ] Cliente: client_email
+- [ ] Salvar no banco: inspection_id, client_email, vessel_name, failed_items, amount, due_date, asaas_charge_id, payment_status='pending'
+- [ ] Retornar: charge criada + QR Code PIX
+
+**2. inspectionCharges.listAll (admin)** - Listar todas as cobranças
+- [ ] Validação: apenas admin
+- [ ] Query: buscar todas as cobranças com JOIN em inspections
+- [ ] Ordenar: mais recentes primeiro
+- [ ] Retornar: id, inspection_id, client_email, vessel_name, amount, due_date, payment_status, created_at
+
+**3. inspectionCharges.update (admin)** - Editar cobrança (prorrogar/amortizar)
+- [ ] Input: chargeId, newAmount (opcional), newDueDate (opcional)
+- [ ] Validação: apenas admin, cobrança deve existir e não estar paga/cancelada
+- [ ] Se newAmount fornecido → atualizar amount no banco
+- [ ] Se newDueDate fornecido → atualizar due_date no banco
+- [ ] Atualizar cobrança no Asaas (se necessário)
+- [ ] Retornar: charge atualizada
+
+**4. inspectionCharges.delete (admin)** - Cancelar cobrança
+- [ ] Input: chargeId
+- [ ] Validação: apenas admin, cobrança deve existir e não estar paga
+- [ ] Cancelar cobrança no Asaas via API
+- [ ] Atualizar payment_status='cancelled' no banco
+- [ ] Retornar: success
+
+**5. inspectionCharges.myCharges (cliente)** - Listar cobranças do cliente
+- [ ] Validação: usuário autenticado
+- [ ] Query: buscar cobranças WHERE client_email = ctx.user.email
+- [ ] Ordenar: mais recentes primeiro
+- [ ] Retornar: id, vessel_name, failed_items, amount, due_date, payment_status, receipt_url
+
+**6. inspectionCharges.getStats (cliente)** - Estatísticas do cliente
+- [ ] Validação: usuário autenticado
+- [ ] Query: buscar cobranças WHERE client_email = ctx.user.email
+- [ ] Calcular:
+  - [ ] totalCharges (total de cobranças)
+  - [ ] totalPaid (soma de cobranças pagas)
+  - [ ] totalPending (soma de cobranças pendentes)
+  - [ ] totalOverdue (soma de cobranças vencidas)
+- [ ] Retornar: objeto com estatísticas
+
+**7. inspectionCharges.generatePayment (cliente)** - Gerar PIX para pagamento
+- [ ] Input: chargeIds (array de IDs)
+- [ ] Validação: usuário autenticado, cobranças devem pertencer ao cliente
+- [ ] Buscar cobranças no Asaas (multas/juros atualizados)
+- [ ] Calcular valor total (soma + multas/juros)
+- [ ] Retornar: QR Code PIX, código copia-e-cola, valor total
+
+---
+
+### Frontend Admin - Gestão de Cobranças
+
+- [ ] Criar nova aba "Cobranças de Danos" na página de Vistorias (Admin.tsx)
+- [ ] Ou criar página separada `/admin/cobrancas-danos`
+
+**Interface de Cadastro de Cobrança:**
+- [ ] Dialog "Nova Cobrança de Danos"
+- [ ] Campo: Selecionar vistoria reprovada (dropdown)
+- [ ] Campo: Itens danificados (multi-select ou lista)
+- [ ] Campo: Valor total (R$)
+- [ ] Campo: Prazo de pagamento (date picker, padrão: +7 dias)
+- [ ] Botão: "Criar Cobrança no Asaas"
+- [ ] Ao criar → gera PIX automaticamente e salva no banco
+- [ ] Toast de sucesso com link para copiar PIX
+
+**Tabela de Cobranças:**
+- [ ] Colunas: ID, Data, Cliente, Embarcação, Valor, Vencimento, Status, Ações
+- [ ] Filtros: Status (Todas/Pendente/Pago/Vencido/Cancelado)
+- [ ] Badge de status com cores:
+  - [ ] 🟡 Pendente (amarelo)
+  - [ ] 🔴 Vencido (vermelho)
+  - [ ] 🟢 Pago (verde)
+  - [ ] ⚫ Cancelado (cinza)
+- [ ] Botão "Editar" (abre dialog de edição)
+- [ ] Botão "Cancelar" (cancela cobrança no Asaas)
+- [ ] Botão "Ver Vistoria" (abre PDF da vistoria)
+
+**Dialog de Edição:**
+- [ ] Campo: Novo valor (opcional)
+- [ ] Campo: Nova data de vencimento (opcional)
+- [ ] Botão: "Salvar Alterações"
+- [ ] Validação: não pode editar cobranças pagas/canceladas
+
+---
+
+### Frontend Cliente - Dashboard Financeiro
+
+- [ ] Adicionar seção "🔍 Minhas Vistorias e Danos" no Dashboard do cliente
+
+**Cards de Resumo:**
+- [ ] Card "Vistorias Aprovadas" (total)
+- [ ] Card "Vistorias Reprovadas" (total)
+- [ ] Card "Total em Danos" (R$ - soma de cobranças)
+- [ ] Card "Danos Pagos" (R$ - soma de pagamentos)
+
+**Tabela de Vistorias Reprovadas (últimas 10):**
+- [ ] Colunas: Data, Embarcação, Itens Danificados, Valor, Status, Ações
+- [ ] Badge de status (Pendente/Vencido/Pago/Cancelado)
+- [ ] Botão "Pagar" (abre dialog com PIX)
+- [ ] Botão "Ver Detalhes" (mostra lista de itens danificados)
+- [ ] Botão "PDF" (download da vistoria completa)
+- [ ] Checkbox para seleção múltipla
+- [ ] Botão "Pagar Selecionados" (gera PIX único para múltiplas cobranças)
+
+**Dialog de Pagamento:**
+- [ ] Exibir valor total (soma + multas/juros do Asaas)
+- [ ] Exibir QR Code PIX
+- [ ] Exibir código copia-e-cola com botão de copiar
+- [ ] Botão "Já Paguei" (fecha dialog)
+- [ ] Atualização automática de status após pagamento (via webhook)
+
+---
+
+### Integração Asaas
+
+- [ ] Utilizar funções existentes em `server/_core/asaas.ts`:
+  - [ ] `createCharge()` - Criar cobrança PIX
+  - [ ] `getCharge()` - Buscar multas/juros atualizados
+  - [ ] `cancelCharge()` - Cancelar cobrança
+- [ ] Configurações da cobrança:
+  - [ ] Descrição: "Conserto de Danos - Vistoria [Data]"
+  - [ ] Vencimento: 7 dias após criação (editável)
+  - [ ] Multas/juros: já configurados no painel Asaas
+  - [ ] Beneficiário: atendimento@exclusiveclubitz.com
+- [ ] Atualizar webhook Asaas (`/api/webhook/asaas`):
+  - [ ] Detectar pagamento de inspection_charges
+  - [ ] Atualizar payment_status='paid'
+  - [ ] Salvar receipt_url
+  - [ ] Enviar email de confirmação ao cliente
+- [ ] Email de confirmação de pagamento:
+  - [ ] Assunto: "✅ Pagamento Confirmado - Danos Reparados"
+  - [ ] Corpo: Agradecimento, valor pago, comprovante anexo
+  - [ ] Dicas de manutenção preventiva
+
+---
+
+### Testes Automatizados
+
+**Backend - Emails (5 testes):**
+- [ ] Teste: Detectar vistoria reprovada
+- [ ] Teste: Enviar email para admin com PDF
+- [ ] Teste: Enviar email para cliente com PDF
+- [ ] Teste: Vistoria aprovada não envia emails
+- [ ] Teste: Validar anexo PDF nos emails
+
+**Backend - Cobranças (15 testes):**
+- [ ] Teste: Criar cobrança (admin)
+- [ ] Teste: Listar todas as cobranças (admin)
+- [ ] Teste: Atualizar cobrança (prorrogar vencimento)
+- [ ] Teste: Atualizar cobrança (amortizar valor)
+- [ ] Teste: Cancelar cobrança (admin)
+- [ ] Teste: Listar cobranças do cliente
+- [ ] Teste: Calcular estatísticas do cliente
+- [ ] Teste: Gerar PIX para pagamento único
+- [ ] Teste: Gerar PIX para múltiplas cobranças
+- [ ] Teste: Atualizar status via webhook (paid)
+- [ ] Teste: Cliente não pode criar cobrança
+- [ ] Teste: Cliente não pode editar cobrança
+- [ ] Teste: Cliente não pode cancelar cobrança
+- [ ] Teste: Não pode editar cobrança paga
+- [ ] Teste: Não pode cancelar cobrança paga
+
+**Frontend - Validação Manual:**
+- [ ] Testar fluxo completo: vistoria reprovada → emails → orçamento → cobrança → pagamento
+- [ ] Validar emails (admin e cliente) com PDF anexo
+- [ ] Validar dashboard do cliente com dados corretos
+- [ ] Validar integração Asaas (criação, pagamento, webhook)
+- [ ] Testar edição de cobrança (prorrogar/amortizar)
+- [ ] Testar cancelamento de cobrança
+- [ ] Testar pagamento múltiplo (selecionar várias cobranças)
+
+---
+
+### Arquivos a Criar/Modificar
+
+**Novos arquivos:**
+- [ ] server/_core/inspectionEmails.ts (templates de email)
+- [ ] server/inspectionCharges.create.test.ts (testes)
+- [ ] server/inspectionCharges.myCharges.test.ts (testes)
+- [ ] server/inspectionCharges.generatePayment.test.ts (testes)
+
+**Arquivos a modificar:**
+- [ ] drizzle/schema.ts (nova tabela inspection_charges)
+- [ ] server/routers.ts (novo router inspectionCharges + modificar inspections.create)
+- [ ] server/_core/asaas.ts (webhook para processar pagamentos de danos)
+- [ ] client/src/pages/Admin.tsx (nova aba de cobranças)
+- [ ] client/src/pages/Dashboard.tsx (nova seção de vistorias e danos)
+
+---
+
+### Resultado Esperado
+
+✅ Vistoria reprovada → emails automáticos (admin + cliente) com PDF
+✅ Admin cadastra cobrança após orçamento aprovado
+✅ Cobrança criada no Asaas com prazo de 7 dias
+✅ Admin pode editar cobrança (prorrogar/amortizar)
+✅ Cliente visualiza débitos no dashboard
+✅ Cliente paga via PIX (único ou múltiplo)
+✅ Status atualiza automaticamente via webhook
+✅ Email de confirmação após pagamento
+✅ Interface responsiva e intuitiva (mobile + desktop)
+✅ 20+ testes automatizados passando (100%)
+
+
+
+---
+
+## ✅ PROGRESSO - Sistema de Vistorias Avançado (22/12/2025 - 23:33)
+
+### Backend Concluído ✅
+- [x] Criar tabela `inspection_charges` (cobranças de danos)
+- [x] Executar criação manual da tabela no banco
+- [x] Criar função `sendInspectionFailureEmails()` em `server/_core/inspectionEmails.ts`
+- [x] Criar templates de email (admin e cliente) com tom educativo
+- [x] Criar endpoint `inspectionCharges.create` (admin cadastra cobrança após orçamento)
+- [x] Criar endpoint `inspectionCharges.listAll` (admin vê todas as cobranças)
+- [x] Criar endpoint `inspectionCharges.update` (admin edita valor/prazo/status)
+- [x] Criar endpoint `inspectionCharges.delete` (admin cancela cobrança)
+- [x] Criar endpoint `inspectionCharges.myCharges` (cliente vê suas cobranças)
+- [x] Criar endpoint `inspectionCharges.getStats` (cliente vê estatísticas)
+- [x] Criar endpoint `inspectionCharges.generatePayment` (cliente gera PIX)
+
+### Frontend Admin Concluído ✅
+- [x] Criar página `/admin/cobrancas-danos`
+- [x] Interface para cadastrar cobrança após orçamento aprovado
+- [x] Campos: vistoria, itens danificados, valores, prazo de pagamento
+- [x] Botão "Criar Cobrança no Asaas" (gera PIX automaticamente)
+- [x] Tabela de cobranças com filtros (pendente/pago/vencido)
+- [x] Botão "Editar Cobrança" (prorrogar/amortizar/ajustar valor)
+- [x] Botão "Cancelar Cobrança" (cancela no Asaas também)
+- [x] Cards de estatísticas (Total, Pendentes, Pagas, Valor Total)
+- [x] Adicionar botão na aba Vistorias do Admin para acessar Cobranças
+
+### Frontend Cliente Concluído ✅
+- [x] Criar seção "Minhas Vistorias e Danos" no Dashboard
+- [x] Cards de resumo (Vistorias Reprovadas, Total em Danos, Danos Pagos, Pendente)
+- [x] Tabela de cobranças com checkbox para seleção múltipla
+- [x] Botão "Pagar Selecionados" (gera PIX unificado)
+- [x] Dialog de pagamento com QR Code e código copia-e-cola
+- [x] Exibição de itens danificados por vistoria
+
+### Testes Automatizados Concluídos ✅
+- [x] Criar testes de validação de permissões (admin vs cliente)
+- [x] Criar testes de validação de entrada (valores negativos, arrays vazios)
+- [x] Criar testes de endpoints do cliente (myCharges, getStats)
+- [x] Executar todos os testes (11/11 passaram)

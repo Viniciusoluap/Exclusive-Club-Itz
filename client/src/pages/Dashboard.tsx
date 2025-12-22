@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { InspectionChargesSection } from "@/components/InspectionChargesSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
@@ -972,6 +973,9 @@ export default function Dashboard() {
 
         {/* Meus Abastecimentos Section */}
         <FuelRecordsSection />
+
+        {/* Vistorias e Danos Section */}
+        <InspectionChargesSection />
 
         {/* Documentos das Minhas Embarcações Section */}
         <VesselDocumentsSection />
