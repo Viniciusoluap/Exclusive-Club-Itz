@@ -327,3 +327,39 @@ if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
 ✅ Campo preenche automaticamente ao abrir dialog
 ✅ 5/5 testes passando (100%)
 ✅ Bug finalmente resolvido após 3 tentativas!
+
+---
+
+## ✅ BUG CORRIGIDO - Estoque Não Atualiza na Página do Funcionário (22/12/2025 - 23:32)
+
+### Problema Reportado pelo Usuário
+O campo "Estoque" na página de Abastecimentos do funcionário não atualiza automaticamente após registrar ou excluir abastecimentos.
+
+**Exemplo:**
+- Estoque inicial: 30,99 L
+- Registra abastecimento: 16,95 L
+- **Esperado:** Estoque atualiza para 14,04 L (30,99 - 16,95)
+- **Atual:** Estoque continua mostrando 30,99 L ❌
+
+**Lógica esperada:**
+1. Ao REGISTRAR abastecimento → Desconta litros do estoque
+2. Ao EXCLUIR abastecimento → Devolve litros ao estoque
+3. Interface atualiza automaticamente (igual página admin)
+
+### Causa Raiz
+Frontend do funcionário não está invalidando a query `fuelBudget.get` após criar ou excluir abastecimento.
+
+### Solução Implementada
+- [x] Adicionar `utils.fuelBudget.get.invalidate()` no `onSuccess` do createMutation
+- [x] Adicionar `utils.fuelBudget.get.invalidate()` no `onSuccess` do deleteMutation
+- [x] Testar criação de abastecimento (estoque deve diminuir)
+- [x] Testar exclusão de abastecimento (estoque deve aumentar)
+
+**Arquivos modificados:**
+- [x] client/src/pages/employee/Abastecimentos.tsx (mutations)
+
+**Resultado:**
+✅ Estoque atualiza automaticamente após registrar abastecimento (30,99 L → 14,04 L)
+✅ Estoque atualiza automaticamente após excluir abastecimento (devolve litros)
+✅ Lógica idêntica à página do admin
+✅ Interface responsiva e em tempo real

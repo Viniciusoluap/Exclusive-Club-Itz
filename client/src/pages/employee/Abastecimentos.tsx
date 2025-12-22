@@ -75,12 +75,16 @@ export default function EmployeeAbastecimentos() {
     }
   }, [isCreateDialogOpen, budget]);
 
+  const utils = trpc.useUtils();
+
   const createMutation = trpcAny.fuelRecords?.create.useMutation({
     onSuccess: (data: any) => {
       toast.success(`Abastecimento registrado! Valor total: R$ ${data.totalCost.toFixed(2)}`);
       setIsCreateDialogOpen(false);
       resetForm();
       refetch();
+      // Invalidar query do estoque para atualizar saldo de litros
+      utils.fuelBudget.get.invalidate({ monthYear });
     },
     onError: (error: any) => {
       toast.error(`Erro ao registrar abastecimento: ${error.message}`);
@@ -93,6 +97,8 @@ export default function EmployeeAbastecimentos() {
       setIsDeleteDialogOpen(false);
       setDeleteId(null);
       refetch();
+      // Invalidar query do estoque para atualizar saldo de litros
+      utils.fuelBudget.get.invalidate({ monthYear });
     },
     onError: (error: any) => {
       toast.error(`Erro ao excluir abastecimento: ${error.message}`);
