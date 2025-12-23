@@ -267,28 +267,26 @@ function FuelRecordsSection() {
     );
   }, [fuelRecords]);
 
-  // Toggle seleção de registro
+  // Toggle seleção de registro (apenas 1 por vez)
   const toggleRecord = (recordId: number) => {
     setSelectedRecords(prev => 
       prev.includes(recordId) 
-        ? prev.filter(id => id !== recordId)
-        : [...prev, recordId]
+        ? [] // Desmarca se já estava selecionado
+        : [recordId] // Marca apenas este (substitui qualquer seleção anterior)
     );
   };
 
-  // Selecionar todos
-  const toggleSelectAll = () => {
-    if (selectedRecords.length === pendingRecords.length) {
-      setSelectedRecords([]);
-    } else {
-      setSelectedRecords(pendingRecords.map((r: any) => r.id));
-    }
-  };
+  // Remover função de selecionar todos (não é mais necessária)
+  // const toggleSelectAll = () => { ... };
 
   // Gerar pagamento
   const handleGeneratePayment = () => {
     if (selectedRecords.length === 0) {
-      toast.error('Selecione pelo menos um abastecimento');
+      toast.error('Selecione um abastecimento');
+      return;
+    }
+    if (selectedRecords.length > 1) {
+      toast.error('Selecione apenas um abastecimento por vez');
       return;
     }
     generatePayment.mutate({ recordIds: selectedRecords });
@@ -403,14 +401,10 @@ function FuelRecordsSection() {
           {pendingRecords.length > 0 && (
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={selectedRecords.length === pendingRecords.length && pendingRecords.length > 0}
-                  onCheckedChange={toggleSelectAll}
-                />
                 <span className="text-sm text-gray-600">
                   {selectedRecords.length > 0 
-                    ? `${selectedRecords.length} selecionado(s)` 
-                    : 'Selecionar todos'}
+                    ? `${selectedRecords.length} selecionado` 
+                    : 'Selecione um abastecimento para pagar'}
                 </span>
               </div>
               <Button
@@ -418,7 +412,7 @@ function FuelRecordsSection() {
                 disabled={selectedRecords.length === 0 || generatePayment.isPending}
               >
                 <QrCode className="mr-2 h-4 w-4" />
-                {generatePayment.isPending ? 'Gerando...' : 'Pagar Selecionados'}
+                {generatePayment.isPending ? 'Gerando...' : 'Pagar Selecionado'}
               </Button>
             </div>
           )}
@@ -491,7 +485,7 @@ function FuelRecordsSection() {
           </DialogHeader>
           
           {paymentData && (
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
               {/* Valor Total */}
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-gray-600 mb-1">Valor Total</p>

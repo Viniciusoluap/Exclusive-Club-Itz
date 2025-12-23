@@ -283,3 +283,27 @@
 - [x] Remover itens "Dashboard" e "Minhas Reservas" do menu de navegação para funcionários
 - [x] Manter todos os outros itens funcionando normalmente (Home, Embarcações, Galeria, Sobre Nós, Painel Funcionário)
 - [x] Garantir que clientes e admins continuem vendo todos os itens do menu normalmente
+
+---
+
+## 🐛 BUG: Dialog de Pagamento sem Scroll (23/12/2025)
+
+**Problema reportado pelo usuário:**
+- Dialog de pagamento (QR Code PIX) não permite scroll
+- Botão de fechar (X) não está visível
+- Impossível fechar o modal ou ver todo o conteúdo
+
+**Tarefas:**
+- [x] Identificar componente do dialog de pagamento (PaymentDialog)
+- [x] Adicionar max-height e overflow-y-auto no DialogContent (PRIMEIRA TENTATIVA - NÃO FUNCIONOU)
+- [x] Corrigir CSS do dialog (flex + wrapper scrollável) - SEGUNDA TENTATIVA
+- [ ] Testar scroll no dialog após correção
+
+**Bug de Valor Incorreto e Duplicação de Cobranças:**
+- [x] Corrigir generatePayment para NÃO criar nova cobrança consolidada
+- [x] Buscar QR Code da cobrança EXISTENTE no Asaas (com juros/multa atualizados)
+- [x] Validar que apenas 1 abastecimento pode ser pago por vez (backend)
+- [x] Ajustar frontend para permitir apenas 1 checkbox marcado por vez
+- [x] Mudar botão de "Pagar Selecionados" para "Pagar Selecionado" (singular)
+- [ ] Testar scroll no dialog
+- [ ] Testar fluxo completo de pagamento
