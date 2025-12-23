@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE inspection_charges MODIFY COLUMN payment_status ENUM('pending', 'paid', 'overdue') NOT NULL DEFAULT 'pending'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute ALTER TABLE inspection_charges MODIFY COLUMN payment_status ENUM('pending', 'paid', 'overdue') NOT NULL DEFAULT 'pending'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 173
+}
