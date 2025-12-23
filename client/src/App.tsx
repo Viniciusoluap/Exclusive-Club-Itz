@@ -23,6 +23,7 @@ import EmployeeVistorias from "./pages/employee/Vistorias";
 import MeusAbastecimentos from "./pages/MeusAbastecimentos";
 import SystemSettings from "./pages/SystemSettings";
 import RoleRedirect from "./components/RoleRedirect";
+import PagamentoDanos from "./pages/PagamentoDanos";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -46,6 +47,7 @@ function Router() {
       <Route path={"/employee/abastecimentos"} component={EmployeeAbastecimentos} />
       <Route path={"/employee/vistorias"} component={EmployeeVistorias} />
       <Route path={"/dashboard/meus-abastecimentos"} component={MeusAbastecimentos} />
+      <Route path={"/pagamento-danos"} component={PagamentoDanos} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

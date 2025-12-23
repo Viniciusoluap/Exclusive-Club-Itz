@@ -3173,6 +3173,77 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         }
       }),
 
+    // Cliente: Buscar minhas últimas 3 vistorias reprovadas com dados de cobrança
+    myFailedInspections: protectedProcedure
+      .query(async ({ ctx }) => {
+        if (!ctx.user?.email) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Usuário não autenticado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          
+          // Buscar últimas 3 vistorias reprovadas do cliente
+          const result = await db.execute(sql.raw(`
+            SELECT 
+              i.id,
+              i.created_at,
+              i.vessel_name,
+              i.vessel_type,
+              i.inspection_data,
+              i.observations,
+              i.reprovation_photos,
+              b.booking_date,
+              b.client_name,
+              ic.id as charge_id,
+              ic.amount as charge_amount,
+              ic.due_date as charge_due_date,
+              ic.payment_status,
+              ic.asaas_charge_id,
+              ic.failed_items as charge_failed_items
+            FROM inspections i
+            LEFT JOIN bookings b ON i.booking_id = b.id
+            LEFT JOIN inspection_charges ic ON ic.inspection_id = i.id
+            WHERE i.status = 'rejected' 
+              AND b.client_email = '${ctx.user.email}'
+            ORDER BY i.created_at DESC
+            LIMIT 3
+          `)) as any;
+          
+          const inspections = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
+            id: row.id,
+            createdAt: row.created_at,
+            vesselName: row.vessel_name,
+            vesselType: row.vessel_type,
+            inspectionData: typeof row.inspection_data === 'string' ? JSON.parse(row.inspection_data) : row.inspection_data,
+            observations: row.observations,
+            reprovationPhotos: row.reprovation_photos ? (typeof row.reprovation_photos === 'string' ? JSON.parse(row.reprovation_photos) : row.reprovation_photos) : null,
+            bookingDate: row.booking_date,
+            clientName: row.client_name,
+            // Dados da cobrança (se existir)
+            charge: row.charge_id ? {
+              id: row.charge_id,
+              amount: parseFloat(row.charge_amount),
+              dueDate: row.charge_due_date,
+              paymentStatus: row.payment_status,
+              asaasChargeId: row.asaas_charge_id,
+              failedItems: row.charge_failed_items ? (typeof row.charge_failed_items === 'string' ? JSON.parse(row.charge_failed_items) : row.charge_failed_items) : [],
+            } : null,
+          }));
+          
+          return inspections;
+        } catch (error: any) {
+          console.error('[inspections.myFailedInspections] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao buscar vistorias reprovadas: ${error.message}` 
+          });
+        }
+      }),
+
     sendReportByEmail: publicProcedure
       .input(z.object({
         inspectionIds: z.array(z.number()),
@@ -3568,6 +3639,111 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
             message: `Erro ao buscar vistorias reprovadas: ${error.message}` 
+          });
+        }
+      }),
+
+    // Cliente: Criar cobrança parcelada
+    createInstallmentCharge: protectedProcedure
+      .input(z.object({
+        inspectionId: z.number(),
+        totalAmount: z.number().positive(),
+        installments: z.number().min(1).max(3), // 1x, 2x ou 3x
+      }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.user?.email) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Usuário não autenticado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const { inspectionCharges } = await import('../drizzle/schema');
+          
+          // Buscar dados da vistoria
+          const inspectionResult = await db.execute(sql.raw(`
+            SELECT i.*, b.client_email, b.client_name, v.name as vessel_name
+            FROM inspections i
+            LEFT JOIN bookings b ON i.booking_id = b.id
+            JOIN vessels v ON i.vessel_id = v.id
+            WHERE i.id = ${input.inspectionId}
+          `)) as any;
+          
+          const inspection = (Array.isArray(inspectionResult[0]) ? inspectionResult[0][0] : inspectionResult[0]);
+          if (!inspection) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Vistoria não encontrada' });
+          }
+          
+          // Verificar se já existe cobrança para esta vistoria
+          const existingChargeResult = await db.execute(sql.raw(`
+            SELECT id FROM inspection_charges WHERE inspection_id = ${input.inspectionId}
+          `)) as any;
+          
+          if ((Array.isArray(existingChargeResult[0]) ? existingChargeResult[0] : existingChargeResult).length > 0) {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Já existe uma cobrança para esta vistoria' });
+          }
+          
+          // Extrair itens reprovados do inspection_data
+          const inspectionData = typeof inspection.inspection_data === 'string' 
+            ? JSON.parse(inspection.inspection_data) 
+            : inspection.inspection_data;
+          
+          const failedItems = Object.entries(inspectionData)
+            .filter(([_, status]) => status === 'REPROVADO')
+            .map(([name, status]) => ({ name, status: status as string }));
+          
+          // Criar cobranças no Asaas (uma para cada parcela)
+          const { createCharge } = await import('./_core/asaas');
+          const installmentAmount = input.totalAmount / input.installments;
+          const createdCharges = [];
+          
+          for (let i = 0; i < input.installments; i++) {
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + (i * 30)); // Intervalo de 30 dias
+            
+            const asaasCharge = await createCharge({
+              customer: inspection.client_email,
+              billingType: 'PIX',
+              value: installmentAmount,
+              dueDate: dueDate.toISOString().split('T')[0],
+              description: `Conserto de Danos - Parcela ${i + 1}/${input.installments} - Vistoria ${new Date(inspection.created_at).toLocaleDateString('pt-BR')}`,
+            });
+            
+            // Salvar no banco
+            await db.insert(inspectionCharges).values({
+              inspectionId: input.inspectionId,
+              clientEmail: inspection.client_email,
+              vesselName: inspection.vessel_name,
+              failedItems: JSON.stringify(failedItems),
+              amount: installmentAmount.toString(),
+              dueDate: dueDate,
+              asaasChargeId: asaasCharge.id,
+              paymentStatus: 'pending',
+            });
+            
+            createdCharges.push({
+              installmentNumber: i + 1,
+              amount: installmentAmount,
+              dueDate: dueDate.getTime(),
+              asaasChargeId: asaasCharge.id,
+              pixQrCode: asaasCharge.pixQrCode,
+              pixCopyPaste: asaasCharge.pixCopyPaste,
+            });
+          }
+          
+          return { 
+            success: true,
+            totalAmount: input.totalAmount,
+            installments: input.installments,
+            charges: createdCharges,
+          };
+        } catch (error: any) {
+          console.error('[inspectionCharges.createInstallmentCharge] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao criar cobrança parcelada: ${error.message}` 
           });
         }
       }),

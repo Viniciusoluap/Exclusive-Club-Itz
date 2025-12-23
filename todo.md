@@ -1210,3 +1210,86 @@ O botão "Criar Cobrança" agora:
 
 ### Checkpoint Criado
 Aguardando criação de checkpoint após entrega ao usuário.
+
+
+## 🆕 NOVA FUNCIONALIDADE - Vistorias Reprovadas com Opções de Pagamento (23/12/2025 - 01:57)
+
+### Requisito do Usuário
+Reformular seção "Minhas Vistorias e Danos" no Dashboard do cliente para mostrar as 3 últimas vistorias reprovadas (independente de ter cobrança) e oferecer múltiplas opções de pagamento quando houver cobrança criada.
+
+### Funcionalidades a Implementar
+
+**1. Backend - Endpoint de Vistorias Reprovadas:**
+- [ ] Criar endpoint `inspections.myFailedInspections`
+  * Buscar vistorias com status 'rejected' do cliente logado
+  * Retornar últimas 3 vistorias (ordenadas por data DESC)
+  * Incluir: id, vesselName, bookingDate, inspectionData (itens reprovados)
+  * Verificar se existe cobrança associada (LEFT JOIN inspection_charges)
+  * Retornar dados da cobrança (se existir): chargeId, amount, dueDate, status
+
+**2. Frontend - Listagem de Vistorias Reprovadas:**
+- [ ] Atualizar InspectionChargesSection.tsx
+- [ ] Substituir mensagem "Você não possui cobranças" por lista de vistorias
+- [ ] Mostrar 3 últimas vistorias reprovadas em cards clicáveis
+- [ ] Cada card mostra: embarcação, data, quantidade de itens reprovados
+- [ ] Badge visual: "Sem cobrança" (cinza) ou "Cobrança criada" (amarelo/vermelho)
+
+**3. Dialog de Detalhes da Vistoria:**
+- [ ] Criar dialog que abre ao clicar em uma vistoria
+- [ ] Seção 1: Lista de itens reprovados da vistoria
+- [ ] Seção 2 (se SEM cobrança): Mensagem "Aguardando orçamento do admin"
+- [ ] Seção 3 (se COM cobrança): Informações da cobrança
+  * Valor total
+  * Data de vencimento
+  * Status (Pendente/Vencido/Pago)
+
+**4. Opções de Pagamento (quando houver cobrança):**
+- [ ] Opção 1: PIX à vista
+  * Gerar QR Code PIX via Asaas
+  * Exibir código copia-e-cola
+- [ ] Opção 2: Parcelar em até 3x no PIX
+  * Cliente escolhe quantidade de parcelas (2x ou 3x)
+  * Gerar 3 cobranças separadas no Asaas (vencimentos mensais)
+  * Exibir 3 QR Codes PIX (um para cada parcela)
+- [ ] Opção 3: Parcelar em até 3x no Cartão
+  * Integrar com API de cartão do Asaas
+  * Gerar link de pagamento com parcelamento
+  * Redirecionar para página de checkout do Asaas
+- [ ] Opção 4: Solicitar nova data de vencimento
+  * Dialog com campo de justificativa
+  * Enviar notificação para admin via email/sistema
+  * Salvar solicitação no banco (tabela charge_extension_requests)
+
+**5. Backend - Endpoints de Pagamento:**
+- [ ] `inspectionCharges.generatePixPayment(chargeId, installments)`
+  * installments = 1 (à vista) ou 2-3 (parcelado)
+  * Se parcelado: criar múltiplas cobranças no Asaas
+  * Retornar array de QR Codes PIX
+- [ ] `inspectionCharges.generateCardPayment(chargeId, installments)`
+  * Criar link de checkout do Asaas com parcelamento
+  * Retornar URL de redirecionamento
+- [ ] `inspectionCharges.requestExtension(chargeId, reason)`
+  * Salvar solicitação no banco
+  * Enviar email para admin
+  * Retornar confirmação
+
+**6. Tabela de Solicitações de Prorrogação:**
+- [ ] Criar tabela `charge_extension_requests`:
+  * id, charge_id, client_email, reason, status (pending/approved/rejected)
+  * requested_at, reviewed_at, reviewed_by, new_due_date
+- [ ] Adicionar seção no painel admin para revisar solicitações
+
+**7. Testes:**
+- [ ] Testar listagem de vistorias reprovadas
+- [ ] Testar dialog com e sem cobrança
+- [ ] Testar geração de PIX à vista
+- [ ] Testar parcelamento PIX (2x e 3x)
+- [ ] Testar parcelamento cartão
+- [ ] Testar solicitação de prorrogação
+- [ ] Validar integração com Asaas
+
+### Observações Técnicas
+- Usar API do Asaas para parcelamento: https://docs.asaas.com/reference/criar-nova-cobranca
+- PIX parcelado = múltiplas cobranças independentes (não é parcelamento nativo do PIX)
+- Cartão parcelado = usar campo `installmentCount` na API do Asaas
+- Webhook do Asaas já configurado para atualizar status automaticamente
