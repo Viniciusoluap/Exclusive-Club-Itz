@@ -64,6 +64,7 @@ describe("inspectionCharges.create", () => {
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.inspectionCharges.create({
+      chargeType: 'inspection',
       inspectionId: testInspectionId,
       failedItems: [{ name: "Casco", status: "Reprovado" }],
       amount: 150.0,
@@ -79,6 +80,7 @@ describe("inspectionCharges.create", () => {
 
     await expect(
       caller.inspectionCharges.create({
+        chargeType: 'inspection',
         inspectionId: testInspectionId,
         failedItems: [{ name: "Casco", status: "Reprovado" }],
         amount: 150.0,
@@ -92,6 +94,7 @@ describe("inspectionCharges.create", () => {
 
     await expect(
       caller.inspectionCharges.create({
+        chargeType: 'inspection',
         inspectionId: testInspectionId,
         failedItems: [{ name: "Casco", status: "Reprovado" }],
         amount: -50.0,
@@ -105,6 +108,7 @@ describe("inspectionCharges.create", () => {
 
     await expect(
       caller.inspectionCharges.create({
+        chargeType: 'inspection',
         inspectionId: 999999,
         failedItems: [{ name: "Casco", status: "Reprovado" }],
         amount: 150.0,
@@ -119,6 +123,7 @@ describe("inspectionCharges.create", () => {
     const customDueDate = Date.now() + 14 * 24 * 60 * 60 * 1000; // 14 dias
 
     const result = await caller.inspectionCharges.create({
+      chargeType: 'inspection',
       inspectionId: testInspectionId,
       failedItems: [{ name: "Casco", status: "Reprovado" }],
       amount: 200.0,

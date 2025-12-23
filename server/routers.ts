@@ -3357,7 +3357,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         try {
           const { sql } = await import('drizzle-orm');
           const { inspectionCharges } = await import('../drizzle/schema');
-          const { createCharge } = await import('./_core/asaas');
+          const { createCharge, getOrCreateCustomer } = await import('./_core/asaas');
           
           // Calcular data de vencimento (7 dias padrão)
           const dueDate = input.dueDate || Date.now() + (7 * 24 * 60 * 60 * 1000);
@@ -3383,9 +3383,15 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               throw new TRPCError({ code: 'NOT_FOUND', message: 'Vistoria não encontrada' });
             }
             
+            // Buscar ou criar customer no Asaas
+            const customer = await getOrCreateCustomer({
+              name: inspection.client_name || inspection.client_email,
+              email: inspection.client_email,
+            });
+            
             // Criar cobrança no Asaas
             const asaasCharge = await createCharge({
-              customer: inspection.client_email,
+              customer: customer.id,
               billingType: 'PIX',
               value: input.amount,
               dueDate: dueDateStr,
@@ -3460,9 +3466,15 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               const quotaShare = quota.quota_type === 'full' ? 1.0 : 0.5;
               const individualAmount = valuePerFullQuota * quotaShare;
               
+              // Buscar ou criar customer no Asaas
+              const customer = await getOrCreateCustomer({
+                name: quota.client_name || quota.client_email,
+                email: quota.client_email,
+              });
+              
               // Criar cobrança no Asaas
               const asaasCharge = await createCharge({
-                customer: quota.client_email,
+                customer: customer.id,
                 billingType: 'PIX',
                 value: individualAmount,
                 dueDate: dueDateStr,

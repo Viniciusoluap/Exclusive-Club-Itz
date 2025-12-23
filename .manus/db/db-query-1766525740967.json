@@ -1,0 +1,19 @@
+{
+  "query": "SELECT * FROM system_settings WHERE `key` = 'asaas_api_key' LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT * FROM system_settings WHERE `key` = 'asaas_api_key' LIMIT 1",
+  "rows": [
+    {
+      "id": "1",
+      "key": "asaas_api_key",
+      "value": "a9214a330a4d4a71e2030f24ccc99e99:46ee8d3cf52ae0ecac8551843d6058f51e0ec7bfadc51f41d9efd408c05a37d10d6a3e102958b9be2dbd34ed0c55e7e5e825eb133ddb6f3a8d7a3f85094239555e3cd3cdc119692f59190a20e5448b7a8ccd8787099912b94dbe792397bfa9dbdb487ecd80def19584405ebeff58bece62c3eb323301a28a4e1ae1a3a1c1996be331e747bc1bbaff6333b17aef5c5a6fbb1cdc53e6f46352047b45d0b393edf49c8e602d052964ebc910ed695ca4837c",
+      "description": "Chave de API do Asaas para processamento de pagamentos via PIX",
+      "updated_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "created_at": "2025-12-23 04:13:21",
+      "updated_at": "2025-12-23 04:13:42"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tkey\tvalue\tdescription\tupdated_by\tcreated_at\tupdated_at\n1\tasaas_api_key\ta9214a330a4d4a71e2030f24ccc99e99:46ee8d3cf52ae0ecac8551843d6058f51e0ec7bfadc51f41d9efd408c05a37d10d6a3e102958b9be2dbd34ed0c55e7e5e825eb133ddb6f3a8d7a3f85094239555e3cd3cdc119692f59190a20e5448b7a8ccd8787099912b94dbe792397bfa9dbdb487ecd80def19584405ebeff58bece62c3eb323301a28a4e1ae1a3a1c1996be331e747bc1bbaff6333b17aef5c5a6fbb1cdc53e6f46352047b45d0b393edf49c8e602d052964ebc910ed695ca4837c\tChave de API do Asaas para processamento de pagamentos via PIX\tv6h2sw5vmn@privaterelay.appleid.com\t2025-12-23 04:13:21\t2025-12-23 04:13:42\n",
+  "stderr": "",
+  "execution_time_ms": 51
+}
