@@ -1,0 +1,19 @@
+{
+  "query": "SELECT DISTINCT client_email FROM inspection_charges;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT DISTINCT client_email FROM inspection_charges;",
+  "rows": [
+    {
+      "client_email": "payment-client@example.com"
+    },
+    {
+      "client_email": "test-client@example.com"
+    },
+    {
+      "client_email": "stats-client@example.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "client_email\npayment-client@example.com\ntest-client@example.com\nstats-client@example.com\n",
+  "stderr": "",
+  "execution_time_ms": 84
+}

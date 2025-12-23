@@ -1,0 +1,9 @@
+{
+  "query": "SELECT i.id, i.created_at, i.client_name, i.status, v.name as vessel_name \nFROM inspections i \nJOIN vessels v ON i.vessel_id = v.id \nWHERE i.status = 'rejected' AND i.client_name LIKE '%Jhon%'\nORDER BY i.created_at DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT i.id, i.created_at, i.client_name, i.status, v.name as vessel_name \nFROM inspections i \nJOIN vessels v ON i.vessel_id = v.id \nWHERE i.status = 'rejected' AND i.client_name LIKE '%Jhon%'\nORDER BY i.created_at DESC;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 95
+}

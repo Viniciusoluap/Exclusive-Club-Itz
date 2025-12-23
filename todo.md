@@ -399,11 +399,47 @@ Ao gerar relatório PDF de abastecimentos, a seção "Comprovação por Fotos da
 - [x] Refatorar função `generateFuelRecordsPDF` para processar fotos assíncronas
 - [x] Adicionar logs de debug para rastreamento
 - [ ] Testar com novo registro (upload real para S3) - AGUARDANDO USUÁRIO
-- [ ] Validar que fotos aparecem no PDF gerado - AGUARDANDO USUÁRIO
+- [ ] Validar que fotos aparecem no PDF gerado - AGUARDANDO USUÁRIO**Instruções para teste:**
+1. Criar novo abastecimento com método de pesagem
+2. Fazer upload de fotos da balança (ANTES e DEPOIS)
+3. Gerar PDF e validar que fotos aparecem corretamente
 
-**Instruções para teste:**
-1. Criar novo abastecimento com fotos da balança
-2. Gerar relatório PDF
+---
+
+## 🐛 BUGS REPORTADOS - Dashboard Cliente (23/12/2025 - 01:46)
+
+### Bug 1: Erro ao gerar QR Code PIX (Abastecimentos) ✅ CORRIGIDO
+- [x] Cliente tenta pagar abastecimentos selecionados
+- [x] Aparece mensagem: "Erro ao gerar QR Code PIX"
+- [x] Investigar endpoint fuelRecords.generatePayment
+- [x] Verificar integração com API Asaas
+- [x] Validar se ASAAS_API_KEY está configurada corretamente
+- [x] Verificar logs do servidor para erro específico
+
+**Solução aplicada:**
+- [x] Validação de ASAAS_API_KEY antes de chamar API
+- [x] Logs detalhados para debug (console.log)
+- [x] Mensagens de erro mais claras para o usuário
+- [x] Validação de dados do PIX (encodedImage e payload)
+- [x] Try-catch global para capturar erros
+- [x] Tratamento de erro HTTP com status e body
+
+**Arquivo modificado:** server/routers.ts (linhas 2494-2580)
+
+### Bug 2: Vistorias reprovadas não aparecem ✅ NÃO É BUG
+- [x] Seção "Minhas Vistorias e Danos" mostra: "Você não possui cobranças de danos registradas"
+- [x] Investigar endpoint inspectionCharges.myCharges
+- [x] Verificar query SQL de busca de vistorias
+- [x] Validar filtro por cliente logado (email)
+- [x] Verificar se há vistorias reprovadas no banco para esse cliente
+
+**Análise do banco de dados:**
+- Cliente `efficazcorrespondente@hotmail.com` (Jhon) **não possui cobranças de danos**
+- Existem 5 cobranças no banco, mas pertencem a outros 3 clientes
+- Cliente não possui vistorias reprovadas registradas
+- **Mensagem está correta:** "Você não possui cobranças de danos registradas"
+
+**Conclusão:** Sistema funcionando corretamente. Se o usuário esperava ver cobranças, o admin precisa criar as cobranças manualmente a partir das vistorias reprovadas na página "Cobranças de Danos".ório PDF
 3. Verificar se fotos aparecem no PDF
 
 ---

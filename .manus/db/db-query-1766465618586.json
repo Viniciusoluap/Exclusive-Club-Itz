@@ -1,0 +1,31 @@
+{
+  "query": "SELECT i.id, i.created_at, i.client_name, i.status, v.name as vessel_name \nFROM inspections i \nJOIN vessels v ON i.vessel_id = v.id \nWHERE i.status = 'rejected' \nORDER BY i.created_at DESC \nLIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT i.id, i.created_at, i.client_name, i.status, v.name as vessel_name \nFROM inspections i \nJOIN vessels v ON i.vessel_id = v.id \nWHERE i.status = 'rejected' \nORDER BY i.created_at DESC \nLIMIT 10;",
+  "rows": [
+    {
+      "id": "750002",
+      "created_at": "2025-12-23 04:43:52",
+      "client_name": "Teste",
+      "status": "rejected",
+      "vessel_name": "Teste"
+    },
+    {
+      "id": "750001",
+      "created_at": "2025-12-23 04:43:43",
+      "client_name": "Teste",
+      "status": "rejected",
+      "vessel_name": "Teste"
+    },
+    {
+      "id": "690005",
+      "created_at": "2025-12-22 04:49:33",
+      "client_name": "Laécio Silversat",
+      "status": "rejected",
+      "vessel_name": "Focker 215 150HP"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcreated_at\tclient_name\tstatus\tvessel_name\n750002\t2025-12-23 04:43:52\tTeste\trejected\tTeste\n750001\t2025-12-23 04:43:43\tTeste\trejected\tTeste\n690005\t2025-12-22 04:49:33\tLaécio Silversat\trejected\tFocker 215 150HP\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}
