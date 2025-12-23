@@ -45,6 +45,13 @@
 - Fallback para process.env.ASAAS_API_KEY se necessário
 - Mensagem de erro atualizada para orientar admin a configurar em Configurações
 
+- [x] Separar filtro de período em dois campos: Mês e Ano na página de Pagamento de Danos
+- [x] Modificar endpoint myCharges para buscar vistorias reprovadas (com ou sem cobrança)
+- [x] Frontend: exibir vistorias com status 'Aguardando Orçamento' quando não tem cobrança
+- [x] Frontend: exibir itens reprovados e fotos para download
+- [x] Frontend: quando admin cadastrar valor, mostrar opções de pagamento PIX
+- [x] Criar testes automatizados para novo fluxo de vistorias (5 testes passando)
+
 ---
 
 ## 🚀 PRÓXIMAS MELHORIAS - Sistema de Cobranças Avançado (23/12/2025)
