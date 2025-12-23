@@ -4055,10 +4055,11 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         }
       }),
 
-    // Cliente: Gerar pagamento PIX
+    // Cliente: Gerar pagamento PIX (vistorias e reparos)
     generatePayment: protectedProcedure
       .input(z.object({
         chargeIds: z.array(z.number()).min(1, 'Selecione pelo menos uma cobrança'),
+        installments: z.number().min(1).max(3).optional(), // Parcelamento (1x, 2x, 3x) - apenas para reparos
       }))
       .mutation(async ({ input, ctx }) => {
         if (!ctx.user?.email) {
@@ -4083,23 +4084,132 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhuma cobrança encontrada' });
           }
           
-          // Buscar valores atualizados no Asaas (multas/juros)
+          // Verificar se todas são reparos (para parcelamento)
+          const allRepairs = charges.every((c: any) => c.charge_type === 'repair');
+          const installments = input.installments || 1;
+          
+          if (installments > 1 && !allRepairs) {
+            throw new TRPCError({ 
+              code: 'BAD_REQUEST', 
+              message: 'Parcelamento disponível apenas para reparos' 
+            });
+          }
+          
+          // Calcular valor total
           const { getCharge } = await import('./_core/asaas');
           let totalAmount = 0;
-          const pixData: any = {};
           
           for (const charge of charges) {
             if (charge.asaas_charge_id) {
               const asaasCharge = await getCharge(charge.asaas_charge_id);
               totalAmount += parseFloat(asaasCharge.value);
-              
-              // Usar PIX da primeira cobrança (ou criar cobrança única se múltiplas)
-              if (!pixData.qrCode && asaasCharge.pixQrCode) {
-                pixData.qrCode = asaasCharge.pixQrCode;
-                pixData.copyPaste = asaasCharge.pixCopyPaste;
-              }
             } else {
               totalAmount += parseFloat(charge.amount);
+            }
+          }
+          
+          // Se parcelamento, criar múltiplas cobranças no Asaas
+          if (installments > 1) {
+            const { createCharge, getOrCreateCustomer, formatDateForAsaas } = await import('./_core/asaas');
+            
+            // Buscar ou criar cliente no Asaas
+            const customer = await getOrCreateCustomer({
+              name: ctx.user.name || ctx.user.email,
+              email: ctx.user.email,
+            });
+            
+            // Calcular valor de cada parcela
+            const installmentValue = totalAmount / installments;
+            const installmentCharges = [];
+            
+            // Criar cobrança para cada parcela
+            for (let i = 0; i < installments; i++) {
+              const dueDate = new Date();
+              dueDate.setDate(dueDate.getDate() + (i * 30)); // 30 dias entre parcelas
+              
+              const asaasCharge = await createCharge({
+                customer: customer.id,
+                billingType: 'PIX',
+                value: installmentValue,
+                dueDate: formatDateForAsaas(dueDate),
+                description: `Parcela ${i + 1}/${installments} - Reparos`,
+                externalReference: `repair-installment-${i + 1}-${Date.now()}`,
+              });
+              
+              installmentCharges.push({
+                installment: i + 1,
+                value: installmentValue,
+                dueDate: formatDateForAsaas(dueDate),
+                asaasChargeId: asaasCharge.id,
+                pixQrCode: asaasCharge.encodedImage || null,
+                pixCopyPaste: asaasCharge.payload || null,
+              });
+            }
+            
+            // Atualizar cobranças com asaas_charge_id da primeira parcela
+            const firstInstallmentId = installmentCharges[0].asaasChargeId;
+            for (const charge of charges) {
+              await db.execute(sql.raw(`
+                UPDATE inspection_charges
+                SET asaas_charge_id = '${firstInstallmentId}'
+                WHERE id = ${charge.id}
+              `));
+            }
+            
+            return {
+              totalAmount,
+              installments: installmentCharges,
+              pixQrCode: installmentCharges[0].pixQrCode,
+              pixCopyPaste: installmentCharges[0].pixCopyPaste,
+            };
+          }
+          
+          // Pagamento à vista (sem parcelamento)
+          const pixData: any = {};
+          
+          for (const charge of charges) {
+            if (charge.asaas_charge_id) {
+              const asaasCharge = await getCharge(charge.asaas_charge_id);
+              
+              // Usar PIX da primeira cobrança
+              if (!pixData.qrCode && asaasCharge.encodedImage) {
+                pixData.qrCode = asaasCharge.encodedImage;
+                pixData.copyPaste = asaasCharge.payload;
+              }
+            }
+          }
+          
+          // Se não tem PIX, criar cobrança única no Asaas
+          if (!pixData.qrCode) {
+            const { createCharge, getOrCreateCustomer, formatDateForAsaas } = await import('./_core/asaas');
+            
+            const customer = await getOrCreateCustomer({
+              name: ctx.user.name || ctx.user.email,
+              email: ctx.user.email,
+            });
+            
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 1); // Vencimento: 1 dia
+            
+            const asaasCharge = await createCharge({
+              customer: customer.id,
+              billingType: 'PIX',
+              value: totalAmount,
+              dueDate: formatDateForAsaas(dueDate),
+              description: allRepairs ? 'Pagamento de Reparos' : 'Pagamento de Vistorias',
+              externalReference: `charges-${Date.now()}`,
+            });
+            
+            pixData.qrCode = asaasCharge.encodedImage || null;
+            pixData.copyPaste = asaasCharge.payload || null;
+            
+            // Atualizar cobranças com asaas_charge_id
+            for (const charge of charges) {
+              await db.execute(sql.raw(`
+                UPDATE inspection_charges
+                SET asaas_charge_id = '${asaasCharge.id}'
+                WHERE id = ${charge.id}
+              `));
             }
           }
           
@@ -4113,6 +4223,235 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
             message: `Erro ao gerar pagamento: ${error.message}` 
+          });
+        }
+      }),
+  }),
+
+  // Due Date Change Requests - Solicitações de mudança de vencimento
+  dueDateRequests: router({
+    // Admin: Listar todas as solicitações
+    list: adminProcedure
+      .input(z.object({
+        status: z.enum(['all', 'pending', 'approved', 'rejected']).optional(),
+        monthYear: z.string().optional(), // formato: YYYY-MM
+      }))
+      .query(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          
+          let query = `
+            SELECT 
+              r.*,
+              c.charge_type,
+              c.vessel_name,
+              c.amount,
+              c.payment_status
+            FROM due_date_change_requests r
+            JOIN inspection_charges c ON r.charge_id = c.id
+            WHERE 1=1
+          `;
+          
+          if (input.status && input.status !== 'all') {
+            query += ` AND r.status = '${input.status}'`;
+          }
+          
+          if (input.monthYear) {
+            const [year, month] = input.monthYear.split('-');
+            query += ` AND YEAR(r.created_at) = ${year} AND MONTH(r.created_at) = ${month}`;
+          }
+          
+          query += ` ORDER BY r.created_at DESC`;
+          
+          const result = await db.execute(sql.raw(query)) as any;
+          return (Array.isArray(result[0]) ? result[0] : result);
+        } catch (error: any) {
+          console.error('[dueDateRequests.list] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao listar solicitações: ${error.message}` 
+          });
+        }
+      }),
+
+    // Admin: Aprovar solicitação
+    approve: adminProcedure
+      .input(z.object({
+        requestId: z.number(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          
+          // Buscar solicitação
+          const requestResult = await db.execute(sql.raw(`
+            SELECT * FROM due_date_change_requests WHERE id = ${input.requestId}
+          `)) as any;
+          
+          const requests = (Array.isArray(requestResult[0]) ? requestResult[0] : requestResult);
+          if (requests.length === 0) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Solicitação não encontrada' });
+          }
+          
+          const request = requests[0];
+          
+          // Atualizar vencimento na cobrança
+          await db.execute(sql.raw(`
+            UPDATE inspection_charges
+            SET due_date = '${new Date(request.new_due_date).toISOString().split('T')[0]}'
+            WHERE id = ${request.charge_id}
+          `));
+          
+          // Atualizar status da solicitação
+          await db.execute(sql.raw(`
+            UPDATE due_date_change_requests
+            SET status = 'approved',
+                processed_by = '${ctx.user?.email}',
+                updated_at = NOW()
+            WHERE id = ${input.requestId}
+          `));
+          
+          // Buscar dados da cobrança para enviar email
+          const chargeResult = await db.execute(sql.raw(`
+            SELECT charge_type, vessel_name, client_email
+            FROM inspection_charges
+            WHERE id = ${request.charge_id}
+          `)) as any;
+          
+          const charges = (Array.isArray(chargeResult[0]) ? chargeResult[0] : chargeResult);
+          if (charges.length > 0) {
+            const charge = charges[0];
+            
+            // Enviar email ao cliente confirmando
+            const { notifyClientDueDateApproved } = await import('./_core/inspectionEmails');
+            await notifyClientDueDateApproved({
+              clientEmail: charge.client_email,
+              clientName: request.client_email.split('@')[0], // Fallback: usar parte do email
+              chargeType: charge.charge_type,
+              vesselName: charge.vessel_name,
+              newDueDate: request.new_due_date,
+            }).catch(err => {
+              console.error('[dueDateRequests.approve] Erro ao enviar email:', err);
+              // Não falhar a operação se o email falhar
+            });
+          }
+          
+          return { success: true, message: 'Solicitação aprovada com sucesso!' };
+        } catch (error: any) {
+          console.error('[dueDateRequests.approve] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao aprovar solicitação: ${error.message}` 
+          });
+        }
+      }),
+
+    // Admin: Rejeitar solicitação
+    reject: adminProcedure
+      .input(z.object({
+        requestId: z.number(),
+        reason: z.string().min(10, 'Motivo deve ter pelo menos 10 caracteres'),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          
+          // Buscar solicitação antes de atualizar
+          const requestResult = await db.execute(sql.raw(`
+            SELECT * FROM due_date_change_requests WHERE id = ${input.requestId}
+          `)) as any;
+          
+          const requests = (Array.isArray(requestResult[0]) ? requestResult[0] : requestResult);
+          if (requests.length === 0) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Solicitação não encontrada' });
+          }
+          
+          const request = requests[0];
+          
+          // Atualizar status da solicitação
+          await db.execute(sql.raw(`
+            UPDATE due_date_change_requests
+            SET status = 'rejected',
+                admin_response = '${input.reason.replace(/'/g, "\\'")}',
+                processed_by = '${ctx.user?.email}',
+                updated_at = NOW()
+            WHERE id = ${input.requestId}
+          `));
+          
+          // Buscar dados da cobrança para enviar email
+          const chargeResult = await db.execute(sql.raw(`
+            SELECT charge_type, vessel_name, client_email
+            FROM inspection_charges
+            WHERE id = ${request.charge_id}
+          `)) as any;
+          
+          const charges = (Array.isArray(chargeResult[0]) ? chargeResult[0] : chargeResult);
+          if (charges.length > 0) {
+            const charge = charges[0];
+            
+            // Enviar email ao cliente explicando
+            const { notifyClientDueDateRejected } = await import('./_core/inspectionEmails');
+            await notifyClientDueDateRejected({
+              clientEmail: charge.client_email,
+              clientName: request.client_email.split('@')[0], // Fallback: usar parte do email
+              chargeType: charge.charge_type,
+              vesselName: charge.vessel_name,
+              reason: input.reason,
+            }).catch(err => {
+              console.error('[dueDateRequests.reject] Erro ao enviar email:', err);
+              // Não falhar a operação se o email falhar
+            });
+          }
+          
+          return { success: true, message: 'Solicitação rejeitada com sucesso!' };
+        } catch (error: any) {
+          console.error('[dueDateRequests.reject] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao rejeitar solicitação: ${error.message}` 
+          });
+        }
+      }),
+
+    // Admin: Estatísticas
+    stats: adminProcedure.query(async () => {
+      const db = await import('./db').then(m => m.getDb());
+      if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+      try {
+        const { sql } = await import('drizzle-orm');
+        
+        const result = await db.execute(sql.raw(`
+          SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
+            SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
+          FROM due_date_change_requests
+        `)) as any;
+        
+        const stats = (Array.isArray(result[0]) ? result[0][0] : result[0]);
+        
+        return {
+          total: Number(stats.total) || 0,
+          pending: Number(stats.pending) || 0,
+          approved: Number(stats.approved) || 0,
+          rejected: Number(stats.rejected) || 0,
+        };
+      } catch (error: any) {
+        console.error('[dueDateRequests.stats] Error:', error);
+        throw new TRPCError({ 
+          code: 'INTERNAL_SERVER_ERROR', 
+          message: `Erro ao buscar estatísticas: ${error.message}` 
           });
         }
       }),
