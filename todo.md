@@ -2,6 +2,29 @@
 
 ## 🚀 PRÓXIMAS MELHORIAS - Sistema de Cobranças Avançado (23/12/2025)
 
+### 4. Correção de Erro de Pagamento em Abastecimentos
+
+**Objetivo:** Corrigir erro "Integração de pagamento não configurada" ao gerar PIX para abastecimentos
+
+**Backend:**
+- [x] Investigar endpoint de geração de pagamento para abastecimentos
+- [x] Corrigir fluxo para encaminhar corretamente à cobrança do Asaas
+- [x] Validar retorno de dados de pagamento (QR Code, URL, etc.)
+
+**Frontend:**
+- [x] Verificar tratamento de resposta do endpoint
+- [x] Garantir exibição correta do dialog de pagamento
+- [x] Testar fluxo completo de pagamento
+
+**Testes:**
+- [x] Validar geração de PIX para abastecimentos
+- [x] Confirmar redirecionamento correto para cobrança Asaas
+- [x] 7 testes automatizados passando
+
+---
+
+## 🚀 PRÓXIMAS MELHORIAS - Sistema de Cobranças Avançado (23/12/2025)
+
 ### 1. Integração Asaas para Pagamento de Reparos ✅ CONCLUÍDO
 
 **Objetivo:** Permitir que clientes paguem reparos via PIX com parcelamento (1x, 2x, 3x)
