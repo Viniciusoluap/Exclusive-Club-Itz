@@ -1,5 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { InspectionChargesSection } from "@/components/InspectionChargesSection";
+// import { InspectionChargesSection } from "@/components/InspectionChargesSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
@@ -975,7 +975,25 @@ export default function Dashboard() {
         <FuelRecordsSection />
 
         {/* Vistorias e Danos Section */}
-        <InspectionChargesSection />
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-red-500" />
+              Vistorias e Danos
+            </CardTitle>
+            <CardDescription>
+              Acompanhe vistorias reprovadas e realize pagamentos de danos
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/pagamento-danos">
+              <Button className="w-full" variant="default">
+                <DollarSign className="mr-2 h-4 w-4" />
+                Ver Vistorias e Pagamentos
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
 
         {/* Documentos das Minhas Embarcações Section */}
         <VesselDocumentsSection />
