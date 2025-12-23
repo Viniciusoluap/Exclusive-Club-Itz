@@ -886,3 +886,50 @@ Na página `/admin/cobrancas-danos`, o dropdown "Vistoria Reprovada" mostra "- -
 ✅ Filtro: `status === 'rejected' && bookingStatus === 'used'`
 ✅ 5 testes automatizados passando (100%)
 
+
+
+---
+
+## 🔧 NOVA TAREFA - Adicionar Botão "Configurações" no Menu Admin (23/12/2025)
+
+### Requisito do Usuário
+Adicionar botão visível "⚙️ Configurações" no menu lateral do painel Admin para facilitar acesso à página `/admin/configuracoes`.
+
+**Contexto:**
+- Página `/admin/configuracoes` já existe e funciona perfeitamente
+- Permite configurar chave API Asaas de forma segura
+- Falta apenas adicionar link no menu lateral para facilitar descoberta
+
+### Tarefas
+- [ ] Localizar componente do menu lateral Admin
+- [ ] Adicionar item "Configurações" com ícone Settings
+- [ ] Configurar rota para /admin/configuracoes
+- [ ] Testar navegação no navegador
+- [ ] Validar que apenas admin tem acesso
+
+### Arquivos a Modificar
+- [ ] client/src/pages/Admin.tsx (adicionar link no menu lateral)
+
+
+---
+
+## ✅ CONCLUÍDO - Botão "Configurações" no Cabeçalho Admin (23/12/2025)
+
+### Requisito do Usuário
+Adicionar botão visível "⚙️ Configurações" no cabeçalho do painel Admin para facilitar acesso à página `/admin/configuracoes`.
+
+### Implementação
+- [x] Localizar componente do cabeçalho Admin (Admin.tsx)
+- [x] Adicionar botão "Configurações" com ícone Settings
+- [x] Configurar link para /admin/configuracoes
+- [x] Posicionar botão ao lado de "Minhas Reservas" e "Voltar ao Site"
+
+### Arquivos Modificados
+- [x] client/src/pages/Admin.tsx (cabeçalho - linhas 542-547)
+
+### Resultado
+✅ Botão "⚙️ Configurações" adicionado ao cabeçalho Admin
+✅ Acesso rápido à página de configuração da chave API Asaas
+✅ Interface consistente com outros botões do cabeçalho
+✅ Apenas admin tem acesso (proteção já existente na rota)
+
