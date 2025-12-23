@@ -1,0 +1,28 @@
+{
+  "query": "SELECT i.id, i.vessel_id, i.booking_id, i.client_name, i.status, b.client_email, v.name as vessel_name FROM inspections i LEFT JOIN bookings b ON i.booking_id = b.id LEFT JOIN vessels v ON i.vessel_id = v.id WHERE i.status = 'rejected' ORDER BY i.created_at DESC LIMIT 3",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT i.id, i.vessel_id, i.booking_id, i.client_name, i.status, b.client_email, v.name as vessel_name FROM inspections i LEFT JOIN bookings b ON i.booking_id = b.id LEFT JOIN vessels v ON i.vessel_id = v.id WHERE i.status = 'rejected' ORDER BY i.created_at DESC LIMIT 3",
+  "rows": [
+    {
+      "id": "930009",
+      "vessel_id": "1",
+      "booking_id": "NULL",
+      "client_name": "Test Client 4",
+      "status": "rejected",
+      "client_email": "NULL",
+      "vessel_name": "NULL"
+    },
+    {
+      "id": "690005",
+      "vessel_id": "4",
+      "booking_id": "1980001",
+      "client_name": "Laécio Silversat",
+      "status": "rejected",
+      "client_email": "laecio.silversat@gmail.com",
+      "vessel_name": "Focker 215 150HP"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_id\tbooking_id\tclient_name\tstatus\tclient_email\tvessel_name\n930009\t1\tNULL\tTest Client 4\trejected\tNULL\tNULL\n690005\t4\t1980001\tLaécio Silversat\trejected\tlaecio.silversat@gmail.com\tFocker 215 150HP\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

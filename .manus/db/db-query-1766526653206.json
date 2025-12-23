@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, client_name, client_email, booking_id FROM inspections WHERE client_email IS NULL OR client_email = ''",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, client_name, client_email, booking_id FROM inspections WHERE client_email IS NULL OR client_email = ''",
+  "rows": [
+    {
+      "id": "930009",
+      "client_name": "Test Client 4",
+      "client_email": "NULL",
+      "booking_id": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tclient_email\tbooking_id\n930009\tTest Client 4\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

@@ -2943,13 +2943,22 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const { inspections, vessels } = await import('../drizzle/schema');
+        const { inspections, vessels, bookings } = await import('../drizzle/schema');
         const { eq } = await import('drizzle-orm');
         
         // Buscar nome da embarcação
         const vessel = await db.select().from(vessels).where(eq(vessels.id, input.vesselId)).limit(1);
         if (!vessel || vessel.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Embarcação não encontrada' });
+        }
+        
+        // Buscar email do cliente pelo booking
+        let clientEmail: string | null = null;
+        if (input.bookingId) {
+          const booking = await db.select().from(bookings).where(eq(bookings.id, input.bookingId)).limit(1);
+          if (booking && booking.length > 0) {
+            clientEmail = booking[0].clientEmail;
+          }
         }
 
         // Determinar status geral (approved se todos aprovados, rejected se algum reprovado)
@@ -2963,6 +2972,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             vesselName: vessel[0].name,
             vesselType: input.vesselType,
             clientName: input.clientName,
+            clientEmail: clientEmail,
             inspectionData: JSON.stringify(input.formData),
             observations: input.observations || null,
             status,
@@ -3371,7 +3381,10 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             
             // Buscar dados da vistoria
             const inspectionResult = await db.execute(sql.raw(`
-              SELECT i.*, b.client_email, v.name as vessel_name
+              SELECT 
+                i.*,
+                COALESCE(i.client_email, b.client_email) as client_email,
+                v.name as vessel_name
               FROM inspections i
               LEFT JOIN bookings b ON i.booking_id = b.id
               JOIN vessels v ON i.vessel_id = v.id
@@ -3381,6 +3394,14 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             const inspection = (Array.isArray(inspectionResult[0]) ? inspectionResult[0][0] : inspectionResult[0]);
             if (!inspection) {
               throw new TRPCError({ code: 'NOT_FOUND', message: 'Vistoria não encontrada' });
+            }
+            
+            // Validar se temos email do cliente
+            if (!inspection.client_email) {
+              throw new TRPCError({ 
+                code: 'BAD_REQUEST', 
+                message: 'Email do cliente não encontrado. Vistoria sem reserva vinculada precisa ter email cadastrado.' 
+              });
             }
             
             // Buscar ou criar customer no Asaas

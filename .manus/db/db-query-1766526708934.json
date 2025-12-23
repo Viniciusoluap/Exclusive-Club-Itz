@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO inspections (id, booking_id, vessel_id, vessel_name, vessel_type, client_name, client_email, inspection_data, status, created_at) VALUES (1, NULL, 1, 'Lancha Test', 'lancha', 'Cliente Test', 'cliente@test.com', '{\"casco\": \"REPROVADO\"}', 'rejected', NOW()) ON DUPLICATE KEY UPDATE client_email = 'cliente@test.com'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute INSERT INTO inspections (id, booking_id, vessel_id, vessel_name, vessel_type, client_name, client_email, inspection_data, status, created_at) VALUES (1, NULL, 1, 'Lancha Test', 'lancha', 'Cliente Test', 'cliente@test.com', '{\"casco\": \"REPROVADO\"}', 'rejected', NOW()) ON DUPLICATE KEY UPDATE client_email = 'cliente@test.com'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 69
+}
