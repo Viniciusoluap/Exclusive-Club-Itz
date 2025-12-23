@@ -1293,3 +1293,105 @@ Reformular seção "Minhas Vistorias e Danos" no Dashboard do cliente para mostr
 - PIX parcelado = múltiplas cobranças independentes (não é parcelamento nativo do PIX)
 - Cartão parcelado = usar campo `installmentCount` na API do Asaas
 - Webhook do Asaas já configurado para atualizar status automaticamente
+
+
+---
+
+## 🆕 NOVA FUNCIONALIDADE - Sistema de Cobranças Reformulado (23/12/2025 - 02:15)
+
+### Requisito do Usuário
+Reformular sistema de cobranças de danos com dois tipos distintos: Vistoria Reprovada e Reparo da Embarcação com rateio automático entre cotistas.
+
+### Especificações Detalhadas
+
+**ETAPA 1: Seleção do Tipo de Cobrança (Obrigatória)**
+- [ ] Radio buttons para escolher tipo: "Vistoria Reprovada" ou "Reparo da Embarcação"
+- [ ] Campos condicionais aparecem apenas após seleção
+
+**TIPO 1: Vistoria Reprovada**
+- [ ] Dropdown com últimas 5 vistorias reprovadas (mais recentes primeiro)
+- [ ] Campo "Valor Total (R$)" obrigatório
+- [ ] Campo "Data de Vencimento" opcional (padrão: 7 dias após criação)
+- [ ] Botões: Cancelar | Criar Cobrança
+
+**TIPO 2: Reparo da Embarcação**
+- [ ] Dropdown com embarcações pré-cadastradas
+- [ ] Campo "Descrição do Item" (texto livre para descrever reparo)
+- [ ] Campo "Valor Total (R$)" obrigatório
+- [ ] Botão "Upload de Comprovante" (foto/PDF do reparo)
+- [ ] Campo "Data de Vencimento" opcional (padrão: 7 dias após criação)
+- [ ] Botões: Cancelar | Criar Cobrança
+
+**LÓGICA DE RATEIO AUTOMÁTICO (Reparo da Embarcação):**
+- [ ] Buscar todos os clientes com cotas da embarcação selecionada
+- [ ] Calcular: Valor por cota = Valor Total ÷ Quantidade de Cotas da Embarcação
+- [ ] Cliente com cota inteira (1.0) = Valor por cota × 1
+- [ ] Cliente com meia cota (0.5) = Valor por cota × 0.5
+- [ ] Criar cobrança individual para cada cliente automaticamente
+- [ ] Integrar com Asaas para gerar PIX de cada cobrança
+
+### Fase 1: Schema do Banco de Dados
+- [x] Adicionar campo `charge_type` ENUM('inspection', 'repair') na tabela inspection_charges
+- [x] Adicionar campo `vessel_id` INT (FK para vessels) - para reparos
+- [x] Adicionar campo `description` TEXT - descrição do reparo
+- [x] Adicionar campo `receipt_url` VARCHAR(500) - comprovante do reparo (S3)
+- [x] Tornar campo `inspection_id` NULLABLE (null para reparos)
+- [x] Executar `pnpm db:push` para aplicar mudanças
+
+### Fase 2: Backend (server/routers.ts)
+- [x] Atualizar endpoint `inspectionCharges.create` para aceitar ambos tipos
+- [x] Validar campos obrigatórios por tipo (inspection_id OU vessel_id)
+- [x] Implementar lógica de rateio para tipo "repair":
+  * Buscar clientes com cotas da embarcação (vessel_owners)
+  * Calcular valor individual baseado em quota_share
+  * Criar cobranças individuais para cada cliente
+  * Gerar PIX no Asaas para cada cobrança
+- [x] Criar endpoint `inspectionCharges.getFailedInspections` (últimas 5 reprovadas)
+- [x] Criar endpoint `/api/upload-receipt` para upload de comprovantes (usa /api/upload existente)
+- [x] Atualizar query `inspectionCharges.list` para incluir novos campos
+
+### Fase 3: Frontend (client/src/pages/admin/CobrancasDanos.tsx)
+- [x] Adicionar estado `chargeType` ('inspection' | 'repair' | null)
+- [x] Adicionar radio buttons no início do dialog
+- [x] Implementar campos condicionais baseados em chargeType
+- [x] Campos para "Vistoria Reprovada":
+  * Dropdown de vistorias (buscar via getFailedInspections)
+  * Campo valor total
+  * Campo data vencimento (DatePicker)
+- [x] Campos para "Reparo da Embarcação":
+  * Dropdown de embarcações (buscar vessels)
+  * Campo descrição (textarea)
+  * Campo valor total
+  * Upload de comprovante (com preview)
+  * Campo data vencimento (DatePicker)
+- [x] Atualizar validações do formulário (Zod schema)
+- [x] Implementar upload de arquivo para S3
+- [x] Atualizar tabela de cobranças para exibir novos campos
+- [x] Adicionar coluna "Tipo" (badge: Vistoria/Reparo)
+
+### Fase 4: Testes e Validação
+- [x] Criar testes para endpoint `inspectionCharges.create` (ambos tipos)
+- [x] Testar lógica de rateio com diferentes cenários:
+  * 1 embarcação com 2 cotistas (1 cota inteira + 1 meia cota)
+  * 1 embarcação com 4 cotistas (variações de cotas)
+- [x] Validar cálculos: Valor por cota × quota_share
+- [x] Testar upload de comprovante para S3
+- [x] Testar integração com Asaas (geração de PIX)
+- [x] Validar que cobranças aparecem corretamente na lista
+- [x] Criar checkpoint final
+
+### Arquivos a Modificar
+- [x] drizzle/schema.ts (adicionar campos na tabela inspection_charges)
+- [x] server/routers.ts (endpoints de cobranças + lógica de rateio)
+- [x] server/_core/asaas.ts (já existe, apenas utilizar)
+- [x] client/src/pages/admin/CobrancasDanos.tsx (interface reformulada)
+- [x] Criar testes: server/inspectionCharges.reformulated.test.ts (20/20 passando)
+
+### Resultado Esperado
+✅ Dialog com seleção de tipo no início (radio buttons)
+✅ Campos condicionais aparecem baseados no tipo selecionado
+✅ Vistoria Reprovada: lista últimas 5 vistorias + valor + vencimento
+✅ Reparo da Embarcação: embarcação + descrição + valor + upload + vencimento
+✅ Rateio automático: divide valor entre cotistas (cota inteira vs meia cota)
+✅ Integração com Asaas: gera PIX para cada cobrança individual
+✅ Interface intuitiva e responsiva

@@ -1,0 +1,9 @@
+{
+  "query": "\nALTER TABLE inspection_charges \nADD COLUMN charge_type ENUM('inspection', 'repair') NOT NULL DEFAULT 'inspection' AFTER id,\nADD COLUMN vessel_id INT AFTER inspection_id,\nADD COLUMN description TEXT AFTER vessel_name,\nMODIFY COLUMN inspection_id INT NULL,\nMODIFY COLUMN failed_items TEXT NULL;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nALTER TABLE inspection_charges \nADD COLUMN charge_type ENUM('inspection', 'repair') NOT NULL DEFAULT 'inspection' AFTER id,\nADD COLUMN vessel_id INT AFTER inspection_id,\nADD COLUMN description TEXT AFTER vessel_name,\nMODIFY COLUMN inspection_id INT NULL,\nMODIFY COLUMN failed_items TEXT NULL;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 983
+}

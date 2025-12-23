@@ -264,15 +264,18 @@ export type InsertInspection = typeof inspections.$inferInsert;
  */
 export const inspectionCharges = mysqlTable("inspection_charges", {
   id: int("id").autoincrement().primaryKey(),
-  inspectionId: int("inspection_id").notNull(), // references inspections.id
+  chargeType: mysqlEnum("charge_type", ["inspection", "repair"]).notNull(), // Tipo: Vistoria Reprovada ou Reparo
+  inspectionId: int("inspection_id"), // references inspections.id (nullable - null para reparos)
+  vesselId: int("vessel_id"), // references vessels.id (para reparos de embarcação)
   clientEmail: varchar("client_email", { length: 320 }).notNull(),
   vesselName: text("vessel_name").notNull(),
-  failedItems: text("failed_items").notNull(), // JSON array of failed items with descriptions
+  description: text("description"), // Descrição do reparo (para tipo 'repair')
+  failedItems: text("failed_items"), // JSON array of failed items (para tipo 'inspection')
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // Total charge amount
   dueDate: timestamp("due_date").notNull(), // Payment due date
   asaasChargeId: varchar("asaas_charge_id", { length: 255 }), // Asaas charge ID
   paymentStatus: mysqlEnum("payment_status", ["pending", "paid", "overdue", "cancelled"]).default("pending").notNull(),
-  receiptUrl: text("receipt_url"), // URL of payment receipt
+  receiptUrl: text("receipt_url"), // URL do comprovante do reparo (para tipo 'repair')
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
 });
