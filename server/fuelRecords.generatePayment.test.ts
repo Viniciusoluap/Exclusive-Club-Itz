@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeAll } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
+import * as systemSettings from "./systemSettings";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -30,20 +31,42 @@ function createAuthContext(email: string = "client@example.com"): { ctx: TrpcCon
 }
 
 describe("fuelRecords.generatePayment", () => {
-  it("deve validar ASAAS_API_KEY no início do endpoint", async () => {
+  beforeAll(async () => {
+    // Garantir que temos uma API key configurada no banco para os testes
+    const existingKey = await systemSettings.getSetting("asaas_api_key");
+    
+    if (!existingKey) {
+      // Configurar uma chave de sandbox para teste
+      await systemSettings.setSetting(
+        "asaas_api_key",
+        "$aact_YTU5YTE0M2M2N2I4MTliNzk0YTI5N2U5MzdjNWZmNDQ6OjAwMDAwMDAwMDAwMDAwNzI1Njk6OiRhYWNoX2Y3ZTRhY2E3LTBkMjQtNDU1Mi04MWFjLWNjNTc0MTBkOTNiYQ==",
+        "Chave API Asaas (Sandbox) - Configurada para testes",
+        "sistema-teste"
+      );
+    }
+  });
+
+  it("deve buscar ASAAS_API_KEY do banco de dados (system_settings)", async () => {
     const { ctx } = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
-    // Salvar valor original
+    // Remover temporariamente a variável de ambiente para forçar busca do banco
     const originalApiKey = process.env.ASAAS_API_KEY;
+    delete process.env.ASAAS_API_KEY;
 
     try {
-      // Remover temporariamente a API key
-      delete process.env.ASAAS_API_KEY;
-
-      await expect(
-        caller.fuelRecords.generatePayment({ recordIds: [1] })
-      ).rejects.toThrow("Integração de pagamento não configurada");
+      // Tentar gerar pagamento para ID inexistente
+      // NÃO deve falhar com "Integração de pagamento não configurada"
+      // Deve falhar com "Nenhum abastecimento pendente encontrado" (comportamento correto)
+      await caller.fuelRecords.generatePayment({ recordIds: [99999] });
+      expect.fail("Deveria ter lançado erro de abastecimento não encontrado");
+    } catch (error: any) {
+      // Verificar que NÃO é erro de configuração (prova que a correção funciona)
+      expect(error.message).not.toContain("Integração de pagamento não configurada");
+      expect(error.message).not.toContain("ASAAS_API_KEY não configurada");
+      
+      // Deve ser erro de abastecimento não encontrado
+      expect(error.message).toContain("Nenhum abastecimento pendente encontrado");
     } finally {
       // Restaurar valor original
       if (originalApiKey) {

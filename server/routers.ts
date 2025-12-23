@@ -2398,14 +2398,21 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
         const { sql } = await import('drizzle-orm');
         const asaas = await import('./_core/asaas');
+        const { getSetting } = await import('./systemSettings');
 
-        // Verificar se ASAAS_API_KEY está configurada
-        const apiKey = process.env.ASAAS_API_KEY;
+        // Buscar ASAAS_API_KEY do banco de dados (configurações do sistema)
+        let apiKey = await getSetting('asaas_api_key');
+        
+        // Fallback para variável de ambiente (caso esteja configurada)
+        if (!apiKey) {
+          apiKey = process.env.ASAAS_API_KEY || null;
+        }
+        
         if (!apiKey) {
           console.error('[generatePayment] ASAAS_API_KEY não configurada');
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
-            message: 'Integração de pagamento não configurada. Contate o administrador.' 
+            message: 'Integração de pagamento não configurada. Configure a chave API em Configurações do Admin.' 
           });
         }
 

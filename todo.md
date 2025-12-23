@@ -23,6 +23,30 @@
 
 ---
 
+### 5. 🐛 BUG CRÍTICO: Erro de Pagamento Persiste (23/12/2025)
+
+**Problema reportado pelo usuário:**
+- Erro "Integração de pagamento não configurada" ainda aparece ao clicar em "Pagar Selecionados"
+- Testado em 23/12/2025 às 15:55
+- Cliente: efficazcorrespondente@hotmail.com
+- Valor: R$ 135,80 (1 abastecimento selecionado)
+
+**Tarefas:**
+- [x] Verificar se ASAAS_API_KEY está realmente configurada no sistema
+- [x] Investigar logs do servidor para identificar causa raiz
+- [x] Verificar se validação está acontecendo no lugar correto
+- [x] Testar endpoint fuelRecords.generatePayment manualmente
+- [x] Corrigir problema identificado
+- [x] Testar fluxo completo antes de entregar (7 testes passando)
+
+**Solução aplicada:**
+- Endpoint `fuelRecords.generatePayment` agora busca API key do banco de dados (system_settings)
+- Usa mesma lógica que já funciona em outros endpoints (getSetting)
+- Fallback para process.env.ASAAS_API_KEY se necessário
+- Mensagem de erro atualizada para orientar admin a configurar em Configurações
+
+---
+
 ## 🚀 PRÓXIMAS MELHORIAS - Sistema de Cobranças Avançado (23/12/2025)
 
 ### 1. Integração Asaas para Pagamento de Reparos ✅ CONCLUÍDO
