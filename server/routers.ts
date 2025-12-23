@@ -2493,46 +2493,80 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
         // Buscar QR Code PIX
         const apiKey = process.env.ASAAS_API_KEY;
-        const ASAAS_API_URL = apiKey?.startsWith('$aact_prod_')
-          ? 'https://api.asaas.com/v3'
-          : 'https://sandbox.asaas.com/api/v3';
-
-        const pixResponse = await fetch(`${ASAAS_API_URL}/payments/${charge.id}/pixQrCode`, {
-          method: 'GET',
-          headers: {
-            'access_token': apiKey!,
-          },
-        });
-
-        if (!pixResponse.ok) {
+        if (!apiKey) {
+          console.error('[generatePayment] ASAAS_API_KEY não configurada');
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
-            message: 'Erro ao gerar QR Code PIX' 
+            message: 'Integração de pagamento não configurada. Contate o administrador.' 
           });
         }
 
-        const pixData = await pixResponse.json();
+        const ASAAS_API_URL = apiKey.startsWith('$aact_prod_')
+          ? 'https://api.asaas.com/v3'
+          : 'https://sandbox.asaas.com/api/v3';
 
-        // Atualizar registros com ID da cobrança consolidada
-        for (const recordId of input.recordIds) {
-          await db.execute(sql`
-            UPDATE fuel_records
-            SET 
-              asaas_charge_id = ${charge.id},
-              due_date = ${dueDate}
-            WHERE id = ${recordId}
-          `);
+        console.log(`[generatePayment] Buscando QR Code PIX para charge ${charge.id}`);
+
+        try {
+          const pixResponse = await fetch(`${ASAAS_API_URL}/payments/${charge.id}/pixQrCode`, {
+            method: 'GET',
+            headers: {
+              'access_token': apiKey,
+            },
+          });
+
+          if (!pixResponse.ok) {
+            const errorText = await pixResponse.text();
+            console.error('[generatePayment] Erro ao buscar QR Code:', {
+              status: pixResponse.status,
+              statusText: pixResponse.statusText,
+              body: errorText,
+            });
+            throw new TRPCError({ 
+              code: 'INTERNAL_SERVER_ERROR', 
+              message: `Erro ao gerar QR Code PIX: ${pixResponse.statusText}` 
+            });
+          }
+
+          const pixData = await pixResponse.json();
+          console.log('[generatePayment] QR Code gerado com sucesso');
+
+          // Validar que os dados do PIX existem
+          if (!pixData.encodedImage || !pixData.payload) {
+            console.error('[generatePayment] Dados do PIX incompletos:', pixData);
+            throw new TRPCError({ 
+              code: 'INTERNAL_SERVER_ERROR', 
+              message: 'Dados do QR Code PIX estão incompletos' 
+            });
+          }
+
+          // Atualizar registros com ID da cobrança consolidada
+          for (const recordId of input.recordIds) {
+            await db.execute(sql`
+              UPDATE fuel_records
+              SET 
+                asaas_charge_id = ${charge.id},
+                due_date = ${dueDate}
+              WHERE id = ${recordId}
+            `);
+          }
+
+          return {
+            success: true,
+            chargeId: charge.id,
+            totalValue,
+            qrCode: pixData.encodedImage, // Base64 da imagem QR Code
+            payload: pixData.payload, // Código PIX copia-e-cola
+            expirationDate: pixData.expirationDate,
+            chargeDetails,
+          };
+        } catch (error: any) {
+          console.error('[generatePayment] Erro ao processar pagamento:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao gerar pagamento: ${error.message || 'Erro desconhecido'}` 
+          });
         }
-
-        return {
-          success: true,
-          chargeId: charge.id,
-          totalValue,
-          qrCode: pixData.encodedImage, // Base64 da imagem QR Code
-          payload: pixData.payload, // Código PIX copia-e-cola
-          expirationDate: pixData.expirationDate,
-          chargeDetails,
-        };
       }),
 
     // Novo endpoint: myRecords - Cliente vê seus próprios abastecimentos
