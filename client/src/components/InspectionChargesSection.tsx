@@ -15,7 +15,7 @@ export function InspectionChargesSection() {
   const utils = trpc.useUtils();
 
   // Buscar cobranças do cliente
-  const { data: charges, isLoading } = trpc.inspectionCharges.myCharges.useQuery();
+  const { data: charges, isLoading } = trpc.inspectionCharges.myCharges.useQuery({});
   const { data: stats } = trpc.inspectionCharges.getStats.useQuery();
 
   // Mutation para gerar pagamento PIX

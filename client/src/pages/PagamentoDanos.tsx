@@ -5,24 +5,46 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, CheckCircle2, Clock, Copy, Loader2, QrCode } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock, Copy, Eye, FileText, Loader2, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useLocation } from 'wouter';
 
 export default function PagamentoDanos() {
   const { user, loading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [selectedInspection, setSelectedInspection] = useState<number | null>(null);
   const [selectedInstallments, setSelectedInstallments] = useState<string>('1');
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentData, setPaymentData] = useState<any>(null);
+  const [selectedMonthYear, setSelectedMonthYear] = useState<string>('all');
+  
+  // Estados para dialog de mudança de vencimento
+  const [showDueDateDialog, setShowDueDateDialog] = useState(false);
+  const [selectedCharge, setSelectedCharge] = useState<any>(null);
+  const [newDueDate, setNewDueDate] = useState('');
+  const [dueDateReason, setDueDateReason] = useState('');
+  
+  // Estados para visualização de comprovante
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
 
   // Buscar vistorias reprovadas
-  const { data: failedInspections, isLoading } = trpc.inspections.myFailedInspections.useQuery(undefined, {
-    enabled: !!user,
-  });
+  const { data: failedInspections, isLoading: loadingInspections } = trpc.inspectionCharges.myCharges.useQuery(
+    { monthYear: selectedMonthYear === 'all' ? undefined : selectedMonthYear },
+    { enabled: !!user }
+  );
+
+  // Buscar reparos das embarcações
+  const { data: repairs, isLoading: loadingRepairs } = trpc.inspectionCharges.myRepairs.useQuery(
+    { monthYear: selectedMonthYear === 'all' ? undefined : selectedMonthYear },
+    { enabled: !!user }
+  );
 
   // Mutation para criar cobrança parcelada
   const createCharge = trpc.inspectionCharges.createInstallmentCharge.useMutation({
@@ -36,14 +58,38 @@ export default function PagamentoDanos() {
     },
   });
 
+  // Mutation para solicitar mudança de vencimento
+  const requestDueDateChange = trpc.inspectionCharges.requestDueDateChange.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setShowDueDateDialog(false);
+      setNewDueDate('');
+      setDueDateReason('');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Erro ao solicitar mudança');
+    },
+  });
+
   const handleCreateCharge = (inspectionId: number, amount: number) => {
     setSelectedInspection(inspectionId);
-    // Aqui você pode abrir um dialog para selecionar parcelas
-    // Por enquanto vamos usar 1x como padrão
     createCharge.mutate({
       inspectionId,
       totalAmount: amount,
       installments: parseInt(selectedInstallments),
+    });
+  };
+
+  const handleRequestDueDateChange = () => {
+    if (!selectedCharge || !newDueDate || !dueDateReason) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
+
+    requestDueDateChange.mutate({
+      chargeId: selectedCharge.id,
+      newDueDate,
+      reason: dueDateReason,
     });
   };
 
@@ -52,7 +98,17 @@ export default function PagamentoDanos() {
     toast.success('Código PIX copiado!');
   };
 
-  if (authLoading || isLoading) {
+  // Gerar opções de mês/ano (últimos 12 meses)
+  const monthYearOptions = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    monthYearOptions.push({ value: monthYear, label });
+  }
+
+  if (authLoading || loadingInspections || loadingRepairs) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -76,130 +132,310 @@ export default function PagamentoDanos() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
+        {/* Header com botão Voltar */}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setLocation('/dashboard')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+        </div>
+
         <div className="text-center space-y-2">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
             Pagamento de Danos
           </h1>
           <p className="text-gray-600">
-            Vistorias reprovadas que necessitam de pagamento para conserto
+            Vistorias reprovadas e reparos de embarcações
           </p>
         </div>
 
-        {/* Lista de Vistorias Reprovadas */}
-        {!failedInspections || failedInspections.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Nenhuma pendência encontrada</h3>
-              <p className="text-gray-600">
-                Você não possui vistorias reprovadas pendentes de pagamento.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {failedInspections.map((inspection: any) => {
-              const failedItems = Object.entries(inspection.inspectionData)
-                .filter(([_, status]) => status === 'REPROVADO')
-                .map(([name]) => name);
+        {/* Filtro de Mês/Ano */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <Label className="text-sm font-medium whitespace-nowrap">Filtrar por período:</Label>
+              <Select value={selectedMonthYear} onValueChange={setSelectedMonthYear}>
+                <SelectTrigger className="w-[250px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os períodos</SelectItem>
+                  {monthYearOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
-              const hasCharge = !!inspection.charge;
-              const estimatedAmount = failedItems.length * 150; // Estimativa de R$ 150 por item
+        {/* Seção 1: Vistorias Reprovadas */}
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <AlertCircle className="h-6 w-6 text-red-500" />
+            Vistorias Reprovadas
+          </h2>
 
-              return (
-                <Card key={inspection.id} className="overflow-hidden">
-                  <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50">
+          {!failedInspections || failedInspections.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-3" />
+                <p className="text-gray-600">Nenhuma vistoria reprovada encontrada.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {failedInspections.map((charge: any) => {
+                const failedItems = typeof charge.failed_items === 'string' 
+                  ? JSON.parse(charge.failed_items) 
+                  : charge.failed_items || [];
+
+                return (
+                  <Card key={charge.id} className="overflow-hidden">
+                    <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <CardTitle className="text-xl">
+                            {charge.vessel_name}
+                            <Badge variant="destructive" className="ml-2">
+                              Reprovada
+                            </Badge>
+                          </CardTitle>
+                          <CardDescription>
+                            Vistoria em {new Date(charge.inspection_date).toLocaleDateString('pt-BR')}
+                          </CardDescription>
+                        </div>
+                        <Badge
+                          variant={
+                            charge.payment_status === 'paid'
+                              ? 'default'
+                              : charge.payment_status === 'overdue'
+                              ? 'destructive'
+                              : 'secondary'
+                          }
+                        >
+                          {charge.payment_status === 'paid'
+                            ? 'Pago'
+                            : charge.payment_status === 'overdue'
+                            ? 'Vencido'
+                            : 'Pendente'}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="pt-6 space-y-4">
+                      {/* Itens Reprovados */}
+                      <div>
+                        <h4 className="font-semibold text-sm text-gray-700 mb-2">
+                          Itens Reprovados ({failedItems.length})
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {failedItems.map((item: any, idx: number) => (
+                            <Badge key={idx} variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              {item.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Informações de Pagamento */}
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-600">Valor</p>
+                          <p className="font-semibold text-lg">
+                            R$ {parseFloat(charge.amount).toFixed(2)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Vencimento</p>
+                          <p className="font-semibold">
+                            {new Date(charge.due_date).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Ações */}
+                      <div className="flex gap-2">
+                        {charge.payment_status !== 'paid' && (
+                          <>
+                            <Button className="flex-1" variant="default">
+                              <QrCode className="h-4 w-4 mr-2" />
+                              Pagar com PIX
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedCharge(charge);
+                                setShowDueDateDialog(true);
+                              }}
+                            >
+                              <Calendar className="h-4 w-4 mr-2" />
+                              Solicitar Mudança de Vencimento
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Seção 2: Reparos da Embarcação */}
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <FileText className="h-6 w-6 text-blue-500" />
+            Reparos da Embarcação
+          </h2>
+
+          {!repairs || repairs.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-3" />
+                <p className="text-gray-600">Nenhum reparo encontrado.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {repairs.map((repair: any) => (
+                <Card key={repair.id} className="overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <CardTitle className="text-xl">
-                          {inspection.vesselName}
-                          <Badge variant="destructive" className="ml-2">
-                            Reprovada
+                          {repair.vesselName}
+                          <Badge variant="outline" className="ml-2">
+                            Reparo
                           </Badge>
                         </CardTitle>
                         <CardDescription>
-                          Vistoria realizada em {new Date(inspection.createdAt).toLocaleDateString('pt-BR')}
+                          {repair.description || 'Reparo da embarcação'}
                         </CardDescription>
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        {inspection.vesselType === 'jetski' ? 'Jet Ski' : 'Lancha'}
+                      <Badge
+                        variant={
+                          repair.paymentStatus === 'paid'
+                            ? 'default'
+                            : repair.paymentStatus === 'overdue'
+                            ? 'destructive'
+                            : 'secondary'
+                        }
+                      >
+                        {repair.paymentStatus === 'paid'
+                          ? 'Pago'
+                          : repair.paymentStatus === 'overdue'
+                          ? 'Vencido'
+                          : repair.asaasChargeId ? 'Pendente' : 'Aguardando Orçamento'}
                       </Badge>
                     </div>
                   </CardHeader>
 
                   <CardContent className="pt-6 space-y-4">
-                    {/* Itens Reprovados */}
-                    <div>
-                      <h4 className="font-semibold text-sm text-gray-700 mb-2">
-                        Itens Reprovados ({failedItems.length})
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {failedItems.map((item, idx) => (
-                          <Badge key={idx} variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            {item}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-
-                    {inspection.observations && (
+                    {/* Informações de Rateio */}
+                    {repair.asaasChargeId ? (
                       <>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Valor Total do Reparo:</span>
+                            <span className="font-semibold">R$ {repair.totalAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Sua Cota ({(repair.quotaShare * 100).toFixed(0)}%):</span>
+                            <span className="font-semibold text-lg text-blue-700">
+                              R$ {repair.individualAmount.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-600">Vencimento:</span>
+                            <span className="font-semibold">
+                              {new Date(repair.dueDate).toLocaleDateString('pt-BR')}
+                            </span>
+                          </div>
+                        </div>
+
                         <Separator />
-                        <div>
-                          <h4 className="font-semibold text-sm text-gray-700 mb-2">Observações</h4>
-                          <p className="text-sm text-gray-600">{inspection.observations}</p>
+
+                        {/* Opções de Parcelamento */}
+                        {repair.paymentStatus !== 'paid' && (
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium">Escolha a forma de pagamento:</Label>
+                            <RadioGroup
+                              value={selectedInstallments}
+                              onValueChange={setSelectedInstallments}
+                              className="space-y-2"
+                            >
+                              <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
+                                <RadioGroupItem value="1" id={`1x-repair-${repair.id}`} />
+                                <Label htmlFor={`1x-repair-${repair.id}`} className="flex-1 cursor-pointer">
+                                  <span className="font-semibold">1x de R$ {repair.individualAmount.toFixed(2)}</span>
+                                  <span className="text-xs text-gray-500 ml-2">(à vista)</span>
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
+                                <RadioGroupItem value="2" id={`2x-repair-${repair.id}`} />
+                                <Label htmlFor={`2x-repair-${repair.id}`} className="flex-1 cursor-pointer">
+                                  <span className="font-semibold">
+                                    2x de R$ {(repair.individualAmount / 2).toFixed(2)}
+                                  </span>
+                                  <span className="text-xs text-gray-500 ml-2">(sem juros)</span>
+                                </Label>
+                              </div>
+                              <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
+                                <RadioGroupItem value="3" id={`3x-repair-${repair.id}`} />
+                                <Label htmlFor={`3x-repair-${repair.id}`} className="flex-1 cursor-pointer">
+                                  <span className="font-semibold">
+                                    3x de R$ {(repair.individualAmount / 3).toFixed(2)}
+                                  </span>
+                                  <span className="text-xs text-gray-500 ml-2">(sem juros)</span>
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          </div>
+                        )}
+
+                        {/* Ações */}
+                        <div className="flex gap-2">
+                          {repair.receiptUrl && (
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedReceipt(repair.receiptUrl);
+                                setShowReceiptDialog(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver Comprovante
+                            </Button>
+                          )}
+                          {repair.paymentStatus !== 'paid' && (
+                            <>
+                              <Button className="flex-1" variant="default">
+                                <QrCode className="h-4 w-4 mr-2" />
+                                Pagar com PIX
+                              </Button>
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedCharge(repair);
+                                  setShowDueDateDialog(true);
+                                }}
+                              >
+                                <Calendar className="h-4 w-4 mr-2" />
+                                Solicitar Mudança de Vencimento
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </>
-                    )}
-
-                    <Separator />
-
-                    {/* Status da Cobrança */}
-                    {hasCharge ? (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-semibold text-blue-900">Cobrança Criada</h4>
-                          <Badge
-                            variant={
-                              inspection.charge.paymentStatus === 'paid'
-                                ? 'default'
-                                : inspection.charge.paymentStatus === 'overdue'
-                                ? 'destructive'
-                                : 'secondary'
-                            }
-                          >
-                            {inspection.charge.paymentStatus === 'paid'
-                              ? 'Pago'
-                              : inspection.charge.paymentStatus === 'overdue'
-                              ? 'Vencido'
-                              : 'Pendente'}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-gray-600">Valor</p>
-                            <p className="font-semibold text-lg">
-                              R$ {inspection.charge.amount.toFixed(2)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600">Vencimento</p>
-                            <p className="font-semibold">
-                              {new Date(inspection.charge.dueDate).toLocaleDateString('pt-BR')}
-                            </p>
-                          </div>
-                        </div>
-                        {inspection.charge.paymentStatus !== 'paid' && (
-                          <Button className="w-full" variant="default">
-                            <QrCode className="h-4 w-4 mr-2" />
-                            Ver QR Code PIX
-                          </Button>
-                        )}
-                      </div>
                     ) : (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <div className="flex items-start gap-3">
                           <Clock className="h-5 w-5 text-yellow-600 mt-0.5" />
                           <div className="flex-1">
@@ -207,74 +443,114 @@ export default function PagamentoDanos() {
                               Aguardando Orçamento
                             </h4>
                             <p className="text-sm text-yellow-700">
-                              O valor estimado para conserto é de{' '}
-                              <span className="font-semibold">R$ {estimatedAmount.toFixed(2)}</span>.
-                              Você poderá parcelar em até 3x sem juros.
+                              O orçamento do reparo ainda está sendo calculado. Você será notificado quando estiver disponível.
                             </p>
                           </div>
                         </div>
-
-                        {/* Seleção de Parcelas */}
-                        <div className="space-y-3 pt-2">
-                          <Label className="text-sm font-medium">Escolha a forma de pagamento:</Label>
-                          <RadioGroup
-                            value={selectedInstallments}
-                            onValueChange={setSelectedInstallments}
-                            className="space-y-2"
+                        {repair.receiptUrl && (
+                          <Button
+                            variant="outline"
+                            className="mt-3"
+                            onClick={() => {
+                              setSelectedReceipt(repair.receiptUrl);
+                              setShowReceiptDialog(true);
+                            }}
                           >
-                            <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
-                              <RadioGroupItem value="1" id={`1x-${inspection.id}`} />
-                              <Label htmlFor={`1x-${inspection.id}`} className="flex-1 cursor-pointer">
-                                <span className="font-semibold">1x de R$ {estimatedAmount.toFixed(2)}</span>
-                                <span className="text-xs text-gray-500 ml-2">(à vista)</span>
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
-                              <RadioGroupItem value="2" id={`2x-${inspection.id}`} />
-                              <Label htmlFor={`2x-${inspection.id}`} className="flex-1 cursor-pointer">
-                                <span className="font-semibold">
-                                  2x de R$ {(estimatedAmount / 2).toFixed(2)}
-                                </span>
-                                <span className="text-xs text-gray-500 ml-2">(sem juros)</span>
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
-                              <RadioGroupItem value="3" id={`3x-${inspection.id}`} />
-                              <Label htmlFor={`3x-${inspection.id}`} className="flex-1 cursor-pointer">
-                                <span className="font-semibold">
-                                  3x de R$ {(estimatedAmount / 3).toFixed(2)}
-                                </span>
-                                <span className="text-xs text-gray-500 ml-2">(sem juros)</span>
-                              </Label>
-                            </div>
-                          </RadioGroup>
-                        </div>
-
-                        <Button
-                          className="w-full"
-                          onClick={() => handleCreateCharge(inspection.id, estimatedAmount)}
-                          disabled={createCharge.isPending}
-                        >
-                          {createCharge.isPending ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Gerando Cobrança...
-                            </>
-                          ) : (
-                            'Gerar Cobrança'
-                          )}
-                        </Button>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Ver Comprovante
+                          </Button>
+                        )}
                       </div>
                     )}
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Dialog de Pagamento */}
+      {/* Dialog de Mudança de Vencimento */}
+      <Dialog open={showDueDateDialog} onOpenChange={setShowDueDateDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Solicitar Mudança de Vencimento</DialogTitle>
+            <DialogDescription>
+              Preencha os campos abaixo para solicitar uma nova data de vencimento.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newDueDate">Nova Data de Vencimento</Label>
+              <input
+                id="newDueDate"
+                type="date"
+                value={newDueDate}
+                onChange={(e) => setNewDueDate(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md"
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reason">Motivo da Solicitação</Label>
+              <Textarea
+                id="reason"
+                value={dueDateReason}
+                onChange={(e) => setDueDateReason(e.target.value)}
+                placeholder="Explique o motivo da solicitação (mínimo 10 caracteres)"
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDueDateDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleRequestDueDateChange}
+              disabled={requestDueDateChange.isPending || !newDueDate || dueDateReason.length < 10}
+            >
+              {requestDueDateChange.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                'Enviar Solicitação'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Visualização de Comprovante */}
+      <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Comprovante de Reparo</DialogTitle>
+          </DialogHeader>
+
+          {selectedReceipt && (
+            <div className="space-y-4">
+              {selectedReceipt.toLowerCase().endsWith('.pdf') ? (
+                <embed src={selectedReceipt} type="application/pdf" className="w-full h-[600px] rounded-lg" />
+              ) : (
+                <img src={selectedReceipt} alt="Comprovante" className="w-full rounded-lg" />
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setShowReceiptDialog(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Pagamento (mantido do código original) */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
