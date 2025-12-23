@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { APP_LOGO, APP_TITLE } from "@/const";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 interface Photo {
   id: number;
@@ -30,6 +31,7 @@ const photos: Photo[] = [
 ];
 
 export default function Galeria() {
+  const { user, isAuthenticated } = useAuth();
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [filter, setFilter] = useState<"todos" | "lancha" | "jetski">("todos");
 
@@ -65,7 +67,9 @@ export default function Galeria() {
           <nav className="flex gap-6">
             <a href="/" className="text-gray-700 hover:text-cyan-600 transition-colors">Home</a>
             <a href="/galeria" className="text-cyan-600 font-semibold">Galeria</a>
-            <a href="/reservas" className="text-gray-700 hover:text-cyan-600 transition-colors">Minhas Reservas</a>
+            {isAuthenticated && user?.role !== "employee" && (
+              <a href="/reservas" className="text-gray-700 hover:text-cyan-600 transition-colors">Minhas Reservas</a>
+            )}
           </nav>
         </div>
       </header>

@@ -1,0 +1,142 @@
+{
+  "query": "SELECT id, email, name, role FROM users ORDER BY id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, email, name, role FROM users ORDER BY id",
+  "rows": [
+    {
+      "id": "1",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "name": "Vinicius Freitas",
+      "role": "admin"
+    },
+    {
+      "id": "390043",
+      "email": "paulovinicius92@hotmail.com",
+      "name": "paulovinicius92",
+      "role": "user"
+    },
+    {
+      "id": "1260005",
+      "email": "ernanyoimp@gmail.com",
+      "name": "ernany oliveira",
+      "role": "user"
+    },
+    {
+      "id": "1350001",
+      "email": "mhamedfeiz@hotmail.com",
+      "name": "mhamedfeiz",
+      "role": "user"
+    },
+    {
+      "id": "1440001",
+      "email": "diogobritolemos@gmail.com",
+      "name": "Diogo Brito",
+      "role": "user"
+    },
+    {
+      "id": "1470001",
+      "email": "filippeamurta@yahoo.com.br",
+      "name": "Filippe Murta",
+      "role": "user"
+    },
+    {
+      "id": "1500001",
+      "email": "rbq1992@gmail.com",
+      "name": "ronaldo bianchini",
+      "role": "user"
+    },
+    {
+      "id": "1590001",
+      "email": "erisvaldo1308@gmail.com",
+      "name": "Erisvaldo Alves",
+      "role": "user"
+    },
+    {
+      "id": "1590050",
+      "email": "erinaldo7717@gmail.com",
+      "name": "Erinaldo Alves Silva",
+      "role": "user"
+    },
+    {
+      "id": "1650059",
+      "email": "via.vips@hotmail.com",
+      "name": "Erisvaldo Silva",
+      "role": "user"
+    },
+    {
+      "id": "1710001",
+      "email": "gabnercorporation@gmail.com",
+      "name": "Gabner Corporation",
+      "role": "user"
+    },
+    {
+      "id": "1860001",
+      "email": "motomais.acailandia@gmail.com",
+      "name": "EDILSON DA CONCEIÇÃO COSTA",
+      "role": "user"
+    },
+    {
+      "id": "7800134",
+      "email": "atendimento@prospectaconstrucoes.com",
+      "name": "Louise",
+      "role": "employee"
+    },
+    {
+      "id": "8010001",
+      "email": "faelnautico12@gmail.com",
+      "name": "Rafael Nascimento",
+      "role": "employee"
+    },
+    {
+      "id": "8640111",
+      "email": "contato@grupoefficaz.com.br",
+      "name": "Joao",
+      "role": "user"
+    },
+    {
+      "id": "8760001",
+      "email": "diogobritolemos@icloud.com",
+      "name": "NULL",
+      "role": "user"
+    },
+    {
+      "id": "8790001",
+      "email": "cavalcanteribeiromariavitoria@gmail.com",
+      "name": "Maria vitoria Cavalcante Ribeiro",
+      "role": "user"
+    },
+    {
+      "id": "9180001",
+      "email": "lsccsilva@outlook.com",
+      "name": "lsccsilva",
+      "role": "user"
+    },
+    {
+      "id": "9450001",
+      "email": "Cesarmarcus886@gmail.com",
+      "name": "Cesarmarcus886",
+      "role": "user"
+    },
+    {
+      "id": "9900001",
+      "email": "laecio.silversat@gmail.com",
+      "name": "Laécio Silversat",
+      "role": "user"
+    },
+    {
+      "id": "10980003",
+      "email": "stenioteixeirats1@gmail.com",
+      "name": "stenioteixeirats1",
+      "role": "user"
+    },
+    {
+      "id": "11700001",
+      "email": "efficazcorrespondente@hotmail.com",
+      "name": "Jhonjhon",
+      "role": "user"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\trole\n1\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\tadmin\n390043\tpaulovinicius92@hotmail.com\tpaulovinicius92\tuser\n1260005\ternanyoimp@gmail.com\ternany oliveira\tuser\n1350001\tmhamedfeiz@hotmail.com\tmhamedfeiz\tuser\n1440001\tdiogobritolemos@gmail.com\tDiogo Brito\tuser\n1470001\tfilippeamurta@yahoo.com.br\tFilippe Murta\tuser\n1500001\trbq1992@gmail.com\tronaldo bianchini\tuser\n1590001\terisvaldo1308@gmail.com\tErisvaldo Alves\tuser\n1590050\terinaldo7717@gmail.com\tErinaldo Alves Silva\tuser\n1650059\tvia.vips@hotmail.com\tErisvaldo Silva\tuser\n1710001\tgabnercorporation@gmail.com\tGabner Corporation\tuser\n1860001\tmotomais.acailandia@gmail.com\tEDILSON DA CONCEIÇÃO COSTA\tuser\n7800134\tatendimento@prospectaconstrucoes.com\tLouise\temployee\n8010001\tfaelnautico12@gmail.com\tRafael Nascimento\temployee\n8640111\tcontato@grupoefficaz.com.br\tJoao\tuser\n8760001\tdiogobritolemos@icloud.com\tNULL\tuser\n8790001\tcavalcanteribeiromariavitoria@gmail.com\tMaria vitoria Cavalcante Ribeiro\tuser\n9180001\tlsccsilva@outlook.com\tlsccsilva\tuser\n9450001\tCesarmarcus886@gmail.com\tCesarmarcus886\tuser\n9900001\tlaecio.silversat@gmail.com\tLaécio Silversat\tuser\n10980003\tstenioteixeirats1@gmail.com\tstenioteixeirats1\tuser\n11700001\tefficazcorrespondente@hotmail.com\tJhonjhon\tuser\n",
+  "stderr": "",
+  "execution_time_ms": 108
+}

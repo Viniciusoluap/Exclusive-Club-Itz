@@ -113,7 +113,7 @@ export function MobileMenu() {
             Galeria
           </NavLink>
 
-          {isAuthenticated && (
+          {isAuthenticated && user?.role !== "employee" && (
             <>
               <NavLink href="/dashboard">
                 Dashboard
