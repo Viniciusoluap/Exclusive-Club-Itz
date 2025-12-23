@@ -1395,3 +1395,88 @@ Reformular sistema de cobranças de danos com dois tipos distintos: Vistoria Rep
 ✅ Rateio automático: divide valor entre cotistas (cota inteira vs meia cota)
 ✅ Integração com Asaas: gera PIX para cada cobrança individual
 ✅ Interface intuitiva e responsiva
+
+
+---
+
+## 🆕 Melhorias na Página de Pagamento de Danos - Cliente (23/12/2025)
+
+### Requisito do Usuário
+Implementar melhorias completas na página `/pagamento-danos` do cliente, incluindo histórico de reparos, filtros de mês/ano, opções de pagamento parcelado e solicitação de mudança de vencimento.
+
+### Funcionalidades a Implementar
+
+**1. Backend - Novos Endpoints tRPC:**
+- [x] `inspectionCharges.myRepairs` - Buscar reparos das embarcações do cliente
+  * Filtrar por embarcações que o cliente possui cotas
+  * Incluir filtro de mês/ano (igual a myDamages)
+  * Retornar: descrição, valor individual, valor total, status, vencimento, comprovante
+- [x] `inspectionCharges.requestDueDateChange` - Solicitar mudança de vencimento
+  * Receber: chargeId, newDueDate, reason
+  * Criar notificação para admin
+  * Retornar confirmação de solicitação
+- [x] Adaptar `inspectionCharges.generatePix` para suportar reparos
+  * Aceitar chargeType ('inspection' | 'repair')
+  * Buscar cobrança correta baseado no tipo
+- [x] Adicionar filtro de mês/ano em `myDamages` e `myRepairs`
+
+**2. Frontend - Refatoração Completa da Página:**
+- [x] Adicionar botão "Voltar" no topo da página
+- [x] Implementar filtro de mês/ano (igual ao de abastecimento)
+  * Dropdown com últimos 12 meses
+  * Aplicar filtro em ambas seções (vistorias + reparos)
+- [x] Dividir tela em 2 seções principais:
+  * **Seção 1:** Vistorias Reprovadas (código existente)
+  * **Seção 2:** Reparos da Embarcação (novo)
+- [x] Criar componente `RepairChargeCard` para exibir reparos:
+  * Descrição do reparo
+  * Embarcação
+  * Valor individual (baseado em cota)
+  * Valor total do reparo
+  * Status de pagamento
+  * Data de vencimento
+  * Botão "Ver Comprovante" (se houver)
+  * Botão "Pagar" (se pendente)
+  * Opção "Solicitar Mudança de Vencimento"
+- [x] Criar dialog `RequestDueDateChangeDialog`:
+  * Campo de data (DatePicker)
+  * Campo de motivo (textarea)
+  * Botões: Cancelar | Enviar Solicitação
+- [x] Criar dialog `ViewReceiptDialog`:
+  * Exibir imagem/PDF do comprovante
+  * Botão de fechar
+- [x] Adicionar opção "Solicitar Mudança de Vencimento" em vistorias
+- [x] Exibir "Aguardando Orçamento" quando reparo não tem cobrança
+- [x] Implementar opções de pagamento parcelado para reparos:
+  * Radio buttons: 1x (sem juros), 2x, 3x
+  * Cálculo automático de parcelas
+  * Exibir valor de cada parcela
+
+**3. Testes Automatizados:**
+- [x] Criar testes para endpoint `myRepairs` (5/5 passando)
+  * Validar filtro de mês/ano
+  * Validar cálculo de valor individual baseado em cota
+  * Validar retorno de dados corretos
+- [x] Criar testes para endpoint `requestDueDateChange` (6/6 passando)
+  * Validar criação de notificação
+  * Validar que apenas cliente pode solicitar suas próprias cobranças
+- [x] Validar cálculo de rateio de reparos
+- [x] Testar fluxo completo de pagamento parcelado
+
+### Arquivos a Modificar
+- [x] server/routers.ts (novos endpoints + filtros)
+- [x] client/src/pages/PagamentoDanos.tsx (refatoração completa)
+- [x] Criar testes: server/inspectionCharges.myRepairs.test.ts
+- [x] Criar testes: server/inspectionCharges.requestDueDateChange.test.ts
+
+### Resultado Esperado
+✅ Página com botão "Voltar" no topo
+✅ Filtro de mês/ano funcionando em ambas seções
+✅ Seção de Vistorias Reprovadas (existente) mantida
+✅ Nova seção de Reparos da Embarcação implementada
+✅ Cliente visualiza reparos das suas embarcações
+✅ Cliente pode solicitar mudança de vencimento
+✅ Cliente pode visualizar comprovantes de reparos
+✅ Cliente pode pagar reparos em 1x, 2x ou 3x
+✅ "Aguardando Orçamento" exibido quando reparo não tem cobrança
+✅ Interface responsiva e intuitiva

@@ -3662,9 +3662,12 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         }
       }),
 
-    // Cliente: Listar minhas cobranças
+    // Cliente: Buscar vistorias reprovadas (com filtro de mês/ano)
     myCharges: protectedProcedure
-      .query(async ({ ctx }) => {
+      .input(z.object({
+        monthYear: z.string().optional(), // formato: YYYY-MM
+      }))
+      .query(async ({ ctx, input }) => {
         if (!ctx.user?.email) {
           throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Usuário não autenticado' });
         }
@@ -3674,6 +3677,14 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
         try {
           const { sql } = await import('drizzle-orm');
+          
+          // Construir filtro de data se fornecido
+          let dateFilter = '';
+          if (input.monthYear) {
+            const [year, month] = input.monthYear.split('-');
+            dateFilter = `AND YEAR(ic.created_at) = ${year} AND MONTH(ic.created_at) = ${month}`;
+          }
+          
           const result = await db.execute(sql.raw(`
             SELECT 
               ic.*,
@@ -3681,6 +3692,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             FROM inspection_charges ic
             JOIN inspections i ON ic.inspection_id = i.id
             WHERE ic.client_email = '${ctx.user.email}'
+              AND ic.charge_type = 'inspection'
+              ${dateFilter}
             ORDER BY ic.created_at DESC
           `)) as any;
           
@@ -3695,6 +3708,161 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
             message: `Erro ao buscar cobranças: ${error.message}` 
+          });
+        }
+      }),
+
+    // Cliente: Buscar reparos das embarcações do cliente
+    myRepairs: protectedProcedure
+      .input(z.object({
+        monthYear: z.string().optional(), // formato: YYYY-MM
+      }))
+      .query(async ({ ctx, input }) => {
+        if (!ctx.user?.email) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Usuário não autenticado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          
+          // Buscar embarcações do cliente (via client_quotas)
+          const vesselsResult = await db.execute(sql.raw(`
+            SELECT DISTINCT 
+              cq.vessel_id,
+              CASE 
+                WHEN cq.quota_type = 'full' THEN 1.0
+                WHEN cq.quota_type = 'half' THEN 0.5
+                ELSE 1.0
+              END as quota_share
+            FROM client_quotas cq
+            JOIN allowed_clients ac ON cq.client_id = ac.id
+            WHERE ac.email = '${ctx.user.email}' AND cq.is_active = 1
+          `)) as any;
+          
+          const vessels = (Array.isArray(vesselsResult[0]) ? vesselsResult[0] : vesselsResult);
+          if (vessels.length === 0) {
+            return [];
+          }
+          
+          const vesselIds = vessels.map((v: any) => v.vessel_id).join(',');
+          const vesselQuotas = new Map<number, number>(vessels.map((v: any) => [v.vessel_id, parseFloat(v.quota_share)]));
+          
+          // Construir filtro de data se fornecido
+          let dateFilter = '';
+          if (input.monthYear) {
+            const [year, month] = input.monthYear.split('-');
+            dateFilter = `AND YEAR(ic.created_at) = ${year} AND MONTH(ic.created_at) = ${month}`;
+          }
+          
+          // Buscar reparos das embarcações do cliente
+          const result = await db.execute(sql.raw(`
+            SELECT 
+              ic.id,
+              ic.charge_type as chargeType,
+              ic.vessel_id as vesselId,
+              ic.vessel_name as vesselName,
+              ic.description,
+              ic.amount,
+              ic.due_date as dueDate,
+              ic.payment_status as paymentStatus,
+              ic.receipt_url as receiptUrl,
+              ic.asaas_charge_id as asaasChargeId,
+              ic.created_at as createdAt,
+              ic.client_email as clientEmail
+            FROM inspection_charges ic
+            WHERE ic.charge_type = 'repair'
+              AND ic.vessel_id IN (${vesselIds})
+              AND ic.client_email = '${ctx.user.email}'
+              ${dateFilter}
+            ORDER BY ic.created_at DESC
+          `)) as any;
+          
+          const repairs = (Array.isArray(result[0]) ? result[0] : result);
+          
+          // Calcular valor individual baseado na cota do cliente
+          return repairs.map((repair: any) => {
+            const quotaShare = vesselQuotas.get(repair.vesselId) ?? 1.0;
+            const totalAmount = parseFloat(repair.amount);
+            const individualAmount = totalAmount * quotaShare;
+            
+            return {
+              id: repair.id,
+              chargeType: repair.chargeType,
+              vesselId: repair.vesselId,
+              vesselName: repair.vesselName,
+              description: repair.description,
+              totalAmount,
+              individualAmount,
+              quotaShare,
+              dueDate: repair.dueDate,
+              paymentStatus: repair.paymentStatus,
+              receiptUrl: repair.receiptUrl,
+              asaasChargeId: repair.asaasChargeId,
+              createdAt: repair.createdAt,
+            };
+          });
+        } catch (error: any) {
+          console.error('[inspectionCharges.myRepairs] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao buscar reparos: ${error.message}` 
+          });
+        }
+      }),
+
+    // Cliente: Solicitar mudança de vencimento
+    requestDueDateChange: protectedProcedure
+      .input(z.object({
+        chargeId: z.number(),
+        newDueDate: z.string(), // ISO date string
+        reason: z.string().min(10, 'Motivo deve ter pelo menos 10 caracteres'),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user?.email) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Usuário não autenticado' });
+        }
+
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          
+          // Verificar se a cobrança pertence ao cliente
+          const result = await db.execute(sql.raw(`
+            SELECT * FROM inspection_charges
+            WHERE id = ${input.chargeId} AND client_email = '${ctx.user.email}'
+          `)) as any;
+          
+          const charges = (Array.isArray(result[0]) ? result[0] : result);
+          if (charges.length === 0) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cobrança não encontrada' });
+          }
+          
+          const charge = charges[0];
+          
+          // Notificar admin
+          const { notifyOwner } = await import('./_core/notification');
+          const currentDueDate = new Date(charge.due_date).toLocaleDateString('pt-BR');
+          const newDueDate = new Date(input.newDueDate).toLocaleDateString('pt-BR');
+          
+          await notifyOwner({
+            title: '📅 Solicitação de Mudança de Vencimento',
+            content: `**Cliente:** ${ctx.user.name || ctx.user.email}\n**Cobrança ID:** #${input.chargeId}\n**Embarcação:** ${charge.vessel_name}\n**Valor:** R$ ${parseFloat(charge.amount).toFixed(2)}\n**Vencimento Atual:** ${currentDueDate}\n**Novo Vencimento Solicitado:** ${newDueDate}\n**Motivo:** ${input.reason}`,
+          });
+          
+          return {
+            success: true,
+            message: 'Solicitação enviada com sucesso! O administrador irá analisar seu pedido.',
+          };
+        } catch (error: any) {
+          console.error('[inspectionCharges.requestDueDateChange] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao solicitar mudança: ${error.message}` 
           });
         }
       }),
