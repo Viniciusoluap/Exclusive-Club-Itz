@@ -58,6 +58,18 @@ export default function PagamentoDanos() {
     },
   });
 
+  // Mutation para gerar pagamento PIX de reparos
+  const generatePayment = trpc.inspectionCharges.generatePayment.useMutation({
+    onSuccess: (data) => {
+      setPaymentData(data);
+      setShowPaymentDialog(true);
+      toast.success('Pagamento gerado com sucesso!');
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Erro ao gerar pagamento');
+    },
+  });
+
   // Mutation para solicitar mudança de vencimento
   const requestDueDateChange = trpc.inspectionCharges.requestDueDateChange.useMutation({
     onSuccess: (data) => {
@@ -416,9 +428,29 @@ export default function PagamentoDanos() {
                           )}
                           {repair.paymentStatus !== 'paid' && (
                             <>
-                              <Button className="flex-1" variant="default">
-                                <QrCode className="h-4 w-4 mr-2" />
-                                Pagar com PIX
+                              <Button 
+                                className="flex-1" 
+                                variant="default"
+                                onClick={() => {
+                                  setSelectedCharge(repair);
+                                  generatePayment.mutate({
+                                    chargeIds: [repair.id],
+                                    installments: 1, // Padrão: à vista
+                                  });
+                                }}
+                                disabled={generatePayment.isPending}
+                              >
+                                {generatePayment.isPending && selectedCharge?.id === repair.id ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Gerando...
+                                  </>
+                                ) : (
+                                  <>
+                                    <QrCode className="h-4 w-4 mr-2" />
+                                    Pagar com PIX
+                                  </>
+                                )}
                               </Button>
                               <Button
                                 variant="outline"

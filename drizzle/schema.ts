@@ -284,6 +284,26 @@ export type InspectionCharge = typeof inspectionCharges.$inferSelect;
 export type InsertInspectionCharge = typeof inspectionCharges.$inferInsert;
 
 /**
+ * Due Date Change Requests table - stores client requests to change payment due dates
+ */
+export const dueDateChangeRequests = mysqlTable("due_date_change_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  chargeId: int("charge_id").notNull(), // references inspection_charges.id
+  clientEmail: varchar("client_email", { length: 320 }).notNull(),
+  oldDueDate: timestamp("old_due_date").notNull(), // Original due date
+  newDueDate: timestamp("new_due_date").notNull(), // Requested new due date
+  reason: text("reason").notNull(), // Client's reason for the request
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  adminResponse: text("admin_response"), // Admin's response (for rejection)
+  processedBy: varchar("processed_by", { length: 320 }), // Email of admin who processed
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DueDateChangeRequest = typeof dueDateChangeRequests.$inferSelect;
+export type InsertDueDateChangeRequest = typeof dueDateChangeRequests.$inferInsert;
+
+/**
  * System Settings table - stores encrypted configuration values
  * Workaround for Manus env injection bug with ASAAS_API_KEY
  */
