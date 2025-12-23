@@ -3498,6 +3498,46 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         }
       }),
 
+    // Admin: Buscar vistorias reprovadas sem cobrança
+    getFailedInspectionsForCharges: adminProcedure
+      .query(async () => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const result = await db.execute(sql.raw(`
+            SELECT 
+              i.id,
+              i.created_at,
+              i.vessel_id,
+              i.client_name,
+              v.name as vessel_name,
+              i.inspection_data
+            FROM inspections i
+            JOIN vessels v ON i.vessel_id = v.id
+            LEFT JOIN inspection_charges ic ON ic.inspection_id = i.id
+            WHERE i.status = 'rejected' 
+              AND ic.id IS NULL
+            ORDER BY i.created_at DESC
+            LIMIT 5
+          `)) as any;
+          
+          const inspections = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
+            ...row,
+            inspection_data: typeof row.inspection_data === 'string' ? JSON.parse(row.inspection_data) : row.inspection_data,
+          }));
+          
+          return inspections;
+        } catch (error: any) {
+          console.error('[inspectionCharges.getFailedInspectionsForCharges] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao buscar vistorias reprovadas: ${error.message}` 
+          });
+        }
+      }),
+
     // Cliente: Gerar pagamento PIX
     generatePayment: protectedProcedure
       .input(z.object({
