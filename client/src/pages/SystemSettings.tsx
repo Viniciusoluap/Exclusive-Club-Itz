@@ -6,9 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { Loader2, Save, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, Save, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function SystemSettings() {
+  const [, setLocation] = useLocation();
   const [asaasApiKey, setAsaasApiKey] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
@@ -69,6 +71,14 @@ export default function SystemSettings() {
   return (
     <div className="container max-w-4xl py-8">
       <div className="mb-8">
+        <Button
+          variant="ghost"
+          onClick={() => setLocation("/admin")}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar
+        </Button>
         <h1 className="text-3xl font-bold">Configurações do Sistema</h1>
         <p className="text-muted-foreground mt-2">
           Configure integrações e chaves de API
