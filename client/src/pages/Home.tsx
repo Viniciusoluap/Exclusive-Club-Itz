@@ -35,7 +35,7 @@ export default function Home() {
                   Galeria
                 </span>
               </Link>
-              {isAuthenticated && (
+              {isAuthenticated && user?.role !== "employee" && (
                 <Link href="/dashboard">
                   <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
                     Dashboard

@@ -270,3 +270,16 @@
 - Usa o ID do customer retornado (ex: `cus_000012345`) ao invés do email diretamente
 - Aplica a correção tanto para tipo "Vistoria Reprovada" quanto "Reparo da Embarcação"
 - 2 testes automatizados criados e passando (100% de sucesso)
+
+---
+
+## 🔧 Melhoria de UX: Menu de Navegação para Funcionários (23/12/2025)
+
+**Problema reportado pelo usuário:**
+- Itens "Dashboard" e "Minhas Reservas" aparecem no menu de funcionários
+- Esses itens confundem o funcionário e não têm serventia para seu perfil
+
+**Tarefas:**
+- [x] Remover itens "Dashboard" e "Minhas Reservas" do menu de navegação para funcionários
+- [x] Manter todos os outros itens funcionando normalmente (Home, Embarcações, Galeria, Sobre Nós, Painel Funcionário)
+- [x] Garantir que clientes e admins continuem vendo todos os itens do menu normalmente
