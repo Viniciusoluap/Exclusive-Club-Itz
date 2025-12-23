@@ -935,3 +935,26 @@ Adicionar botão visível "⚙️ Configurações" no cabeçalho do painel Admin
 
 
 - [x] Limitar dropdown de vistorias reprovadas para mostrar apenas as 5 últimas
+
+
+---
+
+## ✅ CONCLUÍDO - Botão "Voltar" na Página de Configurações (23/12/2025)
+
+### Requisito do Usuário
+Adicionar botão "Voltar" no topo da página de Configurações do Sistema (/admin/configuracoes) para facilitar navegação de retorno.
+
+### Implementação
+- [x] Adicionar botão "Voltar" no topo da página SystemSettings.tsx
+- [x] Usar ícone ArrowLeft do lucide-react
+- [x] Botão redireciona para /admin (página principal admin)
+- [x] Estilo consistente com outros botões do sistema (variant="ghost")
+
+### Arquivos Modificados
+- [x] client/src/pages/SystemSettings.tsx (imports + botão Voltar)
+
+### Resultado
+✅ Botão "Voltar" visível no topo da página de Configurações
+✅ Clique redireciona para painel Admin principal (/admin)
+✅ Melhora navegação e UX do sistema
+✅ Interface consistente com padrões do sistema
