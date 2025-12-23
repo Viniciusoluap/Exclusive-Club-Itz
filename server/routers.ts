@@ -3670,7 +3670,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         }
       }),
 
-    // Cliente: Buscar vistorias reprovadas (com filtro de mês/ano)
+    // Cliente: Buscar vistorias reprovadas (com ou sem cobrança) + filtro de mês/ano
     myCharges: protectedProcedure
       .input(z.object({
         monthYear: z.string().optional(), // formato: YYYY-MM
@@ -3686,36 +3686,92 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         try {
           const { sql } = await import('drizzle-orm');
           
-          // Construir filtro de data se fornecido
+          // Construir filtro de data se fornecido (aplica na data da vistoria)
           let dateFilter = '';
           if (input.monthYear) {
             const [year, month] = input.monthYear.split('-');
-            dateFilter = `AND YEAR(ic.created_at) = ${year} AND MONTH(ic.created_at) = ${month}`;
+            dateFilter = `AND YEAR(i.created_at) = ${year} AND MONTH(i.created_at) = ${month}`;
           }
           
+          // Buscar vistorias reprovadas do cliente (com ou sem cobrança)
+          // Usa LEFT JOIN para pegar vistorias mesmo sem cobrança criada
           const result = await db.execute(sql.raw(`
             SELECT 
-              ic.*,
-              i.created_at as inspection_date
-            FROM inspection_charges ic
-            JOIN inspections i ON ic.inspection_id = i.id
-            WHERE ic.client_email = '${ctx.user.email}'
-              AND ic.charge_type = 'inspection'
+              i.id as inspection_id,
+              i.vessel_name,
+              i.client_name,
+              i.created_at as inspection_date,
+              i.inspection_data,
+              i.reprovation_photos,
+              ic.id as charge_id,
+              ic.amount,
+              ic.due_date,
+              ic.payment_status,
+              ic.asaas_charge_id,
+              ic.receipt_url,
+              ic.failed_items
+            FROM inspections i
+            LEFT JOIN inspection_charges ic ON ic.inspection_id = i.id AND ic.charge_type = 'inspection'
+            WHERE i.status = 'rejected'
+              AND i.client_name IN (
+                SELECT DISTINCT client_name FROM bookings WHERE client_email = '${ctx.user.email}'
+              )
               ${dateFilter}
-            ORDER BY ic.created_at DESC
+            ORDER BY i.created_at DESC
           `)) as any;
           
-          const charges = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
-            ...row,
-            failed_items: typeof row.failed_items === 'string' ? JSON.parse(row.failed_items) : row.failed_items,
-          }));
+          const inspections = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => {
+            // Extrair itens reprovados do inspection_data
+            let failedItems: Array<{ name: string; status: string }> = [];
+            if (row.inspection_data) {
+              try {
+                const data = typeof row.inspection_data === 'string' 
+                  ? JSON.parse(row.inspection_data) 
+                  : row.inspection_data;
+                failedItems = Object.entries(data)
+                  .filter(([_, value]) => value === 'REPROVADO')
+                  .map(([key, _]) => ({ name: key, status: 'REPROVADO' }));
+              } catch (e) {
+                console.error('Error parsing inspection_data:', e);
+              }
+            }
+
+            // Parsear fotos de reprovação
+            let reprovationPhotos: Array<{ itemName: string; photoUrl: string }> = [];
+            if (row.reprovation_photos) {
+              try {
+                reprovationPhotos = typeof row.reprovation_photos === 'string'
+                  ? JSON.parse(row.reprovation_photos)
+                  : row.reprovation_photos;
+              } catch (e) {
+                console.error('Error parsing reprovation_photos:', e);
+              }
+            }
+
+            return {
+              inspection_id: row.inspection_id,
+              vessel_name: row.vessel_name,
+              client_name: row.client_name,
+              inspection_date: row.inspection_date,
+              failed_items: failedItems,
+              reprovation_photos: reprovationPhotos,
+              charge: {
+                id: row.charge_id,
+                amount: row.amount,
+                due_date: row.due_date,
+                payment_status: row.payment_status,
+                asaas_charge_id: row.asaas_charge_id,
+                receipt_url: row.receipt_url,
+              },
+            };
+          });
           
-          return charges;
+          return inspections;
         } catch (error: any) {
           console.error('[inspectionCharges.myCharges] Error:', error);
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
-            message: `Erro ao buscar cobranças: ${error.message}` 
+            message: `Erro ao buscar vistorias: ${error.message}` 
           });
         }
       }),
