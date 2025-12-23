@@ -38,7 +38,7 @@ export default function CobrancasDanos() {
 
   // Queries
   const { data: charges, isLoading, refetch } = trpc.inspectionCharges.listAll.useQuery();
-  const { data: inspections } = trpc.inspections.list.useQuery({});
+  const { data: inspections } = trpc.inspectionCharges.getFailedInspectionsForCharges.useQuery();
 
   // Mutations
   const createMutation = trpc.inspectionCharges.create.useMutation({
@@ -171,10 +171,8 @@ export default function CobrancasDanos() {
     );
   }
 
-  // Filtrar apenas vistorias reprovadas de reservas utilizadas
-  const rejectedInspections = inspections?.filter(
-    (i: any) => i.status === "rejected" && i.bookingStatus === "used"
-  ) || [];
+  // Vistorias reprovadas já vem filtradas do backend
+  const rejectedInspections = inspections || [];
 
   return (
     <div className="container mx-auto py-8 space-y-6">

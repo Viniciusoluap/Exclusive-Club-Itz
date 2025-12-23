@@ -933,3 +933,5 @@ Adicionar botão visível "⚙️ Configurações" no cabeçalho do painel Admin
 ✅ Interface consistente com outros botões do cabeçalho
 ✅ Apenas admin tem acesso (proteção já existente na rota)
 
+
+- [x] Limitar dropdown de vistorias reprovadas para mostrar apenas as 5 últimas
