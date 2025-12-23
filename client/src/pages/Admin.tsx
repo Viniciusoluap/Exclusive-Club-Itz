@@ -539,6 +539,12 @@ export default function Admin() {
               <span className="text-sm text-muted-foreground hidden sm:inline">
                 Olá, {user?.name}
               </span>
+              <Link href="/admin/configuracoes">
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configurações
+                </Button>
+              </Link>
               <Link href="/reservas">
                 <Button variant="outline" size="sm">
                   Minhas Reservas
