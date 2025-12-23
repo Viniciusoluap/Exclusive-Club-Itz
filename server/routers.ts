@@ -2967,7 +2967,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               i.inspected_by as inspectedBy,
               i.created_at as createdAt,
               b.client_name as clientName,
-              b.booking_date as bookingDate
+              b.booking_date as bookingDate,
+              b.status as bookingStatus
             FROM inspections i
             LEFT JOIN bookings b ON i.booking_id = b.id
             ORDER BY i.created_at DESC
@@ -2987,6 +2988,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             status: row.status,
             inspectedBy: row.inspectedBy, // Já é o nome (TEXT)
             createdAt: row.createdAt,
+            bookingStatus: row.bookingStatus,
           }));
 
           return inspections;
