@@ -61,6 +61,7 @@ describe("inspectionCharges - Validação de Permissões", () => {
 
     await expect(
       caller.inspectionCharges.create({
+        chargeType: 'inspection',
         inspectionId: 1,
         failedItems: [{ name: "Casco", status: "Reprovado" }],
         amount: 150.0,
@@ -105,6 +106,7 @@ describe("inspectionCharges - Validação de Entrada", () => {
 
     await expect(
       caller.inspectionCharges.create({
+        chargeType: 'inspection',
         inspectionId: 1,
         failedItems: [{ name: "Casco", status: "Reprovado" }],
         amount: -50.0,
@@ -118,6 +120,7 @@ describe("inspectionCharges - Validação de Entrada", () => {
 
     await expect(
       caller.inspectionCharges.create({
+        chargeType: 'inspection',
         inspectionId: 1,
         failedItems: [{ name: "Casco", status: "Reprovado" }],
         amount: 0,
@@ -142,6 +145,7 @@ describe("inspectionCharges - Validação de Entrada", () => {
 
     await expect(
       caller.inspectionCharges.create({
+        chargeType: 'inspection',
         inspectionId: 1,
         failedItems: [],
         amount: 150.0,
@@ -156,7 +160,7 @@ describe("inspectionCharges - Endpoints do Cliente", () => {
     const caller = appRouter.createCaller(ctx);
 
     // Não deve lançar erro de permissão
-    const result = await caller.inspectionCharges.myCharges();
+    const result = await caller.inspectionCharges.myCharges({});
     expect(Array.isArray(result)).toBe(true);
   });
 
@@ -187,6 +191,7 @@ describe("inspectionCharges - Estrutura de Dados", () => {
     // Teste apenas de validação de schema (não executa no banco)
     await expect(
       caller.inspectionCharges.create({
+        chargeType: 'inspection',
         inspectionId: 1,
         failedItems: validFailedItems,
         amount: 150.0,

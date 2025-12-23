@@ -248,3 +248,25 @@
 - 🟢 Pago (pode excluir permanentemente)
 - 🔴 Vencido (pode excluir permanentemente)
 - ❌ ~~Cancelado~~ (NÃO EXISTE MAIS)
+
+---
+
+## 🐛 BUG: Erro "invalid_customer" ao Criar Cobrança de Danos (23/12/2025)
+
+**Problema reportado pelo usuário:**
+- Ao tentar criar nova cobrança de danos (tipo "Vistoria Reprovada")
+- Erro retornado: "Erro ao criar cobrança no Asaas: {"errors":[{"code":"invalid_customer","description":"Customer inválido ou não informado"}]}"
+- Testado em 23/12/2025 às 18:27
+
+**Tarefas:**
+- [x] Investigar código de criação de cobranças (endpoint inspectionCharges.create)
+- [x] Verificar se customer_id está sendo passado corretamente ao Asaas
+- [x] Corrigir lógica de busca/criação de customer no Asaas
+- [x] Testar criação de cobrança de danos completa
+- [x] Criar testes automatizados para validar correção
+
+**Solução Aplicada:**
+- O endpoint `inspectionCharges.create` agora chama `getOrCreateCustomer()` antes de criar a cobrança
+- Usa o ID do customer retornado (ex: `cus_000012345`) ao invés do email diretamente
+- Aplica a correção tanto para tipo "Vistoria Reprovada" quanto "Reparo da Embarcação"
+- 2 testes automatizados criados e passando (100% de sucesso)
