@@ -162,7 +162,7 @@ export async function getOrCreateCustomer(params: {
 /**
  * Mapeia status do Asaas para status do sistema
  */
-export function mapAsaasStatus(asaasStatus: string): 'pending' | 'paid' | 'cancelled' | 'overdue' {
+export function mapAsaasStatus(asaasStatus: string): 'pending' | 'paid' | 'overdue' {
   switch (asaasStatus) {
     case 'PENDING':
     case 'AWAITING_PAYMENT':
@@ -178,7 +178,7 @@ export function mapAsaasStatus(asaasStatus: string): 'pending' | 'paid' | 'cance
     case 'CHARGEBACK_REQUESTED':
     case 'CHARGEBACK_DISPUTE':
     case 'AWAITING_CHARGEBACK_REVERSAL':
-      return 'cancelled';
+      return 'pending'; // Cobranças canceladas/reembolsadas voltam para pending
     default:
       return 'pending';
   }

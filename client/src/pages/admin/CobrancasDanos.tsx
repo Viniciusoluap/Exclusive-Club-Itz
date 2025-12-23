@@ -89,11 +89,11 @@ export default function CobrancasDanos() {
 
   const deleteMutation = trpc.inspectionCharges.delete.useMutation({
     onSuccess: () => {
-      toast.success("Cobrança cancelada com sucesso!");
+      toast.success("Cobrança excluída com sucesso!");
       refetch();
     },
     onError: (error) => {
-      toast.error(`Erro ao cancelar cobrança: ${error.message}`);
+      toast.error(`Erro ao excluir cobrança: ${error.message}`);
     },
   });
 
@@ -228,7 +228,7 @@ export default function CobrancasDanos() {
   };
 
   const handleDelete = (chargeId: number) => {
-    if (confirm("Tem certeza que deseja cancelar esta cobrança?")) {
+    if (confirm("Tem certeza que deseja EXCLUIR PERMANENTEMENTE esta cobrança? Esta ação não pode ser desfeita.")) {
       deleteMutation.mutate({ chargeId });
     }
   };
@@ -249,14 +249,12 @@ export default function CobrancasDanos() {
       pending: "secondary",
       paid: "default",
       overdue: "destructive",
-      cancelled: "outline",
     };
 
     const labels: Record<string, string> = {
       pending: "Pendente",
       paid: "Pago",
       overdue: "Vencido",
-      cancelled: "Cancelado",
     };
 
     return (
@@ -394,15 +392,14 @@ export default function CobrancasDanos() {
                       <td className="p-2">{formatDate(charge.due_date)}</td>
                       <td className="p-2">{getStatusBadge(charge.payment_status)}</td>
                       <td className="p-2 text-right">
-                        {charge.payment_status === "pending" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(charge.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(charge.id)}
+                          title="Excluir permanentemente"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))}

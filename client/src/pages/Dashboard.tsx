@@ -319,8 +319,6 @@ function FuelRecordsSection() {
         return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">Vencido</Badge>;
       case 'paid':
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Pago</Badge>;
-      case 'cancelled':
-        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">Cancelado</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }

@@ -221,3 +221,30 @@
 - [x] 5 testes automatizados passando
 
 </details>
+
+
+---
+
+## 🐛 CORREÇÃO CRÍTICA: Sistema de Exclusão de Cobranças (23/12/2025)
+
+**Problema reportado pelo usuário:**
+- Status "Cancelado" existe mas não deveria
+- Exclusão está fazendo soft delete (UPDATE status = 'cancelado') ao invés de hard delete (DELETE)
+- Erro "Erro ao cancelar cobrança no Asaas" ao tentar excluir algumas cobranças
+- Cobranças com status "Pago" não têm botão de excluir
+
+**Tarefas:**
+- [x] Remover status "Cancelado" do enum no schema do banco de dados (drizzle/schema.ts)
+- [x] Atualizar migration do banco de dados (pnpm db:push)
+- [x] Implementar exclusão permanente (hard delete) no backend (server/routers.ts)
+- [x] Corrigir erro "Erro ao cancelar cobrança no Asaas" ao excluir
+- [x] Adicionar botão de excluir para cobranças com status "Pago"
+- [x] Garantir que todos os status (Pendente, Pago, Vencido) possam ser excluídos permanentemente
+- [x] Remover todas as referências ao status "Cancelado" no backend
+- [x] Testar exclusão de cobranças em todos os status (Pendente, Pago, Vencido)
+
+**Status Finais Permitidos:**
+- 🟡 Pendente (pode excluir permanentemente)
+- 🟢 Pago (pode excluir permanentemente)
+- 🔴 Vencido (pode excluir permanentemente)
+- ❌ ~~Cancelado~~ (NÃO EXISTE MAIS)

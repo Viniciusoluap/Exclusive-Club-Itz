@@ -3597,8 +3597,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Cobrança não encontrada' });
           }
           
-          if (charge.payment_status === 'paid' || charge.payment_status === 'cancelled') {
-            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Não é possível editar cobrança paga ou cancelada' });
+          if (charge.payment_status === 'paid') {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Não é possível editar cobrança paga' });
           }
           
           // Atualizar campos
@@ -3622,7 +3622,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         }
       }),
 
-    // Admin: Cancelar cobrança
+    // Admin: Excluir cobrança permanentemente
     delete: adminProcedure
       .input(z.object({
         chargeId: z.number(),
@@ -3632,7 +3632,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         try {
-          const { sql } = await import('drizzle-orm');
+          const { sql, eq } = await import('drizzle-orm');
           const { inspectionCharges } = await import('../drizzle/schema');
           
           // Buscar cobrança
@@ -3645,27 +3645,27 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Cobrança não encontrada' });
           }
           
-          if (charge.payment_status === 'paid') {
-            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Não é possível cancelar cobrança paga' });
-          }
-          
-          // Cancelar no Asaas
+          // Tentar cancelar no Asaas (se existir), mas não falhar se der erro
           if (charge.asaas_charge_id) {
-            const { deleteCharge } = await import('./_core/asaas');
-            await deleteCharge(charge.asaas_charge_id);
+            try {
+              const { deleteCharge } = await import('./_core/asaas');
+              await deleteCharge(charge.asaas_charge_id);
+            } catch (asaasError: any) {
+              console.warn('[inspectionCharges.delete] Erro ao cancelar no Asaas (continuando com exclusão local):', asaasError.message);
+              // Continua com a exclusão local mesmo se falhar no Asaas
+            }
           }
           
-          // Atualizar status
-          await db.update(inspectionCharges)
-            .set({ paymentStatus: 'cancelled' })
-            .where(sql`id = ${input.chargeId}`);
+          // EXCLUSÃO PERMANENTE (hard delete)
+          await db.delete(inspectionCharges)
+            .where(eq(inspectionCharges.id, input.chargeId));
           
           return { success: true };
         } catch (error: any) {
           console.error('[inspectionCharges.delete] Error:', error);
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
-            message: `Erro ao cancelar cobrança: ${error.message}` 
+            message: `Erro ao excluir cobrança: ${error.message}` 
           });
         }
       }),
