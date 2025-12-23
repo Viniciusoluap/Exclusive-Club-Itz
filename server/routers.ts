@@ -3324,14 +3324,21 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
   // Inspection Charges - Cobranças de Danos
   inspectionCharges: router({
-    // Admin: Criar cobrança após orçamento aprovado
+    // Admin: Criar cobrança (Vistoria Reprovada ou Reparo da Embarcação)
     create: adminProcedure
       .input(z.object({
-        inspectionId: z.number(),
+        chargeType: z.enum(['inspection', 'repair']),
+        // Campos para tipo 'inspection'
+        inspectionId: z.number().optional(),
         failedItems: z.array(z.object({
           name: z.string(),
           status: z.string(),
-        })),
+        })).optional(),
+        // Campos para tipo 'repair'
+        vesselId: z.number().optional(),
+        description: z.string().optional(),
+        receiptUrl: z.string().optional(),
+        // Campos comuns
         amount: z.number().positive(),
         dueDate: z.number().optional(), // Unix timestamp
       }))
@@ -3342,57 +3349,185 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         try {
           const { sql } = await import('drizzle-orm');
           const { inspectionCharges } = await import('../drizzle/schema');
-          
-          // Buscar dados da vistoria
-          const inspectionResult = await db.execute(sql.raw(`
-            SELECT i.*, b.client_email, v.name as vessel_name
-            FROM inspections i
-            LEFT JOIN bookings b ON i.booking_id = b.id
-            JOIN vessels v ON i.vessel_id = v.id
-            WHERE i.id = ${input.inspectionId}
-          `)) as any;
-          
-          const inspection = (Array.isArray(inspectionResult[0]) ? inspectionResult[0][0] : inspectionResult[0]);
-          if (!inspection) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Vistoria não encontrada' });
-          }
+          const { createCharge } = await import('./_core/asaas');
           
           // Calcular data de vencimento (7 dias padrão)
           const dueDate = input.dueDate || Date.now() + (7 * 24 * 60 * 60 * 1000);
+          const dueDateStr = new Date(dueDate).toISOString().split('T')[0];
           
-          // Criar cobrança no Asaas
-          const { createCharge } = await import('./_core/asaas');
-          const asaasCharge = await createCharge({
-            customer: inspection.client_email,
-            billingType: 'PIX',
-            value: input.amount,
-            dueDate: new Date(dueDate).toISOString().split('T')[0],
-            description: `Conserto de Danos - Vistoria ${new Date(inspection.created_at).toLocaleDateString('pt-BR')}`,
-          });
-          
-          // Salvar no banco
-          await db.insert(inspectionCharges).values({
-            inspectionId: input.inspectionId,
-            clientEmail: inspection.client_email,
-            vesselName: inspection.vessel_name,
-            failedItems: JSON.stringify(input.failedItems),
-            amount: input.amount.toString(),
-            dueDate: new Date(dueDate),
-            asaasChargeId: asaasCharge.id,
-            paymentStatus: 'pending',
-          });
-          
-          return { 
-            success: true, 
-            chargeId: asaasCharge.id,
-            pixQrCode: asaasCharge.pixQrCode,
-            pixCopyPaste: asaasCharge.pixCopyPaste,
-          };
+          if (input.chargeType === 'inspection') {
+            // TIPO 1: Vistoria Reprovada
+            if (!input.inspectionId || !input.failedItems) {
+              throw new TRPCError({ code: 'BAD_REQUEST', message: 'inspectionId e failedItems são obrigatórios para tipo inspection' });
+            }
+            
+            // Buscar dados da vistoria
+            const inspectionResult = await db.execute(sql.raw(`
+              SELECT i.*, b.client_email, v.name as vessel_name
+              FROM inspections i
+              LEFT JOIN bookings b ON i.booking_id = b.id
+              JOIN vessels v ON i.vessel_id = v.id
+              WHERE i.id = ${input.inspectionId}
+            `)) as any;
+            
+            const inspection = (Array.isArray(inspectionResult[0]) ? inspectionResult[0][0] : inspectionResult[0]);
+            if (!inspection) {
+              throw new TRPCError({ code: 'NOT_FOUND', message: 'Vistoria não encontrada' });
+            }
+            
+            // Criar cobrança no Asaas
+            const asaasCharge = await createCharge({
+              customer: inspection.client_email,
+              billingType: 'PIX',
+              value: input.amount,
+              dueDate: dueDateStr,
+              description: `Conserto de Danos - Vistoria ${new Date(inspection.created_at).toLocaleDateString('pt-BR')}`,
+            });
+            
+            // Salvar no banco
+            await db.insert(inspectionCharges).values({
+              chargeType: 'inspection',
+              inspectionId: input.inspectionId,
+              vesselId: null,
+              clientEmail: inspection.client_email,
+              vesselName: inspection.vessel_name,
+              description: null,
+              failedItems: JSON.stringify(input.failedItems),
+              amount: input.amount.toString(),
+              dueDate: new Date(dueDate),
+              asaasChargeId: asaasCharge.id,
+              paymentStatus: 'pending',
+              receiptUrl: null,
+            });
+            
+            return { 
+              success: true, 
+              chargeId: asaasCharge.id,
+              pixQrCode: asaasCharge.pixQrCode,
+              pixCopyPaste: asaasCharge.pixCopyPaste,
+            };
+            
+          } else {
+            // TIPO 2: Reparo da Embarcação (com rateio automático)
+            if (!input.vesselId || !input.description) {
+              throw new TRPCError({ code: 'BAD_REQUEST', message: 'vesselId e description são obrigatórios para tipo repair' });
+            }
+            
+            // Buscar embarcação
+            const vesselResult = await db.execute(sql.raw(`
+              SELECT * FROM vessels WHERE id = ${input.vesselId}
+            `)) as any;
+            const vessel = (Array.isArray(vesselResult[0]) ? vesselResult[0][0] : vesselResult[0]);
+            if (!vessel) {
+              throw new TRPCError({ code: 'NOT_FOUND', message: 'Embarcação não encontrada' });
+            }
+            
+            // Buscar clientes com cotas da embarcação
+            const quotasResult = await db.execute(sql.raw(`
+              SELECT 
+                cq.id as quota_id,
+                cq.quota_type,
+                ac.id as client_id,
+                ac.email as client_email,
+                ac.name as client_name
+              FROM client_quotas cq
+              JOIN allowed_clients ac ON cq.client_id = ac.id
+              WHERE cq.vessel_id = ${input.vesselId} AND cq.is_active = 1 AND ac.is_active = 1
+            `)) as any;
+            
+            const quotas = (Array.isArray(quotasResult[0]) ? quotasResult[0] : quotasResult);
+            if (quotas.length === 0) {
+              throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum cliente com cotas ativas para esta embarcação' });
+            }
+            
+            // Calcular valor por cota
+            const quotaCount = vessel.quota_count || 6;
+            const valuePerFullQuota = input.amount / quotaCount;
+            
+            // Criar cobranças individuais para cada cliente
+            const createdCharges: any[] = [];
+            
+            for (const quota of quotas) {
+              // Calcular valor individual baseado no tipo de cota
+              const quotaShare = quota.quota_type === 'full' ? 1.0 : 0.5;
+              const individualAmount = valuePerFullQuota * quotaShare;
+              
+              // Criar cobrança no Asaas
+              const asaasCharge = await createCharge({
+                customer: quota.client_email,
+                billingType: 'PIX',
+                value: individualAmount,
+                dueDate: dueDateStr,
+                description: `Reparo da Embarcação: ${vessel.name} - ${input.description}`,
+              });
+              
+              // Salvar no banco
+              await db.insert(inspectionCharges).values({
+                chargeType: 'repair',
+                inspectionId: null,
+                vesselId: input.vesselId,
+                clientEmail: quota.client_email,
+                vesselName: vessel.name,
+                description: input.description,
+                failedItems: null,
+                amount: individualAmount.toString(),
+                dueDate: new Date(dueDate),
+                asaasChargeId: asaasCharge.id,
+                paymentStatus: 'pending',
+                receiptUrl: input.receiptUrl || null,
+              });
+              
+              createdCharges.push({
+                clientEmail: quota.client_email,
+                clientName: quota.client_name,
+                amount: individualAmount,
+                quotaType: quota.quota_type,
+                asaasChargeId: asaasCharge.id,
+              });
+            }
+            
+            return { 
+              success: true,
+              message: `${createdCharges.length} cobranças criadas com sucesso`,
+              charges: createdCharges,
+            };
+          }
         } catch (error: any) {
           console.error('[inspectionCharges.create] Error:', error);
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
             message: `Erro ao criar cobrança: ${error.message}` 
+          });
+        }
+      }),
+
+    // Admin: Buscar últimas 5 vistorias reprovadas
+    getFailedInspections: adminProcedure
+      .query(async () => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        try {
+          const { sql } = await import('drizzle-orm');
+          const result = await db.execute(sql.raw(`
+            SELECT 
+              i.id,
+              i.vessel_name,
+              i.client_name,
+              i.created_at,
+              i.inspection_data
+            FROM inspections i
+            WHERE i.status = 'rejected'
+            ORDER BY i.created_at DESC
+            LIMIT 5
+          `)) as any;
+          
+          return (Array.isArray(result[0]) ? result[0] : result);
+        } catch (error: any) {
+          console.error('[inspectionCharges.getFailedInspections] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao buscar vistorias reprovadas: ${error.message}` 
           });
         }
       }),
@@ -3410,13 +3545,13 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               ic.*,
               i.created_at as inspection_date
             FROM inspection_charges ic
-            JOIN inspections i ON ic.inspection_id = i.id
+            LEFT JOIN inspections i ON ic.inspection_id = i.id
             ORDER BY ic.created_at DESC
           `)) as any;
           
           const charges = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
             ...row,
-            failed_items: typeof row.failed_items === 'string' ? JSON.parse(row.failed_items) : row.failed_items,
+            failed_items: typeof row.failed_items === 'string' && row.failed_items ? JSON.parse(row.failed_items) : row.failed_items,
           }));
           
           return charges;
@@ -3713,14 +3848,18 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             
             // Salvar no banco
             await db.insert(inspectionCharges).values({
+              chargeType: 'inspection',
               inspectionId: input.inspectionId,
+              vesselId: null,
               clientEmail: inspection.client_email,
               vesselName: inspection.vessel_name,
+              description: null,
               failedItems: JSON.stringify(failedItems),
               amount: installmentAmount.toString(),
               dueDate: dueDate,
               asaasChargeId: asaasCharge.id,
               paymentStatus: 'pending',
+              receiptUrl: null,
             });
             
             createdCharges.push({
