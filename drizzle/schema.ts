@@ -274,7 +274,7 @@ export const inspectionCharges = mysqlTable("inspection_charges", {
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // Total charge amount
   dueDate: timestamp("due_date").notNull(), // Payment due date
   asaasChargeId: varchar("asaas_charge_id", { length: 255 }), // Asaas charge ID
-  paymentStatus: mysqlEnum("payment_status", ["pending", "paid", "overdue", "cancelled"]).default("pending").notNull(),
+  paymentStatus: mysqlEnum("payment_status", ["pending", "paid", "overdue"]).default("pending").notNull(),
   receiptUrl: text("receipt_url"), // URL do comprovante do reparo (para tipo 'repair')
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),

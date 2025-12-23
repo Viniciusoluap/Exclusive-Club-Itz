@@ -1,0 +1,1 @@
+ALTER TABLE `inspection_charges` MODIFY COLUMN `payment_status` enum('pending','paid','overdue') NOT NULL DEFAULT 'pending';
