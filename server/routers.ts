@@ -2399,6 +2399,20 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         const { sql } = await import('drizzle-orm');
         const asaas = await import('./_core/asaas');
 
+        // Verificar se ASAAS_API_KEY está configurada
+        const apiKey = process.env.ASAAS_API_KEY;
+        if (!apiKey) {
+          console.error('[generatePayment] ASAAS_API_KEY não configurada');
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: 'Integração de pagamento não configurada. Contate o administrador.' 
+          });
+        }
+
+        const ASAAS_API_URL = apiKey.startsWith('$aact_prod_')
+          ? 'https://api.asaas.com/v3'
+          : 'https://sandbox.asaas.com/api/v3';
+
         // Buscar abastecimentos selecionados
         const result = await db.execute(sql`
           SELECT 
@@ -2492,19 +2506,6 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         });
 
         // Buscar QR Code PIX
-        const apiKey = process.env.ASAAS_API_KEY;
-        if (!apiKey) {
-          console.error('[generatePayment] ASAAS_API_KEY não configurada');
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR', 
-            message: 'Integração de pagamento não configurada. Contate o administrador.' 
-          });
-        }
-
-        const ASAAS_API_URL = apiKey.startsWith('$aact_prod_')
-          ? 'https://api.asaas.com/v3'
-          : 'https://sandbox.asaas.com/api/v3';
-
         console.log(`[generatePayment] Buscando QR Code PIX para charge ${charge.id}`);
 
         try {
