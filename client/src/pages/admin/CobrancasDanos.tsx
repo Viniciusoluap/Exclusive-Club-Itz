@@ -171,8 +171,10 @@ export default function CobrancasDanos() {
     );
   }
 
-  // Filtrar apenas vistorias reprovadas
-  const rejectedInspections = inspections?.filter((i: any) => i.status === "rejected") || [];
+  // Filtrar apenas vistorias reprovadas de reservas utilizadas
+  const rejectedInspections = inspections?.filter(
+    (i: any) => i.status === "rejected" && i.bookingStatus === "used"
+  ) || [];
 
   return (
     <div className="container mx-auto py-8 space-y-6">

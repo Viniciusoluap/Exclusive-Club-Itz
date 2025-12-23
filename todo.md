@@ -852,3 +852,37 @@ Quando uma vistoria é reprovada (algum item marcado como "Reprovado"), o sistem
 - [x] Criar testes de validação de entrada (valores negativos, arrays vazios)
 - [x] Criar testes de endpoints do cliente (myCharges, getStats)
 - [x] Executar todos os testes (11/11 passaram)
+
+---
+
+## 🐛 BUG REPORTADO - Dropdown de Vistorias Reprovadas Vazio (23/12/2025)
+
+### Problema Reportado pelo Usuário
+Na página `/admin/cobrancas-danos`, o dropdown "Vistoria Reprovada" mostra "- - Data não disponível" ao invés de listar as vistorias reprovadas.
+
+**Comportamento esperado:**
+- Dropdown deve mostrar apenas vistorias com status 'used' (reservas utilizadas)
+- Apenas vistorias que tenham itens reprovados (failed items)
+- Formato: Data da vistoria + Cliente + Embarcação
+
+**Causa provável:**
+- Endpoint não está filtrando corretamente por status da reserva
+- Endpoint não está filtrando apenas vistorias com itens reprovados
+
+### Correção Implementada ✅
+- [x] Investigar endpoint que busca vistorias reprovadas
+- [x] Corrigir query SQL para incluir booking.status na resposta
+- [x] Corrigir filtro no frontend para verificar bookingStatus === 'used'
+- [x] Criar testes automatizados (5/5 passando)
+- [x] Validar que apenas vistorias reprovadas de reservas utilizadas aparecem
+
+### Arquivos Modificados
+- [x] server/routers.ts (endpoint inspections.list - adicionar bookingStatus)
+- [x] client/src/pages/admin/CobrancasDanos.tsx (filtro atualizado)
+- [x] server/inspections.list.test.ts (5 testes criados e passando)
+
+### Resultado
+✅ Dropdown agora mostra apenas vistorias reprovadas de reservas utilizadas
+✅ Filtro: `status === 'rejected' && bookingStatus === 'used'`
+✅ 5 testes automatizados passando (100%)
+
