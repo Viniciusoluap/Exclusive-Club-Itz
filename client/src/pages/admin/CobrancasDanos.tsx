@@ -84,11 +84,20 @@ export default function CobrancasDanos() {
   };
 
   const handleCreate = () => {
+    // Validação: campos obrigatórios
     if (!formData.inspectionId || !formData.amount) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
+    // Validação: valor positivo
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Valor total deve ser maior que zero");
+      return;
+    }
+
+    // Buscar vistoria selecionada
     const inspection = inspections?.find((i: any) => i.id === parseInt(formData.inspectionId));
     if (!inspection) {
       toast.error("Vistoria não encontrada");
@@ -97,14 +106,19 @@ export default function CobrancasDanos() {
 
     // Extrair itens reprovados
     const failedItems = inspection.inspection_data.filter((item: any) => item.status === "Reprovado");
+    if (failedItems.length === 0) {
+      toast.error("Nenhum item reprovado encontrado nesta vistoria");
+      return;
+    }
 
+    // Enviar mutation
     createMutation.mutate({
       inspectionId: parseInt(formData.inspectionId),
       failedItems: failedItems.map((item: any) => ({
         name: item.name,
         status: item.status,
       })),
-      amount: parseFloat(formData.amount),
+      amount: amount,
       dueDate: formData.dueDate ? new Date(formData.dueDate).getTime() : undefined,
     });
   };
@@ -397,10 +411,20 @@ export default function CobrancasDanos() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setCreateDialogOpen(false);
+                resetForm();
+              }}
+              disabled={createMutation.isPending}
+            >
               Cancelar
             </Button>
-            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+            <Button 
+              onClick={handleCreate}
+              disabled={createMutation.isPending || !formData.inspectionId || !formData.amount}
+            >
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

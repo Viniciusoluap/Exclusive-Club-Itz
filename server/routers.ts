@@ -3520,7 +3520,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             WHERE i.status = 'rejected' 
               AND ic.id IS NULL
             ORDER BY i.created_at DESC
-            LIMIT 5
+            LIMIT 50
           `)) as any;
           
           const inspections = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
