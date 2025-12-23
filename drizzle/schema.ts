@@ -248,6 +248,7 @@ export const inspections = mysqlTable("inspections", {
   vesselName: text("vessel_name").notNull(),
   vesselType: mysqlEnum("vessel_type", ["lancha", "jetski"]).notNull(),
   clientName: text("client_name").notNull(),
+  clientEmail: varchar("client_email", { length: 320 }), // Email do cliente (pode vir do booking ou ser preenchido manualmente)
   inspectionData: text("inspection_data").notNull(), // JSON with all checklist items
   observations: text("observations"),
   status: mysqlEnum("status", ["approved", "rejected"]).notNull(), // Overall status

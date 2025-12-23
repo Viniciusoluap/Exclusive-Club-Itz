@@ -1,0 +1,1 @@
+ALTER TABLE `inspections` ADD `client_email` varchar(320);
