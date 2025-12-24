@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, name, email, cpf_cnpj, phone FROM allowed_clients WHERE is_active = 1 LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, name, email, cpf_cnpj, phone FROM allowed_clients WHERE is_active = 1 LIMIT 10",
+  "rows": [
+    {
+      "id": "60002",
+      "name": "Diogo de Lemos Brito",
+      "email": "diogobritolemos@gmail.com",
+      "cpf_cnpj": "NULL",
+      "phone": "99984376932"
+    },
+    {
+      "id": "60003",
+      "name": "Edilson da Conceição",
+      "email": "motomais.acailandia@gmail.com",
+      "cpf_cnpj": "NULL",
+      "phone": "99991640088"
+    },
+    {
+      "id": "60005",
+      "name": "Erinaldo Alves da Silva",
+      "email": "Erinaldo7717@gmail.com",
+      "cpf_cnpj": "NULL",
+      "phone": "99981102372"
+    },
+    {
+      "id": "60006",
+      "name": "Erisvaldo Alves da Silva",
+      "email": "via.vips@hotmail.com",
+      "cpf_cnpj": "NULL",
+      "phone": "+55 99991234592"
+    },
+    {
+      "id": "60008",
+      "name": "Filippe Augusto Velloso Barbosa Murta",
+      "email": "filippeamurta@gmail.com",
+      "cpf_cnpj": "NULL",
+      "phone": "+55 99988020105"
+    },
+    {
+      "id": "60009",
+      "name": "Francisco Claudio Araujo da Silva",
+      "email": "Franciscoclaudio293@gmail.com",
+      "cpf_cnpj": "NULL",
+      "phone": " (99) 98487-9705"
+    },
+    {
+      "id": "60010",
+      "name": "Kaio Richard",
+      "email": "Kaioaraujo2233@icloud.com",
+      "cpf_cnpj": "NULL",
+      "phone": "99985027938"
+    },
+    {
+      "id": "60011",
+      "name": "Laecio Sousa Silva",
+      "email": "laecio.silversat@gmail.com",
+      "cpf_cnpj": "NULL",
+      "phone": "99981018960"
+    },
+    {
+      "id": "60012",
+      "name": "Luciano Gabriel",
+      "email": "gabnercorporation@gmail.com",
+      "cpf_cnpj": "NULL",
+      "phone": "(99) 99213-5289"
+    },
+    {
+      "id": "60013",
+      "name": "Mhamed Feiz Hussein Yassin",
+      "email": "Mhamedfeiz@hotmail.com",
+      "cpf_cnpj": "NULL",
+      "phone": "99981102160"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tcpf_cnpj\tphone\n60002\tDiogo de Lemos Brito\tdiogobritolemos@gmail.com\tNULL\t99984376932\n60003\tEdilson da Conceição\tmotomais.acailandia@gmail.com\tNULL\t99991640088\n60005\tErinaldo Alves da Silva\tErinaldo7717@gmail.com\tNULL\t99981102372\n60006\tErisvaldo Alves da Silva\tvia.vips@hotmail.com\tNULL\t+55 99991234592\n60008\tFilippe Augusto Velloso Barbosa Murta\tfilippeamurta@gmail.com\tNULL\t+55 99988020105\n60009\tFrancisco Claudio Araujo da Silva\tFranciscoclaudio293@gmail.com\tNULL\t (99) 98487-9705\n60010\tKaio Richard\tKaioaraujo2233@icloud.com\tNULL\t99985027938\n60011\tLaecio Sousa Silva\tlaecio.silversat@gmail.com\tNULL\t99981018960\n60012\tLuciano Gabriel\tgabnercorporation@gmail.com\tNULL\t(99) 99213-5289\n60013\tMhamed Feiz Hussein Yassin\tMhamedfeiz@hotmail.com\tNULL\t99981102160\n",
+  "stderr": "",
+  "execution_time_ms": 104
+}

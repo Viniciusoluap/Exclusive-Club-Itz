@@ -81,6 +81,7 @@ export const appRouter = router({
         email: z.string().min(1).refine((val) => val.includes('@'), { message: 'Email inválido' }),
         name: z.string().min(1),
         phone: z.string().optional(),
+        cpfCnpj: z.string().optional(),
         quotas: z.array(z.object({
           vesselId: z.number(),
           quotaNumber: z.number().min(1).max(10), // 1-7 para lancha, 1-6 para jetski
@@ -114,6 +115,7 @@ export const appRouter = router({
           email: input.email,
           name: input.name,
           phone: input.phone,
+          cpfCnpj: input.cpfCnpj,
         });
         
         // Get the created client ID
@@ -153,6 +155,7 @@ export const appRouter = router({
         email: z.string().min(1).refine((val) => val.includes('@'), { message: 'Email inválido' }).optional(),
         name: z.string().min(1).optional(),
         phone: z.string().optional(),
+        cpfCnpj: z.string().optional(),
         contractUrl: z.string().optional(),
         contract2Url: z.string().optional(),
         documentUrl: z.string().optional(),
@@ -3387,13 +3390,14 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               });
             }
             
-            // Buscar ou criar customer no Asaas
+            // Buscar customer no Asaas (sempre existe e já tem CPF/CNPJ)
             const customer = await getOrCreateCustomer({
               name: inspection.client_name || inspection.client_email,
               email: inspection.client_email,
-              cpfCnpj: inspection.client_cpf_cnpj,
-              phone: inspection.client_phone,
             });
+            
+            // Usar CPF/CNPJ do Asaas (sempre vem preenchido)
+            const cpfCnpj = customer.cpfCnpj || inspection.client_cpf_cnpj;
             
             // Criar cobrança no Asaas
             const asaasCharge = await createCharge({
@@ -3474,13 +3478,14 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               const quotaShare = quota.quota_type === 'full' ? 1.0 : 0.5;
               const individualAmount = valuePerFullQuota * quotaShare;
               
-              // Buscar ou criar customer no Asaas
+              // Buscar customer no Asaas (sempre existe e já tem CPF/CNPJ)
               const customer = await getOrCreateCustomer({
                 name: quota.client_name || quota.client_email,
                 email: quota.client_email,
-                cpfCnpj: quota.client_cpf_cnpj,
-                phone: quota.client_phone,
               });
+              
+              // Usar CPF/CNPJ do Asaas (sempre vem preenchido)
+              const cpfCnpj = customer.cpfCnpj || quota.client_cpf_cnpj;
               
               // Criar cobrança no Asaas
               const asaasCharge = await createCharge({

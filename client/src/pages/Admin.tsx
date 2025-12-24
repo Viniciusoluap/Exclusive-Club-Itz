@@ -179,6 +179,7 @@ export default function Admin() {
     email: string;
     name: string;
     phone: string;
+    cpfCnpj?: string;
     contractUrl?: string;
     contract2Url?: string;
     documentUrl?: string;
@@ -187,6 +188,7 @@ export default function Admin() {
     email: "", 
     name: "", 
     phone: "",
+    cpfCnpj: "",
     contractUrl: "",
     contract2Url: "",
     documentUrl: "",
@@ -386,6 +388,7 @@ export default function Admin() {
       email: client.email,
       name: client.name,
       phone: client.phone || "",
+      cpfCnpj: client.cpfCnpj || "",
       contractUrl: client.contractUrl || "",
       contract2Url: client.contract2Url || "",
       documentUrl: client.documentUrl || "",
@@ -1130,6 +1133,18 @@ export default function Admin() {
                 onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
                 placeholder="(99) 99999-9999"
               />
+            </div>
+            <div>
+              <Label htmlFor="cpfCnpj">CPF ou CNPJ</Label>
+              <Input
+                id="cpfCnpj"
+                value={clientForm.cpfCnpj || ""}
+                onChange={(e) => setClientForm({ ...clientForm, cpfCnpj: e.target.value })}
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Obrigatório para gerar cobranças de reparos
+              </p>
             </div>
             
             {/* Campos de Upload de Documentos */}
