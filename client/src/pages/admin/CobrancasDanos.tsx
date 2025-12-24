@@ -49,8 +49,10 @@ type ChargeType = "inspection" | "repair" | null;
 export default function CobrancasDanos() {
   const { user, loading: authLoading } = useAuth();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [chargeType, setChargeType] = useState<ChargeType>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [editingCharge, setEditingCharge] = useState<any>(null);
   
   const [formData, setFormData] = useState({
     // Tipo 'inspection'
@@ -63,6 +65,12 @@ export default function CobrancasDanos() {
     // Comuns
     amount: "",
     dueDate: "",
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    amount: "",
+    dueDate: "",
+    description: "",
   });
 
   // Queries
@@ -94,6 +102,18 @@ export default function CobrancasDanos() {
     },
     onError: (error) => {
       toast.error(`Erro ao excluir cobrança: ${error.message}`);
+    },
+  });
+
+  const updateMutation = trpc.inspectionCharges.update.useMutation({
+    onSuccess: () => {
+      toast.success("Cobrança atualizada com sucesso!");
+      setEditDialogOpen(false);
+      setEditingCharge(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao atualizar cobrança: ${error.message}`);
     },
   });
 
@@ -231,6 +251,34 @@ export default function CobrancasDanos() {
     if (confirm("Tem certeza que deseja EXCLUIR PERMANENTEMENTE esta cobrança? Esta ação não pode ser desfeita.")) {
       deleteMutation.mutate({ chargeId });
     }
+  };
+
+  const handleEdit = (charge: any) => {
+    setEditingCharge(charge);
+    setEditFormData({
+      amount: charge.amount,
+      dueDate: new Date(charge.due_date).toISOString().split('T')[0],
+      description: charge.description || "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateSubmit = () => {
+    if (!editingCharge) return;
+
+    const amount = parseFloat(editFormData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Valor deve ser maior que zero");
+      return;
+    }
+
+    const newDueDate = new Date(editFormData.dueDate).getTime();
+
+    updateMutation.mutate({
+      chargeId: editingCharge.id,
+      newAmount: amount,
+      newDueDate,
+    });
   };
 
   const formatCurrency = (value: number) => {
@@ -392,14 +440,26 @@ export default function CobrancasDanos() {
                       <td className="p-2">{formatDate(charge.due_date)}</td>
                       <td className="p-2">{getStatusBadge(charge.payment_status)}</td>
                       <td className="p-2 text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(charge.id)}
-                          title="Excluir permanentemente"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          {charge.payment_status === 'pending' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(charge)}
+                              title="Editar cobrança"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(charge.id)}
+                            title="Excluir permanentemente"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -604,6 +664,78 @@ export default function CobrancasDanos() {
                 </>
               ) : (
                 "Criar Cobrança"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Editar Cobrança */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Cobrança</DialogTitle>
+            <DialogDescription>
+              Atualize o valor e/ou vencimento da cobrança
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {editingCharge && (
+              <div className="p-3 bg-muted rounded-lg space-y-1">
+                <p className="text-sm font-medium">
+                  {editingCharge.charge_type === 'inspection' ? 'Vistoria' : 'Reparo'} - {editingCharge.vessel_name}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Cliente: {editingCharge.client_email}
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-amount">Valor (R$) *</Label>
+              <Input
+                id="edit-amount"
+                type="number"
+                step="0.01"
+                placeholder="Ex: 150.00"
+                value={editFormData.amount}
+                onChange={(e) => setEditFormData({ ...editFormData, amount: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-dueDate">Data de Vencimento *</Label>
+              <Input
+                id="edit-dueDate"
+                type="date"
+                value={editFormData.dueDate}
+                onChange={(e) => setEditFormData({ ...editFormData, dueDate: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditDialogOpen(false);
+                setEditingCharge(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleUpdateSubmit}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Atualizando...
+                </>
+              ) : (
+                "Salvar Alterações"
               )}
             </Button>
           </DialogFooter>
