@@ -342,3 +342,27 @@
 - [x] Verificar se cobranças de danos estão sendo criadas com billingType PIX (✅ Já estava correto)
 - [x] Corrigir exibição do QR Code no dialog (campo era qrCodeBase64, corrigido para pixQrCode)
 - [x] Testar fluxo completo de pagamento de danos (aguardando teste do usuário)
+
+---
+
+## 🐛 BUG: Erro de CPF/CNPJ ao criar cobrança de Reparo da Embarcação (23/12/2025)
+
+**Problema reportado pelo usuário:**
+- Ao criar nova cobrança de danos tipo "Reparo da Embarcação"
+- Cobrança é criada no Asaas com sucesso
+- MAS erro aparece no site: "Erro ao criar cobrança: Erro ao criar cobrança no Asaas: {"errors":[{"code":"invalid_customer.cpfCnpj","description":"Para criar esta cobrança é necessário preencher o CPF ou CNPJ do cliente."}]}"
+- Testado em 23/12/2025
+
+**Tarefas:**
+- [x] Investigar endpoint inspectionCharges.create (tipo repair)
+- [x] Verificar se CPF/CNPJ está sendo enviado ao Asaas
+- [x] Corrigir lógica de criação de customer no Asaas (incluir cpfCnpj)
+- [x] Testar criação de cobrança de reparo completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
+
+**Solução Aplicada:**
+- Adicionado campo `cpf_cnpj` na tabela `allowed_clients`
+- Query de busca de cotas agora inclui `ac.cpf_cnpj` e `ac.phone`
+- Função `getOrCreateCustomer` atualizada para enviar cpfCnpj apenas se fornecido
+- Chamada `getOrCreateCustomer` em reparos agora passa `cpfCnpj` e `phone` do cliente
+- 3 testes automatizados criados e passando (100% de sucesso)

@@ -218,6 +218,13 @@
       "when": 1766526590616,
       "tag": "0030_concerned_epoch",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1766537392215,
+      "tag": "0031_new_wendigo",
+      "breakpoints": true
     }
   ]
 }
