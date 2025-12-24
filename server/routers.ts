@@ -2683,9 +2683,10 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         const totalOverdue = Number(stats.total_overdue) || 0;
         const totalBudget = Number(budgetData.total_budget) || 0;
 
-        // Calcular saldo (Orçamento - Gasto)
-        // Saldo = quanto ainda resta do orçamento mensal após os gastos
-        const balance = totalBudget - totalBilled;
+        // Calcular saldo (Gasto - Orçamento)
+        // Saldo = diferença entre o que foi gasto e o orçamento disponível
+        // Negativo = dentro do orçamento, Positivo = acima do orçamento
+        const balance = totalBilled - totalBudget;
 
         return {
           monthYear,
