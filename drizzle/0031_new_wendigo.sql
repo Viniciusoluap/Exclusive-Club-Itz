@@ -1,0 +1,1 @@
+ALTER TABLE `allowed_clients` ADD `cpf_cnpj` varchar(18);

@@ -26,6 +26,7 @@ export const allowedClients = mysqlTable("allowed_clients", {
   email: varchar("email", { length: 320 }).notNull().unique(),
   name: text("name").notNull(),
   phone: varchar("phone", { length: 20 }),
+  cpfCnpj: varchar("cpf_cnpj", { length: 18 }), // CPF ou CNPJ do cliente (obrigatório para cobranças)
   contractUrl: text("contract_url"), // URL do contrato principal (obrigatório)
   contract2Url: text("contract2_url"), // URL do segundo contrato (opcional)
   documentUrl: text("document_url"), // URL do documento pessoal (obrigatório)

@@ -142,13 +142,26 @@ export async function getOrCreateCustomer(params: {
   }
 
   // Se não encontrou, cria novo cliente
+  // Filtrar campos vazios/null/undefined para não enviar ao Asaas
+  const customerData: Record<string, string> = {
+    name: params.name,
+    email: params.email,
+  };
+  
+  if (params.cpfCnpj) {
+    customerData.cpfCnpj = params.cpfCnpj;
+  }
+  if (params.phone) {
+    customerData.phone = params.phone;
+  }
+  
   const createResponse = await fetch(`${apiUrl}/customers`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'access_token': apiKey,
     },
-    body: JSON.stringify(params),
+    body: JSON.stringify(customerData),
   });
 
   if (!createResponse.ok) {

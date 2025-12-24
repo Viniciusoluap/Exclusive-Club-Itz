@@ -3444,7 +3444,9 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 cq.quota_type,
                 ac.id as client_id,
                 ac.email as client_email,
-                ac.name as client_name
+                ac.name as client_name,
+                ac.cpf_cnpj as client_cpf_cnpj,
+                ac.phone as client_phone
               FROM client_quotas cq
               JOIN allowed_clients ac ON cq.client_id = ac.id
               WHERE cq.vessel_id = ${input.vesselId} AND cq.is_active = 1 AND ac.is_active = 1
@@ -3471,6 +3473,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               const customer = await getOrCreateCustomer({
                 name: quota.client_name || quota.client_email,
                 email: quota.client_email,
+                cpfCnpj: quota.client_cpf_cnpj,
+                phone: quota.client_phone,
               });
               
               // Criar cobrança no Asaas
