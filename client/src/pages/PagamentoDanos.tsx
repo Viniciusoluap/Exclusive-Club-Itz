@@ -510,6 +510,29 @@ export default function PagamentoDanos() {
                   </CardHeader>
 
                   <CardContent className="pt-6 space-y-4">
+                    {/* Foto do Reparo */}
+                    {repair.photoUrl && (
+                      <>
+                        <div>
+                          <h4 className="font-semibold text-sm text-gray-700 mb-2">
+                            Foto do Reparo
+                          </h4>
+                          <div className="grid grid-cols-1 gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="justify-start"
+                              onClick={() => window.open(repair.photoUrl, '_blank')}
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Visualizar Foto
+                            </Button>
+                          </div>
+                        </div>
+                        <Separator />
+                      </>
+                    )}
+
                     {/* Informações de Rateio */}
                     {repair.asaasChargeId ? (
                       <>

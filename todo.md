@@ -448,3 +448,15 @@
 - ✅ Rejeitar valor negativo ou zero
 - ✅ Retornar erro para cobrança inexistente
 
+
+---
+
+## 🎨 UX: Visualização de Foto em Reparos da Embarcação (23/12/2025)
+
+**Objetivo:** Exibir foto do reparo na página do cliente "Reparos da Embarcação"
+
+**Tarefas:**
+- [x] Adicionar visualização de imagem nos cards de reparos (similar a vistorias reprovadas)
+- [x] Garantir que foto apareça quando admin cadastrou reparo com imagem
+- [x] Testar exibição de foto na página do cliente
+
