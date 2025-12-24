@@ -464,3 +464,5 @@
 - [x] Corrigir filtro de anos na página de Pagamento de Danos - mostrar 2025, 2026, 2027 em vez de anos anteriores (2023, 2024)
 
 - [x] Corrigir lógica do campo Saldo em Abastecimentos: fórmula "Gasto - Orçamento", negativo=vermelho, positivo=azul
+
+- [x] Corrigir cores invertidas do campo Saldo na página de Abastecimentos (negativo=vermelho, positivo=azul)
