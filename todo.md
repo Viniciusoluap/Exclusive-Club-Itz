@@ -425,3 +425,26 @@
 - Sistema agora busca CPF/CNPJ diretamente do Asaas (fonte confiável)
 - Não depende mais de dados locais para criar cobranças
 - Erro "invalid_customer.cpfCnpj" não ocorre mais
+
+---
+
+## 🚀 Nova Funcionalidade: Botão de Editar Cobranças (23/12/2025)
+
+**Objetivo:** Adicionar botão de editar na coluna "Ações" da lista de cobranças de danos
+
+**Tarefas:**
+- [x] Adicionar botão de editar (ícone de lápis) na coluna Ações da lista de cobranças
+- [x] Implementar dialog de edição com campos: valor, vencimento
+- [x] Usar endpoint backend existente (inspectionCharges.update) para atualizar cobrança
+- [x] Validar que apenas cobranças pendentes podem ser editadas
+- [x] Botão de editar aparece apenas para cobranças com status 'pending'
+- [x] Criar testes automatizados (6 testes passando)
+
+**Testes Automatizados:**
+- ✅ Atualizar valor de cobrança pendente
+- ✅ Atualizar data de vencimento
+- ✅ Atualizar valor e vencimento simultaneamente
+- ✅ Rejeitar atualização de cobrança paga
+- ✅ Rejeitar valor negativo ou zero
+- ✅ Retornar erro para cobrança inexistente
+
