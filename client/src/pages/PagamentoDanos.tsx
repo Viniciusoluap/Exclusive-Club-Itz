@@ -67,6 +67,11 @@ export default function PagamentoDanos() {
   // Mutation para gerar pagamento PIX de reparos
   const generatePayment = trpc.inspectionCharges.generatePayment.useMutation({
     onSuccess: (data) => {
+      console.log('[PagamentoDanos] Dados recebidos do backend:', data);
+      console.log('[PagamentoDanos] pixQrCode existe?', !!data.pixQrCode);
+      console.log('[PagamentoDanos] pixCopyPaste existe?', !!data.pixCopyPaste);
+      console.log('[PagamentoDanos] Tamanho pixQrCode:', data.pixQrCode?.length || 0);
+      console.log('[PagamentoDanos] Tamanho pixCopyPaste:', data.pixCopyPaste?.length || 0);
       setPaymentData(data);
       setShowPaymentDialog(true);
       toast.success('Pagamento gerado com sucesso!');
@@ -645,10 +650,10 @@ export default function PagamentoDanos() {
           {paymentData && (
             <div className="space-y-4">
               {/* QR Code */}
-              {paymentData.qrCodeBase64 && (
+              {paymentData.pixQrCode && (
                 <div className="flex justify-center p-4 bg-white rounded-lg">
                   <img
-                    src={`data:image/png;base64,${paymentData.qrCodeBase64}`}
+                    src={`data:image/png;base64,${paymentData.pixQrCode}`}
                     alt="QR Code PIX"
                     className="w-64 h-64"
                   />

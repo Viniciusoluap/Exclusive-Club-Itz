@@ -1641,11 +1641,11 @@ Nenhuma reserva foi afetada.
           console.log('[fuelRecords.create] Criando cobrança...');
           const charge = await asaas.createCharge({
             customer: asaasCustomerId,
-            billingType: 'UNDEFINED', // Cliente escolhe forma de pagamento
+            billingType: 'PIX', // Pagamento via PIX
             value: totalAmount / 100, // Converter centavos para reais
             dueDate: asaas.formatDateForAsaas(dueDate),
-            description: `Abastecimento - ${booking.vessel_name_actual} - ${input.liters}L`,
-            externalReference: `booking_${input.bookingId}`,
+            description: `Abastecimento - ${booking.vessel_name_actual} - ${finalLiters.toFixed(2)}L`,
+            externalReference: `fuel_record_${input.bookingId}_${Date.now()}`,
           });
           
           asaasChargeId = charge.id;
@@ -2485,10 +2485,18 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         console.log(`[generatePayment] Buscando QR Code PIX para cobrança existente ${charge.id}`);
 
         try {
+          // A API do Asaas retorna os dados do PIX junto com a cobrança
+          // Campos: invoiceUrl, bankSlipUrl, invoiceNumber, externalReference, 
+          // originalValue, interestValue, description, billingType, canBePaidAfterDueDate,
+          // pixTransaction, status, dueDate, originalDueDate, paymentDate, clientPaymentDate,
+          // installmentNumber, transactionReceiptUrl, nossoNumero, invoiceNumber, externalReference
+          
+          // Para PIX, precisamos buscar o QR Code em um endpoint separado
           const pixResponse = await fetch(`${ASAAS_API_URL}/payments/${charge.id}/pixQrCode`, {
             method: 'GET',
             headers: {
               'access_token': apiKey,
+              'Content-Type': 'application/json',
             },
           });
 
@@ -2498,22 +2506,36 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               status: pixResponse.status,
               statusText: pixResponse.statusText,
               body: errorText,
+              chargeId: charge.id,
             });
+            
+            // Se o QR Code não existe, pode ser porque a cobrança já foi paga ou expirou
+            if (pixResponse.status === 404) {
+              throw new TRPCError({ 
+                code: 'BAD_REQUEST', 
+                message: 'QR Code PIX não disponível. A cobrança pode ter sido paga ou expirado.' 
+              });
+            }
+            
             throw new TRPCError({ 
               code: 'INTERNAL_SERVER_ERROR', 
-              message: `Erro ao buscar QR Code PIX: ${pixResponse.statusText}` 
+              message: `Erro ao buscar QR Code PIX. Status: ${pixResponse.status}` 
             });
           }
 
           const pixData = await pixResponse.json();
-          console.log('[generatePayment] QR Code da cobrança existente obtido com sucesso');
+          console.log('[generatePayment] QR Code obtido:', {
+            hasEncodedImage: !!pixData.encodedImage,
+            hasPayload: !!pixData.payload,
+            expirationDate: pixData.expirationDate,
+          });
 
           // Validar que os dados do PIX existem
           if (!pixData.encodedImage || !pixData.payload) {
             console.error('[generatePayment] Dados do PIX incompletos:', pixData);
             throw new TRPCError({ 
               code: 'INTERNAL_SERVER_ERROR', 
-              message: 'Dados do QR Code PIX estão incompletos' 
+              message: 'Dados do QR Code PIX estão incompletos. Entre em contato com o administrador.' 
             });
           }
 
@@ -4211,6 +4233,13 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               `));
             }
             
+            console.log('[inspectionCharges.generatePayment] Retornando dados parcelados:', {
+              totalAmount,
+              installmentsCount: installmentCharges.length,
+              hasPixQrCode: !!installmentCharges[0].pixQrCode,
+              hasPixCopyPaste: !!installmentCharges[0].pixCopyPaste,
+            });
+            
             return {
               totalAmount,
               installments: installmentCharges,
@@ -4222,14 +4251,17 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           // Pagamento à vista (sem parcelamento)
           const pixData: any = {};
           
+          // Buscar QR Code da primeira cobrança com asaas_charge_id
           for (const charge of charges) {
-            if (charge.asaas_charge_id) {
-              const asaasCharge = await getCharge(charge.asaas_charge_id);
+            if (charge.asaas_charge_id && !pixData.qrCode) {
+              const { getPixQrCode } = await import('./_core/asaas');
+              const pixQrData = await getPixQrCode(charge.asaas_charge_id);
               
-              // Usar PIX da primeira cobrança
-              if (!pixData.qrCode && asaasCharge.encodedImage) {
-                pixData.qrCode = asaasCharge.encodedImage;
-                pixData.copyPaste = asaasCharge.payload;
+              if (pixQrData.encodedImage) {
+                pixData.qrCode = pixQrData.encodedImage;
+                pixData.copyPaste = pixQrData.payload;
+                console.log('[inspectionCharges.generatePayment] QR Code obtido com sucesso');
+                break; // Encontrou QR Code, pode parar
               }
             }
           }
@@ -4267,6 +4299,14 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               `));
             }
           }
+          
+          console.log('[inspectionCharges.generatePayment] Retornando dados:', {
+            totalAmount,
+            hasPixQrCode: !!pixData.qrCode,
+            hasPixCopyPaste: !!pixData.copyPaste,
+            pixQrCodeLength: pixData.qrCode?.length || 0,
+            pixCopyPasteLength: pixData.copyPaste?.length || 0,
+          });
           
           return {
             totalAmount,

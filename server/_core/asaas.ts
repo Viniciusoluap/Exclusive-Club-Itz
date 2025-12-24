@@ -193,3 +193,42 @@ export function formatDateForAsaas(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+/**
+ * Busca QR Code PIX de uma cobrança
+ */
+export async function getPixQrCode(chargeId: string): Promise<{ encodedImage: string | null; payload: string | null }> {
+  const apiKey = await getAsaasApiKey();
+  const apiUrl = await getAsaasApiUrl();
+
+  try {
+    // Primeiro tenta buscar no endpoint específico
+    const response = await fetch(`${apiUrl}/payments/${chargeId}/pixQrCode`, {
+      method: 'GET',
+      headers: {
+        'access_token': apiKey,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        encodedImage: data.encodedImage || null,
+        payload: data.payload || null,
+      };
+    }
+
+    // Se falhou, tenta buscar da cobrança principal
+    const charge = await getCharge(chargeId);
+    return {
+      encodedImage: charge.encodedImage || null,
+      payload: charge.payload || null,
+    };
+  } catch (error) {
+    console.error('[Asaas] Erro ao buscar QR Code:', error);
+    return {
+      encodedImage: null,
+      payload: null,
+    };
+  }
+}
