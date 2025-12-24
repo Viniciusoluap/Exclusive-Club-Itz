@@ -366,3 +366,26 @@
 - Função `getOrCreateCustomer` atualizada para enviar cpfCnpj apenas se fornecido
 - Chamada `getOrCreateCustomer` em reparos agora passa `cpfCnpj` e `phone` do cliente
 - 3 testes automatizados criados e passando (100% de sucesso)
+
+
+---
+
+## 🐛 BUG: Erro de CPF/CNPJ ao criar cobrança de Vistoria Reprovada (23/12/2025)
+
+**Problema reportado pelo usuário:**
+- Ao criar nova cobrança de danos tipo "Vistoria Reprovada"
+- Erro aparece: "Erro ao criar cobrança no Asaas: {"errors":[{"code":"invalid_customer.cpfCnpj","description":"Para criar esta cobrança é necessário preencher o CPF ou CNPJ do cliente."}]}"
+- Testado em 23/12/2025
+
+**Tarefas:**
+- [x] Investigar endpoint inspectionCharges.create (tipo inspection)
+- [x] Verificar se CPF/CNPJ está sendo enviado ao Asaas para vistorias reprovadas
+- [x] Corrigir lógica de criação de customer no Asaas (incluir cpfCnpj)
+- [x] Testar criação de cobrança de vistoria completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
+
+**Solução Aplicada:**
+- Query de busca de vistoria agora inclui `ac.cpf_cnpj` e `ac.phone` via LEFT JOIN com `allowed_clients`
+- Função `getOrCreateCustomer` em vistorias agora recebe `cpfCnpj` e `phone` do cliente
+- Mesma lógica que já funcionava para reparos agora aplicada também para vistorias
+- 3 testes automatizados validando correção (100% de sucesso)

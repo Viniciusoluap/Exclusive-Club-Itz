@@ -3359,15 +3359,18 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               throw new TRPCError({ code: 'BAD_REQUEST', message: 'inspectionId e failedItems são obrigatórios para tipo inspection' });
             }
             
-            // Buscar dados da vistoria
+            // Buscar dados da vistoria com CPF/CNPJ do cliente
             const inspectionResult = await db.execute(sql.raw(`
               SELECT 
                 i.*,
                 COALESCE(i.client_email, b.client_email) as client_email,
-                v.name as vessel_name
+                v.name as vessel_name,
+                ac.cpf_cnpj as client_cpf_cnpj,
+                ac.phone as client_phone
               FROM inspections i
               LEFT JOIN bookings b ON i.booking_id = b.id
               JOIN vessels v ON i.vessel_id = v.id
+              LEFT JOIN allowed_clients ac ON COALESCE(i.client_email, b.client_email) = ac.email
               WHERE i.id = ${input.inspectionId}
             `)) as any;
             
@@ -3388,6 +3391,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             const customer = await getOrCreateCustomer({
               name: inspection.client_name || inspection.client_email,
               email: inspection.client_email,
+              cpfCnpj: inspection.client_cpf_cnpj,
+              phone: inspection.client_phone,
             });
             
             // Criar cobrança no Asaas
