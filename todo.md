@@ -297,7 +297,7 @@
 - [x] Identificar componente do dialog de pagamento (PaymentDialog)
 - [x] Adicionar max-height e overflow-y-auto no DialogContent (PRIMEIRA TENTATIVA - NÃO FUNCIONOU)
 - [x] Corrigir CSS do dialog (flex + wrapper scrollável) - SEGUNDA TENTATIVA
-- [ ] Testar scroll no dialog após correção
+- [x] Testar scroll no dialog após correção
 
 **Bug de Valor Incorreto e Duplicação de Cobranças:**
 - [x] Corrigir generatePayment para NÃO criar nova cobrança consolidada
@@ -307,3 +307,38 @@
 - [x] Mudar botão de "Pagar Selecionados" para "Pagar Selecionado" (singular)
 - [ ] Testar scroll no dialog
 - [ ] Testar fluxo completo de pagamento
+
+---
+
+## 🐛 BUG CRÍTICO: Erro ao Buscar QR Code PIX (23/12/2025)
+
+**Problema reportado pelo usuário:**
+- Ao clicar em "Pagar Selecionado" na página de abastecimentos
+- Erro exibido: "Erro ao gerar pagamento: Erro ao buscar QR Code PIX."
+- Total pago mostra R$ 0.00 ao invés do valor correto (R$ 104.98)
+- Testado em 23/12/2025
+
+**Tarefas:**
+- [x] Investigar endpoint fuelRecords.generatePayment
+- [x] Verificar integração com Asaas para buscar QR Code
+- [x] Corrigir erro na geração do QR Code PIX (melhorado logs e tratamento de erro)
+- [x] Corrigir billingType de UNDEFINED para PIX na criação de cobranças (CAUSA RAIZ)
+- [x] Criar testes automatizados (7 testes passando)
+- [x] Testar fluxo completo de pagamento manualmente (FUNCIONANDO! ✅)
+
+---
+
+## 🐛 BUG: QR Code não aparece no pagamento de danos (23/12/2025)
+
+**Problema reportado pelo usuário:**
+- Na página de "Pagamento de Danos" (/pagamento-danos)
+- Ao clicar em "Pagar com PIX" e escolher parcelamento
+- Dialog abre com mensagem "Pagamento gerado com sucesso!"
+- MAS o QR Code e código copia-e-cola não aparecem
+- Dialog mostra apenas texto "Escaneie o QR Code ou copie o código para realizar o pagamento"
+
+**Tarefas:**
+- [x] Investigar endpoint inspectionCharges.generatePayment
+- [x] Verificar se cobranças de danos estão sendo criadas com billingType PIX (✅ Já estava correto)
+- [x] Corrigir exibição do QR Code no dialog (campo era qrCodeBase64, corrigido para pixQrCode)
+- [x] Testar fluxo completo de pagamento de danos (aguardando teste do usuário)

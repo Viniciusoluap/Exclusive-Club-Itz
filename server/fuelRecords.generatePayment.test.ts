@@ -66,7 +66,7 @@ describe("fuelRecords.generatePayment", () => {
       expect(error.message).not.toContain("ASAAS_API_KEY não configurada");
       
       // Deve ser erro de abastecimento não encontrado
-      expect(error.message).toContain("Nenhum abastecimento pendente encontrado");
+      expect(error.message).toContain("Abastecimento não encontrado ou já foi pago");
     } finally {
       // Restaurar valor original
       if (originalApiKey) {

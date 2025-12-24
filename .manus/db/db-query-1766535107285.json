@@ -1,0 +1,14 @@
+{
+  "query": "SELECT `key`, `value` FROM system_settings WHERE `key` = 'asaas_api_key';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT `key`, `value` FROM system_settings WHERE `key` = 'asaas_api_key';",
+  "rows": [
+    {
+      "key": "asaas_api_key",
+      "value": "a9214a330a4d4a71e2030f24ccc99e99:46ee8d3cf52ae0ecac8551843d6058f51e0ec7bfadc51f41d9efd408c05a37d10d6a3e102958b9be2dbd34ed0c55e7e5e825eb133ddb6f3a8d7a3f85094239555e3cd3cdc119692f59190a20e5448b7a8ccd8787099912b94dbe792397bfa9dbdb487ecd80def19584405ebeff58bece62c3eb323301a28a4e1ae1a3a1c1996be331e747bc1bbaff6333b17aef5c5a6fbb1cdc53e6f46352047b45d0b393edf49c8e602d052964ebc910ed695ca4837c"
+    }
+  ],
+  "messages": [],
+  "stdout": "key\tvalue\nasaas_api_key\ta9214a330a4d4a71e2030f24ccc99e99:46ee8d3cf52ae0ecac8551843d6058f51e0ec7bfadc51f41d9efd408c05a37d10d6a3e102958b9be2dbd34ed0c55e7e5e825eb133ddb6f3a8d7a3f85094239555e3cd3cdc119692f59190a20e5448b7a8ccd8787099912b94dbe792397bfa9dbdb487ecd80def19584405ebeff58bece62c3eb323301a28a4e1ae1a3a1c1996be331e747bc1bbaff6333b17aef5c5a6fbb1cdc53e6f46352047b45d0b393edf49c8e602d052964ebc910ed695ca4837c\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

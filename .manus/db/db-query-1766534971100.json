@@ -1,0 +1,20 @@
+{
+  "query": "SELECT id, charge_type, amount, asaas_charge_id, payment_status, client_email, due_date, created_at\nFROM inspection_charges \nWHERE amount = 1000.00 AND payment_status = 'pending'\nLIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, charge_type, amount, asaas_charge_id, payment_status, client_email, due_date, created_at\nFROM inspection_charges \nWHERE amount = 1000.00 AND payment_status = 'pending'\nLIMIT 1;",
+  "rows": [
+    {
+      "id": "240002",
+      "charge_type": "inspection",
+      "amount": "1000.00",
+      "asaas_charge_id": "pay_d43p3x9hbhqfbfso",
+      "payment_status": "pending",
+      "client_email": "efficazcorrespondente@hotmail.com",
+      "due_date": "2025-12-30 23:34:23",
+      "created_at": "2025-12-23 23:34:24"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcharge_type\tamount\tasaas_charge_id\tpayment_status\tclient_email\tdue_date\tcreated_at\n240002\tinspection\t1000.00\tpay_d43p3x9hbhqfbfso\tpending\tefficazcorrespondente@hotmail.com\t2025-12-30 23:34:23\t2025-12-23 23:34:24\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}
