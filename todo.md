@@ -468,3 +468,29 @@
 - [x] Corrigir cores invertidas do campo Saldo na página de Abastecimentos (negativo=vermelho, positivo=azul)
 
 - [x] Campo "Litros Iniciais no Galão" auto-preenchido com estoque atual e somente leitura (funcionário e admin)
+
+
+---
+
+## 🐛 BUG CORRIGIDO: Erro ao registrar abastecimento com peso 0 (24/12/2025)
+
+**Problema reportado pelo usuário:**
+- Na página do funcionário: Erro "Too small: expected number to be >0" ao preencher 0 no campo "Peso do Galão após (kg)"
+- Na página do admin: Ao preencher '0' em 'peso do Galão após (kg)', não conclui o registro, volta para o campo
+- O galão pode estar completamente vazio após o abastecimento, então 0 é um valor válido
+
+**Tarefas:**
+- [x] Investigar validação do campo weightAfter no backend (server/routers.ts)
+- [x] Investigar validação do campo weightAfter no frontend (páginas de abastecimento)
+- [x] Corrigir validação para permitir valor 0 (mínimo deve ser >= 0, não > 0)
+- [x] Testar registro de abastecimento com peso 0 na página do funcionário
+- [x] Testar registro de abastecimento com peso 0 na página do admin
+
+**Solução Aplicada:**
+- Backend: Alterado `z.number().positive()` para `z.number().nonnegative()` no campo weightAfter
+- Backend: Corrigido validações que usavam `|| input.weightAfter` para `input.weightAfter !== undefined`
+- Frontend (Admin): Alterado `min="0.01"` para `min="0"` no input
+- Frontend (Admin): Corrigido validações que usavam `!weightAfter` para `weightAfter === ""`
+- Frontend (Funcionário): Mesmas correções aplicadas
+- Placeholder atualizado para indicar que 0 é um valor válido
+

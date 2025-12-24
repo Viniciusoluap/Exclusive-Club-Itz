@@ -289,7 +289,7 @@ export default function Abastecimento() {
 
     // Validar campos de pesagem se o método estiver ativo
     if (useWeightMethod) {
-      if (!litersInitial || !weightFull || !weightAfter) {
+      if (!litersInitial || !weightFull || weightAfter === "") {
         toast.error('Preencha todos os campos de peso (litros iniciais, peso cheio e peso após)');
         return;
       }
@@ -369,7 +369,7 @@ export default function Abastecimento() {
 
     // Calcular litros consumidos se usar método de pesagem
     let finalLiters = parseFloat(liters);
-    if (useWeightMethod && litersInitial && weightFull && weightAfter) {
+    if (useWeightMethod && litersInitial && weightFull && weightAfter !== "") {
       const pesoConsumed = parseFloat(weightFull) - parseFloat(weightAfter);
       const litersCalculated = (pesoConsumed * parseFloat(litersInitial)) / parseFloat(weightFull);
       finalLiters = parseFloat(litersCalculated.toFixed(2));
@@ -394,7 +394,7 @@ export default function Abastecimento() {
   const SERVICE_FEE = 10.00; // Taxa de abastecimento e aplicativo
   
   // Calcular litros (manual ou por pesagem)
-  const calculatedLiters = useWeightMethod && litersInitial && weightFull && weightAfter
+  const calculatedLiters = useWeightMethod && litersInitial && weightFull && weightAfter !== ""
     ? ((parseFloat(weightFull) - parseFloat(weightAfter)) * parseFloat(litersInitial)) / parseFloat(weightFull)
     : (liters ? parseFloat(liters) : 0);
   
@@ -1023,16 +1023,16 @@ export default function Abastecimento() {
                       id="weightAfter"
                       type="number"
                       step="0.01"
-                      min="0.01"
+                      min="0"
                       value={weightAfter}
                       onChange={(e) => setWeightAfter(e.target.value)}
-                      placeholder="Ex: 23,40"
+                      placeholder="Ex: 23,40 (ou 0 se vazio)"
                       required={useWeightMethod}
                     />
                   </div>
 
                   {/* Preview do cálculo */}
-                  {litersInitial && weightFull && weightAfter && (
+                  {litersInitial && weightFull && weightAfter !== "" && (
                     <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                       <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
                         ⚖️ Cálculo Automático:
@@ -1135,7 +1135,7 @@ export default function Abastecimento() {
                 />
               </div>
 
-              {((useWeightMethod && litersInitial && weightFull && weightAfter) || (!useWeightMethod && liters)) && pricePerLiter && (
+              {((useWeightMethod && litersInitial && weightFull && weightAfter !== "") || (!useWeightMethod && liters)) && pricePerLiter && (
                 <div className="p-4 bg-primary/10 rounded-lg space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span>Combustível ({calculatedLiters.toFixed(2)}L × R$ {parseFloat(pricePerLiter).toFixed(2)}):</span>
