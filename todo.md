@@ -460,3 +460,5 @@
 - [x] Garantir que foto apareça quando admin cadastrou reparo com imagem
 - [x] Testar exibição de foto na página do cliente
 
+
+- [x] Corrigir filtro de anos na página de Pagamento de Danos - mostrar 2025, 2026, 2027 em vez de anos anteriores (2023, 2024)

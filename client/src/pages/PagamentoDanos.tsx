@@ -144,13 +144,12 @@ export default function PagamentoDanos() {
     { value: '12', label: 'Dezembro' },
   ];
 
-  // Gerar opções de ano (últimos 3 anos)
-  const now = new Date();
-  const yearOptions = [];
-  for (let i = 0; i < 3; i++) {
-    const year = now.getFullYear() - i;
-    yearOptions.push({ value: year.toString(), label: year.toString() });
-  }
+  // Gerar opções de ano (2025, 2026, 2027)
+  const yearOptions = [
+    { value: '2025', label: '2025' },
+    { value: '2026', label: '2026' },
+    { value: '2027', label: '2027' },
+  ];
 
   if (authLoading || loadingInspections || loadingRepairs) {
     return (
