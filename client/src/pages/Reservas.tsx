@@ -290,7 +290,7 @@ export default function Reservas() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center gap-3 cursor-pointer">
-                <img src={APP_LOGO} alt="Logo" className="h-10 w-10 rounded-lg" />
+                <img src={APP_LOGO} alt="Logo" className="h-10 w-10 rounded-lg" style={{width: '70px', height: '65px', backgroundColor: '#1aacea', borderRadius: '8px', padding: '4px'}} />
                 <span className="text-xl font-bold hidden sm:inline">Exclusive Club</span>
               </div>
             </Link>

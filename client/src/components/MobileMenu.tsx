@@ -91,7 +91,7 @@ export function MobileMenu() {
       <SheetContent side="right" className="w-[300px] sm:w-[400px]">
         <SheetHeader className="mb-6">
           <div className="flex items-center gap-3">
-            <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10" />
+            <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10" style={{width: '70px', height: '65px', backgroundColor: '#1aacea', borderRadius: '8px', padding: '4px'}} />
             <SheetTitle className="text-primary">Exclusive Club</SheetTitle>
           </div>
         </SheetHeader>
