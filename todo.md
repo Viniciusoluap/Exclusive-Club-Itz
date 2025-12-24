@@ -389,3 +389,39 @@
 - Função `getOrCreateCustomer` em vistorias agora recebe `cpfCnpj` e `phone` do cliente
 - Mesma lógica que já funcionava para reparos agora aplicada também para vistorias
 - 3 testes automatizados validando correção (100% de sucesso)
+
+- [x] Corrigir erro de validação de CPF/CNPJ ao criar cobranças no Asaas (erro: "invalid_customer.cpfCnpj")
+
+
+---
+
+## 🐛 BUG CRÍTICO: Erro de CPF/CNPJ ao criar cobrança (Solução Definitiva - 23/12/2025)
+
+**Problema reportado pelo usuário:**
+- Ao criar nova cobrança de danos tipo "Reparo da Embarcação"
+- Erro: "Erro ao criar cobrança no Asaas: {"errors":[{"code":"invalid_customer.cpfCnpj","description":"Para criar esta cobrança é necessário preencher o CPF ou CNPJ do cliente."}]}"
+- Embarcação: Teste (cotas)
+- Valor: R$ 6000
+
+**Causa Raiz Identificada:**
+- Clientes já existem no Asaas com CPF/CNPJ cadastrado
+- Sistema estava tentando criar cobrança sem buscar o CPF/CNPJ do Asaas
+- Validação local estava bloqueando criação quando CPF/CNPJ não estava no banco local
+
+**Solução Definitiva Aplicada:**
+- [x] Remover validação local de CPF/CNPJ (não é mais necessária)
+- [x] Buscar customer do Asaas (sempre existe e retorna com CPF/CNPJ)
+- [x] Usar CPF/CNPJ retornado do Asaas ao criar cobranças
+- [x] Aplicar correção tanto para "Reparo da Embarcação" quanto "Vistoria Reprovada"
+- [x] Manter campo CPF/CNPJ no formulário de clientes (opcional, para novos clientes)
+
+**Arquivos Modificados:**
+- server/routers.ts (endpoint inspectionCharges.create)
+  * Removida validação que bloqueava criação quando CPF/CNPJ não estava no banco local
+  * Busca customer do Asaas e usa CPF/CNPJ retornado
+  * Aplicado para ambos os tipos: inspection e repair
+
+**Resultado:**
+- Sistema agora busca CPF/CNPJ diretamente do Asaas (fonte confiável)
+- Não depende mais de dados locais para criar cobranças
+- Erro "invalid_customer.cpfCnpj" não ocorre mais
