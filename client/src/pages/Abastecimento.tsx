@@ -201,10 +201,18 @@ export default function Abastecimento() {
 
   // setBudgetMutation removido - orçamento agora é calculado automaticamente
 
-  // Preencher preço por litro automaticamente ao abrir o dialog
+  // Preencher preço por litro e litros iniciais automaticamente ao abrir o dialog
   useEffect(() => {
-    if (isCreateDialogOpen && budget?.lastPricePerLiter) {
-      setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
+    if (isCreateDialogOpen && budget) {
+      // Preencher preço se houver preço válido
+      if (budget.lastPricePerLiter) {
+        setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
+      }
+      // Preencher litros iniciais com o estoque atual
+      if (budget.stockLiters !== undefined && budget.stockLiters !== null) {
+        setLitersInitial(budget.stockLiters.toFixed(2));
+        console.log('✅ Litros iniciais preenchidos automaticamente:', budget.stockLiters.toFixed(2));
+      }
     }
   }, [isCreateDialogOpen, budget]);
 
@@ -985,14 +993,13 @@ export default function Abastecimento() {
                       id="litersInitial"
                       type="number"
                       step="0.01"
-                      min="0.01"
                       value={litersInitial}
-                      onChange={(e) => setLitersInitial(e.target.value)}
-                      placeholder="Ex: 50,05"
-                      required={useWeightMethod}
+                      readOnly
+                      disabled
+                      className="bg-muted cursor-not-allowed"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Quantidade de litros que havia no galão antes do abastecimento
+                      Valor do estoque atual (preenchido automaticamente)
                     </p>
                   </div>
 
