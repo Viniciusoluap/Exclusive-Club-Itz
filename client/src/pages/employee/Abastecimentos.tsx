@@ -59,15 +59,20 @@ export default function EmployeeAbastecimentos() {
     refetch();
   }, [selectedMonth, selectedYear]);
 
-  // Pré-preencher preço/L automaticamente ao abrir o dialog
+  // Pré-preencher preço/L e litros iniciais automaticamente ao abrir o dialog
   useEffect(() => {
     if (isCreateDialogOpen && budget) {
-      // Preencher se houver preço válido (maior que zero)
+      // Preencher preço se houver preço válido (maior que zero)
       if (budget.lastPricePerLiter && budget.lastPricePerLiter > 0) {
         setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
         console.log('✅ Preço/L preenchido automaticamente:', budget.lastPricePerLiter.toFixed(2));
       } else {
         console.warn('⚠️ Nenhum preço/L disponível no estoque. Budget:', budget);
+      }
+      // Preencher litros iniciais com o estoque atual
+      if (budget.stockLiters !== undefined && budget.stockLiters !== null) {
+        setLitersInitial(budget.stockLiters.toFixed(2));
+        console.log('✅ Litros iniciais preenchidos automaticamente:', budget.stockLiters.toFixed(2));
       }
     } else if (!isCreateDialogOpen) {
       // Resetar ao fechar o dialog
@@ -576,18 +581,18 @@ export default function EmployeeAbastecimentos() {
                   📏 Método de Pesagem
                 </h3>
                 
-                {/* Litros Iniciais */}
+                {/* Litros Iniciais - Preenchido automaticamente com o estoque atual */}
                 <div>
                   <Label>Litros Iniciais no Galão (L) *</Label>
                   <Input
                     type="number"
                     step="0.01"
                     value={litersInitial}
-                    onChange={(e) => setLitersInitial(e.target.value)}
-                    placeholder="Ex: 50.05"
-                    required
+                    readOnly
+                    disabled
+                    className="bg-muted cursor-not-allowed"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Quantidade de litros no galão antes do abastecimento</p>
+                  <p className="text-xs text-muted-foreground mt-1">Valor do estoque atual (preenchido automaticamente)</p>
                 </div>
 
                 {/* Peso Cheio */}

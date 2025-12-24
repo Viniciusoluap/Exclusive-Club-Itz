@@ -466,3 +466,5 @@
 - [x] Corrigir lógica do campo Saldo em Abastecimentos: fórmula "Gasto - Orçamento", negativo=vermelho, positivo=azul
 
 - [x] Corrigir cores invertidas do campo Saldo na página de Abastecimentos (negativo=vermelho, positivo=azul)
+
+- [x] Campo "Litros Iniciais no Galão" auto-preenchido com estoque atual e somente leitura (funcionário e admin)
