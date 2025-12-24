@@ -226,7 +226,7 @@ export default function EmployeeAbastecimentos() {
   };
 
   // Cálculo automático por regra de 3
-  const weightConsumed = weightFull && weightAfter 
+  const weightConsumed = weightFull && weightAfter !== "" 
     ? parseFloat(weightFull) - parseFloat(weightAfter)
     : 0;
 
@@ -242,7 +242,7 @@ export default function EmployeeAbastecimentos() {
       toast.error("Selecione uma reserva");
       return;
     }
-    if (!litersInitial || !weightFull || !weightAfter) {
+    if (!litersInitial || !weightFull || weightAfter === "") {
       toast.error("Preencha todos os campos de pesagem");
       return;
     }
@@ -640,12 +640,13 @@ export default function EmployeeAbastecimentos() {
                   <Input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={weightAfter}
                     onChange={(e) => setWeightAfter(e.target.value)}
-                    placeholder="Ex: 23.40"
+                    placeholder="Ex: 23.40 (ou 0 se vazio)"
                     required
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Peso DEPOIS do abastecimento</p>
+                  <p className="text-xs text-muted-foreground mt-1">Peso DEPOIS do abastecimento (pode ser 0 se galão ficou vazio)</p>
                 </div>
 
                 {/* Upload Foto DEPOIS */}

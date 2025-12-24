@@ -1507,7 +1507,7 @@ Nenhuma reserva foi afetada.
         // Campos opcionais do método de abastecimento por pesagem
         litersInitial: z.number().positive().optional(), // Litros iniciais no galão (ex: 50.05)
         weightFull: z.number().positive().optional(), // Peso do galão cheio em kg (ex: 37.80)
-        weightAfter: z.number().positive().optional(), // Peso do galão após em kg (ex: 23.40)
+        weightAfter: z.number().nonnegative().optional(), // Peso do galão após em kg (pode ser 0 se galão ficou vazio)
         photoBeforeUrl: z.string().url().optional(), // URL da foto ANTES
         photoAfterUrl: z.string().url().optional(), // URL da foto DEPOIS
       }))
@@ -1532,9 +1532,9 @@ Nenhuma reserva foi afetada.
         }
 
         // Validar campos de peso (se um for informado, todos devem ser)
-        const hasWeightData = input.litersInitial || input.weightFull || input.weightAfter;
+        const hasWeightData = input.litersInitial !== undefined || input.weightFull !== undefined || input.weightAfter !== undefined;
         if (hasWeightData) {
-          if (!input.litersInitial || !input.weightFull || !input.weightAfter) {
+          if (input.litersInitial === undefined || input.weightFull === undefined || input.weightAfter === undefined) {
             throw new TRPCError({ 
               code: 'BAD_REQUEST', 
               message: 'Se usar o método de pesagem, todos os campos (litros iniciais, peso cheio e peso após) são obrigatórios' 
@@ -1586,7 +1586,7 @@ Nenhuma reserva foi afetada.
         let litersCalculatedInCents = null;
         let finalLitersInCents = input.liters ? Math.round(input.liters * 100) : 0; // Padrão: usar litros informados manualmente
 
-        if (hasWeightData && input.litersInitial && input.weightFull && input.weightAfter) {
+        if (hasWeightData && input.litersInitial !== undefined && input.weightFull !== undefined && input.weightAfter !== undefined) {
           // Converter para unidades inteiras (centavos/gramas)
           litersInitialInCents = Math.round(input.litersInitial * 100); // 50.05L -> 5005
           weightFullInGrams = Math.round(input.weightFull * 100); // 37.80kg -> 3780 (gramas em centavos)
