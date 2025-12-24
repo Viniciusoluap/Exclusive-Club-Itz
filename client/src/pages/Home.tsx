@@ -20,7 +20,7 @@ export default function Home() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <img src={APP_LOGO} alt="Exclusive Club" className="h-12 w-12" />
+              <img src={APP_LOGO} alt="Exclusive Club" className="h-12 w-12" style={{width: '70px', height: '65px', backgroundColor: '#1aacea', borderRadius: '8px', padding: '4px'}} />
               <span className="text-xl font-bold text-primary">Exclusive Club</span>
             </div>
             <nav className="hidden md:flex items-center gap-6">
@@ -274,7 +274,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <img src={APP_LOGO} alt="Exclusive Club" className="h-12 w-12" />
+                <img src={APP_LOGO} alt="Exclusive Club" className="h-12 w-12" style={{width: '70px', height: '65px', backgroundColor: '#1aacea', borderRadius: '8px', padding: '4px'}} />
                 <span className="text-xl font-bold text-primary">Exclusive Club</span>
               </div>
               <p className="text-muted-foreground">Compartilhando Sonhos</p>
