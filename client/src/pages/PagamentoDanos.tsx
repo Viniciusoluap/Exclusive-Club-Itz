@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock, Copy, Download, Eye, FileText, Loader2, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+// RadioGroup removido - agora apenas pagamento à vista
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,7 +19,8 @@ export default function PagamentoDanos() {
   const { user, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedInspection, setSelectedInspection] = useState<number | null>(null);
-  const [selectedInstallments, setSelectedInstallments] = useState<string>('1');
+  // Sempre pagamento à vista (1x)
+  const selectedInstallments = '1';
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentData, setPaymentData] = useState<any>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
@@ -370,40 +371,15 @@ export default function PagamentoDanos() {
                             <>
                               <Separator />
                               <div className="space-y-3">
-                                <Label className="text-sm font-medium">Escolha a forma de pagamento:</Label>
-                                <RadioGroup
-                                  value={selectedInstallments}
-                                  onValueChange={setSelectedInstallments}
-                                  className="space-y-2"
-                                >
-                                  <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
-                                    <RadioGroupItem value="1" id={`1x-insp-${inspection.inspection_id}`} />
-                                    <Label htmlFor={`1x-insp-${inspection.inspection_id}`} className="flex-1 cursor-pointer">
-                                      <span className="font-semibold">
-                                        1x de R$ {parseFloat(inspection.charge.amount).toFixed(2)}
-                                      </span>
-                                      <span className="text-xs text-gray-500 ml-2">(à vista)</span>
-                                    </Label>
+                                <Label className="text-sm font-medium">Forma de pagamento:</Label>
+                                <div className="flex items-center space-x-2 border rounded-lg p-3 bg-blue-50 border-blue-200">
+                                  <div className="flex-1">
+                                    <span className="font-semibold">
+                                      1x de R$ {parseFloat(inspection.charge.amount).toFixed(2)}
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-2">(à vista)</span>
                                   </div>
-                                  <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
-                                    <RadioGroupItem value="2" id={`2x-insp-${inspection.inspection_id}`} />
-                                    <Label htmlFor={`2x-insp-${inspection.inspection_id}`} className="flex-1 cursor-pointer">
-                                      <span className="font-semibold">
-                                        2x de R$ {(parseFloat(inspection.charge.amount) / 2).toFixed(2)}
-                                      </span>
-                                      <span className="text-xs text-gray-500 ml-2">(sem juros)</span>
-                                    </Label>
-                                  </div>
-                                  <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
-                                    <RadioGroupItem value="3" id={`3x-insp-${inspection.inspection_id}`} />
-                                    <Label htmlFor={`3x-insp-${inspection.inspection_id}`} className="flex-1 cursor-pointer">
-                                      <span className="font-semibold">
-                                        3x de R$ {(parseFloat(inspection.charge.amount) / 3).toFixed(2)}
-                                      </span>
-                                      <span className="text-xs text-gray-500 ml-2">(sem juros)</span>
-                                    </Label>
-                                  </div>
-                                </RadioGroup>
+                                </div>
                               </div>
 
                               {/* Botões de Ação */}
@@ -559,38 +535,13 @@ export default function PagamentoDanos() {
                         {/* Opções de Parcelamento */}
                         {repair.paymentStatus !== 'paid' && (
                           <div className="space-y-3">
-                            <Label className="text-sm font-medium">Escolha a forma de pagamento:</Label>
-                            <RadioGroup
-                              value={selectedInstallments}
-                              onValueChange={setSelectedInstallments}
-                              className="space-y-2"
-                            >
-                              <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
-                                <RadioGroupItem value="1" id={`1x-repair-${repair.id}`} />
-                                <Label htmlFor={`1x-repair-${repair.id}`} className="flex-1 cursor-pointer">
-                                  <span className="font-semibold">1x de R$ {repair.individualAmount.toFixed(2)}</span>
-                                  <span className="text-xs text-gray-500 ml-2">(à vista)</span>
-                                </Label>
+                            <Label className="text-sm font-medium">Forma de pagamento:</Label>
+                            <div className="flex items-center space-x-2 border rounded-lg p-3 bg-blue-50 border-blue-200">
+                              <div className="flex-1">
+                                <span className="font-semibold">1x de R$ {repair.individualAmount.toFixed(2)}</span>
+                                <span className="text-xs text-gray-500 ml-2">(à vista)</span>
                               </div>
-                              <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
-                                <RadioGroupItem value="2" id={`2x-repair-${repair.id}`} />
-                                <Label htmlFor={`2x-repair-${repair.id}`} className="flex-1 cursor-pointer">
-                                  <span className="font-semibold">
-                                    2x de R$ {(repair.individualAmount / 2).toFixed(2)}
-                                  </span>
-                                  <span className="text-xs text-gray-500 ml-2">(sem juros)</span>
-                                </Label>
-                              </div>
-                              <div className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 cursor-pointer">
-                                <RadioGroupItem value="3" id={`3x-repair-${repair.id}`} />
-                                <Label htmlFor={`3x-repair-${repair.id}`} className="flex-1 cursor-pointer">
-                                  <span className="font-semibold">
-                                    3x de R$ {(repair.individualAmount / 3).toFixed(2)}
-                                  </span>
-                                  <span className="text-xs text-gray-500 ml-2">(sem juros)</span>
-                                </Label>
-                              </div>
-                            </RadioGroup>
+                            </div>
                           </div>
                         )}
 
