@@ -3606,6 +3606,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         chargeId: z.number(),
         newAmount: z.number().positive().optional(),
         newDueDate: z.number().optional(), // Unix timestamp
+        receiptUrl: z.string().nullable().optional(), // URL do comprovante/foto do reparo
       }))
       .mutation(async ({ input }) => {
         const db = await import('./db').then(m => m.getDb());
@@ -3633,6 +3634,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           const updates: any = {};
           if (input.newAmount) updates.amount = input.newAmount.toString();
           if (input.newDueDate) updates.dueDate = new Date(input.newDueDate);
+          if (input.receiptUrl !== undefined) updates.receiptUrl = input.receiptUrl;
           
           if (Object.keys(updates).length > 0) {
             await db.update(inspectionCharges)
