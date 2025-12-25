@@ -494,3 +494,18 @@
 - Frontend (Funcionário): Mesmas correções aplicadas
 - Placeholder atualizado para indicar que 0 é um valor válido
 
+
+## 🐛 BUG: Divisão de Reparo Excluindo Clientes Desativados (24/12/2025)
+
+**Problema reportado pelo usuário:**
+- A lógica de divisão do reparo das embarcações está excluindo clientes desativados
+- Clientes desativados devem participar da divisão de custos e receber cobrança
+- A desativação deve afetar APENAS a funcionalidade de fazer novas reservas
+- Todas as outras funcionalidades (cobranças, divisão de reparos) devem funcionar normalmente
+
+**Tarefas:**
+- [x] Localizar código responsável pela divisão de reparos
+- [x] Corrigir lógica para incluir clientes desativados (is_active = false) na divisão
+- [x] Testar criação de cobrança de reparo com clientes desativados
+- [x] Validar que desativação continua bloqueando apenas reservas
+

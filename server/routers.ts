@@ -3459,12 +3459,12 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 ac.phone as client_phone
               FROM client_quotas cq
               JOIN allowed_clients ac ON cq.client_id = ac.id
-              WHERE cq.vessel_id = ${input.vesselId} AND cq.is_active = 1 AND ac.is_active = 1
+              WHERE cq.vessel_id = ${input.vesselId} AND cq.is_active = 1
             `)) as any;
             
             const quotas = (Array.isArray(quotasResult[0]) ? quotasResult[0] : quotasResult);
             if (quotas.length === 0) {
-              throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhum cliente com cotas ativas para esta embarcação' });
+              throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhuma cota ativa encontrada para esta embarcação' });
             }
             
             // Calcular valor por cota
