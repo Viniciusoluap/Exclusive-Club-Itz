@@ -71,7 +71,10 @@ export default function CobrancasDanos() {
     amount: "",
     dueDate: "",
     description: "",
+    receiptUrl: "" as string | null,
   });
+  const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
+  const [uploadingEditReceipt, setUploadingEditReceipt] = useState(false);
 
   // Queries
   const { data: charges, isLoading, refetch } = trpc.inspectionCharges.listAll.useQuery();
@@ -259,11 +262,60 @@ export default function CobrancasDanos() {
       amount: charge.amount,
       dueDate: new Date(charge.due_date).toISOString().split('T')[0],
       description: charge.description || "",
+      receiptUrl: charge.receipt_url || null,
     });
+    setEditReceiptFile(null);
     setEditDialogOpen(true);
   };
 
-  const handleUpdateSubmit = () => {
+  const handleEditFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tamanho (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. Máximo: 10MB");
+      return;
+    }
+
+    // Validar tipo
+    const validTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
+    if (!validTypes.includes(file.type)) {
+      toast.error("Formato inválido. Use JPG, PNG ou PDF");
+      return;
+    }
+
+    setEditReceiptFile(file);
+  };
+
+  const uploadEditReceipt = async (): Promise<string | null> => {
+    if (!editReceiptFile) return null;
+
+    setUploadingEditReceipt(true);
+    try {
+      const arrayBuffer = await editReceiptFile.arrayBuffer();
+      
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(7);
+      const extension = editReceiptFile.name.split('.').pop();
+      const fileKey = `receipts/${timestamp}-${randomStr}.${extension}`;
+      
+      const result = await storagePut(fileKey, arrayBuffer, editReceiptFile.type);
+      return result.url;
+    } catch (error: any) {
+      toast.error(`Erro ao fazer upload: ${error.message}`);
+      return null;
+    } finally {
+      setUploadingEditReceipt(false);
+    }
+  };
+
+  const handleRemoveEditImage = () => {
+    setEditFormData({ ...editFormData, receiptUrl: null });
+    setEditReceiptFile(null);
+  };
+
+  const handleUpdateSubmit = async () => {
     if (!editingCharge) return;
 
     const amount = parseFloat(editFormData.amount);
@@ -274,10 +326,19 @@ export default function CobrancasDanos() {
 
     const newDueDate = new Date(editFormData.dueDate).getTime();
 
+    // Se há um novo arquivo para upload
+    let newReceiptUrl = editFormData.receiptUrl;
+    if (editReceiptFile) {
+      const uploadedUrl = await uploadEditReceipt();
+      if (!uploadedUrl) return; // Erro no upload
+      newReceiptUrl = uploadedUrl;
+    }
+
     updateMutation.mutate({
       chargeId: editingCharge.id,
       newAmount: amount,
       newDueDate,
+      receiptUrl: newReceiptUrl,
     });
   };
 
@@ -713,6 +774,94 @@ export default function CobrancasDanos() {
                 onChange={(e) => setEditFormData({ ...editFormData, dueDate: e.target.value })}
               />
             </div>
+
+            {/* Seção de Imagem - apenas para reparos */}
+            {editingCharge?.charge_type === 'repair' && (
+              <div className="space-y-2">
+                <Label>Foto do Reparo</Label>
+                
+                {/* Exibir imagem existente ou nova */}
+                {(editFormData.receiptUrl || editReceiptFile) && (
+                  <div className="relative">
+                    <div className="border rounded-lg overflow-hidden bg-muted">
+                      {editReceiptFile ? (
+                        // Preview do novo arquivo
+                        editReceiptFile.type.startsWith('image/') ? (
+                          <img
+                            src={URL.createObjectURL(editReceiptFile)}
+                            alt="Preview da nova imagem"
+                            className="w-full h-48 object-contain"
+                          />
+                        ) : (
+                          <div className="w-full h-48 flex items-center justify-center text-muted-foreground">
+                            <div className="text-center">
+                              <Upload className="w-8 h-8 mx-auto mb-2" />
+                              <p className="text-sm">{editReceiptFile.name}</p>
+                              <p className="text-xs">(PDF)</p>
+                            </div>
+                          </div>
+                        )
+                      ) : editFormData.receiptUrl ? (
+                        // Imagem existente
+                        editFormData.receiptUrl.toLowerCase().endsWith('.pdf') ? (
+                          <a
+                            href={editFormData.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full h-48 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            <div className="text-center">
+                              <Upload className="w-8 h-8 mx-auto mb-2" />
+                              <p className="text-sm">Visualizar PDF</p>
+                              <p className="text-xs text-primary underline">Clique para abrir</p>
+                            </div>
+                          </a>
+                        ) : (
+                          <a
+                            href={editFormData.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <img
+                              src={editFormData.receiptUrl}
+                              alt="Foto do reparo"
+                              className="w-full h-48 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                            />
+                          </a>
+                        )
+                      ) : null}
+                    </div>
+                    
+                    {/* Botão de remover */}
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8"
+                      onClick={handleRemoveEditImage}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Input para nova imagem */}
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="edit-receipt"
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg,application/pdf"
+                    onChange={handleEditFileChange}
+                    className="flex-1"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {editFormData.receiptUrl || editReceiptFile 
+                    ? "Selecione um novo arquivo para substituir a imagem atual"
+                    : "Formatos aceitos: JPG, PNG ou PDF (máx. 10MB)"}
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -721,18 +870,19 @@ export default function CobrancasDanos() {
               onClick={() => {
                 setEditDialogOpen(false);
                 setEditingCharge(null);
+                setEditReceiptFile(null);
               }}
             >
               Cancelar
             </Button>
             <Button
               onClick={handleUpdateSubmit}
-              disabled={updateMutation.isPending}
+              disabled={updateMutation.isPending || uploadingEditReceipt}
             >
-              {updateMutation.isPending ? (
+              {updateMutation.isPending || uploadingEditReceipt ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Atualizando...
+                  {uploadingEditReceipt ? "Enviando imagem..." : "Atualizando..."}
                 </>
               ) : (
                 "Salvar Alterações"

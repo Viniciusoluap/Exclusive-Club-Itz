@@ -509,3 +509,19 @@
 - [x] Testar criação de cobrança de reparo com clientes desativados
 - [x] Validar que desativação continua bloqueando apenas reservas
 
+
+---
+
+## 🖼️ Melhoria: Visualização de Imagem no Modal de Edição de Cobrança (24/12/2025)
+
+**Problema reportado pelo usuário:**
+- No modal "Editar Cobrança" para cobranças de danos (reparos)
+- Não é possível visualizar a imagem que foi anexada quando o reparo foi criado
+- Não há opção para excluir ou trocar a imagem
+
+**Tarefas:**
+- [x] Exibir imagem do reparo no modal de edição de cobrança de danos
+- [x] Permitir excluir imagem existente no modal de edição
+- [x] Permitir adicionar nova foto no modal de edição de cobrança de danos
+- [x] Testar funcionalidade completa (7 testes passando)
+
