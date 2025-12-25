@@ -3874,6 +3874,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               ic.due_date as dueDate,
               ic.payment_status as paymentStatus,
               ic.receipt_url as receiptUrl,
+              ic.receipt_url as photoUrl,
               ic.asaas_charge_id as asaasChargeId,
               ic.created_at as createdAt,
               ic.client_email as clientEmail
@@ -3905,6 +3906,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               dueDate: repair.dueDate,
               paymentStatus: repair.paymentStatus,
               receiptUrl: repair.receiptUrl,
+              photoUrl: repair.photoUrl || repair.receiptUrl,
               asaasChargeId: repair.asaasChargeId,
               createdAt: repair.createdAt,
             };
