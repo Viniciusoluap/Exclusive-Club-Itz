@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Calendar, DollarSign, Edit, Loader2, Plus, Trash2, Upload, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Calendar, CheckCircle2, DollarSign, Edit, Loader2, Plus, Trash2, Upload, X, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -75,6 +75,12 @@ export default function CobrancasDanos() {
   });
   const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
   const [uploadingEditReceipt, setUploadingEditReceipt] = useState(false);
+  
+  // Estados para dialog de solicitação de mudança de vencimento
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
 
   // Queries
   const { data: charges, isLoading, refetch } = trpc.inspectionCharges.listAll.useQuery();
@@ -119,6 +125,50 @@ export default function CobrancasDanos() {
       toast.error(`Erro ao atualizar cobrança: ${error.message}`);
     },
   });
+
+  // Mutations para solicitações de mudança de vencimento
+  const approveMutation = trpc.dueDateRequests.approve.useMutation({
+    onSuccess: () => {
+      toast.success("Solicitação aprovada! Vencimento atualizado.");
+      setShowRequestDialog(false);
+      setSelectedRequest(null);
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao aprovar: ${error.message}`);
+    },
+  });
+
+  const rejectMutation = trpc.dueDateRequests.reject.useMutation({
+    onSuccess: () => {
+      toast.success("Solicitação rejeitada!");
+      setShowRejectDialog(false);
+      setShowRequestDialog(false);
+      setSelectedRequest(null);
+      setRejectReason("");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao rejeitar: ${error.message}`);
+    },
+  });
+
+  const handleApproveRequest = (requestId: number) => {
+    if (confirm("Tem certeza que deseja aprovar esta solicitação? O vencimento será atualizado.")) {
+      approveMutation.mutate({ requestId });
+    }
+  };
+
+  const handleRejectRequest = () => {
+    if (!rejectReason || rejectReason.length < 10) {
+      toast.error("Motivo deve ter pelo menos 10 caracteres");
+      return;
+    }
+    rejectMutation.mutate({
+      requestId: selectedRequest.id,
+      reason: rejectReason,
+    });
+  };
 
   const resetForm = () => {
     setChargeType(null);
@@ -488,18 +538,44 @@ export default function CobrancasDanos() {
                     <th className="text-left p-2">Valor</th>
                     <th className="text-left p-2">Vencimento</th>
                     <th className="text-left p-2">Status</th>
+                    <th className="text-center p-2">Solicitações</th>
                     <th className="text-right p-2">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {charges.map((charge: any) => (
-                    <tr key={charge.id} className="border-b hover:bg-muted/50">
+                    <tr key={charge.id} className={`border-b hover:bg-muted/50 ${charge.pending_due_date_request ? 'bg-amber-50' : ''}`}>
                       <td className="p-2">{getTypeBadge(charge.charge_type)}</td>
                       <td className="p-2">{charge.client_email}</td>
                       <td className="p-2">{charge.vessel_name}</td>
                       <td className="p-2 font-medium">{formatCurrency(parseFloat(charge.amount))}</td>
                       <td className="p-2">{formatDate(charge.due_date)}</td>
                       <td className="p-2">{getStatusBadge(charge.payment_status)}</td>
+                      <td className="p-2 text-center">
+                        {charge.pending_due_date_request ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200"
+                            onClick={() => {
+                              setSelectedRequest({
+                                ...charge.pending_due_date_request,
+                                charge_id: charge.id,
+                                client_email: charge.client_email,
+                                vessel_name: charge.vessel_name,
+                                amount: charge.amount,
+                                current_due_date: charge.due_date,
+                              });
+                              setShowRequestDialog(true);
+                            }}
+                          >
+                            <AlertTriangle className="w-4 h-4 mr-1" />
+                            Pendente
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </td>
                       <td className="p-2 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {(charge.payment_status === 'pending' || charge.payment_status === 'overdue') && (
@@ -886,6 +962,139 @@ export default function CobrancasDanos() {
                 </>
               ) : (
                 "Salvar Alterações"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Visualizar Solicitação de Mudança de Vencimento */}
+      <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Solicitação de Mudança de Vencimento
+            </DialogTitle>
+            <DialogDescription>
+              O cliente solicitou alteração da data de vencimento
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedRequest && (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Cliente:</span>
+                  <span className="font-medium">{selectedRequest.client_email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Embarcação:</span>
+                  <span className="font-medium">{selectedRequest.vessel_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Valor:</span>
+                  <span className="font-medium">{formatCurrency(parseFloat(selectedRequest.amount))}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 border rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Vencimento Atual</p>
+                  <p className="font-medium">{formatDate(selectedRequest.current_due_date)}</p>
+                </div>
+                <div className="p-3 border-2 border-amber-300 bg-amber-50 rounded-lg">
+                  <p className="text-xs text-amber-700 mb-1">Novo Vencimento</p>
+                  <p className="font-medium text-amber-800">{formatDate(selectedRequest.new_due_date)}</p>
+                </div>
+              </div>
+
+              {selectedRequest.reason && (
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Motivo do Cliente:</p>
+                  <p className="text-sm">{selectedRequest.reason}</p>
+                </div>
+              )}
+
+              <div className="text-xs text-muted-foreground">
+                Solicitado em: {formatDate(selectedRequest.created_at)}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowRequestDialog(false)}
+            >
+              Fechar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setShowRejectDialog(true);
+              }}
+              disabled={rejectMutation.isPending}
+            >
+              <XCircle className="w-4 h-4 mr-1" />
+              Rejeitar
+            </Button>
+            <Button
+              onClick={() => handleApproveRequest(selectedRequest?.id)}
+              disabled={approveMutation.isPending}
+            >
+              {approveMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+              )}
+              Aprovar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Rejeitar Solicitação */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rejeitar Solicitação</DialogTitle>
+            <DialogDescription>
+              Informe o motivo da rejeição. O cliente receberá um email com esta justificativa.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejectReason">Motivo da Rejeição</Label>
+              <Textarea
+                id="rejectReason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Explique o motivo da rejeição (mínimo 10 caracteres)"
+                rows={4}
+                className="resize-none"
+              />
+              <p className="text-sm text-muted-foreground">{rejectReason.length} / 10 caracteres mínimos</p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRejectRequest}
+              disabled={rejectMutation.isPending || rejectReason.length < 10}
+            >
+              {rejectMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Rejeitando...
+                </>
+              ) : (
+                "Confirmar Rejeição"
               )}
             </Button>
           </DialogFooter>

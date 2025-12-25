@@ -3579,15 +3579,26 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           const result = await db.execute(sql.raw(`
             SELECT 
               ic.*,
-              i.created_at as inspection_date
+              i.created_at as inspection_date,
+              ddr.id as pending_request_id,
+              ddr.new_due_date as pending_new_due_date,
+              ddr.reason as pending_reason,
+              ddr.created_at as pending_request_date
             FROM inspection_charges ic
             LEFT JOIN inspections i ON ic.inspection_id = i.id
+            LEFT JOIN due_date_change_requests ddr ON ddr.charge_id = ic.id AND ddr.status = 'pending'
             ORDER BY ic.created_at DESC
           `)) as any;
           
           const charges = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
             ...row,
             failed_items: typeof row.failed_items === 'string' && row.failed_items ? JSON.parse(row.failed_items) : row.failed_items,
+            pending_due_date_request: row.pending_request_id ? {
+              id: row.pending_request_id,
+              new_due_date: row.pending_new_due_date,
+              reason: row.pending_reason,
+              created_at: row.pending_request_date,
+            } : null,
           }));
           
           return charges;
@@ -3912,7 +3923,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
       .input(z.object({
         chargeId: z.number(),
         newDueDate: z.string(), // ISO date string
-        reason: z.string().min(10, 'Motivo deve ter pelo menos 10 caracteres'),
+        reason: z.string().optional(), // Descrição opcional
       }))
       .mutation(async ({ ctx, input }) => {
         if (!ctx.user?.email) {
@@ -3938,6 +3949,25 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           
           const charge = charges[0];
           
+          // Inserir solicitação no banco de dados
+          const reasonText = input.reason || '';
+          const escapedReason = reasonText.replace(/'/g, "\\'");
+          
+          await db.execute(sql.raw(`
+            INSERT INTO due_date_change_requests 
+            (charge_id, client_email, old_due_date, new_due_date, reason, status, created_at, updated_at)
+            VALUES (
+              ${input.chargeId},
+              '${ctx.user.email}',
+              '${new Date(charge.due_date).toISOString().slice(0, 19).replace('T', ' ')}',
+              '${new Date(input.newDueDate).toISOString().slice(0, 19).replace('T', ' ')}',
+              '${escapedReason}',
+              'pending',
+              NOW(),
+              NOW()
+            )
+          `));
+          
           // Notificar admin
           const { notifyOwner } = await import('./_core/notification');
           const currentDueDate = new Date(charge.due_date).toLocaleDateString('pt-BR');
@@ -3945,7 +3975,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           
           await notifyOwner({
             title: '📅 Solicitação de Mudança de Vencimento',
-            content: `**Cliente:** ${ctx.user.name || ctx.user.email}\n**Cobrança ID:** #${input.chargeId}\n**Embarcação:** ${charge.vessel_name}\n**Valor:** R$ ${parseFloat(charge.amount).toFixed(2)}\n**Vencimento Atual:** ${currentDueDate}\n**Novo Vencimento Solicitado:** ${newDueDate}\n**Motivo:** ${input.reason}`,
+            content: `**Cliente:** ${ctx.user.name || ctx.user.email}\n**Cobrança ID:** #${input.chargeId}\n**Embarcação:** ${charge.vessel_name}\n**Valor:** R$ ${parseFloat(charge.amount).toFixed(2)}\n**Vencimento Atual:** ${currentDueDate}\n**Novo Vencimento Solicitado:** ${newDueDate}\n**Motivo:** ${reasonText || 'Não informado'}`,
           });
           
           return {
