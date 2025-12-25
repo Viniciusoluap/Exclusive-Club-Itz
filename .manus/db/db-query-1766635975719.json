@@ -1,0 +1,190 @@
+{
+  "query": "SELECT id, email, name, is_active FROM allowed_clients;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, email, name, is_active FROM allowed_clients;",
+  "rows": [
+    {
+      "id": "60001",
+      "email": "diogodosberto@hotmail.com",
+      "name": "Diogo dos Reis Berto",
+      "is_active": "0"
+    },
+    {
+      "id": "60002",
+      "email": "diogobritolemos@gmail.com",
+      "name": "Diogo de Lemos Brito",
+      "is_active": "1"
+    },
+    {
+      "id": "60003",
+      "email": "motomais.acailandia@gmail.com",
+      "name": "Edilson da Conceição",
+      "is_active": "1"
+    },
+    {
+      "id": "60005",
+      "email": "Erinaldo7717@gmail.com",
+      "name": "Erinaldo Alves da Silva",
+      "is_active": "1"
+    },
+    {
+      "id": "60006",
+      "email": "via.vips@hotmail.com",
+      "name": "Erisvaldo Alves da Silva",
+      "is_active": "1"
+    },
+    {
+      "id": "60008",
+      "email": "filippeamurta@gmail.com",
+      "name": "Filippe Augusto Velloso Barbosa Murta",
+      "is_active": "1"
+    },
+    {
+      "id": "60009",
+      "email": "Franciscoclaudio293@gmail.com",
+      "name": "Francisco Claudio Araujo da Silva",
+      "is_active": "1"
+    },
+    {
+      "id": "60010",
+      "email": "Kaioaraujo2233@icloud.com",
+      "name": "Kaio Richard",
+      "is_active": "1"
+    },
+    {
+      "id": "60011",
+      "email": "laecio.silversat@gmail.com",
+      "name": "Laecio Sousa Silva",
+      "is_active": "1"
+    },
+    {
+      "id": "60012",
+      "email": "gabnercorporation@gmail.com",
+      "name": "Luciano Gabriel",
+      "is_active": "1"
+    },
+    {
+      "id": "60013",
+      "email": "Mhamedfeiz@hotmail.com",
+      "name": "Mhamed Feiz Hussein Yassin",
+      "is_active": "1"
+    },
+    {
+      "id": "60014",
+      "email": "Teteu_rehbein@icloud.com",
+      "name": "Mateus Rehbein",
+      "is_active": "1"
+    },
+    {
+      "id": "60015",
+      "email": "rbq1992@gmail.com",
+      "name": "Ronaldo Bianchini",
+      "is_active": "1"
+    },
+    {
+      "id": "90005",
+      "email": "Rodrigosantana.14300@gmail.com",
+      "name": "Rodrigo ‘FAGNER’",
+      "is_active": "1"
+    },
+    {
+      "id": "1740002",
+      "email": "Andrezzacarvalhof@gmail.com",
+      "name": "Andrezza Franco",
+      "is_active": "0"
+    },
+    {
+      "id": "1740003",
+      "email": "cesarmarcus886@gmail.com",
+      "name": "Marcus Cesar Cotrim Vaz Jr",
+      "is_active": "1"
+    },
+    {
+      "id": "1830001",
+      "email": "lsccsilva@outlook.com",
+      "name": "Laercio Oliveira",
+      "is_active": "1"
+    },
+    {
+      "id": "1860001",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "name": "Vinicius Freitas",
+      "is_active": "1"
+    },
+    {
+      "id": "1890001",
+      "email": "Stenioteixeirats1@gmail.com",
+      "name": "Stenio Teixeira",
+      "is_active": "1"
+    },
+    {
+      "id": "2100001",
+      "email": "atendimento@prospectaconstrucoes.com",
+      "name": "Paulo Freitas",
+      "is_active": "1"
+    },
+    {
+      "id": "2280001",
+      "email": "testmonday1766630621729@example.com",
+      "name": "Test Client Monday",
+      "is_active": "1"
+    },
+    {
+      "id": "2280002",
+      "email": "test-quota-1766630621813@example.com",
+      "name": "Test Client",
+      "is_active": "1"
+    },
+    {
+      "id": "2280003",
+      "email": "test-multi-quota-1766630621997@example.com",
+      "name": "Test Multi Quota",
+      "is_active": "1"
+    },
+    {
+      "id": "2280004",
+      "email": "testmonday1766630631125@example.com",
+      "name": "Test Client Monday",
+      "is_active": "1"
+    },
+    {
+      "id": "2280005",
+      "email": "test-quota-1766630631322@example.com",
+      "name": "Test Client",
+      "is_active": "1"
+    },
+    {
+      "id": "2280006",
+      "email": "test-multi-quota-1766630631731@example.com",
+      "name": "Test Multi Quota",
+      "is_active": "1"
+    },
+    {
+      "id": "2310001",
+      "email": "testmonday1766633744383@example.com",
+      "name": "Test Client Monday",
+      "is_active": "1"
+    },
+    {
+      "id": "2310002",
+      "email": "test-quota-1766633744848@example.com",
+      "name": "Test Client",
+      "is_active": "1"
+    },
+    {
+      "id": "2310003",
+      "email": "test-multi-quota-1766633745898@example.com",
+      "name": "Test Multi Quota",
+      "is_active": "1"
+    },
+    {
+      "id": "2340001",
+      "email": "test-delete-contract2@example.com",
+      "name": "Test Delete Contract 2",
+      "is_active": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\tis_active\n60001\tdiogodosberto@hotmail.com\tDiogo dos Reis Berto\t0\n60002\tdiogobritolemos@gmail.com\tDiogo de Lemos Brito\t1\n60003\tmotomais.acailandia@gmail.com\tEdilson da Conceição\t1\n60005\tErinaldo7717@gmail.com\tErinaldo Alves da Silva\t1\n60006\tvia.vips@hotmail.com\tErisvaldo Alves da Silva\t1\n60008\tfilippeamurta@gmail.com\tFilippe Augusto Velloso Barbosa Murta\t1\n60009\tFranciscoclaudio293@gmail.com\tFrancisco Claudio Araujo da Silva\t1\n60010\tKaioaraujo2233@icloud.com\tKaio Richard\t1\n60011\tlaecio.silversat@gmail.com\tLaecio Sousa Silva\t1\n60012\tgabnercorporation@gmail.com\tLuciano Gabriel\t1\n60013\tMhamedfeiz@hotmail.com\tMhamed Feiz Hussein Yassin\t1\n60014\tTeteu_rehbein@icloud.com\tMateus Rehbein\t1\n60015\trbq1992@gmail.com\tRonaldo Bianchini\t1\n90005\tRodrigosantana.14300@gmail.com\tRodrigo ‘FAGNER’\t1\n1740002\tAndrezzacarvalhof@gmail.com\tAndrezza Franco\t0\n1740003\tcesarmarcus886@gmail.com\tMarcus Cesar Cotrim Vaz Jr\t1\n1830001\tlsccsilva@outlook.com\tLaercio Oliveira\t1\n1860001\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\t1\n1890001\tStenioteixeirats1@gmail.com\tStenio Teixeira\t1\n2100001\tatendimento@prospectaconstrucoes.com\tPaulo Freitas\t1\n2280001\ttestmonday1766630621729@example.com\tTest Client Monday\t1\n2280002\ttest-quota-1766630621813@example.com\tTest Client\t1\n2280003\ttest-multi-quota-1766630621997@example.com\tTest Multi Quota\t1\n2280004\ttestmonday1766630631125@example.com\tTest Client Monday\t1\n2280005\ttest-quota-1766630631322@example.com\tTest Client\t1\n2280006\ttest-multi-quota-1766630631731@example.com\tTest Multi Quota\t1\n2310001\ttestmonday1766633744383@example.com\tTest Client Monday\t1\n2310002\ttest-quota-1766633744848@example.com\tTest Client\t1\n2310003\ttest-multi-quota-1766633745898@example.com\tTest Multi Quota\t1\n2340001\ttest-delete-contract2@example.com\tTest Delete Contract 2\t1\n",
+  "stderr": "",
+  "execution_time_ms": 50
+}

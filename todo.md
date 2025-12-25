@@ -526,3 +526,18 @@
 - [x] Testar funcionalidade completa (7 testes passando)
 
 - [x] Adicionar botão de editar para cobranças com status "Vencido" (igual ao status "Pendente")
+
+
+---
+
+## 🖼️ BUG: Foto do Reparo não aparece na página do cliente (25/12/2025)
+
+**Problema reportado pelo usuário:**
+- Na página "Pagamento de Danos" (cliente), a foto do reparo não está sendo exibida
+- O cliente precisa visualizar a foto/comprovante do reparo cadastrado pelo admin
+
+**Tarefas:**
+- [x] Verificar se o backend retorna o campo de foto no endpoint myRepairs
+- [x] Implementar exibição da foto na seção "Reparos da Embarcação" da página PagamentoDanos
+- [ ] Testar visualização da foto com reparo que tem imagem cadastrada
+

@@ -1,0 +1,66 @@
+{
+  "query": "SELECT id, client_email, vessel_name, description, amount, payment_status FROM inspection_charges WHERE charge_type = 'repair';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, client_email, vessel_name, description, amount, payment_status FROM inspection_charges WHERE charge_type = 'repair';",
+  "rows": [
+    {
+      "id": "360003",
+      "client_email": "atendimento@prospectaconstrucoes.com",
+      "vessel_name": "Navio GTO Growup Power Stroke",
+      "description": "Teste",
+      "amount": "500.00",
+      "payment_status": "pending"
+    },
+    {
+      "id": "510007",
+      "client_email": "test@example.com",
+      "vessel_name": "Test Vessel",
+      "description": "NULL",
+      "amount": "100.00",
+      "payment_status": "pending"
+    },
+    {
+      "id": "510008",
+      "client_email": "test@example.com",
+      "vessel_name": "Test Vessel",
+      "description": "NULL",
+      "amount": "100.00",
+      "payment_status": "pending"
+    },
+    {
+      "id": "510009",
+      "client_email": "test@example.com",
+      "vessel_name": "Test Vessel",
+      "description": "NULL",
+      "amount": "200.00",
+      "payment_status": "pending"
+    },
+    {
+      "id": "510010",
+      "client_email": "test@example.com",
+      "vessel_name": "Test Vessel",
+      "description": "NULL",
+      "amount": "100.00",
+      "payment_status": "paid"
+    },
+    {
+      "id": "510011",
+      "client_email": "test@example.com",
+      "vessel_name": "Test Vessel",
+      "description": "NULL",
+      "amount": "100.00",
+      "payment_status": "pending"
+    },
+    {
+      "id": "510012",
+      "client_email": "test@example.com",
+      "vessel_name": "Test Vessel",
+      "description": "NULL",
+      "amount": "100.00",
+      "payment_status": "pending"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_email\tvessel_name\tdescription\tamount\tpayment_status\n360003\tatendimento@prospectaconstrucoes.com\tNavio GTO Growup Power Stroke\tTeste\t500.00\tpending\n510007\ttest@example.com\tTest Vessel\tNULL\t100.00\tpending\n510008\ttest@example.com\tTest Vessel\tNULL\t100.00\tpending\n510009\ttest@example.com\tTest Vessel\tNULL\t200.00\tpending\n510010\ttest@example.com\tTest Vessel\tNULL\t100.00\tpaid\n510011\ttest@example.com\tTest Vessel\tNULL\t100.00\tpending\n510012\ttest@example.com\tTest Vessel\tNULL\t100.00\tpending\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

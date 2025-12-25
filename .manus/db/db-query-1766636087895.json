@@ -1,0 +1,80 @@
+{
+  "query": "SELECT id, openId, name, email, role FROM users ORDER BY id DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, openId, name, email, role FROM users ORDER BY id DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "13650072",
+      "openId": "LtACbhAdM4WWbWB8WkKS4Q",
+      "name": "Louise",
+      "email": "atendimento@prospectaconstrucoes.com",
+      "role": "user"
+    },
+    {
+      "id": "11700001",
+      "openId": "N3bAoq5TuoFEU7R8BGrCFH",
+      "name": "Jhonjhon",
+      "email": "efficazcorrespondente@hotmail.com",
+      "role": "user"
+    },
+    {
+      "id": "10980003",
+      "openId": "ZgjHMerMgFXuX6QXHxVJ3i",
+      "name": "stenioteixeirats1",
+      "email": "stenioteixeirats1@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "9900001",
+      "openId": "9qtwAFsRtjYKnEkX4om4h3",
+      "name": "Laécio Silversat",
+      "email": "laecio.silversat@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "9450001",
+      "openId": "M9vKVmBtjskLYvKjitEFsE",
+      "name": "Cesarmarcus886",
+      "email": "Cesarmarcus886@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "9180001",
+      "openId": "9FReJc4aqVaEznmsLfJupz",
+      "name": "lsccsilva",
+      "email": "lsccsilva@outlook.com",
+      "role": "user"
+    },
+    {
+      "id": "8790001",
+      "openId": "RiQe3tin7WnsHNm6Qaz5wy",
+      "name": "Maria vitoria Cavalcante Ribeiro",
+      "email": "cavalcanteribeiromariavitoria@gmail.com",
+      "role": "user"
+    },
+    {
+      "id": "8760001",
+      "openId": "GpNaLd3ekLM5zFsxnvzxin",
+      "name": "NULL",
+      "email": "diogobritolemos@icloud.com",
+      "role": "user"
+    },
+    {
+      "id": "8640111",
+      "openId": "CbMGyT6KAmqPLXomMXeW3u",
+      "name": "Joao",
+      "email": "contato@grupoefficaz.com.br",
+      "role": "user"
+    },
+    {
+      "id": "8010001",
+      "openId": "Z4qfAFzXLrQ5xHkwMYMEKU",
+      "name": "Rafael Nascimento",
+      "email": "faelnautico12@gmail.com",
+      "role": "employee"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\trole\n13650072\tLtACbhAdM4WWbWB8WkKS4Q\tLouise\tatendimento@prospectaconstrucoes.com\tuser\n11700001\tN3bAoq5TuoFEU7R8BGrCFH\tJhonjhon\tefficazcorrespondente@hotmail.com\tuser\n10980003\tZgjHMerMgFXuX6QXHxVJ3i\tstenioteixeirats1\tstenioteixeirats1@gmail.com\tuser\n9900001\t9qtwAFsRtjYKnEkX4om4h3\tLaécio Silversat\tlaecio.silversat@gmail.com\tuser\n9450001\tM9vKVmBtjskLYvKjitEFsE\tCesarmarcus886\tCesarmarcus886@gmail.com\tuser\n9180001\t9FReJc4aqVaEznmsLfJupz\tlsccsilva\tlsccsilva@outlook.com\tuser\n8790001\tRiQe3tin7WnsHNm6Qaz5wy\tMaria vitoria Cavalcante Ribeiro\tcavalcanteribeiromariavitoria@gmail.com\tuser\n8760001\tGpNaLd3ekLM5zFsxnvzxin\tNULL\tdiogobritolemos@icloud.com\tuser\n8640111\tCbMGyT6KAmqPLXomMXeW3u\tJoao\tcontato@grupoefficaz.com.br\tuser\n8010001\tZ4qfAFzXLrQ5xHkwMYMEKU\tRafael Nascimento\tfaelnautico12@gmail.com\temployee\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

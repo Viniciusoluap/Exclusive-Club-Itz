@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, charge_type, vessel_name, client_email, description, receipt_url FROM inspection_charges WHERE charge_type = 'repair' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, charge_type, vessel_name, client_email, description, receipt_url FROM inspection_charges WHERE charge_type = 'repair' LIMIT 10;",
+  "rows": [
+    {
+      "id": "570001",
+      "charge_type": "repair",
+      "vessel_name": "Navio GTO Growup Power Stroke",
+      "client_email": "atendimento@prospectaconstrucoes.com",
+      "description": "Teste",
+      "receipt_url": "https://d2xsxph8kpxj0f.cloudfront.net/310419663028705863/4SVaP8MpsE4tem3Hhe5WES/uploads/1766637367763-b9oiy3fpvd.jpeg"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcharge_type\tvessel_name\tclient_email\tdescription\treceipt_url\n570001\trepair\tNavio GTO Growup Power Stroke\tatendimento@prospectaconstrucoes.com\tTeste\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663028705863/4SVaP8MpsE4tem3Hhe5WES/uploads/1766637367763-b9oiy3fpvd.jpeg\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}
