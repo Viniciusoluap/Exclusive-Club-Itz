@@ -525,3 +525,4 @@
 - [x] Permitir adicionar nova foto no modal de edição de cobrança de danos
 - [x] Testar funcionalidade completa (7 testes passando)
 
+- [x] Adicionar botão de editar para cobranças com status "Vencido" (igual ao status "Pendente")

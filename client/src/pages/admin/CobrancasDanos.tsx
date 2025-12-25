@@ -502,7 +502,7 @@ export default function CobrancasDanos() {
                       <td className="p-2">{getStatusBadge(charge.payment_status)}</td>
                       <td className="p-2 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {charge.payment_status === 'pending' && (
+                          {(charge.payment_status === 'pending' || charge.payment_status === 'overdue') && (
                             <Button
                               variant="ghost"
                               size="icon"
