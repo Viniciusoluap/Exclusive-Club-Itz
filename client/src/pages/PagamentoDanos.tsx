@@ -104,15 +104,15 @@ export default function PagamentoDanos() {
   };
 
   const handleRequestDueDateChange = () => {
-    if (!selectedCharge || !newDueDate || !dueDateReason) {
-      toast.error('Preencha todos os campos');
+    if (!selectedCharge || !newDueDate) {
+      toast.error('Selecione uma nova data de vencimento');
       return;
     }
 
     requestDueDateChange.mutate({
       chargeId: selectedCharge.id,
       newDueDate,
-      reason: dueDateReason,
+      reason: dueDateReason || undefined,
     });
   };
 
@@ -746,13 +746,13 @@ export default function PagamentoDanos() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reason">Motivo da Solicitação</Label>
+              <Label htmlFor="reason">Motivo da Solicitação <span className="text-muted-foreground font-normal">(opcional)</span></Label>
               <Textarea
                 id="reason"
                 value={dueDateReason}
                 onChange={(e) => setDueDateReason(e.target.value)}
-                placeholder="Explique o motivo da mudança..."
-                rows={4}
+                placeholder="Descreva o motivo da mudança, se desejar..."
+                rows={3}
               />
             </div>
           </div>
