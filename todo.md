@@ -541,3 +541,17 @@
 - [x] Implementar exibição da foto na seção "Reparos da Embarcação" da página PagamentoDanos
 - [ ] Testar visualização da foto com reparo que tem imagem cadastrada
 
+
+
+---
+
+## 🔧 Simplificação de Pagamento: Remover Parcelamento (25/12/2025)
+
+**Problema reportado pelo usuário:**
+- Opções de parcelamento (2x, 3x) devem ser removidas
+- Deixar apenas pagamento à vista (1x) para PIX e cartão de crédito
+
+**Tarefas:**
+- [x] Remover opções de parcelamento (2x, 3x) do frontend
+- [x] Manter apenas opção 1x à vista para PIX e cartão
+- [x] Garantir que demais funcionalidades permaneçam inalteradas
