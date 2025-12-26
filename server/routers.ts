@@ -1639,7 +1639,7 @@ Nenhuma reserva foi afetada.
 
           // Criar cobrança no Asaas
           const dueDate = new Date();
-          dueDate.setDate(dueDate.getDate() + 7); // Vencimento em 7 dias
+          dueDate.setDate(dueDate.getDate() + 1); // Vencimento em 1 dia
           
           console.log('[fuelRecords.create] Criando cobrança...');
           const charge = await asaas.createCharge({
@@ -1973,7 +1973,7 @@ Nenhuma reserva foi afetada.
           console.log('[syncWithAsaas] Cliente obtido:', customer.id);
 
           const dueDate = new Date();
-          dueDate.setDate(dueDate.getDate() + 7); // Vencimento em 7 dias
+          dueDate.setDate(dueDate.getDate() + 1); // Vencimento em 1 dia
           
           console.log('[syncWithAsaas] Criando cobrança...');
           const charge = await asaas.createCharge({
@@ -2067,7 +2067,7 @@ Nenhuma reserva foi afetada.
               });
 
               const dueDate = new Date();
-              dueDate.setDate(dueDate.getDate() + 7);
+              dueDate.setDate(dueDate.getDate() + 1); // Vencimento em 1 dia
               
               const charge = await asaas.createCharge({
                 customer: customer.id,
