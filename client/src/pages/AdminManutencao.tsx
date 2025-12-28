@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { Calendar, Loader2, Plus, Settings, Trash2 } from "lucide-react";
-import { useState, useRef } from "react";
+import { Calendar, Loader2, Pencil, Plus, Settings, Trash2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ export default function AdminManutencao() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
 
+  // Create dialog state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [conflictingBookings, setConflictingBookings] = useState<any[]>([]);
@@ -34,9 +35,18 @@ export default function AdminManutencao() {
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<"scheduled" | "in_progress" | "completed" | "cancelled">("scheduled");
   
+  // Edit dialog state
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingMaintenance, setEditingMaintenance] = useState<any>(null);
+  const [editVesselId, setEditVesselId] = useState<number | null>(null);
+  const [editDescription, setEditDescription] = useState("");
+  const [editStatus, setEditStatus] = useState<"scheduled" | "in_progress" | "completed" | "cancelled">("scheduled");
+  
   // Usar refs para inputs de data (uncontrolled)
   const startDateRef = useRef<HTMLInputElement>(null);
   const endDateRef = useRef<HTMLInputElement>(null);
+  const editStartDateRef = useRef<HTMLInputElement>(null);
+  const editEndDateRef = useRef<HTMLInputElement>(null);
 
   const utils = trpc.useUtils();
 
@@ -46,16 +56,18 @@ export default function AdminManutencao() {
     refetchOnWindowFocus: false,
   });
   
-  // Debug: log vessels data
-  console.log('[DEBUG] Vessels data:', vessels);
   // @ts-ignore - maintenances router exists but TypeScript types not regenerated
   const { data: maintenances, isLoading: maintenancesLoading } = trpc.maintenances.list.useQuery();
 
   // Mutations
   // @ts-ignore - maintenances router exists but TypeScript types not regenerated
   const createMaintenance = trpc.maintenances.create.useMutation({
-    onSuccess: () => {
-      toast.success("Manutenção criada com sucesso!");
+    onSuccess: (data: any) => {
+      if (data.cancelledCount > 0) {
+        toast.success(`Manutenção criada! ${data.cancelledCount} reserva(s) cancelada(s).`);
+      } else {
+        toast.success("Manutenção criada com sucesso!");
+      }
       // @ts-ignore
       utils.maintenances.list.invalidate();
       setShowCreateDialog(false);
@@ -80,13 +92,19 @@ export default function AdminManutencao() {
 
   // @ts-ignore - maintenances router exists but TypeScript types not regenerated
   const updateMaintenance = trpc.maintenances.update.useMutation({
-    onSuccess: () => {
-      toast.success("Status atualizado com sucesso!");
+    onSuccess: (data: any) => {
+      if (data.cancelledCount > 0) {
+        toast.success(`Manutenção atualizada! ${data.cancelledCount} reserva(s) cancelada(s).`);
+      } else {
+        toast.success("Manutenção atualizada com sucesso!");
+      }
       // @ts-ignore
       utils.maintenances.list.invalidate();
+      setShowEditDialog(false);
+      setEditingMaintenance(null);
     },
     onError: (error: any) => {
-      toast.error(error.message || "Erro ao atualizar status");
+      toast.error(error.message || "Erro ao atualizar manutenção");
     },
   });
 
@@ -116,8 +134,6 @@ export default function AdminManutencao() {
     const startDate = startDateRef.current?.value || '';
     const endDate = endDateRef.current?.value || '';
     
-    console.log('[DEBUG] handleCreateMaintenance called', { selectedVesselId, startDate, endDate, description, status });
-    
     if (!selectedVesselId || !startDate || !endDate) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
@@ -125,21 +141,25 @@ export default function AdminManutencao() {
     
     if (typeof selectedVesselId !== 'number' || selectedVesselId <= 0) {
       toast.error("Selecione uma embarcação válida");
-      console.error('[ERROR] Invalid vesselId:', selectedVesselId);
       return;
     }
 
-    const startTimestamp = new Date(startDate).getTime();
-    const endTimestamp = new Date(endDate).getTime();
+    // Converter data para timestamp (início do dia para startDate, fim do dia para endDate)
+    const startTimestamp = new Date(startDate + 'T00:00:00').getTime();
+    const endTimestamp = new Date(endDate + 'T23:59:59').getTime();
 
     if (startTimestamp >= endTimestamp) {
       toast.error("Data de início deve ser anterior à data de término");
       return;
     }
 
-    // Criar manutenção diretamente sem verificar conflitos
-    // (a verificação será feita no backend)
-    confirmCreateMaintenance();
+    createMaintenance.mutate({
+      vesselId: selectedVesselId,
+      startDate: startTimestamp,
+      endDate: endTimestamp,
+      description: description || undefined,
+      status,
+    });
   };
 
   const confirmCreateMaintenance = () => {
@@ -148,8 +168,8 @@ export default function AdminManutencao() {
     
     if (!selectedVesselId || !startDate || !endDate) return;
 
-    const startTimestamp = new Date(startDate).getTime();
-    const endTimestamp = new Date(endDate).getTime();
+    const startTimestamp = new Date(startDate + 'T00:00:00').getTime();
+    const endTimestamp = new Date(endDate + 'T23:59:59').getTime();
 
     createMaintenance.mutate({
       vesselId: selectedVesselId,
@@ -169,6 +189,56 @@ export default function AdminManutencao() {
 
   const handleStatusChange = (id: number, newStatus: "scheduled" | "in_progress" | "completed" | "cancelled") => {
     updateMaintenance.mutate({ id, status: newStatus });
+  };
+
+  const handleOpenEditDialog = (maintenance: any) => {
+    setEditingMaintenance(maintenance);
+    setEditVesselId(maintenance.vesselId);
+    setEditDescription(maintenance.description || "");
+    setEditStatus(maintenance.status);
+    setShowEditDialog(true);
+    
+    // Definir valores das datas após o dialog abrir
+    setTimeout(() => {
+      if (editStartDateRef.current) {
+        const startDate = new Date(maintenance.startDate);
+        editStartDateRef.current.value = startDate.toISOString().split('T')[0];
+      }
+      if (editEndDateRef.current) {
+        const endDate = new Date(maintenance.endDate);
+        editEndDateRef.current.value = endDate.toISOString().split('T')[0];
+      }
+    }, 100);
+  };
+
+  const handleEditMaintenance = () => {
+    if (!editingMaintenance) return;
+    
+    const startDate = editStartDateRef.current?.value || '';
+    const endDate = editEndDateRef.current?.value || '';
+    
+    if (!editVesselId || !startDate || !endDate) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+
+    // Converter data para timestamp (início do dia para startDate, fim do dia para endDate)
+    const startTimestamp = new Date(startDate + 'T00:00:00').getTime();
+    const endTimestamp = new Date(endDate + 'T23:59:59').getTime();
+
+    if (startTimestamp >= endTimestamp) {
+      toast.error("Data de início deve ser anterior à data de término");
+      return;
+    }
+
+    updateMaintenance.mutate({
+      id: editingMaintenance.id,
+      vesselId: editVesselId,
+      startDate: startTimestamp,
+      endDate: endTimestamp,
+      description: editDescription || undefined,
+      status: editStatus,
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -252,13 +322,9 @@ export default function AdminManutencao() {
                         )}
                         <p>
                           <strong>Início:</strong> {new Date(maintenance.startDate).toLocaleDateString("pt-BR")}
-                          {" às "}
-                          {new Date(maintenance.startDate).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                         </p>
                         <p>
                           <strong>Término:</strong> {new Date(maintenance.endDate).toLocaleDateString("pt-BR")}
-                          {" às "}
-                          {new Date(maintenance.endDate).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                         </p>
                         {maintenance.description && (
                           <p className="mt-2">
@@ -285,8 +351,17 @@ export default function AdminManutencao() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => handleOpenEditDialog(maintenance)}
+                        title="Editar manutenção"
+                      >
+                        <Pencil className="h-4 w-4 text-blue-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => handleDelete(maintenance.id)}
                         disabled={deleteMaintenance.isPending}
+                        title="Excluir manutenção"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -311,7 +386,7 @@ export default function AdminManutencao() {
           <DialogHeader>
             <DialogTitle>Nova Manutenção</DialogTitle>
             <DialogDescription>
-              Programe um período de manutenção para uma embarcação. Reservas serão bloqueadas automaticamente.
+              Programe um período de manutenção para uma embarcação. Reservas conflitantes serão canceladas automaticamente.
             </DialogDescription>
           </DialogHeader>
 
@@ -334,7 +409,7 @@ export default function AdminManutencao() {
                   {vessels && vessels.length > 0 ? (
                     vessels.map((vessel: any) => (
                       <SelectItem key={vessel.id} value={vessel.id.toString()}>
-                        {vessel.name} (ID: {vessel.id})
+                        {vessel.name}
                       </SelectItem>
                     ))
                   ) : (
@@ -346,19 +421,19 @@ export default function AdminManutencao() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Data/Hora Início *</label>
+                <label className="text-sm font-medium">Data Início *</label>
                 <input
                   ref={startDateRef}
-                  type="datetime-local"
+                  type="date"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Data/Hora Término *</label>
+                <label className="text-sm font-medium">Data Término *</label>
                 <input
                   ref={endDateRef}
-                  type="datetime-local"
+                  type="date"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
@@ -402,6 +477,109 @@ export default function AdminManutencao() {
                 </>
               ) : (
                 "Criar Manutenção"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Manutenção</DialogTitle>
+            <DialogDescription>
+              Edite os dados da manutenção. Se o período for alterado, reservas conflitantes serão canceladas automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Embarcação *</label>
+              <Select
+                value={editVesselId?.toString() || ""}
+                onValueChange={(value) => {
+                  const parsed = parseInt(value);
+                  if (!isNaN(parsed) && parsed > 0) {
+                    setEditVesselId(parsed);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma embarcação" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vessels && vessels.length > 0 ? (
+                    vessels.map((vessel: any) => (
+                      <SelectItem key={vessel.id} value={vessel.id.toString()}>
+                        {vessel.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-sm text-muted-foreground">Nenhuma embarcação disponível</div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data Início *</label>
+                <input
+                  ref={editStartDateRef}
+                  type="date"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Data Término *</label>
+                <input
+                  ref={editEndDateRef}
+                  type="date"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Status</label>
+              <Select value={editStatus} onValueChange={(value: any) => setEditStatus(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">Agendada</SelectItem>
+                  <SelectItem value="in_progress">Em Andamento</SelectItem>
+                  <SelectItem value="completed">Concluída</SelectItem>
+                  <SelectItem value="cancelled">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Descrição (opcional)</label>
+              <Textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Ex: Troca de óleo, revisão de motor, etc."
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleEditMaintenance} disabled={updateMaintenance.isPending}>
+              {updateMaintenance.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar Alterações"
               )}
             </Button>
           </DialogFooter>

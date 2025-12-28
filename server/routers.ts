@@ -1115,8 +1115,12 @@ Nenhuma reserva foi afetada.
           });
         }
         
+        // Determine vessel info
+        let vesselName = currentMaintenance.vesselName;
+        let vesselId = data.vesselId || currentMaintenance.vesselId;
+        
         // If vessel changed, update vessel name
-        if (data.vesselId) {
+        if (data.vesselId && data.vesselId !== currentMaintenance.vesselId) {
           const vessel = await db.getVesselById(data.vesselId);
           if (!vessel) {
             throw new TRPCError({ 
@@ -1124,13 +1128,109 @@ Nenhuma reserva foi afetada.
               message: 'Embarcação não encontrada' 
             });
           }
+          vesselName = vessel.name;
           (data as any).vesselName = vessel.name;
         }
 
+        // Check if dates or vessel changed - need to check for conflicting bookings
+        const datesChanged = (data.startDate && data.startDate !== currentMaintenance.startDate) ||
+                            (data.endDate && data.endDate !== currentMaintenance.endDate);
+        const vesselChanged = data.vesselId && data.vesselId !== currentMaintenance.vesselId;
+        
+        let cancelledBookings: any[] = [];
+        
+        // If dates or vessel changed, check for conflicting bookings and cancel them
+        if (datesChanged || vesselChanged) {
+          const newStartDate = data.startDate || currentMaintenance.startDate;
+          const newEndDate = data.endDate || currentMaintenance.endDate;
+          
+          // Validate dates
+          if (newStartDate >= newEndDate) {
+            throw new TRPCError({ 
+              code: 'BAD_REQUEST', 
+              message: 'Data de início deve ser anterior à data de término' 
+            });
+          }
+          
+          // Buscar reservas conflitantes no novo período
+          const allBookings = await db.getAllBookings();
+          const startNormalized = new Date(newStartDate);
+          startNormalized.setHours(0, 0, 0, 0);
+          const endNormalized = new Date(newEndDate);
+          endNormalized.setHours(23, 59, 59, 999);
+          
+          const conflictingBookings = allBookings.filter((booking: any) => {
+            if (booking.vesselId !== vesselId) return false;
+            if (booking.status === 'cancelled' || booking.status === 'used') return false;
+            
+            const bookingDate = new Date(booking.bookingDate);
+            bookingDate.setHours(0, 0, 0, 0);
+            
+            return bookingDate >= startNormalized && bookingDate <= endNormalized;
+          });
+          
+          // Cancelar reservas conflitantes
+          for (const booking of conflictingBookings) {
+            await db.updateBooking(booking.id, { status: 'cancelled' });
+            cancelledBookings.push({
+              id: booking.id,
+              clientName: booking.clientName,
+              clientEmail: booking.clientEmail,
+              vesselName: booking.vesselName,
+              bookingDate: booking.bookingDate,
+            });
+          }
+          
+          // Enviar notificações para clientes afetados
+          for (const booking of cancelledBookings) {
+            await notifyClientMaintenanceCancellation({
+              clientName: booking.clientName,
+              clientEmail: booking.clientEmail,
+              vesselName: booking.vesselName,
+              bookingDate: new Date(booking.bookingDate),
+              maintenanceStartDate: new Date(newStartDate),
+              maintenanceEndDate: new Date(newEndDate),
+              maintenanceDescription: data.description || currentMaintenance.description,
+            });
+          }
+          
+          // Enviar notificação para admin sobre edição e cancelamentos
+          if (cancelledBookings.length > 0) {
+            await notifyAdminMaintenanceCancellations({
+              vesselName: vesselName,
+              maintenanceStartDate: new Date(newStartDate),
+              maintenanceEndDate: new Date(newEndDate),
+              cancelledBookings: cancelledBookings.map(b => ({
+                clientName: b.clientName,
+                clientEmail: b.clientEmail,
+                bookingDate: new Date(b.bookingDate),
+              })),
+            });
+          } else {
+            // Notificar sobre edição de manutenção sem conflitos
+            const startStr = new Date(newStartDate).toLocaleDateString('pt-BR');
+            const endStr = new Date(newEndDate).toLocaleDateString('pt-BR');
+            const oldStartStr = new Date(currentMaintenance.startDate).toLocaleDateString('pt-BR');
+            const oldEndStr = new Date(currentMaintenance.endDate).toLocaleDateString('pt-BR');
+            await notifyOwner({
+              title: "🔧 Manutenção Editada",
+              content: `
+**Embarcação:** ${vesselName}
+**Período Anterior:** ${oldStartStr} a ${oldEndStr}
+**Novo Período:** ${startStr} a ${endStr}
+**Descrição:** ${data.description || currentMaintenance.description || 'Sem descrição'}
+
+Nenhuma reserva foi afetada.
+              `.trim()
+            });
+          }
+        }
+
+        // Update the maintenance record
         await db.updateMaintenance(id, data);
         
-        // If status changed, send notifications
-        if (data.status && data.status !== currentMaintenance.status) {
+        // If only status changed (without date changes), send status notifications
+        if (data.status && data.status !== currentMaintenance.status && !datesChanged && !vesselChanged) {
           // Notify admin
           await notifyAdminMaintenanceStatusChange({
             vesselName: currentMaintenance.vesselName,
@@ -1166,7 +1266,11 @@ Nenhuma reserva foi afetada.
           }
         }
         
-        return { success: true };
+        return { 
+          success: true,
+          cancelledCount: cancelledBookings.length,
+          cancelledBookings 
+        };
       }),
 
     delete: publicProcedure

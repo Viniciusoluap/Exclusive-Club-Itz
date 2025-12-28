@@ -73,7 +73,7 @@ export default function EmployeeManutencoes() {
       const endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999).getTime();
       
       if (editingId) {
-        await updateMutation.mutateAsync({
+        const result = await updateMutation.mutateAsync({
           id: editingId,
           vesselId: parseInt(formData.vessel_id),
           startDate,
@@ -81,16 +81,24 @@ export default function EmployeeManutencoes() {
           description: formData.description,
           status: formData.status,
         });
-        toast.success("Manutenção atualizada com sucesso!");
+        if (result.cancelledCount && result.cancelledCount > 0) {
+          toast.success(`Manutenção atualizada! ${result.cancelledCount} reserva(s) cancelada(s).`);
+        } else {
+          toast.success("Manutenção atualizada com sucesso!");
+        }
       } else {
-        await createMutation.mutateAsync({
+        const result = await createMutation.mutateAsync({
           vesselId: parseInt(formData.vessel_id),
           startDate,
           endDate,
           description: formData.description,
           status: formData.status,
         });
-        toast.success("Manutenção criada com sucesso!");
+        if (result.cancelledCount && result.cancelledCount > 0) {
+          toast.success(`Manutenção criada! ${result.cancelledCount} reserva(s) cancelada(s).`);
+        } else {
+          toast.success("Manutenção criada com sucesso!");
+        }
       }
       setOpen(false);
       setEditingId(null);
@@ -219,8 +227,8 @@ export default function EmployeeManutencoes() {
                 </DialogTitle>
                 <DialogDescription>
                   {editingId
-                    ? "Atualize as informações da manutenção"
-                    : "Agende uma nova manutenção para uma embarcação"}
+                    ? "Atualize as informações da manutenção. Se o período for alterado, reservas conflitantes serão canceladas automaticamente."
+                    : "Agende uma nova manutenção para uma embarcação. Reservas conflitantes serão canceladas automaticamente."}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
