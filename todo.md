@@ -758,3 +758,5 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 ### Testes
 - [x] Criar testes automatizados para o sistema de galões
 
+
+- [x] Substituir ícone de toggle da sidebar pelo botão de voltar na página de Pagamentos

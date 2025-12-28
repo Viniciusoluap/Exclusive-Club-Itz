@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -275,7 +275,15 @@ function DashboardLayoutContent({
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-lg bg-background"
+                onClick={() => window.history.back()}
+              >
+                <ArrowLeft className="h-5 w-5" />
+                <span className="sr-only">Voltar</span>
+              </Button>
               <div className="flex items-center gap-3">
                 <div className="flex flex-col gap-1">
                   <span className="tracking-tight text-foreground">
