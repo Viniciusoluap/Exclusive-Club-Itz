@@ -719,3 +719,42 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 - `client/src/components/PixPaymentDialog.tsx` - Componente de pagamento PIX
 - `client/src/pages/admin/Pagamentos.tsx` - Dashboard de pagamentos
 
+
+
+---
+
+## 🛢️ SISTEMA DE 3 GALÕES DE GASOLINA (28/12/2025)
+
+**Objetivo:** Implementar sistema para trabalhar com 3 galões de gasolina separados, cada um com seu próprio estoque.
+
+### Banco de Dados
+- [x] Adicionar campo `gallon_number` (1, 2 ou 3) na tabela `fuel_purchases`
+- [x] Adicionar campo `gallon_number` (1, 2 ou 3) na tabela `fuel_records`
+- [x] Criar tabela `gallon_stock` para armazenar estoque de cada galão
+- [x] Executar migration (pnpm db:push)
+
+### Backend
+- [x] Atualizar endpoint de compra de gasolina para incluir gallon_number
+- [x] Atualizar endpoint de abastecimento para incluir gallon_number
+- [x] Criar endpoint para obter estoque de cada galão
+- [x] Atualizar lógica de dedução de estoque por galão
+
+### Frontend - Registrar Compra de Gasolina
+- [x] Adicionar seletor de galão (1, 2 ou 3) antes do campo "Quantos Litros"
+- [x] Atualizar estoque do galão específico selecionado
+
+### Frontend - Registrar Abastecimento
+- [x] Adicionar seletor de galão (1, 2 ou 3) acima do campo "Litros Iniciais no Galão"
+- [x] Campo "Litros Iniciais no Galão" deve mostrar o estoque do galão selecionado
+- [x] Deduzir do estoque do galão específico
+
+### Frontend - Histórico de Compras
+- [x] Exibir número do galão em cada registro (ex: "Galão 2 • 50.00 L • R$ 314.50")
+
+### Frontend - Dashboard de Combustível
+- [x] Mostrar estoque de cada galão separadamente
+- [x] Mostrar estoque total (soma dos 3 galões)
+
+### Testes
+- [x] Criar testes automatizados para o sistema de galões
+

@@ -1512,6 +1512,7 @@ Nenhuma reserva foi afetada.
         weightAfter: z.number().nonnegative().optional(), // Peso do galão após em kg (pode ser 0 se galão ficou vazio)
         photoBeforeUrl: z.string().url().optional(), // URL da foto ANTES
         photoAfterUrl: z.string().url().optional(), // URL da foto DEPOIS
+        gallonNumber: z.number().min(1).max(3).default(1), // Galão 1, 2 ou 3
       }))
       .mutation(async ({ ctx, input }) => {
         if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
@@ -1556,17 +1557,26 @@ Nenhuma reserva foi afetada.
           }
         }
 
-        // Buscar preço/L do estoque (se não foi informado)
+        // Buscar preço/L e estoque do galão específico
         const currentDate = new Date();
         const currentMonthYear = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
         
+        // Buscar estoque do galão específico
+        const gallonResult = await database.execute(sql`
+          SELECT stock_liters, last_price_per_liter FROM gallon_stock WHERE gallon_number = ${input.gallonNumber}
+        `) as any;
+        const gallon = (Array.isArray(gallonResult[0]) ? gallonResult[0][0] : gallonResult[0]);
+        
+        // Fallback para fuel_budget se galão não existir
         const budgetResult = await database.execute(sql`
           SELECT last_price_per_liter, stock_liters FROM fuel_budget WHERE month_year = ${currentMonthYear}
         `) as any;
         const budget = (Array.isArray(budgetResult[0]) ? budgetResult[0][0] : budgetResult[0]);
         
-        const defaultPricePerLiter = budget?.last_price_per_liter ? budget.last_price_per_liter / 100 : null;
-        const currentStockLiters = budget?.stock_liters ? budget.stock_liters / 100 : 0;
+        const defaultPricePerLiter = gallon?.last_price_per_liter ? gallon.last_price_per_liter / 100 : (budget?.last_price_per_liter ? budget.last_price_per_liter / 100 : null);
+        const currentStockLiters = gallon?.stock_liters ? gallon.stock_liters / 100 : 0;
+        
+        console.log(`[fuelRecords.create] Galão ${input.gallonNumber} - Estoque: ${currentStockLiters}L, Preço/L: R$${defaultPricePerLiter}`);
         
         // Usar preço do estoque se não foi informado
         let finalPricePerLiter = input.pricePerLiter;
@@ -1607,18 +1617,26 @@ Nenhuma reserva foi afetada.
         const fuelCost = Math.round((finalLitersInCents / 100) * finalPricePerLiter * 100); // em centavos
         const totalAmount = fuelCost + SERVICE_FEE;
         
-        // Descontar litros do estoque
+        // Descontar litros do estoque do galão específico
         const finalLiters = finalLitersInCents / 100;
-        console.log('[fuelRecords.create] Descontando do estoque:', finalLiters, 'L');
-        console.log('[fuelRecords.create] Estoque antes:', currentStockLiters, 'L');
+        console.log(`[fuelRecords.create] Descontando do Galão ${input.gallonNumber}:`, finalLiters, 'L');
+        console.log(`[fuelRecords.create] Galão ${input.gallonNumber} - Estoque antes:`, currentStockLiters, 'L');
         
+        // Descontar do galão específico
+        await database.execute(sql`
+          UPDATE gallon_stock 
+          SET stock_liters = stock_liters - ${finalLitersInCents}
+          WHERE gallon_number = ${input.gallonNumber}
+        `);
+        
+        // Manter compatibilidade: atualizar fuel_budget
         await database.execute(sql`
           UPDATE fuel_budget 
           SET stock_liters = stock_liters - ${finalLitersInCents}
           WHERE month_year = ${currentMonthYear}
         `);
         
-        console.log('[fuelRecords.create] Estoque após:', (currentStockLiters - finalLiters), 'L');
+        console.log(`[fuelRecords.create] Galão ${input.gallonNumber} - Estoque após:`, (currentStockLiters - finalLiters), 'L');
 
         // Criar ou buscar cliente no Asaas
         const asaas = await import('./_core/asaas');
@@ -1685,7 +1703,7 @@ Nenhuma reserva foi afetada.
             photo_before_url, photo_after_url,
             asaas_charge_id, asaas_customer_id, payment_url, payment_status,
             sync_status, sync_error, last_sync_attempt,
-            recorded_by, recorded_at
+            recorded_by, recorded_at, gallon_number
           )
           VALUES (
             ${input.bookingId}, ${input.vesselId}, '${booking.vessel_name_actual}', 
@@ -1695,7 +1713,7 @@ Nenhuma reserva foi afetada.
             ${photoBeforeUrlValue}, ${photoAfterUrlValue},
             ${asaasChargeIdValue}, ${asaasCustomerIdValue}, ${paymentUrlValue}, 'pending',
             '${syncStatus}', ${syncErrorValue}, NOW(),
-            ${ctx.user?.id || 'NULL'}, NOW()
+            ${ctx.user?.id || 'NULL'}, NOW(), ${input.gallonNumber}
           )
         `);
         
@@ -1781,6 +1799,7 @@ Nenhuma reserva foi afetada.
           total_cost: record.total_amount / 100,
           recorded_by_name: record.recorded_by_name || 'Sistema', // Nome do usuário que registrou
           recorded_at: record.recorded_at, // Data/hora de registro
+          gallonNumber: record.gallon_number || 1, // Número do galão (1, 2 ou 3)
         }));
       }),
 
@@ -2801,6 +2820,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         liters: z.number().positive(),
         amountPaid: z.number().positive(),
         notes: z.string().optional(),
+        gallonNumber: z.number().min(1).max(3).default(1), // Galão 1, 2 ou 3
       }))
       .mutation(async ({ input, ctx }) => {
         const db = await import('./db').then(m => m.getDb());
@@ -2813,19 +2833,27 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         const litersPurchased = Math.round(input.liters * 100); // em centésimos
         const amountPaid = Math.round(input.amountPaid * 100); // em centavos
         
-        // Inserir compra
+        // Inserir compra com gallon_number
         await db.execute(sql`
           INSERT INTO fuel_purchases (
             month_year, liters_purchased, amount_paid, price_per_liter, 
-            purchased_by, notes
+            purchased_by, notes, gallon_number
           )
           VALUES (
             ${input.monthYear}, ${litersPurchased}, ${amountPaid}, ${pricePerLiter},
-            ${ctx.user.id}, ${input.notes || null}
+            ${ctx.user.id}, ${input.notes || null}, ${input.gallonNumber}
           )
         `);
         
-        // Atualizar estoque e preço no fuel_budget
+        // Atualizar estoque do galão específico na tabela gallon_stock
+        await db.execute(sql`
+          UPDATE gallon_stock 
+          SET stock_liters = stock_liters + ${litersPurchased},
+              last_price_per_liter = ${pricePerLiter}
+          WHERE gallon_number = ${input.gallonNumber}
+        `);
+        
+        // Manter compatibilidade: atualizar fuel_budget com total geral
         await db.execute(sql`
           INSERT INTO fuel_budget (month_year, total_budget, total_spent, total_received, stock_liters, last_price_per_liter)
           VALUES (${input.monthYear}, 0, 0, 0, ${litersPurchased}, ${pricePerLiter})
@@ -2834,7 +2862,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             last_price_per_liter = ${pricePerLiter}
         `);
         
-        return { success: true };
+        return { success: true, gallonNumber: input.gallonNumber };
       }),
 
     list: adminProcedure
@@ -2867,6 +2895,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           purchasedAt: p.purchased_at,
           purchasedByName: p.purchased_by_name || 'Sistema',
           notes: p.notes,
+          gallonNumber: p.gallon_number || 1, // Número do galão (1, 2 ou 3)
         }));
       }),
 
@@ -2890,7 +2919,15 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Compra não encontrada' });
         }
         
-        // Devolver litros ao estoque
+        // Devolver litros ao estoque do galão específico
+        const gallonNumber = purchase.gallon_number || 1;
+        await db.execute(sql`
+          UPDATE gallon_stock 
+          SET stock_liters = stock_liters - ${purchase.liters_purchased}
+          WHERE gallon_number = ${gallonNumber}
+        `);
+        
+        // Manter compatibilidade: atualizar fuel_budget
         await db.execute(sql`
           UPDATE fuel_budget 
           SET stock_liters = stock_liters - ${purchase.liters_purchased}
@@ -2903,6 +2940,55 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         `);
         
         return { success: true };
+      }),
+
+    // Endpoint para obter estoque de todos os galões
+    getGallonStock: adminProcedure
+      .query(async () => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+        const result = await db.execute(sql`
+          SELECT * FROM gallon_stock ORDER BY gallon_number ASC
+        `) as any;
+
+        const gallons = (Array.isArray(result[0]) ? result[0] : result) as any[];
+        
+        return gallons.map((g: any) => ({
+          id: g.id,
+          gallonNumber: g.gallon_number,
+          stockLiters: g.stock_liters / 100, // Converter para litros
+          lastPricePerLiter: g.last_price_per_liter / 100, // Converter para reais
+          updatedAt: g.updated_at,
+        }));
+      }),
+
+    // Endpoint para obter estoque de um galão específico
+    getGallonStockByNumber: publicProcedure
+      .input(z.object({
+        gallonNumber: z.number().min(1).max(3),
+      }))
+      .query(async ({ input }) => {
+        const db = await import('./db').then(m => m.getDb());
+        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
+
+        const { sql } = await import('drizzle-orm');
+        const result = await db.execute(sql`
+          SELECT * FROM gallon_stock WHERE gallon_number = ${input.gallonNumber}
+        `) as any;
+
+        const gallon = (Array.isArray(result[0]) ? result[0][0] : result[0]);
+        
+        if (!gallon) {
+          return { gallonNumber: input.gallonNumber, stockLiters: 0, lastPricePerLiter: 0 };
+        }
+        
+        return {
+          gallonNumber: gallon.gallon_number,
+          stockLiters: gallon.stock_liters / 100, // Converter para litros
+          lastPricePerLiter: gallon.last_price_per_liter / 100, // Converter para reais
+        };
       }),
   }),
 

@@ -30,6 +30,9 @@ export default function EmployeeAbastecimentos() {
   const [photoAfterFile, setPhotoAfterFile] = useState<File | null>(null);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   
+  // Estado para seleção de galão
+  const [selectedGallon, setSelectedGallon] = useState<string>("1");
+  
   const [pricePerLiter, setPricePerLiter] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -53,41 +56,51 @@ export default function EmployeeAbastecimentos() {
   // Buscar orçamento para pegar preço/L e estoque
   const monthYear = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
   const { data: budget } = trpcAny.fuelBudget?.get.useQuery({ monthYear }) || { data: null };
+  const { data: gallonStock, refetch: refetchGallonStock } = trpcAny.fuelPurchases?.getGallonStock.useQuery() || { data: [] };
 
   // Refetch quando mês/ano mudar
   useEffect(() => {
     refetch();
   }, [selectedMonth, selectedYear]);
 
-  // Pré-preencher preço/L e litros iniciais automaticamente ao abrir o dialog
+  // Pré-preencher preço/L e litros iniciais automaticamente ao abrir o dialog ou mudar galão
   useEffect(() => {
-    if (isCreateDialogOpen && budget) {
-      // Preencher preço se houver preço válido (maior que zero)
+    if (isCreateDialogOpen && gallonStock && gallonStock.length > 0) {
+      const gallon = gallonStock.find((g: any) => g.gallonNumber === parseInt(selectedGallon));
+      if (gallon) {
+        // Preencher preço se houver preço válido
+        if (gallon.lastPricePerLiter && gallon.lastPricePerLiter > 0) {
+          setPricePerLiter(gallon.lastPricePerLiter.toFixed(2));
+        }
+        // Preencher litros iniciais com o estoque do galão selecionado
+        if (gallon.stockLiters !== undefined && gallon.stockLiters !== null) {
+          setLitersInitial(gallon.stockLiters.toFixed(2));
+          console.log(`✅ Galão ${selectedGallon} - Litros iniciais: ${gallon.stockLiters.toFixed(2)}L, Preço/L: R$${gallon.lastPricePerLiter?.toFixed(2)}`);
+        }
+      }
+    } else if (isCreateDialogOpen && budget) {
+      // Fallback para budget se gallonStock não estiver disponível
       if (budget.lastPricePerLiter && budget.lastPricePerLiter > 0) {
         setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
-        console.log('✅ Preço/L preenchido automaticamente:', budget.lastPricePerLiter.toFixed(2));
-      } else {
-        console.warn('⚠️ Nenhum preço/L disponível no estoque. Budget:', budget);
       }
-      // Preencher litros iniciais com o estoque atual
       if (budget.stockLiters !== undefined && budget.stockLiters !== null) {
         setLitersInitial(budget.stockLiters.toFixed(2));
-        console.log('✅ Litros iniciais preenchidos automaticamente:', budget.stockLiters.toFixed(2));
       }
     } else if (!isCreateDialogOpen) {
       // Resetar ao fechar o dialog
       resetForm();
     }
-  }, [isCreateDialogOpen, budget]);
+  }, [isCreateDialogOpen, selectedGallon, gallonStock, budget]);
 
   const utils = trpc.useUtils();
 
   const createMutation = trpcAny.fuelRecords?.create.useMutation({
     onSuccess: (data: any) => {
-      toast.success(`Abastecimento registrado! Valor total: R$ ${data.totalCost.toFixed(2)}`);
+      toast.success(`Abastecimento registrado no Galão ${selectedGallon}! Valor total: R$ ${data.totalCost.toFixed(2)}`);
       setIsCreateDialogOpen(false);
       resetForm();
       refetch();
+      refetchGallonStock();
       // Invalidar query do estoque para atualizar saldo de litros
       utils.fuelBudget.get.invalidate({ monthYear });
     },
@@ -150,6 +163,8 @@ export default function EmployeeAbastecimentos() {
     setPhotoAfterFile(null);
     setPricePerLiter(budget?.lastPricePerLiter ? budget.lastPricePerLiter.toFixed(2) : "");
     setNotes("");
+    // Resetar galão para 1
+    setSelectedGallon("1");
   };
 
   const handleDeleteClick = (id: number) => {
@@ -272,6 +287,8 @@ export default function EmployeeAbastecimentos() {
       photoAfterUrl,
       pricePerLiter: parseFloat(pricePerLiter),
       notes: notes || undefined,
+      // Galão selecionado
+      gallonNumber: parseInt(selectedGallon),
     });
   };
 
@@ -480,6 +497,9 @@ export default function EmployeeAbastecimentos() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <Fuel className="w-5 h-5 text-primary flex-shrink-0" />
                           <CardTitle className="text-base sm:text-lg truncate">{record.vesselName}</CardTitle>
+                          <span className="bg-primary/20 text-primary text-xs font-bold px-2 py-0.5 rounded flex-shrink-0">
+                            Galão {record.gallonNumber || 1}
+                          </span>
                         </div>
                         <CardDescription className="mt-1 text-xs sm:text-sm break-words">
                           {record.clientName} • {new Date(record.date).toLocaleDateString('pt-BR')}
@@ -575,15 +595,51 @@ export default function EmployeeAbastecimentos() {
                 </Select>
               </div>
 
+              {/* Seletor de Galão */}
+              <div>
+                <Label>Selecione o Galão *</Label>
+                <Select value={selectedGallon} onValueChange={setSelectedGallon}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o galão" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3].map((num) => {
+                      const gallon = gallonStock?.find((g: any) => g.gallonNumber === num);
+                      const stockLiters = gallon?.stockLiters || 0;
+                      const isLow = stockLiters > 0 && stockLiters < 5;
+                      return (
+                        <SelectItem key={num} value={num.toString()}>
+                          <span className={isLow ? 'text-red-600' : ''}>
+                            Galão {num} - {stockLiters.toFixed(2)} L disponíveis
+                            {isLow && ' ⚠️'}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {(() => {
+                  const gallon = gallonStock?.find((g: any) => g.gallonNumber === parseInt(selectedGallon));
+                  const stockLiters = gallon?.stockLiters || 0;
+                  const pricePerL = gallon?.lastPricePerLiter || 0;
+                  return (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Estoque atual: <span className="font-semibold">{stockLiters.toFixed(2)} L</span>
+                      {pricePerL > 0 && <> | Preço/L: <span className="font-semibold">R$ {pricePerL.toFixed(2)}</span></>}
+                    </p>
+                  );
+                })()}
+              </div>
+
               {/* Método por Peso */}
               <div className="border-t pt-4 space-y-4">
                 <h3 className="font-semibold flex items-center gap-2">
                   📏 Método de Pesagem
                 </h3>
                 
-                {/* Litros Iniciais - Preenchido automaticamente com o estoque atual */}
+                {/* Litros Iniciais - Preenchido automaticamente com o estoque do galão selecionado */}
                 <div>
-                  <Label>Litros Iniciais no Galão (L) *</Label>
+                  <Label>Litros Iniciais no Galão {selectedGallon} (L) *</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -592,7 +648,7 @@ export default function EmployeeAbastecimentos() {
                     disabled
                     className="bg-muted cursor-not-allowed"
                   />
-                  <p className="text-xs text-muted-foreground mt-1">Valor do estoque atual (preenchido automaticamente)</p>
+                  <p className="text-xs text-muted-foreground mt-1">Valor do estoque do Galão {selectedGallon} (preenchido automaticamente)</p>
                 </div>
 
                 {/* Peso Cheio */}
