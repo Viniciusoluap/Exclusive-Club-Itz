@@ -42,6 +42,9 @@ export default function Abastecimento() {
   const [photoBeforeUrl, setPhotoBeforeUrl] = useState<string | null>(null);
   const [photoAfterUrl, setPhotoAfterUrl] = useState<string | null>(null);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+  
+  // Estado para seleção de galão
+  const [selectedGallon, setSelectedGallon] = useState<string>("1");
 
   // Estado de filtro de mês/ano
   const currentDate = new Date();
@@ -58,6 +61,7 @@ export default function Abastecimento() {
   const { data: vessels } = trpc.vessels.list.useQuery();
   const { data: financialStats } = trpcAny.fuelRecords?.financialStats.useQuery({ monthYear: currentMonthYear }) || { data: null };
   const { data: budget } = trpcAny.fuelBudget?.get.useQuery({ monthYear: currentMonthYear }) || { data: null };
+  const { data: gallonStock, refetch: refetchGallonStock } = trpcAny.fuelPurchases?.getGallonStock.useQuery() || { data: [] };
 
   // Refetch quando mês/ano mudar
   useEffect(() => {
@@ -71,10 +75,11 @@ export default function Abastecimento() {
 
   const createMutation = trpcAny.fuelRecords?.create.useMutation({
     onSuccess: (data: any) => {
-      toast.success(`Abastecimento registrado! Valor total: R$ ${data.totalCost.toFixed(2)}`);
+      toast.success(`Abastecimento registrado no Galão ${selectedGallon}! Valor total: R$ ${data.totalCost.toFixed(2)}`);
       setIsCreateDialogOpen(false);
       resetForm();
       refetch();
+      refetchGallonStock();
     },
     onError: (error: any) => {
       toast.error(`Erro ao registrar abastecimento: ${error.message}`);
@@ -201,20 +206,31 @@ export default function Abastecimento() {
 
   // setBudgetMutation removido - orçamento agora é calculado automaticamente
 
-  // Preencher preço por litro e litros iniciais automaticamente ao abrir o dialog
+  // Preencher preço por litro e litros iniciais automaticamente ao abrir o dialog ou mudar galão
   useEffect(() => {
-    if (isCreateDialogOpen && budget) {
-      // Preencher preço se houver preço válido
+    if (isCreateDialogOpen && gallonStock && gallonStock.length > 0) {
+      const gallon = gallonStock.find((g: any) => g.gallonNumber === parseInt(selectedGallon));
+      if (gallon) {
+        // Preencher preço se houver preço válido
+        if (gallon.lastPricePerLiter) {
+          setPricePerLiter(gallon.lastPricePerLiter.toFixed(2));
+        }
+        // Preencher litros iniciais com o estoque do galão selecionado
+        if (gallon.stockLiters !== undefined && gallon.stockLiters !== null) {
+          setLitersInitial(gallon.stockLiters.toFixed(2));
+          console.log(`✅ Galão ${selectedGallon} - Litros iniciais: ${gallon.stockLiters.toFixed(2)}L, Preço/L: R$${gallon.lastPricePerLiter?.toFixed(2)}`);
+        }
+      }
+    } else if (isCreateDialogOpen && budget) {
+      // Fallback para budget se gallonStock não estiver disponível
       if (budget.lastPricePerLiter) {
         setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
       }
-      // Preencher litros iniciais com o estoque atual
       if (budget.stockLiters !== undefined && budget.stockLiters !== null) {
         setLitersInitial(budget.stockLiters.toFixed(2));
-        console.log('✅ Litros iniciais preenchidos automaticamente:', budget.stockLiters.toFixed(2));
       }
     }
-  }, [isCreateDialogOpen, budget]);
+  }, [isCreateDialogOpen, selectedGallon, gallonStock, budget]);
 
   const resetForm = () => {
     setSelectedBookingId(null);
@@ -231,6 +247,8 @@ export default function Abastecimento() {
     setPhotoAfter(null);
     setPhotoBeforeUrl(null);
     setPhotoAfterUrl(null);
+    // Resetar galão para 1
+    setSelectedGallon("1");
   };
 
   const handleDeleteClick = (id: number) => {
@@ -388,6 +406,8 @@ export default function Abastecimento() {
       weightAfter: useWeightMethod ? parseFloat(weightAfter) : undefined,
       photoBeforeUrl: uploadedPhotoBeforeUrl,
       photoAfterUrl: uploadedPhotoAfterUrl,
+      // Galão selecionado
+      gallonNumber: parseInt(selectedGallon),
     });
   };
 
@@ -733,7 +753,7 @@ export default function Abastecimento() {
               <Card key={record.id} className={selectedIds.includes(record.id) ? 'ring-2 ring-primary' : ''}>
                 <CardHeader className="p-4">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
                       <Checkbox 
                         checked={selectedIds.includes(record.id)}
                         onCheckedChange={() => handleToggleSelection(record.id)}
@@ -741,7 +761,12 @@ export default function Abastecimento() {
                       />
                       <Fuel className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                       <div className="min-w-0 flex-1">
-                        <CardTitle className="text-base sm:text-lg truncate">{record.vessel_name}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-base sm:text-lg truncate">{record.vessel_name}</CardTitle>
+                          <span className="bg-primary/20 text-primary text-xs font-bold px-2 py-0.5 rounded flex-shrink-0">
+                            Galão {record.gallonNumber || 1}
+                          </span>
+                        </div>
                         <CardDescription className="text-xs sm:text-sm">
                           {record.client_name} • {new Date(record.booking_date).toLocaleDateString('pt-BR')}
                         </CardDescription>
@@ -970,6 +995,42 @@ export default function Abastecimento() {
                     })}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Seletor de Galão */}
+              <div className="grid gap-2">
+                <Label htmlFor="gallon">Selecione o Galão *</Label>
+                <Select value={selectedGallon} onValueChange={setSelectedGallon}>
+                  <SelectTrigger id="gallon">
+                    <SelectValue placeholder="Selecione o galão" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3].map((num) => {
+                      const gallon = gallonStock?.find((g: any) => g.gallonNumber === num);
+                      const stockLiters = gallon?.stockLiters || 0;
+                      const isLow = stockLiters > 0 && stockLiters < 5;
+                      return (
+                        <SelectItem key={num} value={num.toString()}>
+                          <span className={isLow ? 'text-red-600' : ''}>
+                            Galão {num} - {stockLiters.toFixed(2)} L disponíveis
+                            {isLow && ' ⚠️'}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {(() => {
+                  const gallon = gallonStock?.find((g: any) => g.gallonNumber === parseInt(selectedGallon));
+                  const stockLiters = gallon?.stockLiters || 0;
+                  const pricePerL = gallon?.lastPricePerLiter || 0;
+                  return (
+                    <div className="text-xs text-muted-foreground">
+                      Estoque atual: <span className="font-semibold">{stockLiters.toFixed(2)} L</span>
+                      {pricePerL > 0 && <> | Preço/L: <span className="font-semibold">R$ {pricePerL.toFixed(2)}</span></>}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Checkbox para ativar método de pesagem */}

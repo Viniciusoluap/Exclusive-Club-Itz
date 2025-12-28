@@ -95,6 +95,7 @@ export const fuelPurchases = mysqlTable("fuel_purchases", {
 	purchasedBy: int("purchased_by").references(() => users.id),
 	notes: text(),
 	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	gallonNumber: int("gallon_number").default(1).notNull(),
 });
 
 export const fuelRecords = mysqlTable("fuel_records", {
@@ -129,7 +130,20 @@ export const fuelRecords = mysqlTable("fuel_records", {
 	litersCalculated: int("liters_calculated"),
 	photoBeforeUrl: text("photo_before_url"),
 	photoAfterUrl: text("photo_after_url"),
+	gallonNumber: int("gallon_number").default(1).notNull(),
 });
+
+export const gallonStock = mysqlTable("gallon_stock", {
+	id: int().autoincrement().notNull(),
+	gallonNumber: int("gallon_number").notNull(),
+	stockLiters: int("stock_liters").default(0).notNull(),
+	lastPricePerLiter: int("last_price_per_liter").default(0).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("gallon_number_idx").on(table.gallonNumber),
+]);
 
 export const inspectionCharges = mysqlTable("inspection_charges", {
 	id: int().autoincrement().notNull(),
@@ -250,3 +264,9 @@ export type Maintenance = typeof maintenances.$inferSelect;
 export type InsertMaintenance = typeof maintenances.$inferInsert;
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type InsertSystemSetting = typeof systemSettings.$inferInsert;
+export type GallonStock = typeof gallonStock.$inferSelect;
+export type InsertGallonStock = typeof gallonStock.$inferInsert;
+export type FuelPurchase = typeof fuelPurchases.$inferSelect;
+export type InsertFuelPurchase = typeof fuelPurchases.$inferInsert;
+export type FuelRecord = typeof fuelRecords.$inferSelect;
+export type InsertFuelRecord = typeof fuelRecords.$inferInsert;

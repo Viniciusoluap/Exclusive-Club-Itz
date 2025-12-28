@@ -1,0 +1,14 @@
+{
+  "query": "SELECT stock_liters, last_price_per_liter FROM fuel_budget ORDER BY id DESC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT stock_liters, last_price_per_liter FROM fuel_budget ORDER BY id DESC LIMIT 1;",
+  "rows": [
+    {
+      "stock_liters": "0",
+      "last_price_per_liter": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "stock_liters\tlast_price_per_liter\n0\t0\n",
+  "stderr": "",
+  "execution_time_ms": 72
+}

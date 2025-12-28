@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Plus, Trash2, Fuel, TrendingUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -20,6 +21,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
   const [purchaseLiters, setPurchaseLiters] = useState("");
   const [purchaseAmount, setPurchaseAmount] = useState("");
   const [purchaseNotes, setPurchaseNotes] = useState("");
+  const [selectedGallon, setSelectedGallon] = useState<string>("1");
 
   const trpcAny = trpc as any;
   const utils = trpc.useUtils();
@@ -27,19 +29,21 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
   // Buscar dados do orçamento e compras
   const { data: budget, refetch: refetchBudget } = trpcAny.fuelBudget?.get.useQuery({ monthYear }) || { data: null };
   const { data: purchases, refetch: refetchPurchases } = trpcAny.fuelPurchases?.list.useQuery({ monthYear }) || { data: [] };
+  const { data: gallonStock, refetch: refetchGallonStock } = trpcAny.fuelPurchases?.getGallonStock.useQuery() || { data: [] };
 
   // useEffect removido - orçamento agora é calculado automaticamente
 
   // Mutations (setBudgetMutation removido - orçamento agora é calculado automaticamente)
 
   const createPurchaseMutation = trpcAny.fuelPurchases?.create.useMutation({
-    onSuccess: () => {
-      toast.success('Compra de gasolina registrada com sucesso!');
+    onSuccess: (data: any) => {
+      toast.success(`Compra de gasolina registrada no Galão ${data.gallonNumber} com sucesso!`);
       setPurchaseLiters("");
       setPurchaseAmount("");
       setPurchaseNotes("");
       refetchBudget();
       refetchPurchases();
+      refetchGallonStock();
     },
     onError: (error: any) => {
       toast.error(`Erro ao registrar compra: ${error.message}`);
@@ -51,6 +55,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
       toast.success('Compra excluída com sucesso!');
       refetchBudget();
       refetchPurchases();
+      refetchGallonStock();
     },
     onError: (error: any) => {
       toast.error(`Erro ao excluir compra: ${error.message}`);
@@ -77,11 +82,12 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
       liters,
       amountPaid: amount,
       notes: purchaseNotes || undefined,
+      gallonNumber: parseInt(selectedGallon),
     });
   };
 
   const handleDeletePurchase = (purchaseId: number) => {
-    if (confirm('Tem certeza que deseja excluir esta compra? Os litros serão devolvidos ao estoque.')) {
+    if (confirm('Tem certeza que deseja excluir esta compra? Os litros serão devolvidos ao estoque do galão.')) {
       deletePurchaseMutation.mutate({ purchaseId });
     }
   };
@@ -90,6 +96,9 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
   const pricePerLiter = purchaseLiters && purchaseAmount
     ? (parseFloat(purchaseAmount) / parseFloat(purchaseLiters)).toFixed(2)
     : "0.00";
+
+  // Calcular estoque total (soma dos 3 galões)
+  const totalStock = gallonStock?.reduce((sum: number, g: any) => sum + g.stockLiters, 0) || 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -102,42 +111,96 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Card de Resumo */}
+          {/* Card de Estoque por Galão */}
           <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Orçamento Mensal</p>
-                  <p className="text-2xl font-bold">R$ {budget?.totalBudget?.toFixed(2) || "0.00"}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Estoque Disponível</p>
-                  <p className="text-2xl font-bold text-green-600">{budget?.stockLiters?.toFixed(2) || "0.00"} L</p>
-                  {budget?.stockLiters && budget.stockLiters < 5 && (
-                    <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
-                      <AlertTriangle className="w-3 h-3" />
-                      <span>Estoque baixo!</span>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Fuel className="w-5 h-5" />
+                Estoque por Galão
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Galões 1, 2 e 3 */}
+                {[1, 2, 3].map((gallonNum) => {
+                  const gallon = gallonStock?.find((g: any) => g.gallonNumber === gallonNum);
+                  const stockLiters = gallon?.stockLiters || 0;
+                  const pricePerL = gallon?.lastPricePerLiter || 0;
+                  const isLow = stockLiters > 0 && stockLiters < 5;
+                  
+                  return (
+                    <div key={gallonNum} className={`p-3 rounded-lg border ${isLow ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'}`}>
+                      <p className="text-sm font-semibold text-muted-foreground">Galão {gallonNum}</p>
+                      <p className={`text-2xl font-bold ${stockLiters > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                        {stockLiters.toFixed(2)} L
+                      </p>
+                      {pricePerL > 0 && (
+                        <p className="text-xs text-muted-foreground">R$ {pricePerL.toFixed(2)}/L</p>
+                      )}
+                      {isLow && (
+                        <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>Estoque baixo!</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Preço/L Atual</p>
-                  <p className="text-2xl font-bold text-blue-600">R$ {budget?.lastPricePerLiter?.toFixed(2) || "0.00"}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Aplicado automaticamente</p>
+                  );
+                })}
+                
+                {/* Total */}
+                <div className="p-3 rounded-lg border border-primary/30 bg-primary/10">
+                  <p className="text-sm font-semibold text-muted-foreground">Total</p>
+                  <p className="text-2xl font-bold text-primary">{totalStock.toFixed(2)} L</p>
+                  <p className="text-xs text-muted-foreground">Soma dos 3 galões</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Seção de Orçamento REMOVIDA - agora é calculado automaticamente como soma das compras */}
+          {/* Card de Resumo Financeiro */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Orçamento Mensal</p>
+                  <p className="text-2xl font-bold">R$ {budget?.totalBudget?.toFixed(2) || "0.00"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Preço/L Médio</p>
+                  <p className="text-2xl font-bold text-blue-600">R$ {budget?.lastPricePerLiter?.toFixed(2) || "0.00"}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Registrar Compra de Gasolina */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Registrar Compra de Gasolina</CardTitle>
-              <CardDescription>Adicione litros ao estoque e atualize o preço/L automaticamente</CardDescription>
+              <CardDescription>Adicione litros ao estoque de um galão específico</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Seletor de Galão */}
+              <div>
+                <Label htmlFor="gallon">Selecione o Galão *</Label>
+                <Select value={selectedGallon} onValueChange={setSelectedGallon}>
+                  <SelectTrigger id="gallon" className="w-full">
+                    <SelectValue placeholder="Selecione o galão" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3].map((num) => {
+                      const gallon = gallonStock?.find((g: any) => g.gallonNumber === num);
+                      const stockLiters = gallon?.stockLiters || 0;
+                      return (
+                        <SelectItem key={num} value={num.toString()}>
+                          Galão {num} - Estoque atual: {stockLiters.toFixed(2)} L
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="liters">Quantos Litros *</Label>
@@ -171,7 +234,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
                   <p className="text-sm font-semibold">💰 Preço por Litro Calculado:</p>
                   <p className="text-2xl font-bold text-primary">R$ {pricePerLiter}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Este preço será aplicado automaticamente nos próximos abastecimentos
+                    Este preço será aplicado ao Galão {selectedGallon}
                   </p>
                 </div>
               )}
@@ -194,7 +257,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
               >
                 {createPurchaseMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 <Plus className="w-4 h-4 mr-2" />
-                Registrar Compra
+                Registrar Compra no Galão {selectedGallon}
               </Button>
             </CardContent>
           </Card>
@@ -212,10 +275,13 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {purchases.slice(0, 5).map((purchase: any) => (
+                  {purchases.slice(0, 10).map((purchase: any) => (
                     <div key={purchase.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
+                          <span className="bg-primary/20 text-primary text-xs font-bold px-2 py-1 rounded">
+                            Galão {purchase.gallonNumber || 1}
+                          </span>
                           <Fuel className="w-4 h-4 text-primary" />
                           <span className="font-semibold">{purchase.litersPurchased.toFixed(2)} L</span>
                           <span className="text-muted-foreground">•</span>
