@@ -760,3 +760,7 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 
 
 - [x] Substituir ícone de toggle da sidebar pelo botão de voltar na página de Pagamentos
+
+- [x] Bug: Corrigir cálculo do estoque do Galão 1 mostrando valor negativo (-225.50 L) - CORRIGIDO em 28/12/2025
+
+- [x] Corrigir lógica do estoque: Estoque = Total Comprado - Total Abastecido (não o inverso)

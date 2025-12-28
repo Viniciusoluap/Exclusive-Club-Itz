@@ -2943,28 +2943,62 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
       }),
 
     // Endpoint para obter estoque de todos os galões
+    // CORRIGIDO: Estoque = Total Comprado - Total Abastecido (calculado dinamicamente)
     getGallonStock: adminProcedure
       .query(async () => {
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         const { sql } = await import('drizzle-orm');
-        const result = await db.execute(sql`
-          SELECT * FROM gallon_stock ORDER BY gallon_number ASC
+        
+        // Calcular estoque dinamicamente para cada galão
+        // Estoque = Total Comprado (fuel_purchases) - Total Abastecido (fuel_records)
+        const stockResult = await db.execute(sql`
+          SELECT 
+            g.gallon_number,
+            g.last_price_per_liter,
+            g.updated_at,
+            COALESCE(p.total_purchased, 0) as total_purchased,
+            COALESCE(r.total_refueled, 0) as total_refueled
+          FROM gallon_stock g
+          LEFT JOIN (
+            SELECT gallon_number, SUM(liters_purchased) as total_purchased
+            FROM fuel_purchases
+            GROUP BY gallon_number
+          ) p ON g.gallon_number = p.gallon_number
+          LEFT JOIN (
+            SELECT gallon_number, SUM(liters) as total_refueled
+            FROM fuel_records
+            GROUP BY gallon_number
+          ) r ON g.gallon_number = r.gallon_number
+          ORDER BY g.gallon_number ASC
         `) as any;
 
-        const gallons = (Array.isArray(result[0]) ? result[0] : result) as any[];
+        const gallons = (Array.isArray(stockResult[0]) ? stockResult[0] : stockResult) as any[];
         
-        return gallons.map((g: any) => ({
-          id: g.id,
-          gallonNumber: g.gallon_number,
-          stockLiters: g.stock_liters / 100, // Converter para litros
-          lastPricePerLiter: g.last_price_per_liter / 100, // Converter para reais
-          updatedAt: g.updated_at,
-        }));
+        return gallons.map((g: any) => {
+          // Estoque = Comprado - Abastecido (valores em centésimos)
+          const totalPurchased = Number(g.total_purchased) || 0;
+          const totalRefueled = Number(g.total_refueled) || 0;
+          const stockLiters = (totalPurchased - totalRefueled) / 100;
+          
+          console.log(`[getGallonStock] Galão ${g.gallon_number}: Comprado=${totalPurchased/100}L, Abastecido=${totalRefueled/100}L, Estoque=${stockLiters}L`);
+          
+          return {
+            id: g.gallon_number,
+            gallonNumber: g.gallon_number,
+            stockLiters: stockLiters,
+            lastPricePerLiter: (g.last_price_per_liter || 0) / 100,
+            updatedAt: g.updated_at,
+            // Campos extras para debug
+            totalPurchased: totalPurchased / 100,
+            totalRefueled: totalRefueled / 100,
+          };
+        });
       }),
 
     // Endpoint para obter estoque de um galão específico
+    // CORRIGIDO: Estoque = Total Comprado - Total Abastecido (calculado dinamicamente)
     getGallonStockByNumber: publicProcedure
       .input(z.object({
         gallonNumber: z.number().min(1).max(3),
@@ -2974,20 +3008,50 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         const { sql } = await import('drizzle-orm');
-        const result = await db.execute(sql`
-          SELECT * FROM gallon_stock WHERE gallon_number = ${input.gallonNumber}
+        
+        // Calcular estoque dinamicamente para o galão específico
+        // Estoque = Total Comprado (fuel_purchases) - Total Abastecido (fuel_records)
+        const stockResult = await db.execute(sql`
+          SELECT 
+            g.gallon_number,
+            g.last_price_per_liter,
+            COALESCE(p.total_purchased, 0) as total_purchased,
+            COALESCE(r.total_refueled, 0) as total_refueled
+          FROM gallon_stock g
+          LEFT JOIN (
+            SELECT gallon_number, SUM(liters_purchased) as total_purchased
+            FROM fuel_purchases
+            WHERE gallon_number = ${input.gallonNumber}
+            GROUP BY gallon_number
+          ) p ON g.gallon_number = p.gallon_number
+          LEFT JOIN (
+            SELECT gallon_number, SUM(liters) as total_refueled
+            FROM fuel_records
+            WHERE gallon_number = ${input.gallonNumber}
+            GROUP BY gallon_number
+          ) r ON g.gallon_number = r.gallon_number
+          WHERE g.gallon_number = ${input.gallonNumber}
         `) as any;
 
-        const gallon = (Array.isArray(result[0]) ? result[0][0] : result[0]);
+        const gallon = (Array.isArray(stockResult[0]) ? stockResult[0][0] : stockResult[0]);
         
         if (!gallon) {
           return { gallonNumber: input.gallonNumber, stockLiters: 0, lastPricePerLiter: 0 };
         }
         
+        // Estoque = Comprado - Abastecido (valores em centésimos)
+        const totalPurchased = Number(gallon.total_purchased) || 0;
+        const totalRefueled = Number(gallon.total_refueled) || 0;
+        const stockLiters = (totalPurchased - totalRefueled) / 100;
+        
+        console.log(`[getGallonStockByNumber] Galão ${input.gallonNumber}: Comprado=${totalPurchased/100}L, Abastecido=${totalRefueled/100}L, Estoque=${stockLiters}L`);
+        
         return {
           gallonNumber: gallon.gallon_number,
-          stockLiters: gallon.stock_liters / 100, // Converter para litros
-          lastPricePerLiter: gallon.last_price_per_liter / 100, // Converter para reais
+          stockLiters: stockLiters,
+          lastPricePerLiter: (gallon.last_price_per_liter || 0) / 100,
+          totalPurchased: totalPurchased / 100,
+          totalRefueled: totalRefueled / 100,
         };
       }),
   }),

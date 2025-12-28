@@ -1,0 +1,8 @@
+{
+  "query": "SELECT * FROM gallon_stock;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT * FROM gallon_stock;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1105 (HY000) at line 1: no available peers, region: {id:855000 region_epoch:<conf_ver:5 version:139821 > peers:<id:855001 store_id:1001 > peers:<id:855002 store_id:1074 > peers:<id:855003 store_id:1129 > }"
+  ]
+}

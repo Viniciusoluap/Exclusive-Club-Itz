@@ -1,0 +1,31 @@
+{
+  "query": "SELECT gallon_number, stock_liters, stock_liters / 100 as stock_liters_real, last_price_per_liter, last_price_per_liter / 100 as price_real FROM gallon_stock ORDER BY gallon_number ASC",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT gallon_number, stock_liters, stock_liters / 100 as stock_liters_real, last_price_per_liter, last_price_per_liter / 100 as price_real FROM gallon_stock ORDER BY gallon_number ASC",
+  "rows": [
+    {
+      "gallon_number": "1",
+      "stock_liters": "-22550",
+      "stock_liters_real": "-225.5000",
+      "last_price_per_liter": "650",
+      "price_real": "6.5000"
+    },
+    {
+      "gallon_number": "2",
+      "stock_liters": "5000",
+      "stock_liters_real": "50.0000",
+      "last_price_per_liter": "628",
+      "price_real": "6.2800"
+    },
+    {
+      "gallon_number": "3",
+      "stock_liters": "0",
+      "stock_liters_real": "0.0000",
+      "last_price_per_liter": "0",
+      "price_real": "0.0000"
+    }
+  ],
+  "messages": [],
+  "stdout": "gallon_number\tstock_liters\tstock_liters_real\tlast_price_per_liter\tprice_real\n1\t-22550\t-225.5000\t650\t6.5000\n2\t5000\t50.0000\t628\t6.2800\n3\t0\t0.0000\t0\t0.0000\n",
+  "stderr": "",
+  "execution_time_ms": 57
+}
