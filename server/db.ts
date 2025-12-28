@@ -58,7 +58,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       const employeeCheck = await db.select().from(employees)
         .where(and(
           eq(employees.email, user.email),
-          eq(employees.isActive, true)
+          eq(employees.isActive, 1)
         ))
         .limit(1);
       isEmployee = employeeCheck.length > 0;
@@ -76,11 +76,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     }
 
     if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
+      values.lastSignedIn = new Date().toISOString();
     }
 
     if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
+      updateSet.lastSignedIn = new Date().toISOString();
     }
 
     await db.insert(users).values(values).onDuplicateKeyUpdate({
@@ -124,7 +124,7 @@ export async function getAllowedClients() {
 export async function getActiveAllowedClients() {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(allowedClients).where(eq(allowedClients.isActive, true));
+  return await db.select().from(allowedClients).where(eq(allowedClients.isActive, 1));
 }
 
 export async function getAllowedClientByEmail(email: string) {
@@ -170,7 +170,7 @@ export async function getVessels() {
 export async function getActiveVessels() {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(vessels).where(eq(vessels.isActive, true));
+  return await db.select().from(vessels).where(eq(vessels.isActive, 1));
 }
 
 export async function getVesselById(id: number) {
@@ -281,7 +281,7 @@ export async function getClientQuotasByClientId(clientId: number) {
   const db = await getDb();
   if (!db) return [];
   return await db.select().from(clientQuotas)
-    .where(and(eq(clientQuotas.clientId, clientId), eq(clientQuotas.isActive, true)));
+    .where(and(eq(clientQuotas.clientId, clientId), eq(clientQuotas.isActive, 1)));
 }
 
 export async function getClientQuotasByEmail(email: string) {
@@ -302,7 +302,7 @@ export async function getClientQuotaByVessel(clientId: number, vesselId: number)
       and(
         eq(clientQuotas.clientId, clientId),
         eq(clientQuotas.vesselId, vesselId),
-        eq(clientQuotas.isActive, true)
+        eq(clientQuotas.isActive, 1)
       )
     );
 }

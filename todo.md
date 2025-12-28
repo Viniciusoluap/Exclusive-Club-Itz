@@ -555,3 +555,167 @@
 - [x] Remover opções de parcelamento (2x, 3x) do frontend
 - [x] Manter apenas opção 1x à vista para PIX e cartão
 - [x] Garantir que demais funcionalidades permaneçam inalteradas
+
+
+---
+
+## 🚀 INTEGRAÇÃO COMPLETA ASAAS - Sistema de Pagamentos (28/12/2025)
+
+### Objetivo Principal
+Implementar integração completa com Asaas para o sistema de reservas do Exclusive Club, com todos os pontos de atenção para robustez e confiabilidade.
+
+### 1. Schema do Banco de Dados para Pagamentos
+
+**Tabelas:**
+- [ ] Criar tabela `asaas_customers` para armazenar clientes Asaas
+  * Campos: id, user_id, asaas_customer_id, cpf_cnpj, created_at
+- [ ] Criar tabela `asaas_payments` para histórico de pagamentos
+  * Campos: id, charge_id, charge_type, asaas_payment_id, status, value, pix_qr_code, pix_copy_paste, expires_at, paid_at, created_at, updated_at
+- [ ] Criar tabela `payment_audit_logs` para logs de auditoria
+  * Campos: id, payment_id, action, old_status, new_status, details, created_at
+- [ ] Criar tabela `webhook_logs` para registrar todos os webhooks recebidos
+  * Campos: id, event_type, payload, processed, error_message, created_at
+
+### 2. Serviço de Integração com API Asaas
+
+**Funções:**
+- [ ] `createOrGetAsaasCustomer(userId, cpfCnpj, name, email)` - Cria ou retorna cliente existente
+- [ ] `createPixCharge(customerId, value, description, dueDate, externalRef)` - Cria cobrança PIX
+- [ ] `getChargeStatus(asaasChargeId)` - Consulta status da cobrança
+- [ ] `cancelCharge(asaasChargeId)` - Cancela cobrança no Asaas
+- [ ] `getPixQrCode(asaasChargeId)` - Obtém QR Code PIX
+
+### 3. Rotas tRPC para Pagamentos
+
+**Endpoints:**
+- [ ] `payments.createPixCharge` - Gera cobrança PIX para reserva/mensalidade
+- [ ] `payments.getStatus` - Consulta status de pagamento
+- [ ] `payments.listMyPayments` - Lista pagamentos do cliente
+- [ ] `payments.webhook` - Recebe notificações do Asaas (Express route)
+
+### 4. Pontos de Atenção - Expiração e Reconciliação
+
+**Expiração de Cobranças:**
+- [ ] Definir tempo de expiração para cobranças PIX (ex: 30 minutos)
+- [ ] Implementar job de verificação de cobranças expiradas
+- [ ] Liberar reserva automaticamente quando cobrança expira
+- [ ] Notificar cliente sobre expiração
+
+**Reconciliação:**
+- [ ] Implementar verificação periódica de status no Asaas
+- [ ] Corrigir divergências entre status local e Asaas
+- [ ] Gerar relatório de reconciliação para admin
+
+### 5. Pontos de Atenção - Tratamento de Erros
+
+**Erros de API:**
+- [ ] Implementar retry com backoff exponencial para falhas temporárias
+- [ ] Tratar erros específicos do Asaas (invalid_customer, etc.)
+- [ ] Fallback gracioso quando Asaas está indisponível
+- [ ] Alertar admin sobre falhas críticas
+
+**Validações:**
+- [ ] Validar CPF/CNPJ antes de criar cliente
+- [ ] Validar valor mínimo de cobrança
+- [ ] Verificar se cliente já tem cobrança pendente para mesma reserva
+
+### 6. Pontos de Atenção - Logs e Auditoria
+
+**Logs:**
+- [ ] Registrar todas as chamadas à API Asaas
+- [ ] Registrar todos os webhooks recebidos
+- [ ] Registrar mudanças de status de pagamento
+- [ ] Manter histórico de tentativas de pagamento
+
+**Dashboard Admin:**
+- [ ] Visualizar pagamentos pendentes/confirmados/expirados
+- [ ] Consultar logs de webhook
+- [ ] Reconciliar pagamentos manualmente
+- [ ] Exportar relatório de pagamentos
+
+### 7. Frontend - Fluxo de Pagamento PIX
+
+**Componentes:**
+- [ ] Dialog de pagamento PIX com QR Code
+- [ ] Contador de tempo para expiração
+- [ ] Botão copiar código PIX
+- [ ] Status em tempo real (polling ou websocket)
+- [ ] Confirmação visual de pagamento aprovado
+
+**Páginas:**
+- [ ] Atualizar página de reservas com botão de pagamento
+- [ ] Página de histórico de pagamentos do cliente
+- [ ] Dashboard admin com visão de pagamentos
+
+### 8. Testes Automatizados
+
+- [ ] Testes unitários para serviço Asaas
+- [ ] Testes de integração para endpoints de pagamento
+- [ ] Testes de webhook
+- [ ] Testes de expiração e reconciliação
+
+---
+
+
+
+---
+
+## 🚀 INTEGRAÇÃO COMPLETA COM ASAAS (28/12/2025)
+
+### Backend - Tabelas do Banco de Dados
+- [x] Criar tabela `asaas_customers` para cache de clientes Asaas
+- [x] Criar tabela `asaas_payments` para registro detalhado de pagamentos
+- [x] Criar tabela `payment_audit_logs` para auditoria
+- [x] Criar tabela `webhook_logs` para logs de webhooks
+- [x] Criar tabela `payment_reconciliations` para reconciliação
+
+### Serviço Asaas Aprimorado
+- [x] Implementar retry com backoff exponencial
+- [x] Validação de CPF/CNPJ
+- [x] Tratamento de erros específicos do Asaas
+- [x] Cache de clientes Asaas no banco
+- [x] Logs de auditoria automáticos
+
+### Endpoints de Pagamento
+- [x] `payments.createPixCharge` - Criar cobrança PIX
+- [x] `payments.getStatus` - Verificar status de pagamento
+- [x] `payments.cancel` - Cancelar cobrança
+- [x] `payments.list` - Listar pagamentos
+- [x] `payments.getPixQrCode` - Obter QR Code PIX
+
+### Webhook Melhorado
+- [x] Suporte a múltiplos tipos de evento
+- [x] Validação de assinatura/token
+- [x] Logs completos de webhook
+- [x] Tratamento de eventos duplicados
+- [x] Atualização automática de status
+
+### Sistema de Expiração e Reconciliação
+- [x] Verificação automática de cobranças expiradas
+- [x] Reconciliação com API do Asaas
+- [x] Atualização de status em lote
+- [x] Logs de reconciliação
+
+### Frontend
+- [x] Componente `PixPaymentDialog` reutilizável
+- [x] Dashboard de pagamentos para admin
+- [x] Visualização de QR Code PIX
+- [x] Status de pagamento em tempo real
+
+### Testes
+- [x] Testes de validação de CPF/CNPJ
+- [x] Testes de mapeamento de status
+- [x] Testes de formatação de data
+- [x] Testes de integração (mocked)
+- [x] 29 testes passando (100% de sucesso)
+
+### Arquivos Criados/Modificados
+- `drizzle/schema.ts` - Tipos de export adicionados
+- `server/_core/asaasService.ts` - Serviço Asaas aprimorado
+- `server/_core/paymentReconciliation.ts` - Sistema de reconciliação
+- `server/paymentsRouter.ts` - Router de pagamentos
+- `server/webhookRouter.ts` - Webhook melhorado
+- `server/payments.test.ts` - 29 testes automatizados
+- `client/src/components/PixPaymentDialog.tsx` - Componente de pagamento PIX
+- `client/src/pages/admin/Pagamentos.tsx` - Dashboard de pagamentos
+

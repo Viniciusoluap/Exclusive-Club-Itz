@@ -25,6 +25,7 @@ import MeusAbastecimentos from "./pages/MeusAbastecimentos";
 import SystemSettings from "./pages/SystemSettings";
 import RoleRedirect from "./components/RoleRedirect";
 import PagamentoDanos from "./pages/PagamentoDanos";
+import Pagamentos from "./pages/admin/Pagamentos";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -44,6 +45,7 @@ function Router() {
       <Route path={"/admin/cobrancas-danos"} component={CobrancasDanos} />
       <Route path={"/admin/solicitacoes-vencimento"} component={SolicitacoesVencimento} />
       <Route path={"/admin/configuracoes"} component={SystemSettings} />
+      <Route path={"/admin/pagamentos"} component={Pagamentos} />
       <Route path={"/employee/reservas"} component={EmployeeReservas} />
       <Route path={"/employee/manutencoes"} component={EmployeeManutencoes} />
       <Route path={"/employee/abastecimentos"} component={EmployeeAbastecimentos} />

@@ -225,6 +225,20 @@
       "when": 1766537392215,
       "tag": "0031_new_wendigo",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1766927815117,
+      "tag": "0032_dizzy_spacker_dave",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1766928803210,
+      "tag": "0033_good_lila_cheney",
+      "breakpoints": true
     }
   ]
 }
