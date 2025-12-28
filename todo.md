@@ -764,3 +764,18 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 - [x] Bug: Corrigir cálculo do estoque do Galão 1 mostrando valor negativo (-225.50 L) - CORRIGIDO em 28/12/2025
 
 - [x] Corrigir lógica do estoque: Estoque = Total Comprado - Total Abastecido (não o inverso)
+
+---
+
+## 🐛 BUG: Média do Preço por Litro Incorreta no Galão (28/12/2025)
+
+**Problema reportado pelo usuário:**
+- O preço médio por litro do Galão 1 mostra R$ 6,50
+- Valores reais no histórico: R$ 6,29 + R$ 6,28 + R$ 6,29 = R$ 18,86 / 3 = R$ 6,287
+- Média correta deveria ser R$ 6,28 ou R$ 6,29
+
+**Tarefas:**
+- [x] Investigar cálculo da média do preço por litro no backend
+- [x] Corrigir lógica de cálculo para usar média ponderada (total_gasto / total_litros)
+- [x] Testar correção (6 testes automatizados passando)
+

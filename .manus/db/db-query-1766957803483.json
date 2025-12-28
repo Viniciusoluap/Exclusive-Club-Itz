@@ -1,0 +1,50 @@
+{
+  "query": "SELECT id, liters_purchased / 100 as litros, notes FROM fuel_purchases WHERE gallon_number = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, liters_purchased / 100 as litros, notes FROM fuel_purchases WHERE gallon_number = 1;",
+  "rows": [
+    {
+      "id": "90001",
+      "litros": "47.6900",
+      "notes": "NULL"
+    },
+    {
+      "id": "120005",
+      "litros": "100.0000",
+      "notes": "Primeira compra"
+    },
+    {
+      "id": "120006",
+      "litros": "50.0000",
+      "notes": "Segunda compra"
+    },
+    {
+      "id": "150001",
+      "litros": "50.0000",
+      "notes": "NULL"
+    },
+    {
+      "id": "150002",
+      "litros": "50.0000",
+      "notes": "NULL"
+    },
+    {
+      "id": "600001",
+      "litros": "100.0000",
+      "notes": "Teste de compra"
+    },
+    {
+      "id": "600002",
+      "litros": "50.5000",
+      "notes": "Teste com decimais"
+    },
+    {
+      "id": "600003",
+      "litros": "75.0000",
+      "notes": "Compra para teste de listagem"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tlitros\tnotes\n90001\t47.6900\tNULL\n120005\t100.0000\tPrimeira compra\n120006\t50.0000\tSegunda compra\n150001\t50.0000\tNULL\n150002\t50.0000\tNULL\n600001\t100.0000\tTeste de compra\n600002\t50.5000\tTeste com decimais\n600003\t75.0000\tCompra para teste de listagem\n",
+  "stderr": "",
+  "execution_time_ms": 178
+}

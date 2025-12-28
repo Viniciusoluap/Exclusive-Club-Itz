@@ -2944,6 +2944,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
     // Endpoint para obter estoque de todos os galões
     // CORRIGIDO: Estoque = Total Comprado - Total Abastecido (calculado dinamicamente)
+    // CORRIGIDO: Preço por litro = Média ponderada (total_gasto / total_litros)
     getGallonStock: adminProcedure
       .query(async () => {
         const db = await import('./db').then(m => m.getDb());
@@ -2953,16 +2954,20 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         
         // Calcular estoque dinamicamente para cada galão
         // Estoque = Total Comprado (fuel_purchases) - Total Abastecido (fuel_records)
+        // Preço/L = Média ponderada (total_gasto / total_litros) das compras
         const stockResult = await db.execute(sql`
           SELECT 
             g.gallon_number,
             g.last_price_per_liter,
             g.updated_at,
             COALESCE(p.total_purchased, 0) as total_purchased,
+            COALESCE(p.total_amount_paid, 0) as total_amount_paid,
             COALESCE(r.total_refueled, 0) as total_refueled
           FROM gallon_stock g
           LEFT JOIN (
-            SELECT gallon_number, SUM(liters_purchased) as total_purchased
+            SELECT gallon_number, 
+                   SUM(liters_purchased) as total_purchased,
+                   SUM(amount_paid) as total_amount_paid
             FROM fuel_purchases
             GROUP BY gallon_number
           ) p ON g.gallon_number = p.gallon_number
@@ -2980,15 +2985,22 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           // Estoque = Comprado - Abastecido (valores em centésimos)
           const totalPurchased = Number(g.total_purchased) || 0;
           const totalRefueled = Number(g.total_refueled) || 0;
+          const totalAmountPaid = Number(g.total_amount_paid) || 0;
           const stockLiters = (totalPurchased - totalRefueled) / 100;
           
-          console.log(`[getGallonStock] Galão ${g.gallon_number}: Comprado=${totalPurchased/100}L, Abastecido=${totalRefueled/100}L, Estoque=${stockLiters}L`);
+          // Calcular média ponderada do preço por litro: total_gasto / total_litros
+          // Se não houver compras, usa o last_price_per_liter como fallback
+          const avgPricePerLiter = totalPurchased > 0 
+            ? (totalAmountPaid / totalPurchased) // já está em centavos/centésimos, resultado em reais
+            : (g.last_price_per_liter || 0) / 100;
+          
+          console.log(`[getGallonStock] Galão ${g.gallon_number}: Comprado=${totalPurchased/100}L, Abastecido=${totalRefueled/100}L, Estoque=${stockLiters}L, Preço/L médio=R$${avgPricePerLiter.toFixed(2)}`);
           
           return {
             id: g.gallon_number,
             gallonNumber: g.gallon_number,
             stockLiters: stockLiters,
-            lastPricePerLiter: (g.last_price_per_liter || 0) / 100,
+            lastPricePerLiter: avgPricePerLiter, // Agora é média ponderada
             updatedAt: g.updated_at,
             // Campos extras para debug
             totalPurchased: totalPurchased / 100,
@@ -2999,6 +3011,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
     // Endpoint para obter estoque de um galão específico
     // CORRIGIDO: Estoque = Total Comprado - Total Abastecido (calculado dinamicamente)
+    // CORRIGIDO: Preço por litro = Média ponderada (total_gasto / total_litros)
     getGallonStockByNumber: publicProcedure
       .input(z.object({
         gallonNumber: z.number().min(1).max(3),
@@ -3011,15 +3024,19 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         
         // Calcular estoque dinamicamente para o galão específico
         // Estoque = Total Comprado (fuel_purchases) - Total Abastecido (fuel_records)
+        // Preço/L = Média ponderada (total_gasto / total_litros) das compras
         const stockResult = await db.execute(sql`
           SELECT 
             g.gallon_number,
             g.last_price_per_liter,
             COALESCE(p.total_purchased, 0) as total_purchased,
+            COALESCE(p.total_amount_paid, 0) as total_amount_paid,
             COALESCE(r.total_refueled, 0) as total_refueled
           FROM gallon_stock g
           LEFT JOIN (
-            SELECT gallon_number, SUM(liters_purchased) as total_purchased
+            SELECT gallon_number, 
+                   SUM(liters_purchased) as total_purchased,
+                   SUM(amount_paid) as total_amount_paid
             FROM fuel_purchases
             WHERE gallon_number = ${input.gallonNumber}
             GROUP BY gallon_number
@@ -3042,14 +3059,21 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         // Estoque = Comprado - Abastecido (valores em centésimos)
         const totalPurchased = Number(gallon.total_purchased) || 0;
         const totalRefueled = Number(gallon.total_refueled) || 0;
+        const totalAmountPaid = Number(gallon.total_amount_paid) || 0;
         const stockLiters = (totalPurchased - totalRefueled) / 100;
         
-        console.log(`[getGallonStockByNumber] Galão ${input.gallonNumber}: Comprado=${totalPurchased/100}L, Abastecido=${totalRefueled/100}L, Estoque=${stockLiters}L`);
+        // Calcular média ponderada do preço por litro: total_gasto / total_litros
+        // Se não houver compras, usa o last_price_per_liter como fallback
+        const avgPricePerLiter = totalPurchased > 0 
+          ? (totalAmountPaid / totalPurchased) // já está em centavos/centésimos, resultado em reais
+          : (gallon.last_price_per_liter || 0) / 100;
+        
+        console.log(`[getGallonStockByNumber] Galão ${input.gallonNumber}: Comprado=${totalPurchased/100}L, Abastecido=${totalRefueled/100}L, Estoque=${stockLiters}L, Preço/L médio=R$${avgPricePerLiter.toFixed(2)}`);
         
         return {
           gallonNumber: gallon.gallon_number,
           stockLiters: stockLiters,
-          lastPricePerLiter: (gallon.last_price_per_liter || 0) / 100,
+          lastPricePerLiter: avgPricePerLiter, // Agora é média ponderada
           totalPurchased: totalPurchased / 100,
           totalRefueled: totalRefueled / 100,
         };

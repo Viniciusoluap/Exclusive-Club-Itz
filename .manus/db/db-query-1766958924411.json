@@ -1,0 +1,82 @@
+{
+  "query": "\nSELECT id, gallon_number, liters_purchased / 100 as litros, amount_paid / 100 as valor, notes, DATE(created_at) as data\nFROM fuel_purchases \nORDER BY created_at DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT id, gallon_number, liters_purchased / 100 as litros, amount_paid / 100 as valor, notes, DATE(created_at) as data\nFROM fuel_purchases \nORDER BY created_at DESC;\n",
+  "rows": [
+    {
+      "id": "600001",
+      "gallon_number": "1",
+      "litros": "100.0000",
+      "valor": "650.0000",
+      "notes": "Teste de compra",
+      "data": "2025-12-28"
+    },
+    {
+      "id": "600002",
+      "gallon_number": "1",
+      "litros": "50.5000",
+      "valor": "328.2500",
+      "notes": "Teste com decimais",
+      "data": "2025-12-28"
+    },
+    {
+      "id": "600003",
+      "gallon_number": "1",
+      "litros": "75.0000",
+      "valor": "487.5000",
+      "notes": "Compra para teste de listagem",
+      "data": "2025-12-28"
+    },
+    {
+      "id": "540005",
+      "gallon_number": "2",
+      "litros": "50.0000",
+      "valor": "314.0000",
+      "notes": "NULL",
+      "data": "2025-12-28"
+    },
+    {
+      "id": "150002",
+      "gallon_number": "1",
+      "litros": "50.0000",
+      "valor": "314.5000",
+      "notes": "NULL",
+      "data": "2025-12-23"
+    },
+    {
+      "id": "150001",
+      "gallon_number": "1",
+      "litros": "50.0000",
+      "valor": "314.0000",
+      "notes": "NULL",
+      "data": "2025-12-23"
+    },
+    {
+      "id": "120005",
+      "gallon_number": "1",
+      "litros": "100.0000",
+      "valor": "650.0000",
+      "notes": "Primeira compra",
+      "data": "2025-12-23"
+    },
+    {
+      "id": "120006",
+      "gallon_number": "1",
+      "litros": "50.0000",
+      "valor": "325.0000",
+      "notes": "Segunda compra",
+      "data": "2025-12-23"
+    },
+    {
+      "id": "90001",
+      "gallon_number": "1",
+      "litros": "47.6900",
+      "valor": "300.0000",
+      "notes": "NULL",
+      "data": "2025-12-21"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tgallon_number\tlitros\tvalor\tnotes\tdata\n600001\t1\t100.0000\t650.0000\tTeste de compra\t2025-12-28\n600002\t1\t50.5000\t328.2500\tTeste com decimais\t2025-12-28\n600003\t1\t75.0000\t487.5000\tCompra para teste de listagem\t2025-12-28\n540005\t2\t50.0000\t314.0000\tNULL\t2025-12-28\n150002\t1\t50.0000\t314.5000\tNULL\t2025-12-23\n150001\t1\t50.0000\t314.0000\tNULL\t2025-12-23\n120005\t1\t100.0000\t650.0000\tPrimeira compra\t2025-12-23\n120006\t1\t50.0000\t325.0000\tSegunda compra\t2025-12-23\n90001\t1\t47.6900\t300.0000\tNULL\t2025-12-21\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

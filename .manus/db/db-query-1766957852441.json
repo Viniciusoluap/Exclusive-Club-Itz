@@ -1,0 +1,18 @@
+{
+  "query": "\nSELECT \n  'Compras' as tipo,\n  SUM(liters_purchased) / 100 as total_litros\nFROM fuel_purchases WHERE gallon_number = 1\nUNION ALL\nSELECT \n  'Abastecimentos' as tipo,\n  SUM(liters) / 100 as total_litros\nFROM fuel_records WHERE gallon_number = 1;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  'Compras' as tipo,\n  SUM(liters_purchased) / 100 as total_litros\nFROM fuel_purchases WHERE gallon_number = 1\nUNION ALL\nSELECT \n  'Abastecimentos' as tipo,\n  SUM(liters) / 100 as total_litros\nFROM fuel_records WHERE gallon_number = 1;\n",
+  "rows": [
+    {
+      "tipo": "Abastecimentos",
+      "total_litros": "136.9200"
+    },
+    {
+      "tipo": "Compras",
+      "total_litros": "523.1900"
+    }
+  ],
+  "messages": [],
+  "stdout": "tipo\ttotal_litros\nAbastecimentos\t136.9200\nCompras\t523.1900\n",
+  "stderr": "",
+  "execution_time_ms": 71
+}
