@@ -779,3 +779,25 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 - [x] Corrigir lógica de cálculo para usar média ponderada (total_gasto / total_litros)
 - [x] Testar correção (6 testes automatizados passando)
 
+
+
+---
+
+## 🔧 NOVA FUNCIONALIDADE: Edição de Manutenção (28/12/2025)
+
+**Objetivo:** Permitir editar manutenções existentes com a mesma lógica de criação (cancelar reservas conflitantes e enviar e-mails)
+
+**Backend:**
+- [x] Criar endpoint `maintenance.update` para editar manutenção
+- [x] Implementar lógica de cancelamento de reservas conflitantes no novo período
+- [x] Enviar e-mail para clientes afetados avisando do cancelamento
+- [x] Enviar e-mail para admin com resumo das alterações
+
+**Frontend:**
+- [x] Adicionar botão de "Editar" em cada card de manutenção
+- [x] Criar modal de edição reutilizando componentes do modal de criação
+- [x] Conectar modal ao endpoint de atualização
+
+**Testes:**
+- [x] Criar testes automatizados para o endpoint de edição (8 testes passando)
+
