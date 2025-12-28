@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `webhook_logs` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `source` varchar(50) NOT NULL,\n  `event_type` varchar(100) NOT NULL,\n  `payload` text NOT NULL,\n  `headers` text,\n  `processed` boolean NOT NULL DEFAULT false,\n  `processed_at` timestamp,\n  `error_message` text,\n  `retry_count` int NOT NULL DEFAULT 0,\n  `related_payment_id` int,\n  `ip_address` varchar(45),\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `webhook_logs_id` PRIMARY KEY(`id`)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute CREATE TABLE IF NOT EXISTS `webhook_logs` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `source` varchar(50) NOT NULL,\n  `event_type` varchar(100) NOT NULL,\n  `payload` text NOT NULL,\n  `headers` text,\n  `processed` boolean NOT NULL DEFAULT false,\n  `processed_at` timestamp,\n  `error_message` text,\n  `retry_count` int NOT NULL DEFAULT 0,\n  `related_payment_id` int,\n  `ip_address` varchar(45),\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `webhook_logs_id` PRIMARY KEY(`id`)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 184
+}

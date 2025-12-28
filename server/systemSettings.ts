@@ -92,7 +92,7 @@ export async function setSetting(
           value: encryptedValue,
           description: description || null,
           updatedBy: updatedBy || null,
-          updatedAt: new Date(),
+          updatedAt: new Date().toISOString(),
         },
       });
   } catch (error) {
@@ -127,7 +127,7 @@ export async function listSettings(): Promise<
     key: string;
     description: string | null;
     updatedBy: string | null;
-    updatedAt: Date;
+    updatedAt: string;
   }>
 > {
   const db = await getDb();

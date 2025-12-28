@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { webhookRouter } from "./webhookRouter";
+import { paymentsRouter } from "./paymentsRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -53,6 +54,7 @@ const employeeProcedure = protectedProcedure.use(({ ctx, next }) => {
 export const appRouter = router({
   system: systemRouter,
   webhooks: webhookRouter,
+  payments: paymentsRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -167,10 +169,10 @@ export const appRouter = router({
         })).optional(),
       }))
       .mutation(async ({ input }) => {
-        const { id, quotas, ...data } = input;
+        const { id, quotas, isActive, ...data } = input;
         
         // Update client basic info
-        await db.updateAllowedClient(id, data);
+        await db.updateAllowedClient(id, { ...data, isActive: isActive !== undefined ? (isActive ? 1 : 0) : undefined });
         
         // Update quotas if provided
         if (quotas) {
@@ -304,8 +306,8 @@ export const appRouter = router({
         isActive: z.boolean().optional(),
       }))
       .mutation(async ({ input }) => {
-        const { id, ...data } = input;
-        await db.updateVessel(id, data);
+        const { id, isActive, ...data } = input;
+        await db.updateVessel(id, { ...data, isActive: isActive !== undefined ? (isActive ? 1 : 0) : undefined });
         return { success: true };
       }),
 
@@ -1339,7 +1341,7 @@ Nenhuma reserva foi afetada.
             email: input.email,
             phone: input.phone || null,
             vesselIds: input.vesselIds ? JSON.stringify(input.vesselIds) : null,
-            isActive: true,
+            isActive: 1,
           });
           return { success: true };
         } catch (error: any) {
@@ -3419,7 +3421,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               description: null,
               failedItems: JSON.stringify(input.failedItems),
               amount: input.amount.toString(),
-              dueDate: new Date(dueDate),
+              dueDate: new Date(dueDate).toISOString(),
               asaasChargeId: asaasCharge.id,
               paymentStatus: 'pending',
               receiptUrl: null,
@@ -3507,7 +3509,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 description: input.description,
                 failedItems: null,
                 amount: individualAmount.toString(),
-                dueDate: new Date(dueDate),
+                dueDate: new Date(dueDate).toISOString(),
                 asaasChargeId: asaasCharge.id,
                 paymentStatus: 'pending',
                 receiptUrl: input.receiptUrl || null,
@@ -4150,7 +4152,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               description: null,
               failedItems: JSON.stringify(failedItems),
               amount: installmentAmount.toString(),
-              dueDate: dueDate,
+              dueDate: dueDate.toISOString(),
               asaasChargeId: asaasCharge.id,
               paymentStatus: 'pending',
               receiptUrl: null,

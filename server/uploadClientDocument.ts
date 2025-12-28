@@ -1,4 +1,6 @@
-import type { User } from "../drizzle/schema";
+import type { users } from "../drizzle/schema";
+
+type User = typeof users.$inferSelect;
 
 interface AuthRequest {
   user?: User;

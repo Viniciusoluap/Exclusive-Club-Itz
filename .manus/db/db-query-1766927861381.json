@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `payment_audit_logs` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `payment_id` int NOT NULL,\n  `asaas_payment_id` varchar(100),\n  `action` varchar(50) NOT NULL,\n  `old_status` varchar(30),\n  `new_status` varchar(30),\n  `details` text,\n  `source` varchar(30) NOT NULL,\n  `performed_by` varchar(320),\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `payment_audit_logs_id` PRIMARY KEY(`id`)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute CREATE TABLE IF NOT EXISTS `payment_audit_logs` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `payment_id` int NOT NULL,\n  `asaas_payment_id` varchar(100),\n  `action` varchar(50) NOT NULL,\n  `old_status` varchar(30),\n  `new_status` varchar(30),\n  `details` text,\n  `source` varchar(30) NOT NULL,\n  `performed_by` varchar(320),\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  CONSTRAINT `payment_audit_logs_id` PRIMARY KEY(`id`)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 254
+}

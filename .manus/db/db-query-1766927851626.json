@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `asaas_customers` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `client_email` varchar(320) NOT NULL,\n  `asaas_customer_id` varchar(100) NOT NULL,\n  `cpf_cnpj` varchar(18),\n  `name` text,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  `updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `asaas_customers_id` PRIMARY KEY(`id`),\n  CONSTRAINT `asaas_customers_client_email_unique` UNIQUE(`client_email`),\n  CONSTRAINT `asaas_customers_asaas_customer_id_unique` UNIQUE(`asaas_customer_id`)\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute CREATE TABLE IF NOT EXISTS `asaas_customers` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `client_email` varchar(320) NOT NULL,\n  `asaas_customer_id` varchar(100) NOT NULL,\n  `cpf_cnpj` varchar(18),\n  `name` text,\n  `created_at` timestamp NOT NULL DEFAULT (now()),\n  `updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n  CONSTRAINT `asaas_customers_id` PRIMARY KEY(`id`),\n  CONSTRAINT `asaas_customers_client_email_unique` UNIQUE(`client_email`),\n  CONSTRAINT `asaas_customers_asaas_customer_id_unique` UNIQUE(`asaas_customer_id`)\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 244
+}
