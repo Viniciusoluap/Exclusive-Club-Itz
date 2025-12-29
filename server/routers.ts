@@ -3247,10 +3247,9 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             stockLiters: stockLiters,
             lastPricePerLiter: avgPricePerLiter, // Agora é média ponderada
             updatedAt: g.updated_at,
-            // Campos extras para cálculos no frontend
-            totalPurchased: totalPurchased / 100, // litros comprados
-            totalRefueled: totalRefueled / 100, // litros abastecidos
-            totalAmountPaid: totalAmountPaid / 100, // valor pago em reais
+            // Campos extras para debug
+            totalPurchased: totalPurchased / 100,
+            totalRefueled: totalRefueled / 100,
           };
         });
       }),

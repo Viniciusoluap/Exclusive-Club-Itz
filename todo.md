@@ -938,16 +938,3 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 - [x] Corrigir exibição do estoque dos galões (alterado de adminProcedure para employeeProcedure)
 - [x] Testar fluxo completo
 
-
----
-
-## 🐛 BUG: Cálculos incorretos na aba Abastecimentos do Admin (29/12/2025)
-
-**Problema reportado pelo usuário:**
-- Total Cobrado mostra R$ 0.00 ao invés de R$ 1.228,73 (deveria ser Pendente + Total Recebido)
-- Preço/L atual mostra R$ 4.19 ao invés de R$ 6.28 (deveria ser média do preço por litro de todos os galões)
-
-**Tarefas:**
-- [x] Corrigir cálculo do Total Cobrado (deve ser Pendente + Total Recebido)
-- [x] Corrigir cálculo do Preço/L atual (deve ser média do preço por litro de todos os galões)
-
