@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, gallon_number, liters_purchased/100 as litros, amount_paid/100 as valor, price_per_liter/100 as preco_litro, purchased_at, purchased_by_name, notes FROM fuel_purchases WHERE gallon_number = 1 ORDER BY purchased_at DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, gallon_number, liters_purchased/100 as litros, amount_paid/100 as valor, price_per_liter/100 as preco_litro, purchased_at, purchased_by_name, notes FROM fuel_purchases WHERE gallon_number = 1 ORDER BY purchased_at DESC;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'purchased_by_name' in 'field list'"
+  ]
+}

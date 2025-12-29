@@ -1,0 +1,15 @@
+{
+  "query": "SELECT \n  (SELECT SUM(liters_purchased)/100 FROM fuel_purchases WHERE gallon_number = 1) as total_comprado,\n  (SELECT SUM(liters)/100 FROM fuel_records WHERE gallon_number = 1) as total_abastecido_fuel_records,\n  (SELECT COALESCE(SUM(liters_used)/100, 0) FROM fuel_record_containers WHERE gallon_number = 1) as total_abastecido_containers;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  (SELECT SUM(liters_purchased)/100 FROM fuel_purchases WHERE gallon_number = 1) as total_comprado,\n  (SELECT SUM(liters)/100 FROM fuel_records WHERE gallon_number = 1) as total_abastecido_fuel_records,\n  (SELECT COALESCE(SUM(liters_used)/100, 0) FROM fuel_record_containers WHERE gallon_number = 1) as total_abastecido_containers;",
+  "rows": [
+    {
+      "total_comprado": "297.6900",
+      "total_abastecido_fuel_records": "136.9200",
+      "total_abastecido_containers": "0.0000"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_comprado\ttotal_abastecido_fuel_records\ttotal_abastecido_containers\n297.6900\t136.9200\t0.0000\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

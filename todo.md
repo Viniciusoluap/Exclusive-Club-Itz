@@ -860,3 +860,65 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 - [x] Testar desconto correto de estoque de cada galão
 - [x] Testar fluxo completo de registro com 2+ galões
 
+
+
+---
+
+## 🐛 BUG: Estoque do Galão não considera fuel_record_containers (29/12/2025)
+
+**Problema reportado pelo usuário:**
+- O estoque do Galão 1 deveria ser 10,77 litros
+- A conta correta é: Total de litros comprados - Total de litros abastecidos do mesmo galão
+- O cálculo atual só considera a tabela `fuel_records`, mas não a tabela `fuel_record_containers`
+- Quando um abastecimento usa múltiplos galões, os litros de cada galão são salvos em `fuel_record_containers`
+
+**Tarefas:**
+- [ ] Corrigir endpoint `getGallonStock` para somar litros de `fuel_records` + `fuel_record_containers`
+- [ ] Corrigir endpoint `getGallonStockByNumber` da mesma forma
+- [ ] Testar cálculo do estoque após correção
+
+
+
+---
+
+## 🚀 Implementação: Múltiplos Galões na Página do Admin (29/12/2025)
+
+**Objetivo:** Permitir que o admin registre abastecimentos com múltiplos galões, similar ao funcionário
+
+**Tarefas:**
+- [ ] Atualizar formulário de registro de abastecimento do admin para suportar múltiplos galões
+- [ ] Adicionar botão "+ Adicionar outro Galão" no formulário
+- [ ] Exibir resumo com total de litros e valor de todos os galões
+- [ ] Atualizar visualização dos registros para mostrar todos os galões usados
+- [ ] Testar fluxo completo de abastecimento com múltiplos galões
+
+
+---
+
+## ✅ CONCLUÍDO: Múltiplos Galões na Página do Admin (29/12/2025)
+
+**Problema reportado pelo usuário:**
+- Funcionalidade de múltiplos galões foi implementada apenas na página do funcionário
+- Página do admin ainda usava o modo antigo (galão único)
+
+**Tarefas:**
+- [x] Analisar implementação de múltiplos galões na página do funcionário
+- [x] Implementar mesma funcionalidade na página do admin (Abastecimento.tsx)
+- [x] Adicionar checkbox "Usar múltiplos galões neste abastecimento"
+- [x] Implementar interface ContainerData para gerenciar dados de cada galão
+- [x] Implementar funções addContainer/removeContainer/updateContainer
+- [x] Implementar upload de fotos para cada galão
+- [x] Implementar cálculo de litros por galão e total
+- [x] Implementar resumo do abastecimento com todos os galões
+- [x] Manter compatibilidade com modo galão único (antigo)
+
+**Funcionalidades Implementadas:**
+- Toggle para ativar modo múltiplos galões
+- Adicionar até 3 galões por abastecimento
+- Cada galão com: seleção, litros iniciais, peso cheio, peso após, fotos antes/depois
+- Cálculo automático de litros consumidos por galão
+- Resumo com total de litros e valor final
+- Upload de fotos para S3 para cada galão
+- Validação de campos obrigatórios
+- Compatibilidade total com backend existente
+

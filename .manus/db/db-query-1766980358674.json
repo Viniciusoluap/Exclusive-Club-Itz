@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, gallon_number, liters/100 as litros, client_name, created_at FROM fuel_records WHERE gallon_number = 1 ORDER BY created_at;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, gallon_number, liters/100 as litros, client_name, created_at FROM fuel_records WHERE gallon_number = 1 ORDER BY created_at;",
+  "rows": [
+    {
+      "id": "780001",
+      "gallon_number": "1",
+      "litros": "35.6400",
+      "client_name": "EDILSON DA CONCEIÇÃO COSTA",
+      "created_at": "2025-12-21 22:41:11"
+    },
+    {
+      "id": "780002",
+      "gallon_number": "1",
+      "litros": "29.0000",
+      "client_name": "ERISVALDO ALVES SILVA",
+      "created_at": "2025-12-21 22:41:46"
+    },
+    {
+      "id": "780003",
+      "gallon_number": "1",
+      "litros": "15.0000",
+      "client_name": "Laécio Silversat",
+      "created_at": "2025-12-21 22:42:08"
+    },
+    {
+      "id": "780004",
+      "gallon_number": "1",
+      "litros": "37.0600",
+      "client_name": "Laercio Oliveira",
+      "created_at": "2025-12-21 22:43:04"
+    },
+    {
+      "id": "1140001",
+      "gallon_number": "1",
+      "litros": "20.2200",
+      "client_name": "Stenio Teixeiras",
+      "created_at": "2025-12-24 18:37:31"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tgallon_number\tlitros\tclient_name\tcreated_at\n780001\t1\t35.6400\tEDILSON DA CONCEIÇÃO COSTA\t2025-12-21 22:41:11\n780002\t1\t29.0000\tERISVALDO ALVES SILVA\t2025-12-21 22:41:46\n780003\t1\t15.0000\tLaécio Silversat\t2025-12-21 22:42:08\n780004\t1\t37.0600\tLaercio Oliveira\t2025-12-21 22:43:04\n1140001\t1\t20.2200\tStenio Teixeiras\t2025-12-24 18:37:31\n",
+  "stderr": "",
+  "execution_time_ms": 50
+}

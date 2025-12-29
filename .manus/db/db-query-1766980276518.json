@@ -1,0 +1,15 @@
+{
+  "query": "SELECT \n  (SELECT SUM(liters_purchased)/100 FROM fuel_purchases WHERE gallon_number = 1) as comprado_galao1,\n  (SELECT SUM(liters)/100 FROM fuel_records WHERE gallon_number = 1) as abastecido_galao1,\n  (SELECT SUM(liters_purchased)/100 FROM fuel_purchases WHERE gallon_number = 1) - (SELECT COALESCE(SUM(liters)/100, 0) FROM fuel_records WHERE gallon_number = 1) as estoque_galao1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  (SELECT SUM(liters_purchased)/100 FROM fuel_purchases WHERE gallon_number = 1) as comprado_galao1,\n  (SELECT SUM(liters)/100 FROM fuel_records WHERE gallon_number = 1) as abastecido_galao1,\n  (SELECT SUM(liters_purchased)/100 FROM fuel_purchases WHERE gallon_number = 1) - (SELECT COALESCE(SUM(liters)/100, 0) FROM fuel_records WHERE gallon_number = 1) as estoque_galao1;",
+  "rows": [
+    {
+      "comprado_galao1": "297.6900",
+      "abastecido_galao1": "136.9200",
+      "estoque_galao1": "160.7700"
+    }
+  ],
+  "messages": [],
+  "stdout": "comprado_galao1\tabastecido_galao1\testoque_galao1\n297.6900\t136.9200\t160.7700\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

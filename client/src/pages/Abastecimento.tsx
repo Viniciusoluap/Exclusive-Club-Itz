@@ -9,10 +9,23 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText, Mail, DollarSign, AlertCircle, ExternalLink, Settings, RefreshCw, CheckCircle, XCircle, Clock, Banknote } from "lucide-react";
+import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText, Mail, DollarSign, AlertCircle, ExternalLink, Settings, RefreshCw, CheckCircle, XCircle, Clock, Banknote, Upload } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 import FuelManagementDialog from "@/components/FuelManagementDialog";
+
+// Interface para cada galão no abastecimento (múltiplos galões)
+interface ContainerData {
+  id: string;
+  gallonNumber: number;
+  litersInitial: string;
+  weightFull: string;
+  weightAfter: string;
+  photoBeforeUrl: string;
+  photoAfterUrl: string;
+  photoBeforeFile: File | null;
+  photoAfterFile: File | null;
+}
 
 export default function Abastecimento() {
   const utils = trpc.useUtils();
@@ -28,11 +41,10 @@ export default function Abastecimento() {
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
   const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
-  // budgetAmount removido - orçamento agora é calculado automaticamente
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   
-  // Estados para método de abastecimento por pesagem
+  // Estados para método de abastecimento por pesagem (modo antigo - galão único)
   const [useWeightMethod, setUseWeightMethod] = useState(false);
   const [litersInitial, setLitersInitial] = useState("");
   const [weightFull, setWeightFull] = useState("");
@@ -43,17 +55,22 @@ export default function Abastecimento() {
   const [photoAfterUrl, setPhotoAfterUrl] = useState<string | null>(null);
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
   
-  // Estado para seleção de galão
+  // Estado para seleção de galão (modo antigo)
   const [selectedGallon, setSelectedGallon] = useState<string>("1");
+  
+  // Estados para múltiplos galões (modo novo)
+  const [useMultipleGallons, setUseMultipleGallons] = useState(false);
+  const [containers, setContainers] = useState<ContainerData[]>([]);
+  const [uploadingContainerPhotos, setUploadingContainerPhotos] = useState(false);
 
   // Estado de filtro de mês/ano
   const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1); // 1-12
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-  const currentMonthYear = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`; // YYYY-MM
+  const currentMonthYear = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
 
   const trpcAny = trpc as any;
-  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas as últimas 6 reservas utilizadas
+  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] };
   const { data: fuelRecords, refetch } = trpcAny.fuelRecords?.list.useQuery({ 
     month: selectedMonth, 
     year: selectedYear 
@@ -63,19 +80,18 @@ export default function Abastecimento() {
   const { data: budget } = trpcAny.fuelBudget?.get.useQuery({ monthYear: currentMonthYear }) || { data: null };
   const { data: gallonStock, refetch: refetchGallonStock } = trpcAny.fuelPurchases?.getGallonStock.useQuery() || { data: [] };
 
-  // Refetch quando mês/ano mudar
   useEffect(() => {
     refetch();
   }, [selectedMonth, selectedYear]);
 
-  // Debug: ver se recentBookings está vindo
   console.log('[Abastecimento] recentBookings:', recentBookings);
   console.log('[Abastecimento] fuelRecords:', fuelRecords);
   console.log('[Abastecimento] vessels:', vessels);
 
   const createMutation = trpcAny.fuelRecords?.create.useMutation({
     onSuccess: (data: any) => {
-      toast.success(`Abastecimento registrado no Galão ${selectedGallon}! Valor total: R$ ${data.totalCost.toFixed(2)}`);
+      const gallonsUsed = data.containersCount || 1;
+      toast.success(`Abastecimento registrado com ${gallonsUsed} galão(ões)! Total: ${data.totalLiters?.toFixed(2) || data.liters?.toFixed(2) || 0}L - R$ ${data.totalCost?.toFixed(2) || 0}`);
       setIsCreateDialogOpen(false);
       resetForm();
       refetch();
@@ -101,7 +117,6 @@ export default function Abastecimento() {
   const generateReportMutation = trpcAny.fuelRecords?.generateReport.useMutation({
     onSuccess: (data: any) => {
       try {
-        // Converter base64 para Blob
         const byteCharacters = atob(data.pdf);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
@@ -110,21 +125,17 @@ export default function Abastecimento() {
         const byteArray = new Uint8Array(byteNumbers);
         const blob = new Blob([byteArray], { type: 'application/pdf' });
         
-        // Criar URL do blob
         const blobUrl = URL.createObjectURL(blob);
         const fileName = data.filename || `relatorio-abastecimentos-${new Date().toISOString().split('T')[0]}.pdf`;
         
-        // Criar link de download
         const downloadLink = document.createElement('a');
         downloadLink.href = blobUrl;
         downloadLink.download = fileName;
         downloadLink.style.display = 'none';
         
-        // Adicionar ao DOM, clicar e remover
         document.body.appendChild(downloadLink);
         downloadLink.click();
         
-        // Limpar após um delay
         setTimeout(() => {
           document.body.removeChild(downloadLink);
           URL.revokeObjectURL(blobUrl);
@@ -199,30 +210,25 @@ export default function Abastecimento() {
 
   const handleMarkAsPaid = (id: number) => {
     const note = prompt('Observação sobre o pagamento (opcional):');
-    if (note !== null) { // null = cancelou, string vazia = confirmou sem observação
+    if (note !== null) {
       markAsPaidMutation.mutate({ id, note: note || undefined });
     }
   };
-
-  // setBudgetMutation removido - orçamento agora é calculado automaticamente
 
   // Preencher preço por litro e litros iniciais automaticamente ao abrir o dialog ou mudar galão
   useEffect(() => {
     if (isCreateDialogOpen && gallonStock && gallonStock.length > 0) {
       const gallon = gallonStock.find((g: any) => g.gallonNumber === parseInt(selectedGallon));
       if (gallon) {
-        // Preencher preço se houver preço válido
         if (gallon.lastPricePerLiter) {
           setPricePerLiter(gallon.lastPricePerLiter.toFixed(2));
         }
-        // Preencher litros iniciais com o estoque do galão selecionado
         if (gallon.stockLiters !== undefined && gallon.stockLiters !== null) {
           setLitersInitial(gallon.stockLiters.toFixed(2));
           console.log(`✅ Galão ${selectedGallon} - Litros iniciais: ${gallon.stockLiters.toFixed(2)}L, Preço/L: R$${gallon.lastPricePerLiter?.toFixed(2)}`);
         }
       }
     } else if (isCreateDialogOpen && budget) {
-      // Fallback para budget se gallonStock não estiver disponível
       if (budget.lastPricePerLiter) {
         setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
       }
@@ -232,13 +238,153 @@ export default function Abastecimento() {
     }
   }, [isCreateDialogOpen, selectedGallon, gallonStock, budget]);
 
+  // Inicializar container ao ativar múltiplos galões
+  useEffect(() => {
+    if (useMultipleGallons && containers.length === 0) {
+      addContainer();
+    }
+  }, [useMultipleGallons]);
+
+  // Atualizar litros iniciais dos containers quando gallonStock mudar
+  useEffect(() => {
+    if (gallonStock && gallonStock.length > 0 && containers.length > 0) {
+      setContainers(prev => prev.map(container => {
+        const gallon = gallonStock.find((g: any) => g.gallonNumber === container.gallonNumber);
+        if (gallon && gallon.stockLiters !== undefined) {
+          return { ...container, litersInitial: gallon.stockLiters.toFixed(2) };
+        }
+        return container;
+      }));
+    }
+  }, [gallonStock]);
+
+  // Funções para gerenciar múltiplos galões
+  const addContainer = () => {
+    const usedGallons = containers.map(c => c.gallonNumber);
+    let nextGallon = 1;
+    for (let i = 1; i <= 3; i++) {
+      if (!usedGallons.includes(i)) {
+        nextGallon = i;
+        break;
+      }
+    }
+    
+    const gallon = gallonStock?.find((g: any) => g.gallonNumber === nextGallon);
+    const litersInitialValue = gallon?.stockLiters?.toFixed(2) || "";
+    
+    const newContainer: ContainerData = {
+      id: `container-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      gallonNumber: nextGallon,
+      litersInitial: litersInitialValue,
+      weightFull: "",
+      weightAfter: "",
+      photoBeforeUrl: "",
+      photoAfterUrl: "",
+      photoBeforeFile: null,
+      photoAfterFile: null,
+    };
+    
+    setContainers(prev => [...prev, newContainer]);
+    
+    // Atualizar preço se for o primeiro galão
+    if (containers.length === 0 && gallon?.lastPricePerLiter) {
+      setPricePerLiter(gallon.lastPricePerLiter.toFixed(2));
+    }
+  };
+
+  const removeContainer = (id: string) => {
+    if (containers.length <= 1) {
+      toast.error("É necessário pelo menos um galão");
+      return;
+    }
+    setContainers(prev => prev.filter(c => c.id !== id));
+  };
+
+  const updateContainer = (id: string, field: keyof ContainerData, value: any) => {
+    setContainers(prev => prev.map(c => {
+      if (c.id === id) {
+        const updated = { ...c, [field]: value };
+        
+        if (field === 'gallonNumber') {
+          const gallon = gallonStock?.find((g: any) => g.gallonNumber === value);
+          if (gallon?.stockLiters !== undefined) {
+            updated.litersInitial = gallon.stockLiters.toFixed(2);
+          }
+        }
+        
+        return updated;
+      }
+      return c;
+    }));
+  };
+
+  // Upload de fotos para containers
+  const handleContainerPhotoUpload = async (containerId: string, file: File, type: 'before' | 'after') => {
+    setUploadingContainerPhotos(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload-receipt', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Erro ao fazer upload da foto');
+      }
+      
+      const data = await response.json();
+      
+      setContainers(prev => prev.map(c => {
+        if (c.id === containerId) {
+          if (type === 'before') {
+            return { ...c, photoBeforeUrl: data.url, photoBeforeFile: file };
+          } else {
+            return { ...c, photoAfterUrl: data.url, photoAfterFile: file };
+          }
+        }
+        return c;
+      }));
+      
+      toast.success(`Foto ${type === 'before' ? 'ANTES' : 'DEPOIS'} enviada!`);
+    } catch (error: any) {
+      toast.error(`Erro ao enviar foto: ${error.message}`);
+    } finally {
+      setUploadingContainerPhotos(false);
+    }
+  };
+
+  // Calcular litros para cada container
+  const calculateLitersForContainer = (container: ContainerData) => {
+    const litersInit = parseFloat(container.litersInitial) || 0;
+    const wFull = parseFloat(container.weightFull) || 0;
+    const wAfter = parseFloat(container.weightAfter);
+    
+    if (!litersInit || !wFull || isNaN(wAfter) || wFull <= 0) {
+      return 0;
+    }
+    
+    const weightConsumed = wFull - wAfter;
+    if (weightConsumed <= 0) return 0;
+    
+    return (weightConsumed / wFull) * litersInit;
+  };
+
+  // Verificar quais galões já estão em uso
+  const getAvailableGallons = (currentContainerId: string) => {
+    const usedGallons = containers
+      .filter(c => c.id !== currentContainerId)
+      .map(c => c.gallonNumber);
+    return [1, 2, 3].filter(num => !usedGallons.includes(num));
+  };
+
   const resetForm = () => {
     setSelectedBookingId(null);
     setLiters("");
     setPricePerLiter("");
     setNotes("");
     setReceiptFile(null);
-    // Limpar campos de pesagem
     setUseWeightMethod(false);
     setLitersInitial("");
     setWeightFull("");
@@ -247,8 +393,9 @@ export default function Abastecimento() {
     setPhotoAfter(null);
     setPhotoBeforeUrl(null);
     setPhotoAfterUrl(null);
-    // Resetar galão para 1
     setSelectedGallon("1");
+    setUseMultipleGallons(false);
+    setContainers([]);
   };
 
   const handleDeleteClick = (id: number) => {
@@ -269,11 +416,9 @@ export default function Abastecimento() {
   };
 
   const handleSelectAll = () => {
-    // Aplicar filtro de visualização
     const displayRecords = showAllRecords ? fuelRecords : fuelRecords?.slice(0, 10);
     const displayIds = displayRecords?.map((r: any) => r.id) || [];
     
-    // Se todos os registros visíveis estão selecionados, desmarcar todos
     const allDisplayedSelected = displayIds.every((id: number) => selectedIds.includes(id));
     
     if (allDisplayedSelected && selectedIds.length > 0) {
@@ -305,7 +450,57 @@ export default function Abastecimento() {
       return;
     }
 
-    // Validar campos de pesagem se o método estiver ativo
+    // MODO MÚLTIPLOS GALÕES
+    if (useMultipleGallons) {
+      if (containers.length === 0) {
+        toast.error("Adicione pelo menos um galão");
+        return;
+      }
+      
+      // Validar cada container
+      for (let i = 0; i < containers.length; i++) {
+        const c = containers[i];
+        if (!c.litersInitial || !c.weightFull || c.weightAfter === "") {
+          toast.error(`Galão ${i + 1}: Preencha todos os campos de pesagem`);
+          return;
+        }
+        if (!c.photoBeforeUrl || !c.photoAfterUrl) {
+          toast.error(`Galão ${i + 1}: Envie as fotos da balança (antes e depois)`);
+          return;
+        }
+        if (parseFloat(c.weightAfter) >= parseFloat(c.weightFull)) {
+          toast.error(`Galão ${i + 1}: O peso após deve ser menor que o peso cheio`);
+          return;
+        }
+      }
+      
+      if (!pricePerLiter) {
+        toast.error("Preencha o preço por litro");
+        return;
+      }
+
+      // Preparar dados dos containers para enviar
+      const containersData = containers.map(c => ({
+        gallonNumber: c.gallonNumber,
+        litersInitial: parseFloat(c.litersInitial),
+        weightFull: parseFloat(c.weightFull),
+        weightAfter: parseFloat(c.weightAfter),
+        photoBeforeUrl: c.photoBeforeUrl,
+        photoAfterUrl: c.photoAfterUrl,
+      }));
+
+      createMutation.mutate({
+        bookingId: selectedBookingId,
+        vesselId: booking.vesselId,
+        pricePerLiter: parseFloat(pricePerLiter),
+        notes: notes || undefined,
+        gallonNumber: containers[0].gallonNumber,
+        containers: containersData,
+      });
+      return;
+    }
+
+    // MODO GALÃO ÚNICO (antigo)
     if (useWeightMethod) {
       if (!litersInitial || !weightFull || weightAfter === "") {
         toast.error('Preencha todos os campos de peso (litros iniciais, peso cheio e peso após)');
@@ -326,7 +521,6 @@ export default function Abastecimento() {
     let uploadedPhotoAfterUrl: string | undefined = undefined;
 
     try {
-      // Upload do comprovante se existir
       if (receiptFile) {
         setIsUploadingReceipt(true);
         const formData = new FormData();
@@ -346,11 +540,9 @@ export default function Abastecimento() {
         setIsUploadingReceipt(false);
       }
 
-      // Upload das fotos da balança se o método de pesagem estiver ativo
       if (useWeightMethod && photoBefore && photoAfter) {
         setIsUploadingPhotos(true);
         
-        // Upload foto ANTES
         const formDataBefore = new FormData();
         formDataBefore.append('file', photoBefore);
         const responseBefore = await fetch('/api/upload-receipt', {
@@ -363,7 +555,6 @@ export default function Abastecimento() {
         const dataBefore = await responseBefore.json();
         uploadedPhotoBeforeUrl = dataBefore.url;
 
-        // Upload foto DEPOIS
         const formDataAfter = new FormData();
         formDataAfter.append('file', photoAfter);
         const responseAfter = await fetch('/api/upload-receipt', {
@@ -385,7 +576,6 @@ export default function Abastecimento() {
       return;
     }
 
-    // Calcular litros consumidos se usar método de pesagem
     let finalLiters = parseFloat(liters);
     if (useWeightMethod && litersInitial && weightFull && weightAfter !== "") {
       const pesoConsumed = parseFloat(weightFull) - parseFloat(weightAfter);
@@ -400,314 +590,260 @@ export default function Abastecimento() {
       pricePerLiter: parseFloat(pricePerLiter),
       notes: notes || undefined,
       receiptUrl,
-      // Campos de pesagem (opcionais)
       litersInitial: useWeightMethod ? parseFloat(litersInitial) : undefined,
       weightFull: useWeightMethod ? parseFloat(weightFull) : undefined,
       weightAfter: useWeightMethod ? parseFloat(weightAfter) : undefined,
       photoBeforeUrl: uploadedPhotoBeforeUrl,
       photoAfterUrl: uploadedPhotoAfterUrl,
-      // Galão selecionado
       gallonNumber: parseInt(selectedGallon),
     });
   };
 
-  const SERVICE_FEE = 10.00; // Taxa de abastecimento e aplicativo
+  const SERVICE_FEE = 10.00;
   
-  // Calcular litros (manual ou por pesagem)
+  // Calcular litros (modo galão único)
   const calculatedLiters = useWeightMethod && litersInitial && weightFull && weightAfter !== ""
     ? ((parseFloat(weightFull) - parseFloat(weightAfter)) * parseFloat(litersInitial)) / parseFloat(weightFull)
     : (liters ? parseFloat(liters) : 0);
   
-  const subtotal = pricePerLiter 
-    ? calculatedLiters * parseFloat(pricePerLiter)
-    : 0;
+  // Calcular totais (modo múltiplos galões)
+  const totalLitersMultiple = containers.reduce((sum, c) => sum + calculateLitersForContainer(c), 0);
   
-  const totalCost = pricePerLiter
-    ? (subtotal + SERVICE_FEE).toFixed(2)
-    : "0.00";
+  // Subtotal e total
+  const subtotal = useMultipleGallons
+    ? (totalLitersMultiple * (parseFloat(pricePerLiter) || 0))
+    : (calculatedLiters * (parseFloat(pricePerLiter) || 0));
+  const totalCost = (subtotal + SERVICE_FEE).toFixed(2);
+
+  // Estatísticas
+  const totalCobrado = financialStats?.totalCharged || 0;
+  const totalRecebido = financialStats?.totalReceived || 0;
+  const totalPendente = financialStats?.totalPending || 0;
+  const totalVencido = financialStats?.totalOverdue || 0;
+  const countRecords = financialStats?.count || 0;
+
+  // Orçamento
+  const budgetAmount = budget?.budgetAmount || 0;
+  const budgetUsedPercent = budgetAmount > 0 ? Math.min((totalCobrado / budgetAmount) * 100, 100) : 0;
+  const saldo = budgetAmount - totalCobrado;
+
+  // Estoque total
+  const totalStock = gallonStock?.reduce((sum: number, g: any) => sum + (g.stockLiters || 0), 0) || 0;
+  const avgPricePerLiter = gallonStock?.length > 0 
+    ? gallonStock.reduce((sum: number, g: any) => sum + (g.lastPricePerLiter || 0), 0) / gallonStock.length 
+    : 0;
 
   return (
     <div className="container py-8">
       <div className="mb-6">
         <Link href="/admin">
-          <Button variant="ghost" className="mb-4">
+          <Button variant="ghost" size="sm" className="mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
         </Link>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Abastecimento</h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-1">
-                Registre o abastecimento das embarcações após o uso
-              </p>
-            </div>
-            
-            {/* Filtros de Mês e Ano */}
-            <div className="flex gap-2 items-center">
-              <div className="flex flex-col gap-1">
-                <Label className="text-xs text-muted-foreground">Mês</Label>
-                <Select 
-                  value={String(selectedMonth)} 
-                  onValueChange={(value) => setSelectedMonth(parseInt(value))}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1">Janeiro</SelectItem>
-                    <SelectItem value="2">Fevereiro</SelectItem>
-                    <SelectItem value="3">Março</SelectItem>
-                    <SelectItem value="4">Abril</SelectItem>
-                    <SelectItem value="5">Maio</SelectItem>
-                    <SelectItem value="6">Junho</SelectItem>
-                    <SelectItem value="7">Julho</SelectItem>
-                    <SelectItem value="8">Agosto</SelectItem>
-                    <SelectItem value="9">Setembro</SelectItem>
-                    <SelectItem value="10">Outubro</SelectItem>
-                    <SelectItem value="11">Novembro</SelectItem>
-                    <SelectItem value="12">Dezembro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex flex-col gap-1">
-                <Label className="text-xs text-muted-foreground">Ano</Label>
-                <Select 
-                  value={String(selectedYear)} 
-                  onValueChange={(value) => setSelectedYear(parseInt(value))}
-                >
-                  <SelectTrigger className="w-[100px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2023">2023</SelectItem>
-                    <SelectItem value="2024">2024</SelectItem>
-                    <SelectItem value="2025">2025</SelectItem>
-                    <SelectItem value="2026">2026</SelectItem>
-                    <SelectItem value="2027">2027</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+        
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Abastecimento</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
+              Registre o abastecimento das embarcações após o uso
+            </p>
           </div>
           
-          <div className="flex gap-2 flex-wrap">
-            {fuelRecords && fuelRecords.length > 0 && (
-              <>
-                <Button 
-                  variant="outline"
-                  onClick={handleSyncAllPending}
-                  disabled={syncAllPendingMutation.isPending}
-                  className="flex-1 sm:flex-none bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                >
-                  {syncAllPendingMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                  )}
-                  <span className="hidden sm:inline">Sincronizar Pendentes</span>
-                  <span className="sm:hidden">Sync</span>
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={handleGenerateReport}
-                  disabled={selectedIds.length === 0 || generateReportMutation.isPending}
-                  className="flex-1 sm:flex-none"
-                >
-                  {generateReportMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <FileText className="w-4 h-4 mr-2" />
-                  )}
-                  <span className="hidden sm:inline">Relatório PDF</span>
-                  <span className="sm:hidden">PDF</span>
-                  {selectedIds.length > 0 && ` (${selectedIds.length})`}
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => setIsEmailDialogOpen(true)}
-                  disabled={selectedIds.length === 0 || sendEmailMutation.isPending}
-                  className="flex-1 sm:flex-none"
-                >
-                  {sendEmailMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Mail className="w-4 h-4 mr-2" />
-                  )}
-                  <span className="hidden sm:inline">Enviar Email</span>
-                  <span className="sm:hidden">Email</span>
-                  {selectedIds.length > 0 && ` (${selectedIds.length})`}
-                </Button>
-              </>
-            )}
-            <Button 
-              onClick={() => setIsCreateDialogOpen(true)}
-              className="flex-1 sm:flex-none"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">Registrar Abastecimento</span>
-              <span className="sm:hidden">Registrar</span>
-            </Button>
+          <div className="flex gap-2 items-center flex-wrap">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs text-muted-foreground">Mês</Label>
+              <Select 
+                value={String(selectedMonth)} 
+                onValueChange={(value) => setSelectedMonth(parseInt(value))}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Janeiro</SelectItem>
+                  <SelectItem value="2">Fevereiro</SelectItem>
+                  <SelectItem value="3">Março</SelectItem>
+                  <SelectItem value="4">Abril</SelectItem>
+                  <SelectItem value="5">Maio</SelectItem>
+                  <SelectItem value="6">Junho</SelectItem>
+                  <SelectItem value="7">Julho</SelectItem>
+                  <SelectItem value="8">Agosto</SelectItem>
+                  <SelectItem value="9">Setembro</SelectItem>
+                  <SelectItem value="10">Outubro</SelectItem>
+                  <SelectItem value="11">Novembro</SelectItem>
+                  <SelectItem value="12">Dezembro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs text-muted-foreground">Ano</Label>
+              <Select 
+                value={String(selectedYear)} 
+                onValueChange={(value) => setSelectedYear(parseInt(value))}
+              >
+                <SelectTrigger className="w-[90px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2024">2024</SelectItem>
+                  <SelectItem value="2025">2025</SelectItem>
+                  <SelectItem value="2026">2026</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Financial Dashboard */}
-      {financialStats && (
-        <div className="mb-8 space-y-4">
-          {/* Cards de Resumo */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Cobrado</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">R$ {financialStats.totalBilled.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">
-                  {financialStats.totalRecords} abastecimento(s)
-                </p>
-              </CardContent>
-            </Card>
+      {/* Cards de Estatísticas */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              Total Cobrado
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">R$ {totalCobrado.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">{countRecords} abastecimento(s)</p>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Recebido</CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">R$ {financialStats.totalReceived.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">
-                  Pagamentos confirmados
-                </p>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Total Recebido
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-green-600">R$ {totalRecebido.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">Pagamentos confirmados</p>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pendente</CardTitle>
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">R$ {financialStats.totalPending.toFixed(2)}</div>
-                <p className="text-xs text-muted-foreground">
-                  {financialStats.totalOverdue > 0 && `R$ ${financialStats.totalOverdue.toFixed(2)} vencido`}
-                  {financialStats.totalOverdue === 0 && 'Nenhum vencido'}
-                </p>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Pendente
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-yellow-600">R$ {totalPendente.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">
+              {totalVencido > 0 ? `${totalVencido.toFixed(2)} vencido` : 'Nenhum vencido'}
+            </p>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Saldo</CardTitle>
-                <DollarSign className={`h-4 w-4 ${financialStats.balance < 0 ? 'text-red-600' : 'text-blue-600'}`} />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${financialStats.balance < 0 ? 'text-red-600' : 'text-blue-600'}`}>
-                  R$ {financialStats.balance.toFixed(2)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Gasto - Orçamento
-                </p>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Banknote className="w-4 h-4" />
+              Saldo
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              R$ {saldo.toFixed(2)}
+            </p>
+            <p className="text-xs text-muted-foreground">Gasto - Orçamento</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Card de Orçamento */}
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Orçamento Mensal</CardTitle>
+              <CardDescription>
+                {new Date(selectedYear, selectedMonth - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setIsBudgetDialogOpen(true)}>
+              <Settings className="w-4 h-4 mr-2" />
+              Configurar
+            </Button>
           </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm">Gasto: R$ {totalCobrado.toFixed(2)}</span>
+            <span className="text-sm">Orçamento: R$ {budgetAmount.toFixed(2)}</span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
+            <div 
+              className={`h-full transition-all ${budgetUsedPercent > 90 ? 'bg-red-500' : budgetUsedPercent > 70 ? 'bg-yellow-500' : 'bg-green-500'}`}
+              style={{ width: `${budgetUsedPercent}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{budgetUsedPercent.toFixed(1)}% utilizado</p>
+          
+          <div className="mt-4 pt-4 border-t flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Fuel className="w-5 h-5 text-primary" />
+              <span className="text-sm font-medium">Estoque:</span>
+            </div>
+            <div className="text-right">
+              <p className="font-bold">{totalStock.toFixed(2)} L</p>
+              <p className="text-xs text-muted-foreground">Preço/L atual: R$ {avgPricePerLiter.toFixed(2)}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* Orçamento Mensal */}
-          {financialStats.totalBudget > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Orçamento Mensal</CardTitle>
-                    <CardDescription>
-                      {new Date(selectedYear, selectedMonth - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                    </CardDescription>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setIsBudgetDialogOpen(true)}>
-                    <Settings className="w-4 h-4 mr-2" />
-                    Configurar
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Gasto: R$ {financialStats.totalBilled.toFixed(2)}</span>
-                    <span>Orçamento: R$ {financialStats.totalBudget.toFixed(2)}</span>
-                  </div>
-                  <div className="w-full bg-secondary rounded-full h-2.5">
-                    <div 
-                      className={`h-2.5 rounded-full ${
-                        financialStats.budgetUsagePercent > 90 ? 'bg-red-600' :
-                        financialStats.budgetUsagePercent > 70 ? 'bg-yellow-600' :
-                        'bg-green-600'
-                      }`}
-                      style={{ width: `${Math.min(financialStats.budgetUsagePercent, 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {financialStats.budgetUsagePercent.toFixed(1)}% utilizado
-                  </p>
-                  {financialStats.budgetUsagePercent > 90 && (
-                    <div className="flex items-center gap-2 text-sm text-red-600 mt-2">
-                      <AlertCircle className="w-4 h-4" />
-                      <span>Atenção: Orçamento quase esgotado!</span>
-                    </div>
-                  )}
-                  
-                  {/* Indicador de Estoque */}
-                  <div className="border-t pt-3 mt-3 space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-1">
-                        <Fuel className="w-4 h-4 text-primary" />
-                        Estoque:
-                      </span>
-                      <span className="font-semibold">{budget?.stockLiters?.toFixed(2) || "0.00"} L</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Preço/L atual:</span>
-                      <span>R$ {budget?.lastPricePerLiter?.toFixed(2) || "0.00"}</span>
-                    </div>
-                    {budget?.stockLiters && budget.stockLiters < 5 && (
-                      <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>Estoque baixo! Compre mais combustível</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+      {/* Botões de Ação */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={handleSyncAllPending}
+          disabled={syncAllPendingMutation.isPending}
+        >
+          {syncAllPendingMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+          Sincronizar Pendentes
+        </Button>
+        
+        {selectedIds.length > 0 && (
+          <>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleGenerateReport}
+              disabled={generateReportMutation.isPending}
+            >
+              {generateReportMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
+              Relatório PDF
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setIsEmailDialogOpen(true)}
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Enviar Email
+            </Button>
+          </>
+        )}
+        
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Registrar Abastecimento
+        </Button>
+      </div>
 
-          {/* Botão para configurar orçamento se não existir */}
-          {(!financialStats.totalBudget || financialStats.totalBudget === 0) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Orçamento Mensal</CardTitle>
-                <CardDescription>
-                  Configure um orçamento para acompanhar os gastos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={() => setIsBudgetDialogOpen(true)}>
-                  <Fuel className="w-4 h-4 mr-2" />
-                  Gestão de Combustível
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* Recent Fuel Records */}
+      {/* Lista de Registros */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <h2 className="text-xl font-semibold">Registros Recentes</h2>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Registros Recentes</h2>
+          <div className="flex gap-2">
             {fuelRecords && fuelRecords.length > 10 && (
               <div className="flex gap-2">
                 <Button
@@ -722,21 +858,22 @@ export default function Abastecimento() {
                   size="sm"
                   onClick={() => setShowAllRecords(true)}
                 >
-                  Todos os Abastecimentos
+                  Todos
                 </Button>
               </div>
             )}
             {fuelRecords && fuelRecords.length > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleSelectAll}
-            >
-              {selectedIds.length === fuelRecords.length ? 'Desmarcar todos' : 'Selecionar todos'}
-            </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleSelectAll}
+              >
+                {selectedIds.length === fuelRecords.length ? 'Desmarcar todos' : 'Selecionar todos'}
+              </Button>
             )}
           </div>
         </div>
+
         {!fuelRecords || fuelRecords.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
@@ -746,194 +883,142 @@ export default function Abastecimento() {
         ) : (
           <div className="grid gap-4">
             {(() => {
-              // Aplicar filtro de visualização
               const displayRecords = showAllRecords ? fuelRecords : fuelRecords.slice(0, 10);
               
               return displayRecords.map((record: any) => (
-              <Card key={record.id} className={selectedIds.includes(record.id) ? 'ring-2 ring-primary' : ''}>
-                <CardHeader className="p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <Card key={record.id} className={selectedIds.includes(record.id) ? 'ring-2 ring-primary' : ''}>
+                  <CardHeader className="p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0 flex-1">
-                      <Checkbox 
-                        checked={selectedIds.includes(record.id)}
-                        onCheckedChange={() => handleToggleSelection(record.id)}
-                        className="mt-1 flex-shrink-0"
-                      />
-                      <Fuel className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-base sm:text-lg truncate">{record.vessel_name}</CardTitle>
-                          <span className="bg-primary/20 text-primary text-xs font-bold px-2 py-0.5 rounded flex-shrink-0">
-                            Galão {record.gallonNumber || 1}
-                          </span>
-                        </div>
-                        <CardDescription className="text-xs sm:text-sm">
-                          {record.client_name} • {new Date(record.booking_date).toLocaleDateString('pt-BR')}
-                        </CardDescription>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between sm:items-start gap-3 sm:gap-4">
-                      <div className="text-left sm:text-right flex-1">
-                        <div className="text-xl sm:text-2xl font-bold text-primary whitespace-nowrap">
-                          R$ {Number(record.total_cost).toFixed(2)}
-                        </div>
-                        <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
-                          <div className="whitespace-nowrap">{Number(record.liters).toFixed(1)}L × R$ {Number(record.price_per_liter).toFixed(2)}</div>
-                          <div className="whitespace-nowrap">= R$ {(Number(record.liters) * Number(record.price_per_liter)).toFixed(2)}</div>
-                          <div className="whitespace-nowrap">Taxa: R$ 10,00</div>
-                        </div>
-                        {/* Badges de Status */}
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {/* Badge de Pagamento */}
-                          {record.payment_status === 'paid' && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              ✓ Pago
+                        <Checkbox 
+                          checked={selectedIds.includes(record.id)}
+                          onCheckedChange={() => handleToggleSelection(record.id)}
+                          className="mt-1 flex-shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Fuel className="w-5 h-5 text-primary flex-shrink-0" />
+                            <CardTitle className="text-base sm:text-lg truncate">{record.vesselName}</CardTitle>
+                            <span className="bg-primary/20 text-primary text-xs font-bold px-2 py-0.5 rounded flex-shrink-0">
+                              Galão {record.gallonNumber || 1}
                             </span>
+                          </div>
+                          <CardDescription className="mt-1 text-xs sm:text-sm break-words">
+                            {record.clientName} • {new Date(record.date).toLocaleDateString('pt-BR')}
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-lg font-bold text-primary">R$ {record.total_cost?.toFixed(2)}</span>
+                        <div className="flex gap-1">
+                          {record.payment_status === 'pending' && !record.asaas_charge_id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSyncWithAsaas(record.id)}
+                              disabled={syncWithAsaasMutation.isPending}
+                              title="Sincronizar com Asaas"
+                            >
+                              <RefreshCw className={`w-4 h-4 ${syncWithAsaasMutation.isPending ? 'animate-spin' : ''}`} />
+                            </Button>
                           )}
                           {record.payment_status === 'pending' && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              ⏳ Pendente
-                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleMarkAsPaid(record.id)}
+                              title="Marcar como pago"
+                            >
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                            </Button>
                           )}
-                          {record.payment_status === 'overdue' && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              ⚠ Vencido
-                            </span>
+                          {record.asaas_charge_id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => window.open(`https://www.asaas.com/cobrancas/${record.asaas_charge_id}`, '_blank')}
+                              title="Ver cobrança no Asaas"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Button>
                           )}
-                          {record.payment_status === 'cancelled' && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                              ✕ Cancelado
-                            </span>
-                          )}
-                          
-                          {/* Badge de Sincronização Asaas */}
-                          {record.sync_status === 'synced' && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Sincronizado com Asaas">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Asaas OK
-                            </span>
-                          )}
-                          {record.sync_status === 'pending' && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800" title="Aguardando sincronização">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Sync Pendente
-                            </span>
-                          )}
-                          {record.sync_status === 'failed' && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800" title={record.sync_error || 'Erro ao sincronizar'}>
-                              <XCircle className="w-3 h-3 mr-1" />
-                              Sync Falhou
-                            </span>
-                          )}
-                          {record.sync_status === 'manual' && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800" title="Pagamento marcado manualmente">
-                              <Banknote className="w-3 h-3 mr-1" />
-                              Manual
-                            </span>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteClick(record.id)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
                         </div>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        {/* Botões de Ação */}
-                        {(record.sync_status === 'pending' || record.sync_status === 'failed') && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleSyncWithAsaas(record.id)}
-                            disabled={syncWithAsaasMutation.isPending}
-                            className="whitespace-nowrap bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                          >
-                            {syncWithAsaasMutation.isPending ? (
-                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                            ) : (
-                              <RefreshCw className="w-3 h-3 mr-1" />
-                            )}
-                            Sincronizar
-                          </Button>
-                        )}
-                        {record.payment_status !== 'paid' && record.sync_status !== 'manual' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleMarkAsPaid(record.id)}
-                            disabled={markAsPaidMutation.isPending}
-                            className="whitespace-nowrap"
-                          >
-                            <Banknote className="w-3 h-3 mr-1" />
-                            Marcar Pago
-                          </Button>
-                        )}
-                        {record.asaas_charge_id && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const asaasUrl = `https://www.asaas.com/c/${record.asaas_charge_id}`;
-                              window.open(asaasUrl, '_blank');
-                            }}
-                            className="whitespace-nowrap"
-                          >
-                            <ExternalLink className="w-3 h-3 mr-1" />
-                            Ver Cobrança
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteClick(record.id)}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
                       </div>
                     </div>
-                  </div>
-                </CardHeader>
-                {(record.notes || record.weight_full) && (
-                  <CardContent className="space-y-3">
-                    {/* Informações de Pesagem */}
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Litros:</span>
+                        <span className="font-medium ml-1">{record.liters?.toFixed(2)} L</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Preço/L:</span>
+                        <span className="font-medium ml-1">R$ {record.price_per_liter?.toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Subtotal:</span>
+                        <span className="font-medium ml-1">R$ {(record.liters * record.price_per_liter)?.toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Status:</span>
+                        <span className={`ml-1 font-medium ${
+                          record.payment_status === 'paid' ? 'text-green-600' : 
+                          record.payment_status === 'overdue' ? 'text-red-600' : 
+                          'text-yellow-600'
+                        }`}>
+                          {record.payment_status === 'paid' ? '✓ Pago' : 
+                           record.payment_status === 'overdue' ? '⚠️ Vencido' : 
+                           '⏳ Pendente'}
+                        </span>
+                        {record.asaas_charge_id && (
+                          <span className="ml-1 text-xs text-muted-foreground">Asaas OK</span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Detalhes de pesagem */}
                     {record.weight_full && (
-                      <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-2">
-                        <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                          ⚖️ Abastecimento por Pesagem
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 text-xs text-blue-700 dark:text-blue-300">
+                      <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+                        <p className="text-sm font-medium mb-2">⚖️ Abastecimento por Pesagem</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                           <div>
-                            <span className="font-medium">Litros Iniciais:</span> {(record.liters_initial / 100).toFixed(2)} L
+                            <span className="text-muted-foreground">Litros Iniciais:</span>
+                            <span className="font-medium ml-1">{record.liters_initial?.toFixed(2)} L</span>
                           </div>
                           <div>
-                            <span className="font-medium">Peso Cheio:</span> {(record.weight_full / 100).toFixed(2)} kg
+                            <span className="text-muted-foreground">Peso Cheio:</span>
+                            <span className="font-medium ml-1">{record.weight_full?.toFixed(2)} kg</span>
                           </div>
                           <div>
-                            <span className="font-medium">Peso Após:</span> {(record.weight_after / 100).toFixed(2)} kg
+                            <span className="text-muted-foreground">Peso Após:</span>
+                            <span className="font-medium ml-1">{record.weight_after?.toFixed(2)} kg</span>
                           </div>
                           <div>
-                            <span className="font-medium">Consumido:</span> {(record.weight_consumed / 100).toFixed(2)} kg
+                            <span className="text-muted-foreground">Consumido:</span>
+                            <span className="font-medium ml-1">{(record.weight_full - record.weight_after)?.toFixed(2)} kg</span>
                           </div>
                         </div>
-                        <p className="text-xs text-blue-700 dark:text-blue-300">
-                          📊 <span className="font-medium">Litros Calculados:</span> {(record.liters_calculated / 100).toFixed(2)} L
+                        <p className="text-xs mt-2 text-muted-foreground">
+                          📊 Litros Calculados: {record.liters?.toFixed(2)} L
                         </p>
-                        {/* Botões para ver fotos */}
                         {(record.photo_before_url || record.photo_after_url) && (
                           <div className="flex gap-2 mt-2">
                             {record.photo_before_url && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => window.open(record.photo_before_url, '_blank')}
-                                className="text-xs"
-                              >
+                              <Button variant="outline" size="sm" onClick={() => window.open(record.photo_before_url, '_blank')}>
                                 📷 Ver Foto ANTES
                               </Button>
                             )}
                             {record.photo_after_url && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => window.open(record.photo_after_url, '_blank')}
-                                className="text-xs"
-                              >
+                              <Button variant="outline" size="sm" onClick={() => window.open(record.photo_after_url, '_blank')}>
                                 📷 Ver Foto DEPOIS
                               </Button>
                             )}
@@ -942,31 +1027,25 @@ export default function Abastecimento() {
                       </div>
                     )}
                     
-                    {/* Observações */}
                     {record.notes && (
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Observações:</strong> {record.notes}
-                      </p>
+                      <div className="mt-2 text-xs text-muted-foreground italic border-t pt-2">
+                        {record.notes}
+                      </div>
                     )}
-                    
-                    <p className="text-xs text-muted-foreground">
-                      Registrado por: {record.recorded_by_name} • {record.recorded_at ? new Date(record.recorded_at).toLocaleString('pt-BR', {
-                        dateStyle: 'short',
-                        timeStyle: 'short'
-                      }) : 'Data não disponível'}
-                    </p>
+                    <div className="mt-2 text-xs text-muted-foreground border-t pt-2">
+                      Registrado por: {record.recorded_by_name || 'Sistema'} • {record.recorded_at ? new Date(record.recorded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'Data não disponível'}
+                    </div>
                   </CardContent>
-                )}
-              </Card>
+                </Card>
               ));
             })()}
           </div>
         )}
       </div>
 
-      {/* Create Dialog */}
+      {/* Create Dialog - COM SUPORTE A MÚLTIPLOS GALÕES */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleCreate}>
             <DialogHeader>
               <DialogTitle>Registrar Abastecimento</DialogTitle>
@@ -997,220 +1076,482 @@ export default function Abastecimento() {
                 </Select>
               </div>
 
-              {/* Seletor de Galão */}
-              <div className="grid gap-2">
-                <Label htmlFor="gallon">Selecione o Galão *</Label>
-                <Select value={selectedGallon} onValueChange={setSelectedGallon}>
-                  <SelectTrigger id="gallon">
-                    <SelectValue placeholder="Selecione o galão" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3].map((num) => {
-                      const gallon = gallonStock?.find((g: any) => g.gallonNumber === num);
-                      const stockLiters = gallon?.stockLiters || 0;
-                      const isLow = stockLiters > 0 && stockLiters < 5;
-                      return (
-                        <SelectItem key={num} value={num.toString()}>
-                          <span className={isLow ? 'text-red-600' : ''}>
-                            Galão {num} - {stockLiters.toFixed(2)} L disponíveis
-                            {isLow && ' ⚠️'}
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                {(() => {
-                  const gallon = gallonStock?.find((g: any) => g.gallonNumber === parseInt(selectedGallon));
-                  const stockLiters = gallon?.stockLiters || 0;
-                  const pricePerL = gallon?.lastPricePerLiter || 0;
-                  return (
-                    <div className="text-xs text-muted-foreground">
-                      Estoque atual: <span className="font-semibold">{stockLiters.toFixed(2)} L</span>
-                      {pricePerL > 0 && <> | Preço/L: <span className="font-semibold">R$ {pricePerL.toFixed(2)}</span></>}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Checkbox para ativar método de pesagem */}
+              {/* Toggle para múltiplos galões */}
               <div className="flex items-center space-x-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <Checkbox 
-                  id="useWeightMethod" 
-                  checked={useWeightMethod}
-                  onCheckedChange={(checked) => setUseWeightMethod(checked as boolean)}
+                  id="useMultipleGallons" 
+                  checked={useMultipleGallons}
+                  onCheckedChange={(checked) => {
+                    setUseMultipleGallons(checked as boolean);
+                    if (!checked) {
+                      setContainers([]);
+                    }
+                  }}
                 />
-                <Label htmlFor="useWeightMethod" className="text-sm font-medium cursor-pointer">
-                  Usar método de pesagem com balança
+                <Label htmlFor="useMultipleGallons" className="text-sm font-medium cursor-pointer">
+                  Usar múltiplos galões neste abastecimento
                 </Label>
               </div>
 
-              {/* Campos de pesagem (aparecem apenas se checkbox estiver marcado) */}
-              {useWeightMethod && (
+              {/* MODO MÚLTIPLOS GALÕES */}
+              {useMultipleGallons ? (
                 <>
-                  <div className="grid gap-2">
-                    <Label htmlFor="litersInitial">Litros Iniciais no Galão *</Label>
+                  {/* Lista de Galões (Containers) */}
+                  {containers.map((container, index) => {
+                    const litersForThisContainer = calculateLitersForContainer(container);
+                    const weightConsumed = parseFloat(container.weightFull) - parseFloat(container.weightAfter);
+                    
+                    return (
+                      <div key={container.id} className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-lg flex items-center gap-2">
+                            <Fuel className="w-5 h-5 text-primary" />
+                            {index === 0 ? 'Galão Principal' : `Galão Adicional ${index}`}
+                          </h3>
+                          {containers.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeContainer(container.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Remover
+                            </Button>
+                          )}
+                        </div>
+                        
+                        {/* Seletor de Galão */}
+                        <div>
+                          <Label>Selecione o Galão *</Label>
+                          <Select 
+                            value={container.gallonNumber.toString()} 
+                            onValueChange={(value) => updateContainer(container.id, 'gallonNumber', parseInt(value))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o galão" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[1, 2, 3].map((num) => {
+                                const gallon = gallonStock?.find((g: any) => g.gallonNumber === num);
+                                const stockLiters = gallon?.stockLiters || 0;
+                                const isLow = stockLiters > 0 && stockLiters < 5;
+                                const isUsed = containers.some(c => c.id !== container.id && c.gallonNumber === num);
+                                return (
+                                  <SelectItem 
+                                    key={num} 
+                                    value={num.toString()}
+                                    disabled={isUsed}
+                                  >
+                                    <span className={isLow ? 'text-red-600' : isUsed ? 'text-muted-foreground' : ''}>
+                                      Galão {num} - {stockLiters.toFixed(2)} L disponíveis
+                                      {isLow && ' ⚠️'}
+                                      {isUsed && ' (em uso)'}
+                                    </span>
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {/* Litros Iniciais (readonly) */}
+                        <div>
+                          <Label>Litros Iniciais no Galão</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={container.litersInitial}
+                            readOnly
+                            disabled
+                            className="bg-muted cursor-not-allowed"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Valor do estoque atual (preenchido automaticamente)
+                          </p>
+                        </div>
+                        
+                        {/* Peso Cheio */}
+                        <div>
+                          <Label>Peso do Galão Cheio (kg) *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={container.weightFull}
+                            onChange={(e) => updateContainer(container.id, 'weightFull', e.target.value)}
+                            placeholder="Ex: 37.80"
+                            required
+                          />
+                        </div>
+                        
+                        {/* Peso Após */}
+                        <div>
+                          <Label>Peso do Galão Após (kg) *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={container.weightAfter}
+                            onChange={(e) => updateContainer(container.id, 'weightAfter', e.target.value)}
+                            placeholder="Ex: 23.40 (ou 0 se vazio)"
+                            required
+                          />
+                        </div>
+                        
+                        {/* Preview do cálculo */}
+                        {container.litersInitial && container.weightFull && container.weightAfter !== "" && (
+                          <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                            <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                              ⚖️ Cálculo Automático:
+                            </p>
+                            <p className="text-xs text-green-700 dark:text-green-300">
+                              Peso consumido: {weightConsumed.toFixed(2)} kg
+                            </p>
+                            <p className="text-xs text-green-700 dark:text-green-300">
+                              Litros consumidos: {litersForThisContainer.toFixed(2)} L
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* Upload fotos */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label>Foto ANTES *</Label>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 5 * 1024 * 1024) {
+                                    toast.error('Arquivo muito grande. Máximo: 5MB');
+                                    e.target.value = '';
+                                    return;
+                                  }
+                                  handleContainerPhotoUpload(container.id, file, 'before');
+                                }
+                              }}
+                              disabled={uploadingContainerPhotos}
+                            />
+                            {container.photoBeforeUrl && (
+                              <div className="mt-2">
+                                <img src={container.photoBeforeUrl} alt="Preview ANTES" className="w-full h-24 object-cover rounded-lg border" />
+                                <p className="text-xs text-green-600 mt-1">✓ Foto enviada</p>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <Label>Foto DEPOIS *</Label>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 5 * 1024 * 1024) {
+                                    toast.error('Arquivo muito grande. Máximo: 5MB');
+                                    e.target.value = '';
+                                    return;
+                                  }
+                                  handleContainerPhotoUpload(container.id, file, 'after');
+                                }
+                              }}
+                              disabled={uploadingContainerPhotos}
+                            />
+                            {container.photoAfterUrl && (
+                              <div className="mt-2">
+                                <img src={container.photoAfterUrl} alt="Preview DEPOIS" className="w-full h-24 object-cover rounded-lg border" />
+                                <p className="text-xs text-green-600 mt-1">✓ Foto enviada</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  
+                  {/* Botão para adicionar mais galões */}
+                  {containers.length < 3 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={addContainer}
+                      className="w-full"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar outro Galão
+                    </Button>
+                  )}
+                  
+                  {/* Preço por litro */}
+                  <div>
+                    <Label>Preço por Litro (R$) *</Label>
                     <Input
-                      id="litersInitial"
-                      type="number"
-                      step="0.01"
-                      value={litersInitial}
-                      readOnly
-                      disabled
-                      className="bg-muted cursor-not-allowed"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Valor do estoque atual (preenchido automaticamente)
-                    </p>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="weightFull">Peso do Galão Cheio (kg) *</Label>
-                    <Input
-                      id="weightFull"
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={weightFull}
-                      onChange={(e) => setWeightFull(e.target.value)}
-                      placeholder="Ex: 37,80"
-                      required={useWeightMethod}
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="weightAfter">Peso do Galão Após (kg) *</Label>
-                    <Input
-                      id="weightAfter"
                       type="number"
                       step="0.01"
                       min="0"
-                      value={weightAfter}
-                      onChange={(e) => setWeightAfter(e.target.value)}
-                      placeholder="Ex: 23,40 (ou 0 se vazio)"
-                      required={useWeightMethod}
+                      value={pricePerLiter}
+                      onChange={(e) => setPricePerLiter(e.target.value)}
+                      placeholder="Ex: 6.50"
+                      required
                     />
                   </div>
+                  
+                  {/* Resumo do abastecimento */}
+                  {containers.length > 0 && totalLitersMultiple > 0 && pricePerLiter && (
+                    <div className="p-4 bg-primary/10 rounded-lg space-y-2">
+                      <h4 className="font-semibold">📊 Resumo do Abastecimento</h4>
+                      {containers.map((c, i) => {
+                        const liters = calculateLitersForContainer(c);
+                        return (
+                          <div key={c.id} className="flex justify-between text-sm">
+                            <span>Galão {c.gallonNumber}:</span>
+                            <span>{liters.toFixed(2)} L</span>
+                          </div>
+                        );
+                      })}
+                      <div className="border-t pt-2 mt-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Total de Litros:</span>
+                          <span className="font-medium">{totalLitersMultiple.toFixed(2)} L</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Combustível ({totalLitersMultiple.toFixed(2)}L × R$ {parseFloat(pricePerLiter).toFixed(2)}):</span>
+                          <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Taxa de Abastecimento:</span>
+                          <span className="font-medium">R$ {SERVICE_FEE.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-lg font-bold mt-2 pt-2 border-t">
+                          <span>Valor Total:</span>
+                          <span className="text-primary">R$ {totalCost}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* MODO GALÃO ÚNICO (antigo) */
+                <>
+                  {/* Seletor de Galão */}
+                  <div className="grid gap-2">
+                    <Label htmlFor="gallon">Selecione o Galão *</Label>
+                    <Select value={selectedGallon} onValueChange={setSelectedGallon}>
+                      <SelectTrigger id="gallon">
+                        <SelectValue placeholder="Selecione o galão" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3].map((num) => {
+                          const gallon = gallonStock?.find((g: any) => g.gallonNumber === num);
+                          const stockLiters = gallon?.stockLiters || 0;
+                          const isLow = stockLiters > 0 && stockLiters < 5;
+                          return (
+                            <SelectItem key={num} value={num.toString()}>
+                              <span className={isLow ? 'text-red-600' : ''}>
+                                Galão {num} - {stockLiters.toFixed(2)} L disponíveis
+                                {isLow && ' ⚠️'}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {(() => {
+                      const gallon = gallonStock?.find((g: any) => g.gallonNumber === parseInt(selectedGallon));
+                      const stockLiters = gallon?.stockLiters || 0;
+                      const pricePerL = gallon?.lastPricePerLiter || 0;
+                      return (
+                        <div className="text-xs text-muted-foreground">
+                          Estoque atual: <span className="font-semibold">{stockLiters.toFixed(2)} L</span>
+                          {pricePerL > 0 && <> | Preço/L: <span className="font-semibold">R$ {pricePerL.toFixed(2)}</span></>}
+                        </div>
+                      );
+                    })()}
+                  </div>
 
-                  {/* Preview do cálculo */}
-                  {litersInitial && weightFull && weightAfter !== "" && (
-                    <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
-                      <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
-                        ⚖️ Cálculo Automático:
-                      </p>
-                      <p className="text-xs text-green-700 dark:text-green-300">
-                        Peso consumido: {(parseFloat(weightFull) - parseFloat(weightAfter)).toFixed(2)} kg
-                      </p>
-                      <p className="text-xs text-green-700 dark:text-green-300">
-                        Litros consumidos: {calculatedLiters.toFixed(2)} L
-                      </p>
+                  {/* Checkbox para ativar método de pesagem */}
+                  <div className="flex items-center space-x-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <Checkbox 
+                      id="useWeightMethod" 
+                      checked={useWeightMethod}
+                      onCheckedChange={(checked) => setUseWeightMethod(checked as boolean)}
+                    />
+                    <Label htmlFor="useWeightMethod" className="text-sm font-medium cursor-pointer">
+                      Usar método de pesagem com balança
+                    </Label>
+                  </div>
+
+                  {/* Campos de pesagem (aparecem apenas se checkbox estiver marcado) */}
+                  {useWeightMethod && (
+                    <>
+                      <div className="grid gap-2">
+                        <Label htmlFor="litersInitial">Litros Iniciais no Galão *</Label>
+                        <Input
+                          id="litersInitial"
+                          type="number"
+                          step="0.01"
+                          value={litersInitial}
+                          readOnly
+                          disabled
+                          className="bg-muted cursor-not-allowed"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Valor do estoque atual (preenchido automaticamente)
+                        </p>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="weightFull">Peso do Galão Cheio (kg) *</Label>
+                        <Input
+                          id="weightFull"
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={weightFull}
+                          onChange={(e) => setWeightFull(e.target.value)}
+                          placeholder="Ex: 37,80"
+                          required={useWeightMethod}
+                        />
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="weightAfter">Peso do Galão Após (kg) *</Label>
+                        <Input
+                          id="weightAfter"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={weightAfter}
+                          onChange={(e) => setWeightAfter(e.target.value)}
+                          placeholder="Ex: 23,40 (ou 0 se vazio)"
+                          required={useWeightMethod}
+                        />
+                      </div>
+
+                      {/* Preview do cálculo */}
+                      {litersInitial && weightFull && weightAfter !== "" && (
+                        <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                          <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                            ⚖️ Cálculo Automático:
+                          </p>
+                          <p className="text-xs text-green-700 dark:text-green-300">
+                            Peso consumido: {(parseFloat(weightFull) - parseFloat(weightAfter)).toFixed(2)} kg
+                          </p>
+                          <p className="text-xs text-green-700 dark:text-green-300">
+                            Litros consumidos: {calculatedLiters.toFixed(2)} L
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Upload foto ANTES */}
+                      <div className="grid gap-2">
+                        <Label htmlFor="photoBefore">Foto da Balança - ANTES *</Label>
+                        <Input
+                          id="photoBefore"
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast.error('Arquivo muito grande. Tamanho máximo: 5MB');
+                                e.target.value = '';
+                                return;
+                              }
+                              setPhotoBefore(file);
+                              setPhotoBeforeUrl(URL.createObjectURL(file));
+                            }
+                          }}
+                          required={useWeightMethod}
+                        />
+                        {photoBeforeUrl && (
+                          <div className="mt-2">
+                            <img src={photoBeforeUrl} alt="Preview ANTES" className="w-full h-32 object-cover rounded-lg border" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Upload foto DEPOIS */}
+                      <div className="grid gap-2">
+                        <Label htmlFor="photoAfter">Foto da Balança - DEPOIS *</Label>
+                        <Input
+                          id="photoAfter"
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast.error('Arquivo muito grande. Tamanho máximo: 5MB');
+                                e.target.value = '';
+                                return;
+                              }
+                              setPhotoAfter(file);
+                              setPhotoAfterUrl(URL.createObjectURL(file));
+                            }
+                          }}
+                          required={useWeightMethod}
+                        />
+                        {photoAfterUrl && (
+                          <div className="mt-2">
+                            <img src={photoAfterUrl} alt="Preview DEPOIS" className="w-full h-32 object-cover rounded-lg border" />
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Campo de litros (apenas se NÃO usar método de pesagem) */}
+                  {!useWeightMethod && (
+                    <div className="grid gap-2">
+                      <Label htmlFor="liters">Litros Abastecidos *</Label>
+                      <Input
+                        id="liters"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={liters}
+                        onChange={(e) => setLiters(e.target.value)}
+                        placeholder="Ex: 25,50"
+                        required={!useWeightMethod}
+                      />
                     </div>
                   )}
 
-                  {/* Upload foto ANTES */}
                   <div className="grid gap-2">
-                    <Label htmlFor="photoBefore">Foto da Balança - ANTES *</Label>
+                    <Label htmlFor="pricePerLiter">Preço por Litro (R$) *</Label>
                     <Input
-                      id="photoBefore"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          if (file.size > 5 * 1024 * 1024) {
-                            toast.error('Arquivo muito grande. Tamanho máximo: 5MB');
-                            e.target.value = '';
-                            return;
-                          }
-                          setPhotoBefore(file);
-                          setPhotoBeforeUrl(URL.createObjectURL(file));
-                        }
-                      }}
-                      required={useWeightMethod}
+                      id="pricePerLiter"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={pricePerLiter}
+                      onChange={(e) => setPricePerLiter(e.target.value)}
+                      placeholder="Ex: 6.50"
+                      required
                     />
-                    {photoBeforeUrl && (
-                      <div className="mt-2">
-                        <img src={photoBeforeUrl} alt="Preview ANTES" className="w-full h-32 object-cover rounded-lg border" />
-                      </div>
-                    )}
                   </div>
 
-                  {/* Upload foto DEPOIS */}
-                  <div className="grid gap-2">
-                    <Label htmlFor="photoAfter">Foto da Balança - DEPOIS *</Label>
-                    <Input
-                      id="photoAfter"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          if (file.size > 5 * 1024 * 1024) {
-                            toast.error('Arquivo muito grande. Tamanho máximo: 5MB');
-                            e.target.value = '';
-                            return;
-                          }
-                          setPhotoAfter(file);
-                          setPhotoAfterUrl(URL.createObjectURL(file));
-                        }
-                      }}
-                      required={useWeightMethod}
-                    />
-                    {photoAfterUrl && (
-                      <div className="mt-2">
-                        <img src={photoAfterUrl} alt="Preview DEPOIS" className="w-full h-32 object-cover rounded-lg border" />
+                  {((useWeightMethod && litersInitial && weightFull && weightAfter !== "") || (!useWeightMethod && liters)) && pricePerLiter && (
+                    <div className="p-4 bg-primary/10 rounded-lg space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Combustível ({calculatedLiters.toFixed(2)}L × R$ {parseFloat(pricePerLiter).toFixed(2)}):</span>
+                        <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
                       </div>
-                    )}
-                  </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span>Taxa de Abastecimento e Aplicativo:</span>
+                        <span className="font-medium">R$ {SERVICE_FEE.toFixed(2)}</span>
+                      </div>
+                      <div className="border-t pt-2 flex items-center justify-between">
+                        <span className="font-semibold">Valor Total:</span>
+                        <span className="text-2xl font-bold text-primary">R$ {totalCost}</span>
+                      </div>
+                    </div>
+                  )}
                 </>
-              )}
-
-              {/* Campo de litros (apenas se NÃO usar método de pesagem) */}
-              {!useWeightMethod && (
-                <div className="grid gap-2">
-                  <Label htmlFor="liters">Litros Abastecidos *</Label>
-                  <Input
-                    id="liters"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={liters}
-                    onChange={(e) => setLiters(e.target.value)}
-                    placeholder="Ex: 25,50"
-                    required={!useWeightMethod}
-                  />
-                </div>
-              )}
-
-              <div className="grid gap-2">
-                <Label htmlFor="pricePerLiter">Preço por Litro (R$) *</Label>
-                <Input
-                  id="pricePerLiter"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={pricePerLiter}
-                  onChange={(e) => setPricePerLiter(e.target.value)}
-                  placeholder="Ex: 6.50"
-                  required
-                />
-              </div>
-
-              {((useWeightMethod && litersInitial && weightFull && weightAfter !== "") || (!useWeightMethod && liters)) && pricePerLiter && (
-                <div className="p-4 bg-primary/10 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Combustível ({calculatedLiters.toFixed(2)}L × R$ {parseFloat(pricePerLiter).toFixed(2)}):</span>
-                    <span className="font-medium">R$ {subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Taxa de Abastecimento e Aplicativo:</span>
-                    <span className="font-medium">R$ {SERVICE_FEE.toFixed(2)}</span>
-                  </div>
-                  <div className="border-t pt-2 flex items-center justify-between">
-                    <span className="font-semibold">Valor Total:</span>
-                    <span className="text-2xl font-bold text-primary">R$ {totalCost}</span>
-                  </div>
-                </div>
               )}
 
               <div className="grid gap-2">
@@ -1224,41 +1565,41 @@ export default function Abastecimento() {
                 />
               </div>
 
-              {/* Campo de Upload de Comprovante */}
-              <div className="grid gap-2">
-                <Label htmlFor="receipt">Comprovante (Foto do Cupom Fiscal)</Label>
-                <Input
-                  id="receipt"
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      // Validar tamanho (max 5MB)
-                      if (file.size > 5 * 1024 * 1024) {
-                        toast.error('Arquivo muito grande. Tamanho máximo: 5MB');
-                        e.target.value = '';
-                        return;
+              {/* Campo de Upload de Comprovante (apenas modo galão único) */}
+              {!useMultipleGallons && (
+                <div className="grid gap-2">
+                  <Label htmlFor="receipt">Comprovante (Foto do Cupom Fiscal)</Label>
+                  <Input
+                    id="receipt"
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error('Arquivo muito grande. Tamanho máximo: 5MB');
+                          e.target.value = '';
+                          return;
+                        }
+                        if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+                          toast.error('Formato inválido. Use imagem ou PDF');
+                          e.target.value = '';
+                          return;
+                        }
+                        setReceiptFile(file);
                       }
-                      // Validar tipo
-                      if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-                        toast.error('Formato inválido. Use imagem ou PDF');
-                        e.target.value = '';
-                        return;
-                      }
-                      setReceiptFile(file);
-                    }
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Formatos aceitos: JPG, PNG, PDF (máx. 5MB)
-                </p>
-                {receiptFile && (
-                  <div className="flex items-center gap-2 text-sm text-green-600">
-                    <span>✓ Arquivo selecionado: {receiptFile.name}</span>
-                  </div>
-                )}
-              </div>
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Formatos aceitos: JPG, PNG, PDF (máx. 5MB)
+                  </p>
+                  {receiptFile && (
+                    <div className="flex items-center gap-2 text-sm text-green-600">
+                      <span>✓ Arquivo selecionado: {receiptFile.name}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button 
@@ -1271,9 +1612,9 @@ export default function Abastecimento() {
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={createMutation.isPending || isUploadingReceipt || isUploadingPhotos}>
-                {(createMutation.isPending || isUploadingReceipt || isUploadingPhotos) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {isUploadingPhotos ? 'Enviando fotos...' : isUploadingReceipt ? 'Enviando comprovante...' : 'Registrar'}
+              <Button type="submit" disabled={createMutation.isPending || isUploadingReceipt || isUploadingPhotos || uploadingContainerPhotos}>
+                {(createMutation.isPending || isUploadingReceipt || isUploadingPhotos || uploadingContainerPhotos) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {uploadingContainerPhotos ? 'Enviando fotos...' : isUploadingPhotos ? 'Enviando fotos...' : isUploadingReceipt ? 'Enviando comprovante...' : 'Registrar'}
               </Button>
             </DialogFooter>
           </form>

@@ -1,0 +1,25 @@
+{
+  "query": "SELECT 'COMPRAS' as tipo, gallon_number, SUM(liters_purchased)/100 as total_litros FROM fuel_purchases GROUP BY gallon_number UNION ALL SELECT 'ABASTECIMENTOS' as tipo, gallon_number, SUM(liters)/100 as total_litros FROM fuel_records GROUP BY gallon_number ORDER BY gallon_number, tipo;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT 'COMPRAS' as tipo, gallon_number, SUM(liters_purchased)/100 as total_litros FROM fuel_purchases GROUP BY gallon_number UNION ALL SELECT 'ABASTECIMENTOS' as tipo, gallon_number, SUM(liters)/100 as total_litros FROM fuel_records GROUP BY gallon_number ORDER BY gallon_number, tipo;",
+  "rows": [
+    {
+      "tipo": "ABASTECIMENTOS",
+      "gallon_number": "1",
+      "total_litros": "136.9200"
+    },
+    {
+      "tipo": "COMPRAS",
+      "gallon_number": "1",
+      "total_litros": "297.6900"
+    },
+    {
+      "tipo": "COMPRAS",
+      "gallon_number": "2",
+      "total_litros": "50.0000"
+    }
+  ],
+  "messages": [],
+  "stdout": "tipo\tgallon_number\ttotal_litros\nABASTECIMENTOS\t1\t136.9200\nCOMPRAS\t1\t297.6900\nCOMPRAS\t2\t50.0000\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}

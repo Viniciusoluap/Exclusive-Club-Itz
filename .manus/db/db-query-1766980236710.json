@@ -1,0 +1,15 @@
+{
+  "query": "SELECT gallon_number, SUM(liters_purchased)/100 as total_litros_comprados, SUM(amount_paid)/100 as total_pago FROM fuel_purchases WHERE gallon_number = 1 GROUP BY gallon_number;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT gallon_number, SUM(liters_purchased)/100 as total_litros_comprados, SUM(amount_paid)/100 as total_pago FROM fuel_purchases WHERE gallon_number = 1 GROUP BY gallon_number;",
+  "rows": [
+    {
+      "gallon_number": "1",
+      "total_litros_comprados": "297.6900",
+      "total_pago": "1903.5000"
+    }
+  ],
+  "messages": [],
+  "stdout": "gallon_number\ttotal_litros_comprados\ttotal_pago\n1\t297.6900\t1903.5000\n",
+  "stderr": "",
+  "execution_time_ms": 191
+}

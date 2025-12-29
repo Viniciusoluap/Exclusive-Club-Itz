@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, gallon_number, liters_purchased/100 as litros, amount_paid/100 as valor, purchased_at FROM fuel_purchases WHERE gallon_number = 1 ORDER BY purchased_at;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, gallon_number, liters_purchased/100 as litros, amount_paid/100 as valor, purchased_at FROM fuel_purchases WHERE gallon_number = 1 ORDER BY purchased_at;",
+  "rows": [
+    {
+      "id": "90001",
+      "gallon_number": "1",
+      "litros": "47.6900",
+      "valor": "300.0000",
+      "purchased_at": "2025-12-21 22:38:35"
+    },
+    {
+      "id": "150001",
+      "gallon_number": "1",
+      "litros": "50.0000",
+      "valor": "314.0000",
+      "purchased_at": "2025-12-23 18:31:55"
+    },
+    {
+      "id": "150002",
+      "gallon_number": "1",
+      "litros": "50.0000",
+      "valor": "314.5000",
+      "purchased_at": "2025-12-23 18:32:05"
+    },
+    {
+      "id": "630005",
+      "gallon_number": "1",
+      "litros": "100.0000",
+      "valor": "650.0000",
+      "purchased_at": "2025-12-29 00:06:19"
+    },
+    {
+      "id": "630006",
+      "gallon_number": "1",
+      "litros": "50.0000",
+      "valor": "325.0000",
+      "purchased_at": "2025-12-29 00:06:19"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tgallon_number\tlitros\tvalor\tpurchased_at\n90001\t1\t47.6900\t300.0000\t2025-12-21 22:38:35\n150001\t1\t50.0000\t314.0000\t2025-12-23 18:31:55\n150002\t1\t50.0000\t314.5000\t2025-12-23 18:32:05\n630005\t1\t100.0000\t650.0000\t2025-12-29 00:06:19\n630006\t1\t50.0000\t325.0000\t2025-12-29 00:06:19\n",
+  "stderr": "",
+  "execution_time_ms": 59
+}
