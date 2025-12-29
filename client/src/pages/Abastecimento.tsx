@@ -616,11 +616,12 @@ export default function Abastecimento() {
   const totalCost = (subtotal + SERVICE_FEE).toFixed(2);
 
   // Estatísticas
-  const totalCobrado = financialStats?.totalCharged || 0;
+  // Total Cobrado = Pendente + Recebido (soma de todos os valores cobrados)
   const totalRecebido = financialStats?.totalReceived || 0;
   const totalPendente = financialStats?.totalPending || 0;
   const totalVencido = financialStats?.totalOverdue || 0;
-  const countRecords = financialStats?.count || 0;
+  const totalCobrado = totalPendente + totalRecebido; // Corrigido: soma pendente + recebido
+  const countRecords = financialStats?.totalRecords || 0;
 
   // Orçamento
   const budgetAmount = budget?.budgetAmount || 0;
@@ -629,8 +630,12 @@ export default function Abastecimento() {
 
   // Estoque total
   const totalStock = gallonStock?.reduce((sum: number, g: any) => sum + (g.stockLiters || 0), 0) || 0;
-  const avgPricePerLiter = gallonStock?.length > 0 
-    ? gallonStock.reduce((sum: number, g: any) => sum + (g.lastPricePerLiter || 0), 0) / gallonStock.length 
+  
+  // Preço/L médio = média ponderada (soma dos valores pagos / soma dos litros comprados)
+  const totalLitersPurchased = gallonStock?.reduce((sum: number, g: any) => sum + (g.totalPurchased || 0), 0) || 0;
+  const totalAmountPaid = gallonStock?.reduce((sum: number, g: any) => sum + (g.totalAmountPaid || 0), 0) || 0;
+  const avgPricePerLiter = totalLitersPurchased > 0 
+    ? totalAmountPaid / totalLitersPurchased 
     : 0;
 
   return (
