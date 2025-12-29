@@ -995,3 +995,6 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 - [ ] client/src/pages/AdminFuel.tsx ou similar - Exibição dos valores calculados
 - [ ] Componentes de modal de compra e abastecimento - Seleção de galões com estoque
 
+
+- [x] Corrigir cálculo do estoque do Galão 1 (deve ser 10,77 L, não 160,77 L) - CORRIGIDO: Removidas compras duplicadas do banco de dados
+

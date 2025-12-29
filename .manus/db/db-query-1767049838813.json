@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, gallon_number, liters_purchased, liters_purchased/100.0 as liters_decimal, created_at\nFROM fuel_purchases \nWHERE gallon_number = 1\nORDER BY created_at",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, gallon_number, liters_purchased, liters_purchased/100.0 as liters_decimal, created_at\nFROM fuel_purchases \nWHERE gallon_number = 1\nORDER BY created_at",
+  "rows": [
+    {
+      "id": "90001",
+      "gallon_number": "1",
+      "liters_purchased": "4769",
+      "liters_decimal": "47.6900",
+      "created_at": "2025-12-21 22:38:35"
+    },
+    {
+      "id": "150001",
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "liters_decimal": "50.0000",
+      "created_at": "2025-12-23 18:31:55"
+    },
+    {
+      "id": "150002",
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "liters_decimal": "50.0000",
+      "created_at": "2025-12-23 18:32:05"
+    },
+    {
+      "id": "690005",
+      "gallon_number": "1",
+      "liters_purchased": "10000",
+      "liters_decimal": "100.0000",
+      "created_at": "2025-12-29 19:00:16"
+    },
+    {
+      "id": "690006",
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "liters_decimal": "50.0000",
+      "created_at": "2025-12-29 19:00:16"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tgallon_number\tliters_purchased\tliters_decimal\tcreated_at\n90001\t1\t4769\t47.6900\t2025-12-21 22:38:35\n150001\t1\t5000\t50.0000\t2025-12-23 18:31:55\n150002\t1\t5000\t50.0000\t2025-12-23 18:32:05\n690005\t1\t10000\t100.0000\t2025-12-29 19:00:16\n690006\t1\t5000\t50.0000\t2025-12-29 19:00:16\n",
+  "stderr": "",
+  "execution_time_ms": 400
+}

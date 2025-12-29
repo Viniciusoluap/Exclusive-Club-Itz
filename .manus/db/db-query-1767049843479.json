@@ -1,0 +1,15 @@
+{
+  "query": "SELECT \n  SUM(liters_purchased) as total_raw,\n  SUM(liters_purchased)/100.0 as total_liters,\n  COUNT(*) as num_purchases\nFROM fuel_purchases \nWHERE gallon_number = 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  SUM(liters_purchased) as total_raw,\n  SUM(liters_purchased)/100.0 as total_liters,\n  COUNT(*) as num_purchases\nFROM fuel_purchases \nWHERE gallon_number = 1",
+  "rows": [
+    {
+      "total_raw": "29769",
+      "total_liters": "297.6900",
+      "num_purchases": "5"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_raw\ttotal_liters\tnum_purchases\n29769\t297.6900\t5\n",
+  "stderr": "",
+  "execution_time_ms": 399
+}

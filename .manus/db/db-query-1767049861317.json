@@ -1,0 +1,55 @@
+{
+  "query": "SELECT \n  id, \n  gallon_number, \n  liters_purchased/100.0 as liters,\n  amount_paid/100.0 as amount,\n  notes,\n  DATE_FORMAT(purchased_at, '%Y-%m-%d %H:%i') as purchased_at,\n  DATE_FORMAT(created_at, '%Y-%m-%d %H:%i') as created_at\nFROM fuel_purchases \nWHERE gallon_number = 1\nORDER BY created_at ASC",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  id, \n  gallon_number, \n  liters_purchased/100.0 as liters,\n  amount_paid/100.0 as amount,\n  notes,\n  DATE_FORMAT(purchased_at, '%Y-%m-%d %H:%i') as purchased_at,\n  DATE_FORMAT(created_at, '%Y-%m-%d %H:%i') as created_at\nFROM fuel_purchases \nWHERE gallon_number = 1\nORDER BY created_at ASC",
+  "rows": [
+    {
+      "id": "90001",
+      "gallon_number": "1",
+      "liters": "47.6900",
+      "amount": "300.0000",
+      "notes": "NULL",
+      "purchased_at": "2025-12-21 22:38",
+      "created_at": "2025-12-21 22:38"
+    },
+    {
+      "id": "150001",
+      "gallon_number": "1",
+      "liters": "50.0000",
+      "amount": "314.0000",
+      "notes": "NULL",
+      "purchased_at": "2025-12-23 18:31",
+      "created_at": "2025-12-23 18:31"
+    },
+    {
+      "id": "150002",
+      "gallon_number": "1",
+      "liters": "50.0000",
+      "amount": "314.5000",
+      "notes": "NULL",
+      "purchased_at": "2025-12-23 18:32",
+      "created_at": "2025-12-23 18:32"
+    },
+    {
+      "id": "690005",
+      "gallon_number": "1",
+      "liters": "100.0000",
+      "amount": "650.0000",
+      "notes": "Primeira compra",
+      "purchased_at": "2025-12-29 19:00",
+      "created_at": "2025-12-29 19:00"
+    },
+    {
+      "id": "690006",
+      "gallon_number": "1",
+      "liters": "50.0000",
+      "amount": "325.0000",
+      "notes": "Segunda compra",
+      "purchased_at": "2025-12-29 19:00",
+      "created_at": "2025-12-29 19:00"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tgallon_number\tliters\tamount\tnotes\tpurchased_at\tcreated_at\n90001\t1\t47.6900\t300.0000\tNULL\t2025-12-21 22:38\t2025-12-21 22:38\n150001\t1\t50.0000\t314.0000\tNULL\t2025-12-23 18:31\t2025-12-23 18:31\n150002\t1\t50.0000\t314.5000\tNULL\t2025-12-23 18:32\t2025-12-23 18:32\n690005\t1\t100.0000\t650.0000\tPrimeira compra\t2025-12-29 19:00\t2025-12-29 19:00\n690006\t1\t50.0000\t325.0000\tSegunda compra\t2025-12-29 19:00\t2025-12-29 19:00\n",
+  "stderr": "",
+  "execution_time_ms": 389
+}
