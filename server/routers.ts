@@ -1392,31 +1392,51 @@ Nenhuma reserva foi afetada.
   // Employee router - For employee and admin users
   employee: router({
     // Get upcoming reservations (today + next 20 future confirmed)
+    // Lógica: reservas do dia atual só aparecem até 18h (horário de Brasília)
+    // Após 18h, reservas do dia atual são consideradas passadas
     upcomingReservations: employeeProcedure.query(async () => {
       const dbInstance = await import('./db').then(m => m.getDb());
       if (!dbInstance) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
       const { sql: sqlTag } = await import('drizzle-orm');
       
-      // Normalizar para meia-noite para comparar apenas datas (sem horas)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const now = today.getTime();
+      // Calcular o timestamp de corte baseado no horário de Brasília (GMT-3)
+      const now = new Date();
+      // Converter para horário de Brasília
+      const brasiliaOffset = -3 * 60; // GMT-3 em minutos
+      const localOffset = now.getTimezoneOffset();
+      const brasiliaTime = new Date(now.getTime() + (localOffset + brasiliaOffset) * 60 * 1000);
+      
+      const currentHour = brasiliaTime.getHours();
+      
+      // Se for após 18h, o corte é amanhã à meia-noite
+      // Se for antes das 18h, o corte é hoje à meia-noite
+      const cutoffDate = new Date(brasiliaTime);
+      if (currentHour >= 18) {
+        // Após 18h: reservas de hoje são passadas, mostrar a partir de amanhã
+        cutoffDate.setDate(cutoffDate.getDate() + 1);
+      }
+      cutoffDate.setHours(0, 0, 0, 0);
+      const cutoffTimestamp = cutoffDate.getTime();
+      
+      // Query com JOIN para buscar telefone do cliente
       const query = `
         SELECT 
-          id,
-          client_email as clientEmail,
-          client_name as clientName,
-          vessel_id as vesselId,
-          vessel_name as vesselName,
-          booking_date as bookingDate,
-          status,
-          notes,
-          created_at as createdAt,
-          updated_at as updatedAt
-        FROM bookings
-        WHERE booking_date >= ${now}
-          AND status = 'confirmed'
-        ORDER BY booking_date ASC
+          b.id,
+          b.client_email as clientEmail,
+          b.client_name as clientName,
+          b.vessel_id as vesselId,
+          b.vessel_name as vesselName,
+          b.booking_date as bookingDate,
+          b.status,
+          b.notes,
+          b.created_at as createdAt,
+          b.updated_at as updatedAt,
+          ac.phone as clientPhone
+        FROM bookings b
+        LEFT JOIN allowed_clients ac ON b.client_email = ac.email
+        WHERE b.booking_date >= ${cutoffTimestamp}
+          AND b.status = 'confirmed'
+        ORDER BY b.booking_date ASC
         LIMIT 21
       `;
       const result = await dbInstance.execute(sqlTag.raw(query)) as any;
