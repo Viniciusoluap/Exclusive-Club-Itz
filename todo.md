@@ -817,3 +817,46 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 - [x] Ajustar lógica de visualização: reservas do dia atual só aparecem até 18h, após esse horário são consideradas passadas
 
 - [x] Adicionar mensagem pré-definida no WhatsApp ao clicar no ícone de contato (somente na aba Próximas Reservas do funcionário)
+
+
+---
+
+## 🚀 NOVO RECURSO: Múltiplos Galões por Abastecimento (29/12/2025)
+
+**Objetivo:** Permitir que funcionários usem múltiplos galões em um único abastecimento
+
+### Banco de Dados:
+- [x] Criar tabela `fuel_record_containers` para armazenar dados de cada galão usado
+
+### Backend - Rotas tRPC:
+- [x] Modificar endpoint `fuelRecords.create` para aceitar array de galões
+- [x] Atualizar lógica de cálculo de litros (soma de todos os galões)
+- [x] Atualizar lógica de desconto de estoque (desconta de cada galão individualmente)
+- [x] Salvar dados de cada container na tabela `fuel_record_containers`
+- [x] Remover campo de comprovante (foto do cupom fiscal)
+
+### Frontend - Página do Funcionário:
+- [x] Remover campo "Comprovante (Foto do Cupom Fiscal)"
+- [x] Manter seção do Galão Principal (obrigatório) com campos:
+  * Seleciona Galão do estoque
+  * Peso do Galão Cheio (kg)
+  * Peso do Galão Após (kg)
+  * Foto da Balança - ANTES
+  * Foto da Balança - DEPOIS
+  * Cálculo automático de litros
+- [x] Adicionar botão "+ Adicionar outro Galão ao abastecimento"
+- [x] Para cada galão adicional, exibir mesmos campos + botão "Remover este galão"
+- [x] Exibir resumo do abastecimento com total de litros e valor
+
+### Comportamento Esperado:
+1. Galão Principal: Sempre obrigatório (como funciona hoje)
+2. Galões Adicionais: Opcionais, cada um com seus próprios campos de peso e fotos
+3. Cálculo: Soma os litros de todos os galões para o total do abastecimento
+4. Estoque: Desconta de cada galão individualmente a quantidade usada
+
+### Testes:
+- [x] Criar testes automatizados para novo fluxo de múltiplos galões
+- [x] Testar cálculo correto de litros totais
+- [x] Testar desconto correto de estoque de cada galão
+- [x] Testar fluxo completo de registro com 2+ galões
+

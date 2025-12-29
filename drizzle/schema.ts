@@ -234,6 +234,23 @@ export const users = mysqlTable("users", {
 	index("users_openId_unique").on(table.openId),
 ]);
 
+export const fuelRecordContainers = mysqlTable("fuel_record_containers", {
+	id: int().autoincrement().notNull(),
+	fuelRecordId: int("fuel_record_id").notNull(),
+	gallonNumber: int("gallon_number").notNull(),
+	litersInitial: int("liters_initial").notNull(),
+	weightFull: int("weight_full").notNull(),
+	weightAfter: int("weight_after").notNull(),
+	weightConsumed: int("weight_consumed").notNull(),
+	litersUsed: int("liters_used").notNull(),
+	photoBeforeUrl: text("photo_before_url").notNull(),
+	photoAfterUrl: text("photo_after_url").notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("fuel_record_id_idx").on(table.fuelRecordId),
+]);
+
 export const vessels = mysqlTable("vessels", {
 	id: int().autoincrement().notNull(),
 	name: text().notNull(),
@@ -270,3 +287,5 @@ export type FuelPurchase = typeof fuelPurchases.$inferSelect;
 export type InsertFuelPurchase = typeof fuelPurchases.$inferInsert;
 export type FuelRecord = typeof fuelRecords.$inferSelect;
 export type InsertFuelRecord = typeof fuelRecords.$inferInsert;
+export type FuelRecordContainer = typeof fuelRecordContainers.$inferSelect;
+export type InsertFuelRecordContainer = typeof fuelRecordContainers.$inferInsert;
