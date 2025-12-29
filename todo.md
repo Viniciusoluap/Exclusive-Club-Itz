@@ -952,3 +952,46 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 
 - [x] Bug: Campo "Orçamento" na tela principal mostra R$ 0.00 em vez do valor correto do modal de Gestão de Combustível
 
+
+
+---
+
+## 🐛 CORREÇÃO CRÍTICA: Lógica Matemática da Página de Abastecimentos (29/12/2025)
+
+**Problema reportado pelo usuário:**
+- Valores de Total Cobrado, Saldo, Estoque, Preço por Litro e Gasto estão todos errados
+- Lógica de cálculos não corresponde às fórmulas especificadas
+
+**Fórmulas Corretas a Implementar:**
+
+### 1. Cards de Resumo
+- [x] **Total Cobrado**: Soma de TODOS os valores cobrados nos registros recentes (independente do status) - CORRIGIDO 29/12/2025
+- [x] **Total Pendente**: Soma dos valores dos registros com status "Pendente" - JÁ FUNCIONAVA
+- [x] **Total Recebido**: Soma dos valores dos registros com status "Pago" - JÁ FUNCIONAVA
+- [x] **Saldo**: (Orçamento - Total Cobrado). Se negativo: vermelho. Se positivo: verde - CORRIGIDO 29/12/2025
+
+### 2. Card de Orçamento Mensal
+- [x] **Orçamento**: Soma de TODAS as compras no "Histórico de Compras" - JÁ FUNCIONAVA
+- [x] **Gasto**: Mesmo valor do "Total Cobrado" - CORRIGIDO 29/12/2025
+- [x] **Estoque**: Soma do estoque dos 3 galões (Galão1 + Galão2 + Galão3) - JÁ FUNCIONAVA
+- [x] **Preço/L atual**: Mesmo valor do "Preço/L médio" (arredondado para cima) - CORRIGIDO 29/12/2025
+
+### 3. Estoque por Galão
+- [x] **Galão 1**: (Soma litros compras Galão 1) - (Soma litros abastecimentos Galão 1) - JÁ FUNCIONAVA
+- [x] **Galão 2**: (Soma litros compras Galão 2) - (Soma litros abastecimentos Galão 2) - JÁ FUNCIONAVA
+- [x] **Galão 3**: (Soma litros compras Galão 3) - (Soma litros abastecimentos Galão 3) - JÁ FUNCIONAVA
+- [x] **Total**: Galão 1 + Galão 2 + Galão 3 - JÁ FUNCIONAVA
+
+### 4. Preço/L Médio
+- [x] **Fórmula**: (Soma total R$ das compras) / (Soma total litros das compras), arredondado para cima - CORRIGIDO 29/12/2025
+
+### 5. Seleção de Galões
+- [x] **Registrar Compra**: Dropdown deve mostrar estoque atual de cada galão - JÁ FUNCIONAVA
+- [ ] **Registrar Abastecimento**: Dropdown deve mostrar estoque disponível de cada galão
+- [ ] **Formato**: "Galão X - XX.XX L disponíveis"
+
+**Arquivos a Modificar:**
+- [ ] server/routers.ts ou arquivo de routers de fuel - Lógica de cálculo no backend
+- [ ] client/src/pages/AdminFuel.tsx ou similar - Exibição dos valores calculados
+- [ ] Componentes de modal de compra e abastecimento - Seleção de galões com estoque
+
