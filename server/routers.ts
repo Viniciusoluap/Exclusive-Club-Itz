@@ -3008,16 +3008,11 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         // Estoque real = Total comprado - Total usado
         const realStockLiters = totalLitersPurchased - totalLitersUsed;
 
-        // Buscar último preço por litro da compra mais recente
-        const lastPriceResult = await db.execute(sql`
-          SELECT price_per_liter
-          FROM fuel_purchases
-          WHERE month_year = ${input.monthYear}
-          ORDER BY purchased_at DESC
-          LIMIT 1
-        `) as any;
-        const lastPriceData = (Array.isArray(lastPriceResult[0]) ? lastPriceResult[0][0] : lastPriceResult[0]);
-        const lastPricePerLiter = lastPriceData ? Number(lastPriceData.price_per_liter) : 0;
+        // Calcular preço/L médio ponderado: (soma total R$ das compras) / (soma total litros das compras)
+        // Arredondar para cima
+        const avgPricePerLiter = totalLitersPurchased > 0 
+          ? Math.ceil((totalBudget / totalLitersPurchased) * 100) / 100 // totalBudget já está em centavos, totalLiters em centésimos
+          : 0;
 
         // Calcular total gasto (soma dos abastecimentos)
         const spentResult = await db.execute(sql`
@@ -3044,7 +3039,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           totalSpent: totalSpent / 100, // Gasto = soma dos abastecimentos
           totalReceived: totalReceived / 100, // Recebido = pagamentos confirmados
           stockLiters: realStockLiters / 100, // Estoque = comprado - usado
-          lastPricePerLiter: lastPricePerLiter / 100, // Último preço/L das compras
+          lastPricePerLiter: avgPricePerLiter, // Preço/L médio ponderado (já em reais)
         };
       }),
 

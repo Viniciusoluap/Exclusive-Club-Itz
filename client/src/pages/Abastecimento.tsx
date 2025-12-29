@@ -615,12 +615,12 @@ export default function Abastecimento() {
     : (calculatedLiters * (parseFloat(pricePerLiter) || 0));
   const totalCost = (subtotal + SERVICE_FEE).toFixed(2);
 
-  // Estatísticas
-  const totalCobrado = financialStats?.totalCharged || 0;
+  // Estatísticas - Usando nomes corretos do backend
+  const totalCobrado = financialStats?.totalBilled || 0;
   const totalRecebido = financialStats?.totalReceived || 0;
   const totalPendente = financialStats?.totalPending || 0;
   const totalVencido = financialStats?.totalOverdue || 0;
-  const countRecords = financialStats?.count || 0;
+  const countRecords = financialStats?.totalRecords || 0;
 
   // Orçamento (usa totalBudget que é calculado automaticamente pelo backend)
   const budgetAmount = budget?.totalBudget || 0;
@@ -629,9 +629,16 @@ export default function Abastecimento() {
 
   // Estoque total
   const totalStock = gallonStock?.reduce((sum: number, g: any) => sum + (g.stockLiters || 0), 0) || 0;
-  const avgPricePerLiter = gallonStock?.length > 0 
-    ? gallonStock.reduce((sum: number, g: any) => sum + (g.lastPricePerLiter || 0), 0) / gallonStock.length 
-    : 0;
+  
+  // Preço/L médio ponderado: (soma total R$ das compras) / (soma total litros das compras)
+  // Calculado a partir dos dados de cada galão
+  const totalLitersPurchased = gallonStock?.reduce((sum: number, g: any) => sum + (g.totalPurchased || 0), 0) || 0;
+  const totalAmountPurchased = gallonStock?.reduce((sum: number, g: any) => sum + ((g.totalPurchased || 0) * (g.lastPricePerLiter || 0)), 0) || 0;
+  const avgPricePerLiter = totalLitersPurchased > 0 
+    ? Math.ceil((totalAmountPurchased / totalLitersPurchased) * 100) / 100 // Arredondar para cima
+    : (gallonStock?.length > 0 
+        ? gallonStock.reduce((sum: number, g: any) => sum + (g.lastPricePerLiter || 0), 0) / gallonStock.length 
+        : 0);
 
   return (
     <div className="container py-8">
@@ -752,7 +759,7 @@ export default function Abastecimento() {
             <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               R$ {saldo.toFixed(2)}
             </p>
-            <p className="text-xs text-muted-foreground">Gasto - Orçamento</p>
+            <p className="text-xs text-muted-foreground">Orçamento - Gasto</p>
           </CardContent>
         </Card>
       </div>
