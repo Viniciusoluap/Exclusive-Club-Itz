@@ -80,7 +80,9 @@ export default function EmployeeReservas() {
           <div className="space-y-4">
             {upcomingReservations.map((reservation: any) => {
               const whatsappPhone = formatPhoneForWhatsApp(reservation.clientPhone);
-              const whatsappUrl = whatsappPhone ? `https://wa.me/${whatsappPhone}` : null;
+              // Mensagem pré-definida para confirmação de reserva
+              const whatsappMessage = "Olá! Sou da Exclusive Club, gostaria de confirmar sua reserva para hoje e o horário que você quer descer?\nPara proporcionarmos o melhor atendimento para você";
+              const whatsappUrl = whatsappPhone ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}` : null;
               
               return (
                 <Card
