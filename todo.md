@@ -801,3 +801,17 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 **Testes:**
 - [x] Criar testes automatizados para o endpoint de edição (8 testes passando)
 
+
+---
+
+## 🔧 Melhoria: Telefone do Cliente e Lógica de Horário no Painel do Funcionário (28/12/2025)
+
+**Problema reportado pelo usuário:**
+- Reservas no painel do funcionário não mostram telefone do cliente
+- Funcionário precisa ver telefone para contato via WhatsApp
+- Reservas do dia atual devem sair de "Próximas Reservas" após 18h
+
+**Tarefas:**
+- [x] Adicionar telefone do cliente nas reservas do painel do funcionário
+- [x] Adicionar ícone WhatsApp clicável para direcionar ao WhatsApp do cliente
+- [x] Ajustar lógica de visualização: reservas do dia atual só aparecem até 18h, após esse horário são consideradas passadas
