@@ -938,3 +938,6 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 - [x] Corrigir exibição do estoque dos galões (alterado de adminProcedure para employeeProcedure)
 - [x] Testar fluxo completo
 
+
+- [x] Bug: Campo "Orçamento" na tela principal mostra R$ 0.00 em vez do valor correto do modal de Gestão de Combustível
+
