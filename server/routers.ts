@@ -3175,7 +3175,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
     // CORRIGIDO: Estoque = Total Comprado - Total Abastecido (calculado dinamicamente)
     // CORRIGIDO: Preço por litro = Média ponderada (total_gasto / total_litros)
     // CORRIGIDO: Agora considera fuel_record_containers para abastecimentos com múltiplos galões
-    getGallonStock: adminProcedure
+    getGallonStock: employeeProcedure
       .query(async () => {
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });

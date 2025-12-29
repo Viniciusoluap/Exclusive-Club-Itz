@@ -922,3 +922,19 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 - Validação de campos obrigatórios
 - Compatibilidade total com backend existente
 
+
+
+---
+
+## 🐛 BUG: Estoque dos Galões Zerado na Página do Funcionário (29/12/2025)
+
+**Problema reportado pelo usuário:**
+- Ao selecionar galão no formulário de abastecimento do funcionário
+- Todos os galões mostram "0.00 L disponíveis"
+- Deveria mostrar os valores corretos: Galão 1 = 10.77L, Galão 2 = 50L
+
+**Tarefas:**
+- [x] Investigar query de gallonStock na página do funcionário
+- [x] Corrigir exibição do estoque dos galões (alterado de adminProcedure para employeeProcedure)
+- [x] Testar fluxo completo
+
