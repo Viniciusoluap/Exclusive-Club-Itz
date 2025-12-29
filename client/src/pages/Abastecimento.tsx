@@ -622,8 +622,8 @@ export default function Abastecimento() {
   const totalVencido = financialStats?.totalOverdue || 0;
   const countRecords = financialStats?.count || 0;
 
-  // Orçamento
-  const budgetAmount = budget?.budgetAmount || 0;
+  // Orçamento (usa totalBudget que é calculado automaticamente pelo backend)
+  const budgetAmount = budget?.totalBudget || 0;
   const budgetUsedPercent = budgetAmount > 0 ? Math.min((totalCobrado / budgetAmount) * 100, 100) : 0;
   const saldo = budgetAmount - totalCobrado;
 
