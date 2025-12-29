@@ -873,9 +873,18 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 - Quando um abastecimento usa múltiplos galões, os litros de cada galão são salvos em `fuel_record_containers`
 
 **Tarefas:**
-- [ ] Corrigir endpoint `getGallonStock` para somar litros de `fuel_records` + `fuel_record_containers`
-- [ ] Corrigir endpoint `getGallonStockByNumber` da mesma forma
-- [ ] Testar cálculo do estoque após correção
+- [x] Corrigir endpoint `getGallonStock` para somar litros de `fuel_records` + `fuel_record_containers`
+- [x] Corrigir endpoint `getGallonStockByNumber` da mesma forma
+- [x] Testar cálculo do estoque após correção
+- [x] Excluir containers órfãos que referenciavam fuel_record_id inexistente
+- [x] Adicionar validação para garantir que registro principal seja criado antes dos containers
+
+**Solução Aplicada (29/12/2025):**
+- Os endpoints já estavam corretos, considerando fuel_record_containers
+- O problema era que havia containers órfãos (fuel_record_id=1290001 não existia)
+- Containers órfãos foram excluídos do banco de dados
+- Adicionada validação no endpoint fuelRecords.create para prevenir containers órfãos no futuro
+- Estoque agora mostra valores corretos: Galão 1=611.77L, Galão 2=50L, Galão 3=0L
 
 
 
@@ -886,11 +895,13 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 **Objetivo:** Permitir que o admin registre abastecimentos com múltiplos galões, similar ao funcionário
 
 **Tarefas:**
-- [ ] Atualizar formulário de registro de abastecimento do admin para suportar múltiplos galões
-- [ ] Adicionar botão "+ Adicionar outro Galão" no formulário
-- [ ] Exibir resumo com total de litros e valor de todos os galões
-- [ ] Atualizar visualização dos registros para mostrar todos os galões usados
-- [ ] Testar fluxo completo de abastecimento com múltiplos galões
+- [x] Atualizar formulário de registro de abastecimento do admin para suportar múltiplos galões
+- [x] Adicionar botão "+ Adicionar outro Galão" no formulário
+- [x] Exibir resumo com total de litros e valor de todos os galões
+- [x] Atualizar visualização dos registros para mostrar todos os galões usados
+- [x] Testar fluxo completo de abastecimento com múltiplos galões
+
+**Status:** Já implementado anteriormente (ver seção CONCLUÍDO abaixo)
 
 
 ---
