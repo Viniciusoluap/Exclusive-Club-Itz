@@ -815,3 +815,5 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 - [x] Adicionar telefone do cliente nas reservas do painel do funcionário
 - [x] Adicionar ícone WhatsApp clicável para direcionar ao WhatsApp do cliente
 - [x] Ajustar lógica de visualização: reservas do dia atual só aparecem até 18h, após esse horário são consideradas passadas
+
+- [x] Adicionar mensagem pré-definida no WhatsApp ao clicar no ícone de contato (somente na aba Próximas Reservas do funcionário)
