@@ -3174,6 +3174,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
     // Endpoint para obter estoque de todos os galões
     // CORRIGIDO: Estoque = Total Comprado - Total Abastecido (calculado dinamicamente)
     // CORRIGIDO: Preço por litro = Média ponderada (total_gasto / total_litros)
+    // CORRIGIDO: Agora considera fuel_record_containers para abastecimentos com múltiplos galões
     getGallonStock: adminProcedure
       .query(async () => {
         const db = await import('./db').then(m => m.getDb());
@@ -3182,8 +3183,12 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         const { sql } = await import('drizzle-orm');
         
         // Calcular estoque dinamicamente para cada galão
-        // Estoque = Total Comprado (fuel_purchases) - Total Abastecido (fuel_records)
+        // Estoque = Total Comprado (fuel_purchases) - Total Abastecido (fuel_records + fuel_record_containers)
         // Preço/L = Média ponderada (total_gasto / total_litros) das compras
+        // IMPORTANTE: fuel_records.liters contém o total do abastecimento (pode ser de múltiplos galões)
+        // fuel_record_containers.liters_used contém os litros usados de cada galão específico
+        // Para abastecimentos antigos (sem containers), usamos fuel_records.gallon_number
+        // Para abastecimentos novos (com containers), usamos fuel_record_containers.gallon_number
         const stockResult = await db.execute(sql`
           SELECT 
             g.gallon_number,
@@ -3201,8 +3206,19 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             GROUP BY gallon_number
           ) p ON g.gallon_number = p.gallon_number
           LEFT JOIN (
-            SELECT gallon_number, SUM(liters) as total_refueled
-            FROM fuel_records
+            -- Soma abastecimentos: fuel_records (antigos sem containers) + fuel_record_containers (novos com múltiplos galões)
+            SELECT gallon_number, SUM(liters_used) as total_refueled FROM (
+              -- Abastecimentos antigos: registros em fuel_records que NÃO têm containers associados
+              SELECT fr.gallon_number, fr.liters as liters_used
+              FROM fuel_records fr
+              WHERE NOT EXISTS (
+                SELECT 1 FROM fuel_record_containers frc WHERE frc.fuel_record_id = fr.id
+              )
+              UNION ALL
+              -- Abastecimentos novos: registros em fuel_record_containers (cada galão usado)
+              SELECT frc.gallon_number, frc.liters_used
+              FROM fuel_record_containers frc
+            ) combined
             GROUP BY gallon_number
           ) r ON g.gallon_number = r.gallon_number
           ORDER BY g.gallon_number ASC
@@ -3241,6 +3257,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
     // Endpoint para obter estoque de um galão específico
     // CORRIGIDO: Estoque = Total Comprado - Total Abastecido (calculado dinamicamente)
     // CORRIGIDO: Preço por litro = Média ponderada (total_gasto / total_litros)
+    // CORRIGIDO: Agora considera fuel_record_containers para abastecimentos com múltiplos galões
     getGallonStockByNumber: publicProcedure
       .input(z.object({
         gallonNumber: z.number().min(1).max(3),
@@ -3252,7 +3269,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         const { sql } = await import('drizzle-orm');
         
         // Calcular estoque dinamicamente para o galão específico
-        // Estoque = Total Comprado (fuel_purchases) - Total Abastecido (fuel_records)
+        // Estoque = Total Comprado (fuel_purchases) - Total Abastecido (fuel_records + fuel_record_containers)
         // Preço/L = Média ponderada (total_gasto / total_litros) das compras
         const stockResult = await db.execute(sql`
           SELECT 
@@ -3271,9 +3288,21 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             GROUP BY gallon_number
           ) p ON g.gallon_number = p.gallon_number
           LEFT JOIN (
-            SELECT gallon_number, SUM(liters) as total_refueled
-            FROM fuel_records
-            WHERE gallon_number = ${input.gallonNumber}
+            -- Soma abastecimentos: fuel_records (antigos sem containers) + fuel_record_containers (novos com múltiplos galões)
+            SELECT gallon_number, SUM(liters_used) as total_refueled FROM (
+              -- Abastecimentos antigos: registros em fuel_records que NÃO têm containers associados
+              SELECT fr.gallon_number, fr.liters as liters_used
+              FROM fuel_records fr
+              WHERE fr.gallon_number = ${input.gallonNumber}
+                AND NOT EXISTS (
+                  SELECT 1 FROM fuel_record_containers frc WHERE frc.fuel_record_id = fr.id
+                )
+              UNION ALL
+              -- Abastecimentos novos: registros em fuel_record_containers (cada galão usado)
+              SELECT frc.gallon_number, frc.liters_used
+              FROM fuel_record_containers frc
+              WHERE frc.gallon_number = ${input.gallonNumber}
+            ) combined
             GROUP BY gallon_number
           ) r ON g.gallon_number = r.gallon_number
           WHERE g.gallon_number = ${input.gallonNumber}
