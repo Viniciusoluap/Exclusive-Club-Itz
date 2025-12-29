@@ -1923,6 +1923,17 @@ Nenhuma reserva foi afetada.
         // Obter o ID do registro inserido
         const fuelRecordId = insertResult[0]?.insertId || insertResult.insertId;
         
+        // VALIDAÇÃO: Garantir que o registro principal foi criado antes de salvar containers
+        if (!fuelRecordId || fuelRecordId <= 0) {
+          console.error('[fuelRecords.create] ERRO: Falha ao obter ID do registro inserido. insertResult:', JSON.stringify(insertResult));
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: 'Falha ao criar registro de abastecimento. Por favor, tente novamente.' 
+          });
+        }
+        
+        console.log('[fuelRecords.create] Registro principal criado com ID:', fuelRecordId);
+        
         // NOVO: Salvar cada container na tabela fuel_record_containers
         if (containersToSave.length > 0 && fuelRecordId) {
           console.log('[fuelRecords.create] Salvando', containersToSave.length, 'containers para fuel_record_id:', fuelRecordId);
