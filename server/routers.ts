@@ -1637,6 +1637,15 @@ Nenhuma reserva foi afetada.
         photoBeforeUrl: z.string().url().optional(), // URL da foto ANTES
         photoAfterUrl: z.string().url().optional(), // URL da foto DEPOIS
         gallonNumber: z.number().min(1).max(3).default(1), // Galão 1, 2 ou 3
+        // NOVO: Array de galões para múltiplos galões por abastecimento
+        containers: z.array(z.object({
+          gallonNumber: z.number().min(1).max(3),
+          litersInitial: z.number().positive(),
+          weightFull: z.number().positive(),
+          weightAfter: z.number().nonnegative(),
+          photoBeforeUrl: z.string().url(),
+          photoAfterUrl: z.string().url(),
+        })).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
@@ -1658,8 +1667,11 @@ Nenhuma reserva foi afetada.
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Reserva não encontrada' });
         }
 
-        // Validar campos de peso (se um for informado, todos devem ser)
-        const hasWeightData = input.litersInitial !== undefined || input.weightFull !== undefined || input.weightAfter !== undefined;
+        // NOVO: Suporte a múltiplos galões
+        const useMultipleContainers = input.containers && input.containers.length > 0;
+        
+        // Validar campos de peso (se um for informado, todos devem ser) - modo legado
+        const hasWeightData = !useMultipleContainers && (input.litersInitial !== undefined || input.weightFull !== undefined || input.weightAfter !== undefined);
         if (hasWeightData) {
           if (input.litersInitial === undefined || input.weightFull === undefined || input.weightAfter === undefined) {
             throw new TRPCError({ 
@@ -1678,6 +1690,18 @@ Nenhuma reserva foi afetada.
               code: 'BAD_REQUEST', 
               message: 'O peso após deve ser menor que o peso cheio' 
             });
+          }
+        }
+        
+        // Validar múltiplos galões
+        if (useMultipleContainers) {
+          for (const container of input.containers!) {
+            if (container.weightAfter >= container.weightFull) {
+              throw new TRPCError({ 
+                code: 'BAD_REQUEST', 
+                message: `Galão ${container.gallonNumber}: O peso após deve ser menor que o peso cheio` 
+              });
+            }
           }
         }
 
@@ -1714,44 +1738,95 @@ Nenhuma reserva foi afetada.
           });
         }
 
-        // Calcular valores de peso e litros (se método de pesagem for usado)
+        // Calcular valores de peso e litros
         let litersInitialInCents = null;
         let weightFullInGrams = null;
         let weightAfterInGrams = null;
         let weightConsumedInGrams = null;
         let litersCalculatedInCents = null;
-        let finalLitersInCents = input.liters ? Math.round(input.liters * 100) : 0; // Padrão: usar litros informados manualmente
+        let finalLitersInCents = input.liters ? Math.round(input.liters * 100) : 0;
+        
+        // Array para armazenar dados de cada galão (para salvar na tabela fuel_record_containers)
+        const containersToSave: Array<{
+          gallonNumber: number;
+          litersInitial: number;
+          weightFull: number;
+          weightAfter: number;
+          weightConsumed: number;
+          litersUsed: number;
+          photoBeforeUrl: string;
+          photoAfterUrl: string;
+        }> = [];
 
-        if (hasWeightData && input.litersInitial !== undefined && input.weightFull !== undefined && input.weightAfter !== undefined) {
-          // Converter para unidades inteiras (centavos/gramas)
-          litersInitialInCents = Math.round(input.litersInitial * 100); // 50.05L -> 5005
-          weightFullInGrams = Math.round(input.weightFull * 100); // 37.80kg -> 3780 (gramas em centavos)
-          weightAfterInGrams = Math.round(input.weightAfter * 100); // 23.40kg -> 2340
-          weightConsumedInGrams = weightFullInGrams - weightAfterInGrams; // 3780 - 2340 = 1440
-
-          // Regra de 3: litros_consumidos = (peso_consumido * litros_iniciais) / peso_cheio
-          litersCalculatedInCents = Math.round((weightConsumedInGrams * litersInitialInCents) / weightFullInGrams);
+        // NOVO: Processar múltiplos galões
+        if (useMultipleContainers && input.containers) {
+          console.log('[fuelRecords.create] Processando múltiplos galões:', input.containers.length);
           
-          // Usar litros calculados ao invés de litros manuais
+          let totalLitersUsedInCents = 0;
+          
+          for (const container of input.containers) {
+            const containerLitersInitial = Math.round(container.litersInitial * 100);
+            const containerWeightFull = Math.round(container.weightFull * 100);
+            const containerWeightAfter = Math.round(container.weightAfter * 100);
+            const containerWeightConsumed = containerWeightFull - containerWeightAfter;
+            const containerLitersUsed = Math.round((containerWeightConsumed * containerLitersInitial) / containerWeightFull);
+            
+            totalLitersUsedInCents += containerLitersUsed;
+            
+            containersToSave.push({
+              gallonNumber: container.gallonNumber,
+              litersInitial: containerLitersInitial,
+              weightFull: containerWeightFull,
+              weightAfter: containerWeightAfter,
+              weightConsumed: containerWeightConsumed,
+              litersUsed: containerLitersUsed,
+              photoBeforeUrl: container.photoBeforeUrl,
+              photoAfterUrl: container.photoAfterUrl,
+            });
+            
+            console.log(`[fuelRecords.create] Galão ${container.gallonNumber}: ${containerLitersUsed / 100}L`);
+          }
+          
+          finalLitersInCents = totalLitersUsedInCents;
+          console.log('[fuelRecords.create] Total de litros (múltiplos galões):', finalLitersInCents / 100, 'L');
+          
+        } else if (hasWeightData && input.litersInitial !== undefined && input.weightFull !== undefined && input.weightAfter !== undefined) {
+          // Modo legado: galão único
+          litersInitialInCents = Math.round(input.litersInitial * 100);
+          weightFullInGrams = Math.round(input.weightFull * 100);
+          weightAfterInGrams = Math.round(input.weightAfter * 100);
+          weightConsumedInGrams = weightFullInGrams - weightAfterInGrams;
+          litersCalculatedInCents = Math.round((weightConsumedInGrams * litersInitialInCents) / weightFullInGrams);
           finalLitersInCents = litersCalculatedInCents;
         }
 
         const SERVICE_FEE = 1000; // Taxa de abastecimento e aplicativo em centavos (R$ 10,00)
-        const pricePerLiterInCents = Math.round(finalPricePerLiter * 100); // Converter para centavos
-        const fuelCost = Math.round((finalLitersInCents / 100) * finalPricePerLiter * 100); // em centavos
+        const pricePerLiterInCents = Math.round(finalPricePerLiter * 100);
+        const fuelCost = Math.round((finalLitersInCents / 100) * finalPricePerLiter * 100);
         const totalAmount = fuelCost + SERVICE_FEE;
         
-        // Descontar litros do estoque do galão específico
         const finalLiters = finalLitersInCents / 100;
-        console.log(`[fuelRecords.create] Descontando do Galão ${input.gallonNumber}:`, finalLiters, 'L');
-        console.log(`[fuelRecords.create] Galão ${input.gallonNumber} - Estoque antes:`, currentStockLiters, 'L');
         
-        // Descontar do galão específico
-        await database.execute(sql`
-          UPDATE gallon_stock 
-          SET stock_liters = stock_liters - ${finalLitersInCents}
-          WHERE gallon_number = ${input.gallonNumber}
-        `);
+        // Descontar litros do estoque de cada galão
+        if (useMultipleContainers && containersToSave.length > 0) {
+          // Descontar de cada galão individualmente
+          for (const container of containersToSave) {
+            console.log(`[fuelRecords.create] Descontando do Galão ${container.gallonNumber}: ${container.litersUsed / 100}L`);
+            await database.execute(sql`
+              UPDATE gallon_stock 
+              SET stock_liters = stock_liters - ${container.litersUsed}
+              WHERE gallon_number = ${container.gallonNumber}
+            `);
+          }
+        } else {
+          // Modo legado: descontar do galão único
+          console.log(`[fuelRecords.create] Descontando do Galão ${input.gallonNumber}:`, finalLiters, 'L');
+          await database.execute(sql`
+            UPDATE gallon_stock 
+            SET stock_liters = stock_liters - ${finalLitersInCents}
+            WHERE gallon_number = ${input.gallonNumber}
+          `);
+        }
         
         // Manter compatibilidade: atualizar fuel_budget
         await database.execute(sql`
@@ -1759,8 +1834,6 @@ Nenhuma reserva foi afetada.
           SET stock_liters = stock_liters - ${finalLitersInCents}
           WHERE month_year = ${currentMonthYear}
         `);
-        
-        console.log(`[fuelRecords.create] Galão ${input.gallonNumber} - Estoque após:`, (currentStockLiters - finalLiters), 'L');
 
         // Criar ou buscar cliente no Asaas
         const asaas = await import('./_core/asaas');
@@ -1819,7 +1892,13 @@ Nenhuma reserva foi afetada.
         const paymentUrlValue = paymentUrl ? `'${paymentUrl}'` : 'NULL';
         const syncErrorValue = syncError ? `'${syncError.replace(/'/g, "''")}'` : 'NULL';
         
-        await database.execute(`
+        // Para múltiplos galões, usar dados do primeiro galão para o registro principal
+        const primaryGallon = containersToSave.length > 0 ? containersToSave[0] : null;
+        const primaryPhotoBeforeUrl = primaryGallon ? `'${primaryGallon.photoBeforeUrl}'` : photoBeforeUrlValue;
+        const primaryPhotoAfterUrl = primaryGallon ? `'${primaryGallon.photoAfterUrl}'` : photoAfterUrlValue;
+        const primaryGallonNumber = primaryGallon ? primaryGallon.gallonNumber : input.gallonNumber;
+        
+        const insertResult = await database.execute(`
           INSERT INTO fuel_records (
             booking_id, vessel_id, vessel_name, client_email, client_name, 
             liters, price_per_liter, total_amount, notes, 
@@ -1834,17 +1913,43 @@ Nenhuma reserva foi afetada.
             '${booking.client_email}', '${booking.client_name}', 
             ${finalLitersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${notesValue}, 
             ${litersInitialInCents}, ${weightFullInGrams}, ${weightAfterInGrams}, ${weightConsumedInGrams}, ${litersCalculatedInCents},
-            ${photoBeforeUrlValue}, ${photoAfterUrlValue},
+            ${primaryPhotoBeforeUrl}, ${primaryPhotoAfterUrl},
             ${asaasChargeIdValue}, ${asaasCustomerIdValue}, ${paymentUrlValue}, 'pending',
             '${syncStatus}', ${syncErrorValue}, NOW(),
-            ${ctx.user?.id || 'NULL'}, NOW(), ${input.gallonNumber}
+            ${ctx.user?.id || 'NULL'}, NOW(), ${primaryGallonNumber}
           )
-        `);
+        `) as any;
+        
+        // Obter o ID do registro inserido
+        const fuelRecordId = insertResult[0]?.insertId || insertResult.insertId;
+        
+        // NOVO: Salvar cada container na tabela fuel_record_containers
+        if (containersToSave.length > 0 && fuelRecordId) {
+          console.log('[fuelRecords.create] Salvando', containersToSave.length, 'containers para fuel_record_id:', fuelRecordId);
+          
+          for (const container of containersToSave) {
+            await database.execute(`
+              INSERT INTO fuel_record_containers (
+                fuel_record_id, gallon_number, liters_initial, weight_full, weight_after,
+                weight_consumed, liters_used, photo_before_url, photo_after_url
+              )
+              VALUES (
+                ${fuelRecordId}, ${container.gallonNumber}, ${container.litersInitial}, 
+                ${container.weightFull}, ${container.weightAfter}, ${container.weightConsumed},
+                ${container.litersUsed}, '${container.photoBeforeUrl}', '${container.photoAfterUrl}'
+              )
+            `);
+          }
+          
+          console.log('[fuelRecords.create] Containers salvos com sucesso!');
+        }
         
         console.log('[fuelRecords.create] Abastecimento salvo no banco com sync_status:', syncStatus); 
 
         return { 
-          success: true, 
+          success: true,
+          containersCount: containersToSave.length || 1,
+          totalLiters: finalLiters, 
           totalCost: totalAmount / 100,
           paymentUrl: paymentUrl || undefined,
           asaasChargeId: asaasChargeId || undefined,

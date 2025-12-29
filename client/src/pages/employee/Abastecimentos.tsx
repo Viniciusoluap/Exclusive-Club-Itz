@@ -14,24 +14,28 @@ import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText, Mail, Ale
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 
+// Interface para cada galão no abastecimento
+interface ContainerData {
+  id: string; // ID único para React key
+  gallonNumber: number;
+  litersInitial: string;
+  weightFull: string;
+  weightAfter: string;
+  photoBeforeUrl: string;
+  photoAfterUrl: string;
+  photoBeforeFile: File | null;
+  photoAfterFile: File | null;
+}
+
 export default function EmployeeAbastecimentos() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   
-  // Estados para método por peso
-  const [litersInitial, setLitersInitial] = useState("");
-  const [weightFull, setWeightFull] = useState("");
-  const [weightAfter, setWeightAfter] = useState("");
-  const [photoBeforeUrl, setPhotoBeforeUrl] = useState("");
-  const [photoAfterUrl, setPhotoAfterUrl] = useState("");
-  const [photoBeforeFile, setPhotoBeforeFile] = useState<File | null>(null);
-  const [photoAfterFile, setPhotoAfterFile] = useState<File | null>(null);
+  // Estado para múltiplos galões (containers)
+  const [containers, setContainers] = useState<ContainerData[]>([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
-  
-  // Estado para seleção de galão
-  const [selectedGallon, setSelectedGallon] = useState<string>("1");
   
   const [pricePerLiter, setPricePerLiter] = useState("");
   const [notes, setNotes] = useState("");
@@ -63,45 +67,44 @@ export default function EmployeeAbastecimentos() {
     refetch();
   }, [selectedMonth, selectedYear]);
 
-  // Pré-preencher preço/L e litros iniciais automaticamente ao abrir o dialog ou mudar galão
+  // Inicializar com o primeiro galão ao abrir o dialog
   useEffect(() => {
-    if (isCreateDialogOpen && gallonStock && gallonStock.length > 0) {
-      const gallon = gallonStock.find((g: any) => g.gallonNumber === parseInt(selectedGallon));
-      if (gallon) {
-        // Preencher preço se houver preço válido
-        if (gallon.lastPricePerLiter && gallon.lastPricePerLiter > 0) {
-          setPricePerLiter(gallon.lastPricePerLiter.toFixed(2));
-        }
-        // Preencher litros iniciais com o estoque do galão selecionado
-        if (gallon.stockLiters !== undefined && gallon.stockLiters !== null) {
-          setLitersInitial(gallon.stockLiters.toFixed(2));
-          console.log(`✅ Galão ${selectedGallon} - Litros iniciais: ${gallon.stockLiters.toFixed(2)}L, Preço/L: R$${gallon.lastPricePerLiter?.toFixed(2)}`);
-        }
-      }
-    } else if (isCreateDialogOpen && budget) {
-      // Fallback para budget se gallonStock não estiver disponível
-      if (budget.lastPricePerLiter && budget.lastPricePerLiter > 0) {
-        setPricePerLiter(budget.lastPricePerLiter.toFixed(2));
-      }
-      if (budget.stockLiters !== undefined && budget.stockLiters !== null) {
-        setLitersInitial(budget.stockLiters.toFixed(2));
-      }
+    if (isCreateDialogOpen && containers.length === 0) {
+      addContainer();
     } else if (!isCreateDialogOpen) {
-      // Resetar ao fechar o dialog
       resetForm();
     }
-  }, [isCreateDialogOpen, selectedGallon, gallonStock, budget]);
+  }, [isCreateDialogOpen]);
+
+  // Atualizar litros iniciais quando gallonStock mudar
+  useEffect(() => {
+    if (gallonStock && gallonStock.length > 0 && containers.length > 0) {
+      setContainers(prev => prev.map(container => {
+        const gallon = gallonStock.find((g: any) => g.gallonNumber === container.gallonNumber);
+        if (gallon && gallon.stockLiters !== undefined) {
+          return { ...container, litersInitial: gallon.stockLiters.toFixed(2) };
+        }
+        return container;
+      }));
+      
+      // Atualizar preço se houver
+      const firstGallon = gallonStock.find((g: any) => g.gallonNumber === containers[0]?.gallonNumber);
+      if (firstGallon?.lastPricePerLiter && firstGallon.lastPricePerLiter > 0) {
+        setPricePerLiter(firstGallon.lastPricePerLiter.toFixed(2));
+      }
+    }
+  }, [gallonStock, containers.length]);
 
   const utils = trpc.useUtils();
 
   const createMutation = trpcAny.fuelRecords?.create.useMutation({
     onSuccess: (data: any) => {
-      toast.success(`Abastecimento registrado no Galão ${selectedGallon}! Valor total: R$ ${data.totalCost.toFixed(2)}`);
+      const gallonsUsed = data.containersCount || 1;
+      toast.success(`Abastecimento registrado com ${gallonsUsed} galão(ões)! Total: ${data.totalLiters?.toFixed(2) || 0}L - R$ ${data.totalCost?.toFixed(2) || 0}`);
       setIsCreateDialogOpen(false);
       resetForm();
       refetch();
       refetchGallonStock();
-      // Invalidar query do estoque para atualizar saldo de litros
       utils.fuelBudget.get.invalidate({ monthYear });
     },
     onError: (error: any) => {
@@ -115,7 +118,6 @@ export default function EmployeeAbastecimentos() {
       setIsDeleteDialogOpen(false);
       setDeleteId(null);
       refetch();
-      // Invalidar query do estoque para atualizar saldo de litros
       utils.fuelBudget.get.invalidate({ monthYear });
     },
     onError: (error: any) => {
@@ -152,19 +154,75 @@ export default function EmployeeAbastecimentos() {
     },
   });
 
+  // Função para adicionar um novo container (galão)
+  const addContainer = () => {
+    // Encontrar o próximo galão disponível que não está em uso
+    const usedGallons = containers.map(c => c.gallonNumber);
+    let nextGallon = 1;
+    for (let i = 1; i <= 3; i++) {
+      if (!usedGallons.includes(i)) {
+        nextGallon = i;
+        break;
+      }
+    }
+    
+    const gallon = gallonStock?.find((g: any) => g.gallonNumber === nextGallon);
+    const litersInitial = gallon?.stockLiters?.toFixed(2) || "";
+    
+    const newContainer: ContainerData = {
+      id: `container-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      gallonNumber: nextGallon,
+      litersInitial,
+      weightFull: "",
+      weightAfter: "",
+      photoBeforeUrl: "",
+      photoAfterUrl: "",
+      photoBeforeFile: null,
+      photoAfterFile: null,
+    };
+    
+    setContainers(prev => [...prev, newContainer]);
+    
+    // Atualizar preço se for o primeiro galão
+    if (containers.length === 0 && gallon?.lastPricePerLiter) {
+      setPricePerLiter(gallon.lastPricePerLiter.toFixed(2));
+    }
+  };
+
+  // Função para remover um container
+  const removeContainer = (id: string) => {
+    if (containers.length <= 1) {
+      toast.error("É necessário pelo menos um galão");
+      return;
+    }
+    setContainers(prev => prev.filter(c => c.id !== id));
+  };
+
+  // Função para atualizar um container
+  const updateContainer = (id: string, field: keyof ContainerData, value: any) => {
+    setContainers(prev => prev.map(c => {
+      if (c.id === id) {
+        const updated = { ...c, [field]: value };
+        
+        // Se mudou o galão, atualizar litros iniciais
+        if (field === 'gallonNumber') {
+          const gallon = gallonStock?.find((g: any) => g.gallonNumber === value);
+          if (gallon?.stockLiters !== undefined) {
+            updated.litersInitial = gallon.stockLiters.toFixed(2);
+          }
+        }
+        
+        return updated;
+      }
+      return c;
+    }));
+  };
+
   const resetForm = () => {
     setSelectedBookingId(null);
-    setLitersInitial("");
-    setWeightFull("");
-    setWeightAfter("");
-    setPhotoBeforeUrl("");
-    setPhotoAfterUrl("");
-    setPhotoBeforeFile(null);
-    setPhotoAfterFile(null);
+    setContainers([]);
     setPricePerLiter(budget?.lastPricePerLiter ? budget.lastPricePerLiter.toFixed(2) : "");
     setNotes("");
-    // Resetar galão para 1
-    setSelectedGallon("1");
   };
 
   const handleDeleteClick = (id: number) => {
@@ -205,10 +263,9 @@ export default function EmployeeAbastecimentos() {
   };
 
   // Upload de fotos para S3
-  const handlePhotoUpload = async (file: File, type: 'before' | 'after') => {
+  const handlePhotoUpload = async (containerId: string, file: File, type: 'before' | 'after') => {
     setUploadingPhotos(true);
     try {
-      // Fazer upload real para S3
       const formData = new FormData();
       formData.append('file', file);
       formData.append('folder', 'fuel-records');
@@ -226,9 +283,11 @@ export default function EmployeeAbastecimentos() {
       const s3Url = data.url;
       
       if (type === 'before') {
-        setPhotoBeforeUrl(s3Url);
+        updateContainer(containerId, 'photoBeforeUrl', s3Url);
+        updateContainer(containerId, 'photoBeforeFile', file);
       } else {
-        setPhotoAfterUrl(s3Url);
+        updateContainer(containerId, 'photoAfterUrl', s3Url);
+        updateContainer(containerId, 'photoAfterFile', file);
       }
       
       toast.success(`Foto ${type === 'before' ? 'ANTES' : 'DEPOIS'} enviada com sucesso!`);
@@ -240,14 +299,31 @@ export default function EmployeeAbastecimentos() {
     }
   };
 
-  // Cálculo automático por regra de 3
-  const weightConsumed = weightFull && weightAfter !== "" 
-    ? parseFloat(weightFull) - parseFloat(weightAfter)
-    : 0;
+  // Calcular litros para cada container
+  const calculateLitersForContainer = (container: ContainerData) => {
+    const litersInitial = parseFloat(container.litersInitial) || 0;
+    const weightFull = parseFloat(container.weightFull) || 0;
+    const weightAfter = parseFloat(container.weightAfter);
+    
+    if (!litersInitial || !weightFull || isNaN(weightAfter) || weightFull <= 0) {
+      return 0;
+    }
+    
+    const weightConsumed = weightFull - weightAfter;
+    if (weightConsumed <= 0) return 0;
+    
+    return (weightConsumed / weightFull) * litersInitial;
+  };
 
-  const litersCalculated = litersInitial && weightFull && weightConsumed > 0
-    ? (weightConsumed / parseFloat(weightFull)) * parseFloat(litersInitial)
+  // Calcular totais
+  const totalLitersCalculated = containers.reduce((sum, c) => sum + calculateLitersForContainer(c), 0);
+  const SERVICE_FEE = 10.00;
+  const subtotal = totalLitersCalculated && pricePerLiter 
+    ? totalLitersCalculated * parseFloat(pricePerLiter)
     : 0;
+  const totalCost = totalLitersCalculated && pricePerLiter
+    ? (subtotal + SERVICE_FEE).toFixed(2)
+    : "0.00";
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -257,14 +333,29 @@ export default function EmployeeAbastecimentos() {
       toast.error("Selecione uma reserva");
       return;
     }
-    if (!litersInitial || !weightFull || weightAfter === "") {
-      toast.error("Preencha todos os campos de pesagem");
+    
+    if (containers.length === 0) {
+      toast.error("Adicione pelo menos um galão");
       return;
     }
-    if (!photoBeforeUrl || !photoAfterUrl) {
-      toast.error("Envie as fotos da balança (antes e depois)");
-      return;
+    
+    // Validar cada container
+    for (let i = 0; i < containers.length; i++) {
+      const c = containers[i];
+      if (!c.litersInitial || !c.weightFull || c.weightAfter === "") {
+        toast.error(`Galão ${i + 1}: Preencha todos os campos de pesagem`);
+        return;
+      }
+      if (!c.photoBeforeUrl || !c.photoAfterUrl) {
+        toast.error(`Galão ${i + 1}: Envie as fotos da balança (antes e depois)`);
+        return;
+      }
+      if (parseFloat(c.weightAfter) >= parseFloat(c.weightFull)) {
+        toast.error(`Galão ${i + 1}: O peso após deve ser menor que o peso cheio`);
+        return;
+      }
     }
+    
     if (!pricePerLiter) {
       toast.error("Preencha o preço por litro");
       return;
@@ -276,29 +367,35 @@ export default function EmployeeAbastecimentos() {
       return;
     }
 
+    // Preparar dados dos containers para enviar
+    const containersData = containers.map(c => ({
+      gallonNumber: c.gallonNumber,
+      litersInitial: parseFloat(c.litersInitial),
+      weightFull: parseFloat(c.weightFull),
+      weightAfter: parseFloat(c.weightAfter),
+      photoBeforeUrl: c.photoBeforeUrl,
+      photoAfterUrl: c.photoAfterUrl,
+    }));
+
     createMutation.mutate({
       bookingId: selectedBookingId,
       vesselId: booking.vesselId,
-      // Método por peso
-      litersInitial: parseFloat(litersInitial),
-      weightFull: parseFloat(weightFull),
-      weightAfter: parseFloat(weightAfter),
-      photoBeforeUrl,
-      photoAfterUrl,
       pricePerLiter: parseFloat(pricePerLiter),
       notes: notes || undefined,
-      // Galão selecionado
-      gallonNumber: parseInt(selectedGallon),
+      // Usar o primeiro galão como principal (para compatibilidade)
+      gallonNumber: containers[0].gallonNumber,
+      // Enviar array de containers
+      containers: containersData,
     });
   };
 
-  const SERVICE_FEE = 10.00;
-  const subtotal = litersCalculated && pricePerLiter 
-    ? litersCalculated * parseFloat(pricePerLiter)
-    : 0;
-  const totalCost = litersCalculated && pricePerLiter
-    ? (subtotal + SERVICE_FEE).toFixed(2)
-    : "0.00";
+  // Verificar quais galões já estão em uso
+  const getAvailableGallons = (currentContainerId: string) => {
+    const usedGallons = containers
+      .filter(c => c.id !== currentContainerId)
+      .map(c => c.gallonNumber);
+    return [1, 2, 3].filter(num => !usedGallons.includes(num));
+  };
 
   return (
     <EmployeeDashboardLayout>
@@ -561,14 +658,14 @@ export default function EmployeeAbastecimentos() {
         )}
       </div>
 
-      {/* Dialog de Criar Abastecimento - MÉTODO POR PESO */}
+      {/* Dialog de Criar Abastecimento - MÚLTIPLOS GALÕES */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleCreate}>
             <DialogHeader>
               <DialogTitle>Registrar Abastecimento</DialogTitle>
               <DialogDescription>
-                Registre o abastecimento usando o método de pesagem
+                Registre o abastecimento usando um ou mais galões
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -595,150 +692,193 @@ export default function EmployeeAbastecimentos() {
                 </Select>
               </div>
 
-              {/* Seletor de Galão */}
-              <div>
-                <Label>Selecione o Galão *</Label>
-                <Select value={selectedGallon} onValueChange={setSelectedGallon}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o galão" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3].map((num) => {
-                      const gallon = gallonStock?.find((g: any) => g.gallonNumber === num);
-                      const stockLiters = gallon?.stockLiters || 0;
-                      const isLow = stockLiters > 0 && stockLiters < 5;
-                      return (
-                        <SelectItem key={num} value={num.toString()}>
-                          <span className={isLow ? 'text-red-600' : ''}>
-                            Galão {num} - {stockLiters.toFixed(2)} L disponíveis
-                            {isLow && ' ⚠️'}
-                          </span>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                {(() => {
-                  const gallon = gallonStock?.find((g: any) => g.gallonNumber === parseInt(selectedGallon));
-                  const stockLiters = gallon?.stockLiters || 0;
-                  const pricePerL = gallon?.lastPricePerLiter || 0;
-                  return (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Estoque atual: <span className="font-semibold">{stockLiters.toFixed(2)} L</span>
-                      {pricePerL > 0 && <> | Preço/L: <span className="font-semibold">R$ {pricePerL.toFixed(2)}</span></>}
-                    </p>
-                  );
-                })()}
-              </div>
-
-              {/* Método por Peso */}
-              <div className="border-t pt-4 space-y-4">
-                <h3 className="font-semibold flex items-center gap-2">
-                  📏 Método de Pesagem
-                </h3>
+              {/* Lista de Galões (Containers) */}
+              {containers.map((container, index) => {
+                const litersForThisContainer = calculateLitersForContainer(container);
+                const weightConsumed = parseFloat(container.weightFull) - parseFloat(container.weightAfter);
+                const availableGallons = getAvailableGallons(container.id);
                 
-                {/* Litros Iniciais - Preenchido automaticamente com o estoque do galão selecionado */}
-                <div>
-                  <Label>Litros Iniciais no Galão {selectedGallon} (L) *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={litersInitial}
-                    readOnly
-                    disabled
-                    className="bg-muted cursor-not-allowed"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Valor do estoque do Galão {selectedGallon} (preenchido automaticamente)</p>
-                </div>
+                return (
+                  <div key={container.id} className="border rounded-lg p-4 space-y-4 bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-lg flex items-center gap-2">
+                        <Fuel className="w-5 h-5 text-primary" />
+                        {index === 0 ? 'Galão Principal' : `Galão Adicional ${index}`}
+                      </h3>
+                      {containers.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeContainer(container.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Remover
+                        </Button>
+                      )}
+                    </div>
+                    
+                    {/* Seletor de Galão */}
+                    <div>
+                      <Label>Selecione o Galão *</Label>
+                      <Select 
+                        value={container.gallonNumber.toString()} 
+                        onValueChange={(value) => updateContainer(container.id, 'gallonNumber', parseInt(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o galão" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3].map((num) => {
+                            const gallon = gallonStock?.find((g: any) => g.gallonNumber === num);
+                            const stockLiters = gallon?.stockLiters || 0;
+                            const isLow = stockLiters > 0 && stockLiters < 5;
+                            const isUsed = containers.some(c => c.id !== container.id && c.gallonNumber === num);
+                            return (
+                              <SelectItem 
+                                key={num} 
+                                value={num.toString()}
+                                disabled={isUsed}
+                              >
+                                <span className={isLow ? 'text-red-600' : isUsed ? 'text-muted-foreground' : ''}>
+                                  Galão {num} - {stockLiters.toFixed(2)} L disponíveis
+                                  {isLow && ' ⚠️'}
+                                  {isUsed && ' (em uso)'}
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      {(() => {
+                        const gallon = gallonStock?.find((g: any) => g.gallonNumber === container.gallonNumber);
+                        const stockLiters = gallon?.stockLiters || 0;
+                        const pricePerL = gallon?.lastPricePerLiter || 0;
+                        return (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Estoque atual: <span className="font-semibold">{stockLiters.toFixed(2)} L</span>
+                            {pricePerL > 0 && <> | Preço/L: <span className="font-semibold">R$ {pricePerL.toFixed(2)}</span></>}
+                          </p>
+                        );
+                      })()}
+                    </div>
 
-                {/* Peso Cheio */}
-                <div>
-                  <Label>Peso do Galão Cheio (kg) *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={weightFull}
-                    onChange={(e) => setWeightFull(e.target.value)}
-                    placeholder="Ex: 37.80"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Peso ANTES do abastecimento</p>
-                </div>
+                    {/* Litros Iniciais */}
+                    <div>
+                      <Label>Litros Iniciais no Galão {container.gallonNumber} (L) *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={container.litersInitial}
+                        readOnly
+                        disabled
+                        className="bg-muted cursor-not-allowed"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Valor do estoque (preenchido automaticamente)</p>
+                    </div>
 
-                {/* Upload Foto ANTES */}
-                <div>
-                  <Label>Foto da Balança ANTES *</Label>
-                  <div className="flex gap-2 items-center">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setPhotoBeforeFile(file);
-                          handlePhotoUpload(file, 'before');
-                        }
-                      }}
-                      required={!photoBeforeUrl}
-                      disabled={uploadingPhotos}
-                    />
-                    {photoBeforeUrl && (
-                      <span className="text-xs text-green-600 flex items-center gap-1">
-                        ✓ Carregada
-                      </span>
+                    {/* Peso Cheio */}
+                    <div>
+                      <Label>Peso do Galão Cheio (kg) *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={container.weightFull}
+                        onChange={(e) => updateContainer(container.id, 'weightFull', e.target.value)}
+                        placeholder="Ex: 37.80"
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Peso ANTES do abastecimento</p>
+                    </div>
+
+                    {/* Upload Foto ANTES */}
+                    <div>
+                      <Label>Foto da Balança ANTES *</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handlePhotoUpload(container.id, file, 'before');
+                            }
+                          }}
+                          required={!container.photoBeforeUrl}
+                          disabled={uploadingPhotos}
+                        />
+                        {container.photoBeforeUrl && (
+                          <span className="text-xs text-green-600 flex items-center gap-1">
+                            ✓ Carregada
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Peso Após */}
+                    <div>
+                      <Label>Peso do Galão Após Abastecer (kg) *</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={container.weightAfter}
+                        onChange={(e) => updateContainer(container.id, 'weightAfter', e.target.value)}
+                        placeholder="Ex: 23.40 (ou 0 se vazio)"
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Peso DEPOIS do abastecimento (pode ser 0 se galão ficou vazio)</p>
+                    </div>
+
+                    {/* Upload Foto DEPOIS */}
+                    <div>
+                      <Label>Foto da Balança DEPOIS *</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handlePhotoUpload(container.id, file, 'after');
+                            }
+                          }}
+                          required={!container.photoAfterUrl}
+                          disabled={uploadingPhotos}
+                        />
+                        {container.photoAfterUrl && (
+                          <span className="text-xs text-green-600 flex items-center gap-1">
+                            ✓ Carregada
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Cálculo Automático para este galão */}
+                    {litersForThisContainer > 0 && (
+                      <div className="bg-primary/10 p-3 rounded-lg space-y-1">
+                        <p className="text-sm font-semibold">📊 Cálculo do Galão {container.gallonNumber}:</p>
+                        <p className="text-sm">Peso consumido: {weightConsumed.toFixed(2)} kg</p>
+                        <p className="text-sm font-bold text-primary">Litros abastecidos: {litersForThisContainer.toFixed(2)} L</p>
+                      </div>
                     )}
                   </div>
-                </div>
+                );
+              })}
 
-                {/* Peso Após */}
-                <div>
-                  <Label>Peso do Galão Após Abastecer (kg) *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={weightAfter}
-                    onChange={(e) => setWeightAfter(e.target.value)}
-                    placeholder="Ex: 23.40 (ou 0 se vazio)"
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Peso DEPOIS do abastecimento (pode ser 0 se galão ficou vazio)</p>
-                </div>
-
-                {/* Upload Foto DEPOIS */}
-                <div>
-                  <Label>Foto da Balança DEPOIS *</Label>
-                  <div className="flex gap-2 items-center">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setPhotoAfterFile(file);
-                          handlePhotoUpload(file, 'after');
-                        }
-                      }}
-                      required={!photoAfterUrl}
-                      disabled={uploadingPhotos}
-                    />
-                    {photoAfterUrl && (
-                      <span className="text-xs text-green-600 flex items-center gap-1">
-                        ✓ Carregada
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Cálculo Automático */}
-                {litersCalculated > 0 && (
-                  <div className="bg-primary/10 p-3 rounded-lg space-y-1">
-                    <p className="text-sm font-semibold">📊 Cálculo Automático:</p>
-                    <p className="text-sm">Peso consumido: {weightConsumed.toFixed(2)} kg</p>
-                    <p className="text-sm font-bold text-primary">Litros abastecidos: {litersCalculated.toFixed(2)} L</p>
-                  </div>
-                )}
-              </div>
+              {/* Botão para adicionar mais galões */}
+              {containers.length < 3 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addContainer}
+                  className="w-full border-dashed"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  + Adicionar outro Galão ao abastecimento
+                </Button>
+              )}
 
               {/* Preço por Litro */}
               <div>
@@ -769,28 +909,47 @@ export default function EmployeeAbastecimentos() {
                 />
               </div>
 
-              {/* Resumo de Valores */}
-              {litersCalculated > 0 && pricePerLiter && (
+              {/* Resumo do Abastecimento */}
+              {totalLitersCalculated > 0 && pricePerLiter && (
                 <div className="bg-muted p-4 rounded-lg space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Litros:</span>
-                    <span className="font-semibold">{litersCalculated.toFixed(2)} L</span>
+                  <h4 className="font-semibold text-lg border-b pb-2">📋 Resumo do Abastecimento</h4>
+                  
+                  {/* Detalhes por galão */}
+                  {containers.map((container, index) => {
+                    const liters = calculateLitersForContainer(container);
+                    if (liters <= 0) return null;
+                    return (
+                      <div key={container.id} className="flex justify-between text-sm">
+                        <span>Galão {container.gallonNumber}:</span>
+                        <span className="font-semibold">{liters.toFixed(2)} L</span>
+                      </div>
+                    );
+                  })}
+                  
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>TOTAL de Litros:</span>
+                      <span className="text-primary">{totalLitersCalculated.toFixed(2)} L</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Preço/L:</span>
-                    <span className="font-semibold">R$ {parseFloat(pricePerLiter).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span className="font-semibold">R$ {subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Taxa:</span>
-                    <span className="font-semibold">R$ {SERVICE_FEE.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold border-t pt-2">
-                    <span>Total:</span>
-                    <span className="text-primary">R$ {totalCost}</span>
+                  
+                  <div className="border-t pt-2 mt-2 space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span>Preço/L:</span>
+                      <span className="font-semibold">R$ {parseFloat(pricePerLiter).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal:</span>
+                      <span className="font-semibold">R$ {subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Taxa:</span>
+                      <span className="font-semibold">R$ {SERVICE_FEE.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold border-t pt-2">
+                      <span>Valor Total:</span>
+                      <span className="text-primary">R$ {totalCost}</span>
+                    </div>
                   </div>
                 </div>
               )}
