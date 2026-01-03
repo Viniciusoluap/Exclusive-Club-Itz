@@ -90,18 +90,16 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-secondary/80"></div>
         <div className="relative z-10 container text-center text-white px-4">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 animate-fade-in">
-            VIVA MOMENTOS
-            <br />
-            INESQUECÍVEIS.
+            VIVA MOMENTOS INESQUECÍVEIS COM RESERVA DE EMBARCAÇÕES
           </h1>
           <p className="text-lg md:text-xl lg:text-2xl mb-4 max-w-3xl mx-auto">
-            Proporcionamos lazer e agilidade para milhares de pessoas no país através do{" "}
-            <span className="font-semibold">sistema inteligente de compartilhamento</span> de lanchas,
-            jetskis e aeronaves.
+            Sistema completo de <span className="font-semibold">gestão náutica</span> com reservas de lanchas,
+            jetskis, controle de abastecimento de combustível, vistorias e pagamentos online via PIX.
+            Clube náutico com compartilhamento inteligente de embarcações.
           </p>
           <p className="text-lg md:text-xl mb-8">
-            Venha ser feliz com a <span className="font-bold">Exclusive Club</span>, seu sonho custa menos
-            do que imagina.
+            Venha ser feliz com a <span className="font-bold">Exclusive Club</span>, sua marina digital.
+            Gestão de barcos profissional e acessível.
           </p>
           {isAuthenticated ? (
             <Link href="/reservas">
@@ -124,6 +122,9 @@ export default function Home() {
       {/* Features Section */}
       <section className="py-20 bg-muted/30">
         <div className="container">
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-primary">
+            Sistema Completo de Gestão Náutica
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="text-center border-primary/20 hover:border-primary transition-colors">
               <CardHeader>
@@ -134,7 +135,8 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-base">
-                  Lanchas e jetskis de alta qualidade, sempre prontos para sua diversão
+                  Lanchas e jetskis de alta qualidade para reserva. Sistema de compartilhamento de embarcações
+                  com gestão profissional de marina e clube náutico.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -148,7 +150,8 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-base">
-                  Sistema online simples e rápido para agendar suas datas
+                  Sistema de reservas online simples e rápido. Agende suas datas com controle de disponibilidade
+                  e gestão inteligente de horários para embarcações.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -162,7 +165,8 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-base">
-                  Aproveite o ano todo com acesso exclusivo às nossas embarcações
+                  Acesso exclusivo ao clube náutico com gestão de abastecimento, vistorias de embarcações
+                  e pagamentos online via PIX. Marina digital completa.
                 </CardDescription>
               </CardContent>
             </Card>
@@ -174,10 +178,11 @@ export default function Home() {
       <section id="embarcacoes" className="py-20">
         <div className="container">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-4 text-primary">
-            CONHEÇA NOSSAS EMBARCAÇÕES
+            CONHEÇA NOSSAS EMBARCAÇÕES PARA RESERVA
           </h2>
           <p className="text-center text-muted-foreground mb-12 text-lg">
-            Aqui você reserva o dia e horário para andar em sua embarcação
+            Sistema de reserva de lanchas e jetskis. Agende o dia e horário para sua embarcação
+            com gestão profissional de marina e clube náutico.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
@@ -190,10 +195,10 @@ export default function Home() {
                 />
               </div>
               <CardHeader>
-                <CardTitle className="text-2xl">JETSKI SEADOO GTI SE 130HP</CardTitle>
+                <CardTitle className="text-2xl">JETSKI SEADOO GTI SE 130HP - Reserva Online</CardTitle>
                 <CardDescription className="text-base">
-                  O GTI SE é onde a diversão em família fica maior e melhor. Perfeito para aventuras
-                  aquáticas emocionantes.
+                  Jetski Seadoo GTI SE 130HP disponível para reserva. Sistema de compartilhamento de embarcações
+                  com gestão náutica profissional. Perfeito para aventuras aquáticas em família.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -207,10 +212,10 @@ export default function Home() {
                 />
               </div>
               <CardHeader>
-                <CardTitle className="text-2xl">Focker 215 150HP</CardTitle>
+                <CardTitle className="text-2xl">Lancha Focker 215 150HP - Sistema de Reservas</CardTitle>
                 <CardDescription className="text-base">
-                  A Focker 215 pode receber até 7 pessoas. O seu solarium tem capacidade para toda a
-                  família aproveitar momentos inesquecíveis.
+                  Lancha Focker 215 150HP disponível para reserva online. Capacidade para 7 pessoas.
+                  Gestão de embarcações com controle de abastecimento e vistorias. Marina digital completa.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -231,19 +236,22 @@ export default function Home() {
 
           <div className="space-y-6 text-lg text-foreground/90">
             <p>
-              Empresa que promove e gerencia a compra compartilhada de embarcações para lazer náutico.
+              <strong>Exclusive Club</strong> é uma empresa especializada em <strong>gestão náutica</strong> que promove
+              e gerencia a compra compartilhada de embarcações para lazer. Sistema completo de <strong>reservas de lanchas</strong>,
+              <strong>jetskis</strong>, controle de <strong>abastecimento de combustível</strong>, <strong>vistorias de embarcações</strong>
+              e <strong>pagamentos online via PIX</strong>.
             </p>
             <p>
-              Empresa líder no segmento para administração de cotas náuticas. Criamos e administramos
-              grupos com 4 até 10 cotistas por embarcação e cuidamos de toda a parte trabalhosa para você
-              se preocupar apenas com o lazer.
+              Empresa líder no segmento de <strong>administração de cotas náuticas</strong> e <strong>clube náutico</strong>.
+              Criamos e administramos grupos com 4 até 10 cotistas por embarcação. <strong>Marina digital</strong> com
+              sistema de reservas online, gestão de barcos e controle completo de operações náuticas.
             </p>
             <div className="bg-secondary/10 p-6 rounded-lg border border-secondary/20">
-              <p className="font-semibold text-secondary mb-2">Compartilhando Sonhos</p>
+              <p className="font-semibold text-secondary mb-2">Compartilhando Sonhos - Marina Digital</p>
               <p className="text-base">
-                Somos a primeira empresa de compartilhamento de embarcações da região TOCANTINA,
-                disponibilizando os melhores preços e embarcações do mercado, deixando acessível a todos
-                que tenham esse sonho.
+                Somos a primeira empresa de <strong>compartilhamento de embarcações</strong> da região TOCANTINA,
+                com <strong>sistema de gestão náutica</strong> completo. Oferecemos <strong>reserva de lanchas e jetskis</strong>,
+                abastecimento, vistorias e pagamentos online. <strong>Clube náutico</strong> acessível a todos.
               </p>
             </div>
           </div>
@@ -256,7 +264,8 @@ export default function Home() {
           <div className="container text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">Pronto para começar?</h2>
             <p className="text-xl mb-8 max-w-2xl mx-auto">
-              Faça login para agendar suas reservas e aproveitar momentos inesquecíveis
+              Faça login no sistema de gestão náutica para agendar reservas de embarcações,
+              gerenciar abastecimentos e pagamentos online via PIX
             </p>
             <Button size="lg" variant="secondary" className="text-lg px-8 py-6" asChild>
               <a href={getLoginUrl()}>
