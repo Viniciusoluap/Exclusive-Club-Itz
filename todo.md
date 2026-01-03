@@ -998,3 +998,41 @@ Implementar integração completa com Asaas para o sistema de reservas do Exclus
 
 - [x] Corrigir cálculo do estoque do Galão 1 (deve ser 10,77 L, não 160,77 L) - CORRIGIDO: Removidas compras duplicadas do banco de dados
 
+
+
+---
+
+## 🐛 BUG CRÍTICO: Tela Branca no Site (03/01/2026)
+
+**Problema reportado pelo usuário:**
+- Site mostra apenas tela branca ao acessar
+- URL: exclusivereservas.manus.space
+- Nenhum conteúdo é exibido
+- Testado em 03/01/2026
+
+**Tarefas:**
+- [ ] Verificar logs do servidor para identificar erros
+- [ ] Verificar console do navegador para erros JavaScript
+- [ ] Verificar se há erro de compilação no frontend
+- [ ] Verificar se arquivos estáticos estão sendo servidos corretamente
+- [ ] Corrigir problema identificado
+- [ ] Testar site completo após correção
+
+
+---
+
+## 🔍 SEO - Otimização para Mecanismos de Busca (03/01/2026)
+
+**Problema reportado pelo usuário:**
+- Nenhuma palavra-chave foi detectada na página inicial
+- Nenhuma descrição foi encontrada (meta description deve ter 50-160 caracteres)
+
+**Tarefas:**
+- [x] Adicionar meta description (50-160 caracteres) no index.html
+- [x] Adicionar meta keywords relevantes
+- [x] Adicionar Open Graph tags para redes sociais (og:title, og:description, og:image)
+- [x] Adicionar Twitter Card tags
+- [x] Adicionar título SEO-friendly no index.html
+- [x] Otimizar conteúdo da página Home.tsx com palavras-chave relevantes
+- [x] Adicionar tags semânticas HTML5 (header, main, section, article)
+- [x] Adicionar schema.org structured data (LocalBusiness)
