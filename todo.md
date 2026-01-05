@@ -757,3 +757,19 @@
 - Endpoint inspectionCharges.create aceita boat_id opcional
 - Query filtra por boat_id quando fornecido
 - 3 testes automatizados criados e passando (100% de sucesso)
+
+## 🐛 BUG: Valor Incorreto na Forma de Pagamento (05/01/2026)
+
+**Problema reportado pelo usuário:**
+- No dashboard do cliente, seção "Reparos da Embarcação"
+- Campo "Forma de pagamento: 1x de R$ 12,50 (a vista)" mostra valor INCORRETO
+- Deveria mostrar o MESMO valor do campo "Valor Total do Reparo: R$ 25,00"
+- Exemplo: Se "Valor Total do Reparo: R$ 25,00", então "Forma de pagamento: 1x de R$ 25,00 (a vista)"
+
+**Tarefas:**
+- [x] Investigar código do dashboard do cliente (página de reparos)
+- [x] Corrigir cálculo do valor de pagamento (deve ser igual ao valor total, não metade)
+- [x] Testar correção no navegador
+- [x] Marcar item como concluído no todo.md
+- [x] Criar checkpoint
+

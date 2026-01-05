@@ -533,7 +533,7 @@ export default function PagamentoDanos() {
                             <Label className="text-sm font-medium">Forma de pagamento:</Label>
                             <div className="flex items-center space-x-2 border rounded-lg p-3 bg-blue-50 border-blue-200">
                               <div className="flex-1">
-                                <span className="font-semibold">1x de R$ {repair.individualAmount.toFixed(2)}</span>
+                                <span className="font-semibold">1x de R$ {repair.totalAmount.toFixed(2)}</span>
                                 <span className="text-xs text-gray-500 ml-2">(à vista)</span>
                               </div>
                             </div>
