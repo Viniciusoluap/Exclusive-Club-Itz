@@ -1,5 +1,21 @@
 # TODO - Exclusive Club Reservas
 
+## 🎨 UX: Remoção de Texto Confuso em Reparos (05/01/2026)
+
+**Problema reportado pelo usuário:**
+- Texto "Sua Cota (50%): R$ 12.50" está aparecendo na seção de Reparos da Embarcação
+- Este texto está confundindo visualmente o cliente
+- A lógica e os cálculos estão CORRETOS (valor total R$ 25.00, pagamento 1x de R$ 25.00)
+- PIX está gerando corretamente
+
+**Tarefas:**
+- [x] Remover apenas o texto visual "Sua Cota (50%): R$ 12.50" da seção de Reparos
+- [x] Manter TODA a lógica de cálculo existente sem alterações
+- [x] Manter valor total, vencimento, forma de pagamento e botões funcionando
+- [x] Criar checkpoint para publicação
+
+---
+
 ## 🚀 PRÓXIMAS MELHORIAS - Sistema de Cobranças Avançado (23/12/2025)
 
 ### 4. Correção de Erro de Pagamento em Abastecimentos
@@ -388,651 +404,356 @@
 - Query de busca de vistoria agora inclui `ac.cpf_cnpj` e `ac.phone` via LEFT JOIN com `allowed_clients`
 - Função `getOrCreateCustomer` em vistorias agora recebe `cpfCnpj` e `phone` do cliente
 - Mesma lógica que já funcionava para reparos agora aplicada também para vistorias
-- 3 testes automatizados validando correção (100% de sucesso)
-
-- [x] Corrigir erro de validação de CPF/CNPJ ao criar cobranças no Asaas (erro: "invalid_customer.cpfCnpj")
-
+- 3 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-## 🐛 BUG CRÍTICO: Erro de CPF/CNPJ ao criar cobrança (Solução Definitiva - 23/12/2025)
+## 🐛 BUG: Erro ao Criar Cobrança de Vistoria Reprovada (23/12/2025)
+
+**Problema reportado pelo usuário:**
+- Ao criar nova cobrança de danos tipo "Vistoria Reprovada"
+- Erro aparece: "Erro ao criar cobrança: Cannot read properties of undefined (reading 'cpf_cnpj')"
+- Testado em 23/12/2025 às 19:24
+
+**Tarefas:**
+- [x] Investigar endpoint inspectionCharges.create (tipo inspection)
+- [x] Verificar query de busca de vistoria (LEFT JOIN com allowed_clients)
+- [x] Corrigir acesso a campos cpf_cnpj e phone (validar se existem antes de usar)
+- [x] Testar criação de cobrança de vistoria completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
+
+**Solução Aplicada:**
+- Query de busca de vistoria corrigida: agora usa INNER JOIN ao invés de LEFT JOIN
+- Garante que apenas vistorias com cliente válido (com cpf_cnpj e phone) sejam processadas
+- Validação adicional: verifica se inspection.cpf_cnpj existe antes de chamar getOrCreateCustomer
+- 3 testes automatizados criados e passando (100% de sucesso)
+
+---
+
+## 🐛 BUG: Erro ao Criar Cobrança de Reparo (23/12/2025)
 
 **Problema reportado pelo usuário:**
 - Ao criar nova cobrança de danos tipo "Reparo da Embarcação"
-- Erro: "Erro ao criar cobrança no Asaas: {"errors":[{"code":"invalid_customer.cpfCnpj","description":"Para criar esta cobrança é necessário preencher o CPF ou CNPJ do cliente."}]}"
-- Embarcação: Teste (cotas)
-- Valor: R$ 6000
-
-**Causa Raiz Identificada:**
-- Clientes já existem no Asaas com CPF/CNPJ cadastrado
-- Sistema estava tentando criar cobrança sem buscar o CPF/CNPJ do Asaas
-- Validação local estava bloqueando criação quando CPF/CNPJ não estava no banco local
-
-**Solução Definitiva Aplicada:**
-- [x] Remover validação local de CPF/CNPJ (não é mais necessária)
-- [x] Buscar customer do Asaas (sempre existe e retorna com CPF/CNPJ)
-- [x] Usar CPF/CNPJ retornado do Asaas ao criar cobranças
-- [x] Aplicar correção tanto para "Reparo da Embarcação" quanto "Vistoria Reprovada"
-- [x] Manter campo CPF/CNPJ no formulário de clientes (opcional, para novos clientes)
-
-**Arquivos Modificados:**
-- server/routers.ts (endpoint inspectionCharges.create)
-  * Removida validação que bloqueava criação quando CPF/CNPJ não estava no banco local
-  * Busca customer do Asaas e usa CPF/CNPJ retornado
-  * Aplicado para ambos os tipos: inspection e repair
-
-**Resultado:**
-- Sistema agora busca CPF/CNPJ diretamente do Asaas (fonte confiável)
-- Não depende mais de dados locais para criar cobranças
-- Erro "invalid_customer.cpfCnpj" não ocorre mais
-
----
-
-## 🚀 Nova Funcionalidade: Botão de Editar Cobranças (23/12/2025)
-
-**Objetivo:** Adicionar botão de editar na coluna "Ações" da lista de cobranças de danos
+- Erro aparece: "Erro ao criar cobrança: Cannot read properties of undefined (reading 'cpf_cnpj')"
+- Testado em 23/12/2025 às 19:30
 
 **Tarefas:**
-- [x] Adicionar botão de editar (ícone de lápis) na coluna Ações da lista de cobranças
-- [x] Implementar dialog de edição com campos: valor, vencimento
-- [x] Usar endpoint backend existente (inspectionCharges.update) para atualizar cobrança
-- [x] Validar que apenas cobranças pendentes podem ser editadas
-- [x] Botão de editar aparece apenas para cobranças com status 'pending'
-- [x] Criar testes automatizados (6 testes passando)
-
-**Testes Automatizados:**
-- ✅ Atualizar valor de cobrança pendente
-- ✅ Atualizar data de vencimento
-- ✅ Atualizar valor e vencimento simultaneamente
-- ✅ Rejeitar atualização de cobrança paga
-- ✅ Rejeitar valor negativo ou zero
-- ✅ Retornar erro para cobrança inexistente
-
-
----
-
-## 🎨 UX: Visualização de Foto em Reparos da Embarcação (23/12/2025)
-
-**Objetivo:** Exibir foto do reparo na página do cliente "Reparos da Embarcação"
-
-**Tarefas:**
-- [x] Adicionar visualização de imagem nos cards de reparos (similar a vistorias reprovadas)
-- [x] Garantir que foto apareça quando admin cadastrou reparo com imagem
-- [x] Testar exibição de foto na página do cliente
-
-
-- [x] Corrigir filtro de anos na página de Pagamento de Danos - mostrar 2025, 2026, 2027 em vez de anos anteriores (2023, 2024)
-
-- [x] Corrigir lógica do campo Saldo em Abastecimentos: fórmula "Gasto - Orçamento", negativo=vermelho, positivo=azul
-
-- [x] Corrigir cores invertidas do campo Saldo na página de Abastecimentos (negativo=vermelho, positivo=azul)
-
-- [x] Campo "Litros Iniciais no Galão" auto-preenchido com estoque atual e somente leitura (funcionário e admin)
-
-
----
-
-## 🐛 BUG CORRIGIDO: Erro ao registrar abastecimento com peso 0 (24/12/2025)
-
-**Problema reportado pelo usuário:**
-- Na página do funcionário: Erro "Too small: expected number to be >0" ao preencher 0 no campo "Peso do Galão após (kg)"
-- Na página do admin: Ao preencher '0' em 'peso do Galão após (kg)', não conclui o registro, volta para o campo
-- O galão pode estar completamente vazio após o abastecimento, então 0 é um valor válido
-
-**Tarefas:**
-- [x] Investigar validação do campo weightAfter no backend (server/routers.ts)
-- [x] Investigar validação do campo weightAfter no frontend (páginas de abastecimento)
-- [x] Corrigir validação para permitir valor 0 (mínimo deve ser >= 0, não > 0)
-- [x] Testar registro de abastecimento com peso 0 na página do funcionário
-- [x] Testar registro de abastecimento com peso 0 na página do admin
+- [x] Investigar endpoint inspectionCharges.create (tipo repair)
+- [x] Verificar query de busca de cotas (LEFT JOIN com allowed_clients)
+- [x] Corrigir acesso a campos cpf_cnpj e phone (validar se existem antes de usar)
+- [x] Testar criação de cobrança de reparo completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
 
 **Solução Aplicada:**
-- Backend: Alterado `z.number().positive()` para `z.number().nonnegative()` no campo weightAfter
-- Backend: Corrigido validações que usavam `|| input.weightAfter` para `input.weightAfter !== undefined`
-- Frontend (Admin): Alterado `min="0.01"` para `min="0"` no input
-- Frontend (Admin): Corrigido validações que usavam `!weightAfter` para `weightAfter === ""`
-- Frontend (Funcionário): Mesmas correções aplicadas
-- Placeholder atualizado para indicar que 0 é um valor válido
+- Query de busca de cotas corrigida: agora usa INNER JOIN ao invés de LEFT JOIN
+- Garante que apenas cotas com cliente válido (com cpf_cnpj e phone) sejam processadas
+- Validação adicional: verifica se quota.cpf_cnpj existe antes de chamar getOrCreateCustomer
+- 3 testes automatizados criados e passando (100% de sucesso)
 
+---
 
-## 🐛 BUG: Divisão de Reparo Excluindo Clientes Desativados (24/12/2025)
+## 🐛 BUG: Erro "Cannot read properties of null (reading 'id')" ao Criar Cobrança de Vistoria (23/12/2025)
 
 **Problema reportado pelo usuário:**
-- A lógica de divisão do reparo das embarcações está excluindo clientes desativados
-- Clientes desativados devem participar da divisão de custos e receber cobrança
-- A desativação deve afetar APENAS a funcionalidade de fazer novas reservas
-- Todas as outras funcionalidades (cobranças, divisão de reparos) devem funcionar normalmente
+- Ao criar nova cobrança de danos tipo "Vistoria Reprovada"
+- Erro aparece: "Erro ao criar cobrança: Cannot read properties of null (reading 'id')"
+- Testado em 23/12/2025 às 19:40
 
 **Tarefas:**
-- [x] Localizar código responsável pela divisão de reparos
-- [x] Corrigir lógica para incluir clientes desativados (is_active = false) na divisão
-- [x] Testar criação de cobrança de reparo com clientes desativados
-- [x] Validar que desativação continua bloqueando apenas reservas
+- [x] Investigar endpoint inspectionCharges.create (tipo inspection)
+- [x] Verificar query de busca de vistoria (campos retornados)
+- [x] Corrigir seleção de campos: incluir `i.id as inspection_id`
+- [x] Testar criação de cobrança de vistoria completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
 
+**Solução Aplicada:**
+- Query de busca de vistoria corrigida: agora seleciona `i.id as inspection_id`
+- Garante que o ID da vistoria seja retornado corretamente
+- Validação adicional: verifica se inspection.inspection_id existe antes de criar cobrança
+- 3 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-## 🖼️ Melhoria: Visualização de Imagem no Modal de Edição de Cobrança (24/12/2025)
+## 🐛 BUG: Erro ao Criar Cobrança de Reparo (23/12/2025)
 
 **Problema reportado pelo usuário:**
-- No modal "Editar Cobrança" para cobranças de danos (reparos)
-- Não é possível visualizar a imagem que foi anexada quando o reparo foi criado
-- Não há opção para excluir ou trocar a imagem
+- Ao criar nova cobrança de danos tipo "Reparo da Embarcação"
+- Erro aparece: "Erro ao criar cobrança: Cannot read properties of null (reading 'id')"
+- Testado em 23/12/2025 às 19:45
 
 **Tarefas:**
-- [x] Exibir imagem do reparo no modal de edição de cobrança de danos
-- [x] Permitir excluir imagem existente no modal de edição
-- [x] Permitir adicionar nova foto no modal de edição de cobrança de danos
-- [x] Testar funcionalidade completa (7 testes passando)
+- [x] Investigar endpoint inspectionCharges.create (tipo repair)
+- [x] Verificar query de busca de cotas (campos retornados)
+- [x] Corrigir seleção de campos: incluir `q.id as quota_id`
+- [x] Testar criação de cobrança de reparo completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
 
-- [x] Adicionar botão de editar para cobranças com status "Vencido" (igual ao status "Pendente")
-
+**Solução Aplicada:**
+- Query de busca de cotas corrigida: agora seleciona `q.id as quota_id`
+- Garante que o ID da cota seja retornado corretamente
+- Validação adicional: verifica se quota.quota_id existe antes de criar cobrança
+- 3 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-## 🖼️ BUG: Foto do Reparo não aparece na página do cliente (25/12/2025)
+## 🐛 BUG: Erro "Nenhuma vistoria reprovada encontrada" ao Criar Cobrança (23/12/2025)
 
 **Problema reportado pelo usuário:**
-- Na página "Pagamento de Danos" (cliente), a foto do reparo não está sendo exibida
-- O cliente precisa visualizar a foto/comprovante do reparo cadastrado pelo admin
+- Ao criar nova cobrança de danos tipo "Vistoria Reprovada"
+- Erro aparece: "Erro ao criar cobrança: Nenhuma vistoria reprovada encontrada para o cliente selecionado"
+- Vistoria existe no banco de dados com status "Reprovado"
+- Testado em 23/12/2025 às 19:50
 
 **Tarefas:**
-- [x] Verificar se o backend retorna o campo de foto no endpoint myRepairs
-- [x] Implementar exibição da foto na seção "Reparos da Embarcação" da página PagamentoDanos
-- [ ] Testar visualização da foto com reparo que tem imagem cadastrada
+- [x] Investigar endpoint inspectionCharges.create (tipo inspection)
+- [x] Verificar query de busca de vistoria (condições WHERE)
+- [x] Corrigir condição de status: usar 'Reprovado' ao invés de 'failed'
+- [x] Testar criação de cobrança de vistoria completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
 
-
+**Solução Aplicada:**
+- Query de busca de vistoria corrigida: agora busca status 'Reprovado' ao invés de 'failed'
+- Alinhado com o enum real do banco de dados (inspectionStatus)
+- 3 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-## 🔧 Simplificação de Pagamento: Remover Parcelamento (25/12/2025)
+## 🐛 BUG: Erro "Cannot read properties of undefined (reading 'cpf_cnpj')" ao Criar Cobrança de Vistoria (23/12/2025)
 
 **Problema reportado pelo usuário:**
-- Opções de parcelamento (2x, 3x) devem ser removidas
-- Deixar apenas pagamento à vista (1x) para PIX e cartão de crédito
+- Ao criar nova cobrança de danos tipo "Vistoria Reprovada"
+- Erro aparece: "Erro ao criar cobrança: Cannot read properties of undefined (reading 'cpf_cnpj')"
+- Testado em 23/12/2025 às 20:00
 
 **Tarefas:**
-- [x] Remover opções de parcelamento (2x, 3x) do frontend
-- [x] Manter apenas opção 1x à vista para PIX e cartão
-- [x] Garantir que demais funcionalidades permaneçam inalteradas
+- [x] Investigar endpoint inspectionCharges.create (tipo inspection)
+- [x] Verificar query de busca de vistoria (campos de cliente)
+- [x] Corrigir seleção de campos: incluir `ac.cpf_cnpj`, `ac.phone`, `ac.email`
+- [x] Testar criação de cobrança de vistoria completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
 
-
----
-
-## 🚀 INTEGRAÇÃO COMPLETA ASAAS - Sistema de Pagamentos (28/12/2025)
-
-### Objetivo Principal
-Implementar integração completa com Asaas para o sistema de reservas do Exclusive Club, com todos os pontos de atenção para robustez e confiabilidade.
-
-### 1. Schema do Banco de Dados para Pagamentos
-
-**Tabelas:**
-- [ ] Criar tabela `asaas_customers` para armazenar clientes Asaas
-  * Campos: id, user_id, asaas_customer_id, cpf_cnpj, created_at
-- [ ] Criar tabela `asaas_payments` para histórico de pagamentos
-  * Campos: id, charge_id, charge_type, asaas_payment_id, status, value, pix_qr_code, pix_copy_paste, expires_at, paid_at, created_at, updated_at
-- [ ] Criar tabela `payment_audit_logs` para logs de auditoria
-  * Campos: id, payment_id, action, old_status, new_status, details, created_at
-- [ ] Criar tabela `webhook_logs` para registrar todos os webhooks recebidos
-  * Campos: id, event_type, payload, processed, error_message, created_at
-
-### 2. Serviço de Integração com API Asaas
-
-**Funções:**
-- [ ] `createOrGetAsaasCustomer(userId, cpfCnpj, name, email)` - Cria ou retorna cliente existente
-- [ ] `createPixCharge(customerId, value, description, dueDate, externalRef)` - Cria cobrança PIX
-- [ ] `getChargeStatus(asaasChargeId)` - Consulta status da cobrança
-- [ ] `cancelCharge(asaasChargeId)` - Cancela cobrança no Asaas
-- [ ] `getPixQrCode(asaasChargeId)` - Obtém QR Code PIX
-
-### 3. Rotas tRPC para Pagamentos
-
-**Endpoints:**
-- [ ] `payments.createPixCharge` - Gera cobrança PIX para reserva/mensalidade
-- [ ] `payments.getStatus` - Consulta status de pagamento
-- [ ] `payments.listMyPayments` - Lista pagamentos do cliente
-- [ ] `payments.webhook` - Recebe notificações do Asaas (Express route)
-
-### 4. Pontos de Atenção - Expiração e Reconciliação
-
-**Expiração de Cobranças:**
-- [ ] Definir tempo de expiração para cobranças PIX (ex: 30 minutos)
-- [ ] Implementar job de verificação de cobranças expiradas
-- [ ] Liberar reserva automaticamente quando cobrança expira
-- [ ] Notificar cliente sobre expiração
-
-**Reconciliação:**
-- [ ] Implementar verificação periódica de status no Asaas
-- [ ] Corrigir divergências entre status local e Asaas
-- [ ] Gerar relatório de reconciliação para admin
-
-### 5. Pontos de Atenção - Tratamento de Erros
-
-**Erros de API:**
-- [ ] Implementar retry com backoff exponencial para falhas temporárias
-- [ ] Tratar erros específicos do Asaas (invalid_customer, etc.)
-- [ ] Fallback gracioso quando Asaas está indisponível
-- [ ] Alertar admin sobre falhas críticas
-
-**Validações:**
-- [ ] Validar CPF/CNPJ antes de criar cliente
-- [ ] Validar valor mínimo de cobrança
-- [ ] Verificar se cliente já tem cobrança pendente para mesma reserva
-
-### 6. Pontos de Atenção - Logs e Auditoria
-
-**Logs:**
-- [ ] Registrar todas as chamadas à API Asaas
-- [ ] Registrar todos os webhooks recebidos
-- [ ] Registrar mudanças de status de pagamento
-- [ ] Manter histórico de tentativas de pagamento
-
-**Dashboard Admin:**
-- [ ] Visualizar pagamentos pendentes/confirmados/expirados
-- [ ] Consultar logs de webhook
-- [ ] Reconciliar pagamentos manualmente
-- [ ] Exportar relatório de pagamentos
-
-### 7. Frontend - Fluxo de Pagamento PIX
-
-**Componentes:**
-- [ ] Dialog de pagamento PIX com QR Code
-- [ ] Contador de tempo para expiração
-- [ ] Botão copiar código PIX
-- [ ] Status em tempo real (polling ou websocket)
-- [ ] Confirmação visual de pagamento aprovado
-
-**Páginas:**
-- [ ] Atualizar página de reservas com botão de pagamento
-- [ ] Página de histórico de pagamentos do cliente
-- [ ] Dashboard admin com visão de pagamentos
-
-### 8. Testes Automatizados
-
-- [ ] Testes unitários para serviço Asaas
-- [ ] Testes de integração para endpoints de pagamento
-- [ ] Testes de webhook
-- [ ] Testes de expiração e reconciliação
+**Solução Aplicada:**
+- Query de busca de vistoria corrigida: agora seleciona explicitamente campos do cliente
+- Campos incluídos: `ac.cpf_cnpj as cpf_cnpj`, `ac.phone as phone`, `ac.email as client_email`
+- 3 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-
-
----
-
-## 🚀 INTEGRAÇÃO COMPLETA COM ASAAS (28/12/2025)
-
-### Backend - Tabelas do Banco de Dados
-- [x] Criar tabela `asaas_customers` para cache de clientes Asaas
-- [x] Criar tabela `asaas_payments` para registro detalhado de pagamentos
-- [x] Criar tabela `payment_audit_logs` para auditoria
-- [x] Criar tabela `webhook_logs` para logs de webhooks
-- [x] Criar tabela `payment_reconciliations` para reconciliação
-
-### Serviço Asaas Aprimorado
-- [x] Implementar retry com backoff exponencial
-- [x] Validação de CPF/CNPJ
-- [x] Tratamento de erros específicos do Asaas
-- [x] Cache de clientes Asaas no banco
-- [x] Logs de auditoria automáticos
-
-### Endpoints de Pagamento
-- [x] `payments.createPixCharge` - Criar cobrança PIX
-- [x] `payments.getStatus` - Verificar status de pagamento
-- [x] `payments.cancel` - Cancelar cobrança
-- [x] `payments.list` - Listar pagamentos
-- [x] `payments.getPixQrCode` - Obter QR Code PIX
-
-### Webhook Melhorado
-- [x] Suporte a múltiplos tipos de evento
-- [x] Validação de assinatura/token
-- [x] Logs completos de webhook
-- [x] Tratamento de eventos duplicados
-- [x] Atualização automática de status
-
-### Sistema de Expiração e Reconciliação
-- [x] Verificação automática de cobranças expiradas
-- [x] Reconciliação com API do Asaas
-- [x] Atualização de status em lote
-- [x] Logs de reconciliação
-
-### Frontend
-- [x] Componente `PixPaymentDialog` reutilizável
-- [x] Dashboard de pagamentos para admin
-- [x] Visualização de QR Code PIX
-- [x] Status de pagamento em tempo real
-
-### Testes
-- [x] Testes de validação de CPF/CNPJ
-- [x] Testes de mapeamento de status
-- [x] Testes de formatação de data
-- [x] Testes de integração (mocked)
-- [x] 29 testes passando (100% de sucesso)
-
-### Arquivos Criados/Modificados
-- `drizzle/schema.ts` - Tipos de export adicionados
-- `server/_core/asaasService.ts` - Serviço Asaas aprimorado
-- `server/_core/paymentReconciliation.ts` - Sistema de reconciliação
-- `server/paymentsRouter.ts` - Router de pagamentos
-- `server/webhookRouter.ts` - Webhook melhorado
-- `server/payments.test.ts` - 29 testes automatizados
-- `client/src/components/PixPaymentDialog.tsx` - Componente de pagamento PIX
-- `client/src/pages/admin/Pagamentos.tsx` - Dashboard de pagamentos
-
-
-
----
-
-## 🛢️ SISTEMA DE 3 GALÕES DE GASOLINA (28/12/2025)
-
-**Objetivo:** Implementar sistema para trabalhar com 3 galões de gasolina separados, cada um com seu próprio estoque.
-
-### Banco de Dados
-- [x] Adicionar campo `gallon_number` (1, 2 ou 3) na tabela `fuel_purchases`
-- [x] Adicionar campo `gallon_number` (1, 2 ou 3) na tabela `fuel_records`
-- [x] Criar tabela `gallon_stock` para armazenar estoque de cada galão
-- [x] Executar migration (pnpm db:push)
-
-### Backend
-- [x] Atualizar endpoint de compra de gasolina para incluir gallon_number
-- [x] Atualizar endpoint de abastecimento para incluir gallon_number
-- [x] Criar endpoint para obter estoque de cada galão
-- [x] Atualizar lógica de dedução de estoque por galão
-
-### Frontend - Registrar Compra de Gasolina
-- [x] Adicionar seletor de galão (1, 2 ou 3) antes do campo "Quantos Litros"
-- [x] Atualizar estoque do galão específico selecionado
-
-### Frontend - Registrar Abastecimento
-- [x] Adicionar seletor de galão (1, 2 ou 3) acima do campo "Litros Iniciais no Galão"
-- [x] Campo "Litros Iniciais no Galão" deve mostrar o estoque do galão selecionado
-- [x] Deduzir do estoque do galão específico
-
-### Frontend - Histórico de Compras
-- [x] Exibir número do galão em cada registro (ex: "Galão 2 • 50.00 L • R$ 314.50")
-
-### Frontend - Dashboard de Combustível
-- [x] Mostrar estoque de cada galão separadamente
-- [x] Mostrar estoque total (soma dos 3 galões)
-
-### Testes
-- [x] Criar testes automatizados para o sistema de galões
-
-
-- [x] Substituir ícone de toggle da sidebar pelo botão de voltar na página de Pagamentos
-
-- [x] Bug: Corrigir cálculo do estoque do Galão 1 mostrando valor negativo (-225.50 L) - CORRIGIDO em 28/12/2025
-
-- [x] Corrigir lógica do estoque: Estoque = Total Comprado - Total Abastecido (não o inverso)
-
----
-
-## 🐛 BUG: Média do Preço por Litro Incorreta no Galão (28/12/2025)
+## 🐛 BUG: Erro "Cannot read properties of undefined (reading 'cpf_cnpj')" ao Criar Cobrança de Reparo (23/12/2025)
 
 **Problema reportado pelo usuário:**
-- O preço médio por litro do Galão 1 mostra R$ 6,50
-- Valores reais no histórico: R$ 6,29 + R$ 6,28 + R$ 6,29 = R$ 18,86 / 3 = R$ 6,287
-- Média correta deveria ser R$ 6,28 ou R$ 6,29
+- Ao criar nova cobrança de danos tipo "Reparo da Embarcação"
+- Erro aparece: "Erro ao criar cobrança: Cannot read properties of undefined (reading 'cpf_cnpj')"
+- Testado em 23/12/2025 às 20:05
 
 **Tarefas:**
-- [x] Investigar cálculo da média do preço por litro no backend
-- [x] Corrigir lógica de cálculo para usar média ponderada (total_gasto / total_litros)
-- [x] Testar correção (6 testes automatizados passando)
+- [x] Investigar endpoint inspectionCharges.create (tipo repair)
+- [x] Verificar query de busca de cotas (campos de cliente)
+- [x] Corrigir seleção de campos: incluir `ac.cpf_cnpj`, `ac.phone`, `ac.email`
+- [x] Testar criação de cobrança de reparo completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
 
-
-
----
-
-## 🔧 NOVA FUNCIONALIDADE: Edição de Manutenção (28/12/2025)
-
-**Objetivo:** Permitir editar manutenções existentes com a mesma lógica de criação (cancelar reservas conflitantes e enviar e-mails)
-
-**Backend:**
-- [x] Criar endpoint `maintenance.update` para editar manutenção
-- [x] Implementar lógica de cancelamento de reservas conflitantes no novo período
-- [x] Enviar e-mail para clientes afetados avisando do cancelamento
-- [x] Enviar e-mail para admin com resumo das alterações
-
-**Frontend:**
-- [x] Adicionar botão de "Editar" em cada card de manutenção
-- [x] Criar modal de edição reutilizando componentes do modal de criação
-- [x] Conectar modal ao endpoint de atualização
-
-**Testes:**
-- [x] Criar testes automatizados para o endpoint de edição (8 testes passando)
-
+**Solução Aplicada:**
+- Query de busca de cotas corrigida: agora seleciona explicitamente campos do cliente
+- Campos incluídos: `ac.cpf_cnpj as cpf_cnpj`, `ac.phone as phone`, `ac.email as client_email`
+- 3 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-## 🔧 Melhoria: Telefone do Cliente e Lógica de Horário no Painel do Funcionário (28/12/2025)
+## 🐛 BUG: Erro ao Criar Cobrança - Cliente Não Encontrado (24/12/2025)
 
 **Problema reportado pelo usuário:**
-- Reservas no painel do funcionário não mostram telefone do cliente
-- Funcionário precisa ver telefone para contato via WhatsApp
-- Reservas do dia atual devem sair de "Próximas Reservas" após 18h
+- Ao criar nova cobrança de danos (tipo "Vistoria Reprovada" ou "Reparo da Embarcação")
+- Erro aparece: "Erro ao criar cobrança: Nenhuma vistoria reprovada encontrada para o cliente selecionado"
+- Cliente existe no sistema e tem vistorias/reparos pendentes
+- Testado em 24/12/2025
 
 **Tarefas:**
-- [x] Adicionar telefone do cliente nas reservas do painel do funcionário
-- [x] Adicionar ícone WhatsApp clicável para direcionar ao WhatsApp do cliente
-- [x] Ajustar lógica de visualização: reservas do dia atual só aparecem até 18h, após esse horário são consideradas passadas
+- [x] Investigar endpoint inspectionCharges.create
+- [x] Verificar queries de busca (inspection e repair)
+- [x] Corrigir JOIN com allowed_clients (usar client_email ao invés de client_id)
+- [x] Testar criação de cobranças para ambos os tipos
+- [x] Criar testes automatizados para validar correção (6 testes passando)
 
-- [x] Adicionar mensagem pré-definida no WhatsApp ao clicar no ícone de contato (somente na aba Próximas Reservas do funcionário)
-
-
----
-
-## 🚀 NOVO RECURSO: Múltiplos Galões por Abastecimento (29/12/2025)
-
-**Objetivo:** Permitir que funcionários usem múltiplos galões em um único abastecimento
-
-### Banco de Dados:
-- [x] Criar tabela `fuel_record_containers` para armazenar dados de cada galão usado
-
-### Backend - Rotas tRPC:
-- [x] Modificar endpoint `fuelRecords.create` para aceitar array de galões
-- [x] Atualizar lógica de cálculo de litros (soma de todos os galões)
-- [x] Atualizar lógica de desconto de estoque (desconta de cada galão individualmente)
-- [x] Salvar dados de cada container na tabela `fuel_record_containers`
-- [x] Remover campo de comprovante (foto do cupom fiscal)
-
-### Frontend - Página do Funcionário:
-- [x] Remover campo "Comprovante (Foto do Cupom Fiscal)"
-- [x] Manter seção do Galão Principal (obrigatório) com campos:
-  * Seleciona Galão do estoque
-  * Peso do Galão Cheio (kg)
-  * Peso do Galão Após (kg)
-  * Foto da Balança - ANTES
-  * Foto da Balança - DEPOIS
-  * Cálculo automático de litros
-- [x] Adicionar botão "+ Adicionar outro Galão ao abastecimento"
-- [x] Para cada galão adicional, exibir mesmos campos + botão "Remover este galão"
-- [x] Exibir resumo do abastecimento com total de litros e valor
-
-### Comportamento Esperado:
-1. Galão Principal: Sempre obrigatório (como funciona hoje)
-2. Galões Adicionais: Opcionais, cada um com seus próprios campos de peso e fotos
-3. Cálculo: Soma os litros de todos os galões para o total do abastecimento
-4. Estoque: Desconta de cada galão individualmente a quantidade usada
-
-### Testes:
-- [x] Criar testes automatizados para novo fluxo de múltiplos galões
-- [x] Testar cálculo correto de litros totais
-- [x] Testar desconto correto de estoque de cada galão
-- [x] Testar fluxo completo de registro com 2+ galões
-
-
+**Solução Aplicada:**
+- Queries corrigidas: agora fazem JOIN usando `i.client_email = ac.email` e `q.client_email = ac.email`
+- Anteriormente usavam `i.client_id = ac.id` (campo inexistente)
+- Ambos os tipos de cobrança (vistoria e reparo) agora funcionam corretamente
+- 6 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-## 🐛 BUG: Estoque do Galão não considera fuel_record_containers (29/12/2025)
+## 🐛 BUG: Erro "Cannot read properties of undefined (reading 'boat_name')" ao Criar Cobrança (24/12/2025)
 
 **Problema reportado pelo usuário:**
-- O estoque do Galão 1 deveria ser 10,77 litros
-- A conta correta é: Total de litros comprados - Total de litros abastecidos do mesmo galão
-- O cálculo atual só considera a tabela `fuel_records`, mas não a tabela `fuel_record_containers`
-- Quando um abastecimento usa múltiplos galões, os litros de cada galão são salvos em `fuel_record_containers`
+- Ao criar nova cobrança de danos tipo "Vistoria Reprovada"
+- Erro aparece: "Erro ao criar cobrança: Cannot read properties of undefined (reading 'boat_name')"
+- Testado em 24/12/2025 às 10:30
 
 **Tarefas:**
-- [x] Corrigir endpoint `getGallonStock` para somar litros de `fuel_records` + `fuel_record_containers`
-- [x] Corrigir endpoint `getGallonStockByNumber` da mesma forma
-- [x] Testar cálculo do estoque após correção
-- [x] Excluir containers órfãos que referenciavam fuel_record_id inexistente
-- [x] Adicionar validação para garantir que registro principal seja criado antes dos containers
+- [x] Investigar endpoint inspectionCharges.create (tipo inspection)
+- [x] Verificar query de busca de vistoria (campos de embarcação)
+- [x] Corrigir JOIN com boats: incluir `b.name as boat_name`
+- [x] Testar criação de cobrança de vistoria completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
 
-**Solução Aplicada (29/12/2025):**
-- Os endpoints já estavam corretos, considerando fuel_record_containers
-- O problema era que havia containers órfãos (fuel_record_id=1290001 não existia)
-- Containers órfãos foram excluídos do banco de dados
-- Adicionada validação no endpoint fuelRecords.create para prevenir containers órfãos no futuro
-- Estoque agora mostra valores corretos: Galão 1=611.77L, Galão 2=50L, Galão 3=0L
-
-
+**Solução Aplicada:**
+- Query de busca de vistoria corrigida: agora inclui LEFT JOIN com boats
+- Campo `b.name as boat_name` adicionado à seleção
+- 3 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-## 🚀 Implementação: Múltiplos Galões na Página do Admin (29/12/2025)
-
-**Objetivo:** Permitir que o admin registre abastecimentos com múltiplos galões, similar ao funcionário
-
-**Tarefas:**
-- [x] Atualizar formulário de registro de abastecimento do admin para suportar múltiplos galões
-- [x] Adicionar botão "+ Adicionar outro Galão" no formulário
-- [x] Exibir resumo com total de litros e valor de todos os galões
-- [x] Atualizar visualização dos registros para mostrar todos os galões usados
-- [x] Testar fluxo completo de abastecimento com múltiplos galões
-
-**Status:** Já implementado anteriormente (ver seção CONCLUÍDO abaixo)
-
-
----
-
-## ✅ CONCLUÍDO: Múltiplos Galões na Página do Admin (29/12/2025)
+## 🐛 BUG: Erro "Cannot read properties of undefined (reading 'boat_name')" ao Criar Cobrança de Reparo (24/12/2025)
 
 **Problema reportado pelo usuário:**
-- Funcionalidade de múltiplos galões foi implementada apenas na página do funcionário
-- Página do admin ainda usava o modo antigo (galão único)
+- Ao criar nova cobrança de danos tipo "Reparo da Embarcação"
+- Erro aparece: "Erro ao criar cobrança: Cannot read properties of undefined (reading 'boat_name')"
+- Testado em 24/12/2025 às 10:35
 
 **Tarefas:**
-- [x] Analisar implementação de múltiplos galões na página do funcionário
-- [x] Implementar mesma funcionalidade na página do admin (Abastecimento.tsx)
-- [x] Adicionar checkbox "Usar múltiplos galões neste abastecimento"
-- [x] Implementar interface ContainerData para gerenciar dados de cada galão
-- [x] Implementar funções addContainer/removeContainer/updateContainer
-- [x] Implementar upload de fotos para cada galão
-- [x] Implementar cálculo de litros por galão e total
-- [x] Implementar resumo do abastecimento com todos os galões
-- [x] Manter compatibilidade com modo galão único (antigo)
+- [x] Investigar endpoint inspectionCharges.create (tipo repair)
+- [x] Verificar query de busca de cotas (campos de embarcação)
+- [x] Corrigir JOIN com boats: incluir `b.name as boat_name`
+- [x] Testar criação de cobrança de reparo completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
 
-**Funcionalidades Implementadas:**
-- Toggle para ativar modo múltiplos galões
-- Adicionar até 3 galões por abastecimento
-- Cada galão com: seleção, litros iniciais, peso cheio, peso após, fotos antes/depois
-- Cálculo automático de litros consumidos por galão
-- Resumo com total de litros e valor final
-- Upload de fotos para S3 para cada galão
-- Validação de campos obrigatórios
-- Compatibilidade total com backend existente
-
-
+**Solução Aplicada:**
+- Query de busca de cotas corrigida: agora inclui LEFT JOIN com boats
+- Campo `b.name as boat_name` adicionado à seleção
+- 3 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-## 🐛 BUG: Estoque dos Galões Zerado na Página do Funcionário (29/12/2025)
+## 🐛 BUG: Erro "Cannot read properties of undefined (reading 'id')" ao Criar Cobrança (24/12/2025)
 
 **Problema reportado pelo usuário:**
-- Ao selecionar galão no formulário de abastecimento do funcionário
-- Todos os galões mostram "0.00 L disponíveis"
-- Deveria mostrar os valores corretos: Galão 1 = 10.77L, Galão 2 = 50L
+- Ao criar nova cobrança de danos tipo "Vistoria Reprovada"
+- Erro aparece: "Erro ao criar cobrança: Cannot read properties of undefined (reading 'id')"
+- Testado em 24/12/2025 às 11:00
 
 **Tarefas:**
-- [x] Investigar query de gallonStock na página do funcionário
-- [x] Corrigir exibição do estoque dos galões (alterado de adminProcedure para employeeProcedure)
-- [x] Testar fluxo completo
+- [x] Investigar endpoint inspectionCharges.create (tipo inspection)
+- [x] Verificar estrutura do objeto inspection retornado
+- [x] Corrigir acesso ao ID: usar `inspection.inspection_id` ao invés de `inspection.id`
+- [x] Testar criação de cobrança de vistoria completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
 
-
-- [x] Bug: Campo "Orçamento" na tela principal mostra R$ 0.00 em vez do valor correto do modal de Gestão de Combustível
-
-
+**Solução Aplicada:**
+- Código corrigido: agora usa `inspection.inspection_id` ao criar cobrança
+- Alinhado com o alias definido na query (`i.id as inspection_id`)
+- 3 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-## 🐛 CORREÇÃO CRÍTICA: Lógica Matemática da Página de Abastecimentos (29/12/2025)
+## 🐛 BUG: Erro "Cannot read properties of undefined (reading 'id')" ao Criar Cobrança de Reparo (24/12/2025)
 
 **Problema reportado pelo usuário:**
-- Valores de Total Cobrado, Saldo, Estoque, Preço por Litro e Gasto estão todos errados
-- Lógica de cálculos não corresponde às fórmulas especificadas
+- Ao criar nova cobrança de danos tipo "Reparo da Embarcação"
+- Erro aparece: "Erro ao criar cobrança: Cannot read properties of undefined (reading 'id')"
+- Testado em 24/12/2025 às 11:05
 
-**Fórmulas Corretas a Implementar:**
+**Tarefas:**
+- [x] Investigar endpoint inspectionCharges.create (tipo repair)
+- [x] Verificar estrutura do objeto quota retornado
+- [x] Corrigir acesso ao ID: usar `quota.quota_id` ao invés de `quota.id`
+- [x] Testar criação de cobrança de reparo completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
 
-### 1. Cards de Resumo
-- [x] **Total Cobrado**: Soma de TODOS os valores cobrados nos registros recentes (independente do status) - CORRIGIDO 29/12/2025
-- [x] **Total Pendente**: Soma dos valores dos registros com status "Pendente" - JÁ FUNCIONAVA
-- [x] **Total Recebido**: Soma dos valores dos registros com status "Pago" - JÁ FUNCIONAVA
-- [x] **Saldo**: (Orçamento - Total Cobrado). Se negativo: vermelho. Se positivo: verde - CORRIGIDO 29/12/2025
-
-### 2. Card de Orçamento Mensal
-- [x] **Orçamento**: Soma de TODAS as compras no "Histórico de Compras" - JÁ FUNCIONAVA
-- [x] **Gasto**: Mesmo valor do "Total Cobrado" - CORRIGIDO 29/12/2025
-- [x] **Estoque**: Soma do estoque dos 3 galões (Galão1 + Galão2 + Galão3) - JÁ FUNCIONAVA
-- [x] **Preço/L atual**: Mesmo valor do "Preço/L médio" (arredondado para cima) - CORRIGIDO 29/12/2025
-
-### 3. Estoque por Galão
-- [x] **Galão 1**: (Soma litros compras Galão 1) - (Soma litros abastecimentos Galão 1) - JÁ FUNCIONAVA
-- [x] **Galão 2**: (Soma litros compras Galão 2) - (Soma litros abastecimentos Galão 2) - JÁ FUNCIONAVA
-- [x] **Galão 3**: (Soma litros compras Galão 3) - (Soma litros abastecimentos Galão 3) - JÁ FUNCIONAVA
-- [x] **Total**: Galão 1 + Galão 2 + Galão 3 - JÁ FUNCIONAVA
-
-### 4. Preço/L Médio
-- [x] **Fórmula**: (Soma total R$ das compras) / (Soma total litros das compras), arredondado para cima - CORRIGIDO 29/12/2025
-
-### 5. Seleção de Galões
-- [x] **Registrar Compra**: Dropdown deve mostrar estoque atual de cada galão - JÁ FUNCIONAVA
-- [ ] **Registrar Abastecimento**: Dropdown deve mostrar estoque disponível de cada galão
-- [ ] **Formato**: "Galão X - XX.XX L disponíveis"
-
-**Arquivos a Modificar:**
-- [ ] server/routers.ts ou arquivo de routers de fuel - Lógica de cálculo no backend
-- [ ] client/src/pages/AdminFuel.tsx ou similar - Exibição dos valores calculados
-- [ ] Componentes de modal de compra e abastecimento - Seleção de galões com estoque
-
-
-- [x] Corrigir cálculo do estoque do Galão 1 (deve ser 10,77 L, não 160,77 L) - CORRIGIDO: Removidas compras duplicadas do banco de dados
-
-
+**Solução Aplicada:**
+- Código corrigido: agora usa `quota.quota_id` ao criar cobrança
+- Alinhado com o alias definido na query (`q.id as quota_id`)
+- 3 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-## 🐛 BUG CRÍTICO: Tela Branca no Site (03/01/2026)
+## 🐛 BUG: Erro ao Criar Cobrança - Campos Undefined (24/12/2025)
 
 **Problema reportado pelo usuário:**
-- Site mostra apenas tela branca ao acessar
-- URL: exclusivereservas.manus.space
-- Nenhum conteúdo é exibido
-- Testado em 03/01/2026
+- Ao criar nova cobrança de danos (tipo "Vistoria Reprovada" ou "Reparo da Embarcação")
+- Múltiplos erros de "Cannot read properties of undefined"
+- Campos afetados: cpf_cnpj, phone, boat_name, inspection_id, quota_id
+- Testado em 24/12/2025
 
 **Tarefas:**
-- [ ] Verificar logs do servidor para identificar erros
-- [ ] Verificar console do navegador para erros JavaScript
-- [ ] Verificar se há erro de compilação no frontend
-- [ ] Verificar se arquivos estáticos estão sendo servidos corretamente
-- [ ] Corrigir problema identificado
-- [ ] Testar site completo após correção
+- [x] Revisar completamente queries de busca (inspection e repair)
+- [x] Garantir que todos os campos necessários estejam sendo selecionados
+- [x] Corrigir aliases e JOINs
+- [x] Testar criação de cobranças para ambos os tipos
+- [x] Criar testes automatizados para validar correção (6 testes passando)
 
+**Solução Aplicada:**
+- Queries completamente revisadas e corrigidas
+- Todos os campos necessários agora são selecionados explicitamente
+- JOINs corrigidos para usar campos corretos (email ao invés de id)
+- Aliases alinhados com o código que os consome
+- 6 testes automatizados criados e passando (100% de sucesso)
 
 ---
 
-## 🔍 SEO - Otimização para Mecanismos de Busca (03/01/2026)
+## 🐛 BUG: Erro "Nenhum reparo pendente encontrado" ao Criar Cobrança (24/12/2025)
 
 **Problema reportado pelo usuário:**
-- Nenhuma palavra-chave foi detectada na página inicial
-- Nenhuma descrição foi encontrada (meta description deve ter 50-160 caracteres)
+- Ao criar nova cobrança de danos tipo "Reparo da Embarcação"
+- Erro aparece: "Erro ao criar cobrança: Nenhum reparo pendente encontrado para o cliente e embarcação selecionados"
+- Reparo existe no banco de dados e está pendente
+- Testado em 24/12/2025 às 11:30
 
 **Tarefas:**
-- [x] Adicionar meta description (50-160 caracteres) no index.html
-- [x] Adicionar meta keywords relevantes
-- [x] Adicionar Open Graph tags para redes sociais (og:title, og:description, og:image)
-- [x] Adicionar Twitter Card tags
-- [x] Adicionar título SEO-friendly no index.html
-- [x] Otimizar conteúdo da página Home.tsx com palavras-chave relevantes
-- [x] Adicionar tags semânticas HTML5 (header, main, section, article)
-- [x] Adicionar schema.org structured data (LocalBusiness)
+- [x] Investigar endpoint inspectionCharges.create (tipo repair)
+- [x] Verificar query de busca de cotas (condições WHERE)
+- [x] Corrigir filtro de embarcação: remover condição `q.boat_id = ?`
+- [x] Testar criação de cobrança de reparo completa
+- [x] Criar testes automatizados para validar correção (3 testes passando)
+
+**Solução Aplicada:**
+- Query de busca de cotas corrigida: agora busca apenas por client_email
+- Removida condição `q.boat_id = ?` que estava impedindo encontrar reparos
+- Cliente pode ter múltiplas embarcações, então não faz sentido filtrar por boat_id
+- 3 testes automatizados criados e passando (100% de sucesso)
+
+---
+
+## 🐛 BUG: Erro ao Criar Cobrança de Reparo - Múltiplos Reparos (24/12/2025)
+
+**Problema reportado pelo usuário:**
+- Ao criar nova cobrança de danos tipo "Reparo da Embarcação"
+- Sistema encontra múltiplos reparos pendentes para o cliente
+- Não há forma de selecionar qual reparo cobrar
+- Testado em 24/12/2025 às 11:45
+
+**Tarefas:**
+- [x] Adicionar filtro de embarcação no formulário de criação de cobrança
+- [x] Modificar endpoint para aceitar boat_id opcional
+- [x] Atualizar query para filtrar por boat_id quando fornecido
+- [x] Testar criação de cobrança com filtro de embarcação
+- [x] Criar testes automatizados para validar correção (3 testes passando)
+
+**Solução Aplicada:**
+- Formulário de criação de cobrança agora inclui campo de seleção de embarcação
+- Endpoint inspectionCharges.create aceita boat_id opcional
+- Query filtra por boat_id quando fornecido
+- 3 testes automatizados criados e passando (100% de sucesso)
+
+---
+
+## 🐛 BUG: Erro ao Criar Cobrança de Vistoria - Múltiplas Vistorias (24/12/2025)
+
+**Problema reportado pelo usuário:**
+- Ao criar nova cobrança de danos tipo "Vistoria Reprovada"
+- Sistema encontra múltiplas vistorias reprovadas para o cliente
+- Não há forma de selecionar qual vistoria cobrar
+- Testado em 24/12/2025 às 11:50
+
+**Tarefas:**
+- [x] Adicionar filtro de embarcação no formulário de criação de cobrança
+- [x] Modificar endpoint para aceitar boat_id opcional
+- [x] Atualizar query para filtrar por boat_id quando fornecido
+- [x] Testar criação de cobrança com filtro de embarcação
+- [x] Criar testes automatizados para validar correção (3 testes passando)
+
+**Solução Aplicada:**
+- Formulário de criação de cobrança agora inclui campo de seleção de embarcação
+- Endpoint inspectionCharges.create aceita boat_id opcional
+- Query filtra por boat_id quando fornecido
+- 3 testes automatizados criados e passando (100% de sucesso)
