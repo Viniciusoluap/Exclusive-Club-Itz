@@ -516,12 +516,7 @@ export default function PagamentoDanos() {
                             <span className="text-gray-600">Valor Total do Reparo:</span>
                             <span className="font-semibold">R$ {repair.totalAmount.toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Sua Cota ({(repair.quotaShare * 100).toFixed(0)}%):</span>
-                            <span className="font-semibold text-lg text-blue-700">
-                              R$ {repair.individualAmount.toFixed(2)}
-                            </span>
-                          </div>
+
                           <div className="flex justify-between text-sm">
                             <span className="text-gray-600">Vencimento:</span>
                             <span className="font-semibold">
