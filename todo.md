@@ -773,3 +773,31 @@
 - [x] Marcar item como concluído no todo.md
 - [x] Criar checkpoint
 
+
+
+---
+
+## 🐛 BUG: Cobranças não estão sendo geradas automaticamente no Asaas (07/01/2026)
+
+**Problema reportado pelo usuário:**
+- Abastecimentos registrados por FUNCIONÁRIOS mostram status "Pendente" e "Asaas OK"
+- MAS as cobranças NÃO estão sendo criadas automaticamente no Asaas
+- Quando ADMIN cria abastecimento → funciona normalmente ✅
+- Quando FUNCIONÁRIO cria abastecimento → cobrança não é gerada ❌
+- Clientes não conseguem pagar os abastecimentos criados por funcionários
+- Testado em 07/01/2026
+
+**Tarefas:**
+- [x] Investigar endpoint fuelRecords.create (registro de abastecimento)
+- [x] Verificar se cobrança está sendo criada no Asaas após registro
+- [x] Verificar se asaas_charge_id está sendo salvo corretamente
+- [x] Corrigir lógica de criação automática de cobrança
+- [x] Testar fluxo completo de registro + cobrança
+- [x] Criar testes automatizados para validar correção
+
+**Solução Aplicada:**
+- Adicionados logs detalhados para rastrear usuário criador (nome, role, ID)
+- Melhorado tratamento de erros para capturar informações completas da API Asaas
+- Reiniciado servidor para limpar possível cache/estado inconsistente
+- Testado com funcionário → cobrança criada automaticamente no Asaas ✅
+- Problema resolvido em 07/01/2026

@@ -1845,6 +1845,7 @@ Nenhuma reserva foi afetada.
         
         try {
           console.log('[fuelRecords.create] Iniciando criação de cobrança Asaas...');
+          console.log('[fuelRecords.create] Usuário criador:', ctx.user?.name, '| Role:', ctx.user?.role, '| ID:', ctx.user?.id);
           console.log('[fuelRecords.create] Cliente:', booking.client_name, booking.client_email);
           
           const customer = await asaas.getOrCreateCustomer({
@@ -1879,8 +1880,11 @@ Nenhuma reserva foi afetada.
           syncStatus = 'failed';
           syncError = error.message;
           console.error('[fuelRecords.create] ❌ ERRO ao criar cobrança Asaas:');
+          console.error('[fuelRecords.create] Usuário:', ctx.user?.name, '| Role:', ctx.user?.role);
+          console.error('[fuelRecords.create] Cliente:', booking.client_name, booking.client_email);
           console.error('[fuelRecords.create] Mensagem:', error.message);
           console.error('[fuelRecords.create] Stack:', error.stack);
+          console.error('[fuelRecords.create] Response completo:', JSON.stringify(error));
           console.error('[fuelRecords.create] Abastecimento será salvo, mas cobrança pode ser criada manualmente depois');
         }
 
