@@ -1,0 +1,110 @@
+{
+  "query": "SELECT \n  fr.id,\n  fr.client_name,\n  fr.recorded_by,\n  fr.asaas_charge_id,\n  fr.sync_status,\n  fr.sync_error,\n  fr.recorded_at,\n  u.role as creator_role\nFROM fuel_records fr\nLEFT JOIN users u ON fr.recorded_by = u.name\nORDER BY fr.recorded_at DESC \nLIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  fr.id,\n  fr.client_name,\n  fr.recorded_by,\n  fr.asaas_charge_id,\n  fr.sync_status,\n  fr.sync_error,\n  fr.recorded_at,\n  u.role as creator_role\nFROM fuel_records fr\nLEFT JOIN users u ON fr.recorded_by = u.name\nORDER BY fr.recorded_at DESC \nLIMIT 10;",
+  "rows": [
+    {
+      "id": "1440001",
+      "client_name": "Diogo Brito",
+      "recorded_by": "14850001",
+      "asaas_charge_id": "pay_grpxn74xqvcc15lv",
+      "sync_status": "synced",
+      "sync_error": "NULL",
+      "recorded_at": "2026-01-12 21:13:30",
+      "creator_role": "NULL"
+    },
+    {
+      "id": "1410001",
+      "client_name": "lsccsilva",
+      "recorded_by": "14850001",
+      "asaas_charge_id": "pay_zem9z3rx34s28iu4",
+      "sync_status": "synced",
+      "sync_error": "NULL",
+      "recorded_at": "2026-01-07 16:55:42",
+      "creator_role": "NULL"
+    },
+    {
+      "id": "1380001",
+      "client_name": "Erisvaldo Silva",
+      "recorded_by": "14850001",
+      "asaas_charge_id": "pay_v32acar6swjg1o1c",
+      "sync_status": "synced",
+      "sync_error": "NULL",
+      "recorded_at": "2026-01-03 13:38:25",
+      "creator_role": "NULL"
+    },
+    {
+      "id": "1350001",
+      "client_name": "Diogo Brito",
+      "recorded_by": "14850001",
+      "asaas_charge_id": "pay_9j0207fps877pg1u",
+      "sync_status": "synced",
+      "sync_error": "NULL",
+      "recorded_at": "2026-01-02 20:11:28",
+      "creator_role": "NULL"
+    },
+    {
+      "id": "1320002",
+      "client_name": "Diogo Brito",
+      "recorded_by": "1",
+      "asaas_charge_id": "pay_ps28eeazb6euzr6u",
+      "sync_status": "manual",
+      "sync_error": "NULL",
+      "recorded_at": "2025-12-29 23:33:56",
+      "creator_role": "NULL"
+    },
+    {
+      "id": "1140001",
+      "client_name": "Stenio Teixeiras",
+      "recorded_by": "1",
+      "asaas_charge_id": "pay_ob3mmt08ghytupkh",
+      "sync_status": "manual",
+      "sync_error": "NULL",
+      "recorded_at": "2025-12-24 18:37:31",
+      "creator_role": "NULL"
+    },
+    {
+      "id": "780004",
+      "client_name": "Laercio Oliveira",
+      "recorded_by": "1",
+      "asaas_charge_id": "pay_918e13h9u9cfq6a4",
+      "sync_status": "manual",
+      "sync_error": "NULL",
+      "recorded_at": "2025-12-21 22:43:04",
+      "creator_role": "NULL"
+    },
+    {
+      "id": "780003",
+      "client_name": "Laécio Silversat",
+      "recorded_by": "1",
+      "asaas_charge_id": "pay_h7tppywffurbuhoe",
+      "sync_status": "manual",
+      "sync_error": "NULL",
+      "recorded_at": "2025-12-21 22:42:08",
+      "creator_role": "NULL"
+    },
+    {
+      "id": "780002",
+      "client_name": "ERISVALDO ALVES SILVA",
+      "recorded_by": "1",
+      "asaas_charge_id": "NULL",
+      "sync_status": "manual",
+      "sync_error": "ASAAS_API_KEY não configurada",
+      "recorded_at": "2025-12-21 22:41:46",
+      "creator_role": "NULL"
+    },
+    {
+      "id": "780001",
+      "client_name": "EDILSON DA CONCEIÇÃO COSTA",
+      "recorded_by": "1",
+      "asaas_charge_id": "pay_rucg7ghxl4p8c8ww",
+      "sync_status": "synced",
+      "sync_error": "NULL",
+      "recorded_at": "2025-12-21 22:41:11",
+      "creator_role": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\trecorded_by\tasaas_charge_id\tsync_status\tsync_error\trecorded_at\tcreator_role\n1440001\tDiogo Brito\t14850001\tpay_grpxn74xqvcc15lv\tsynced\tNULL\t2026-01-12 21:13:30\tNULL\n1410001\tlsccsilva\t14850001\tpay_zem9z3rx34s28iu4\tsynced\tNULL\t2026-01-07 16:55:42\tNULL\n1380001\tErisvaldo Silva\t14850001\tpay_v32acar6swjg1o1c\tsynced\tNULL\t2026-01-03 13:38:25\tNULL\n1350001\tDiogo Brito\t14850001\tpay_9j0207fps877pg1u\tsynced\tNULL\t2026-01-02 20:11:28\tNULL\n1320002\tDiogo Brito\t1\tpay_ps28eeazb6euzr6u\tmanual\tNULL\t2025-12-29 23:33:56\tNULL\n1140001\tStenio Teixeiras\t1\tpay_ob3mmt08ghytupkh\tmanual\tNULL\t2025-12-24 18:37:31\tNULL\n780004\tLaercio Oliveira\t1\tpay_918e13h9u9cfq6a4\tmanual\tNULL\t2025-12-21 22:43:04\tNULL\n780003\tLaécio Silversat\t1\tpay_h7tppywffurbuhoe\tmanual\tNULL\t2025-12-21 22:42:08\tNULL\n780002\tERISVALDO ALVES SILVA\t1\tNULL\tmanual\tASAAS_API_KEY não configurada\t2025-12-21 22:41:46\tNULL\n780001\tEDILSON DA CONCEIÇÃO COSTA\t1\tpay_rucg7ghxl4p8c8ww\tsynced\tNULL\t2025-12-21 22:41:11\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 403
+}

@@ -1,0 +1,40 @@
+{
+  "query": "SELECT \n  id,\n  client_name,\n  client_email,\n  total_amount,\n  asaas_charge_id,\n  payment_status,\n  sync_status,\n  recorded_at\nFROM fuel_records \nWHERE asaas_charge_id IS NOT NULL\nORDER BY recorded_at DESC \nLIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  id,\n  client_name,\n  client_email,\n  total_amount,\n  asaas_charge_id,\n  payment_status,\n  sync_status,\n  recorded_at\nFROM fuel_records \nWHERE asaas_charge_id IS NOT NULL\nORDER BY recorded_at DESC \nLIMIT 3;",
+  "rows": [
+    {
+      "id": "1440001",
+      "client_name": "Diogo Brito",
+      "client_email": "diogobritolemos@gmail.com",
+      "total_amount": "17669",
+      "asaas_charge_id": "pay_grpxn74xqvcc15lv",
+      "payment_status": "pending",
+      "sync_status": "synced",
+      "recorded_at": "2026-01-12 21:13:30"
+    },
+    {
+      "id": "1410001",
+      "client_name": "lsccsilva",
+      "client_email": "lsccsilva@outlook.com",
+      "total_amount": "7774",
+      "asaas_charge_id": "pay_zem9z3rx34s28iu4",
+      "payment_status": "pending",
+      "sync_status": "synced",
+      "recorded_at": "2026-01-07 16:55:42"
+    },
+    {
+      "id": "1380001",
+      "client_name": "Erisvaldo Silva",
+      "client_email": "via.vips@hotmail.com",
+      "total_amount": "3051",
+      "asaas_charge_id": "pay_v32acar6swjg1o1c",
+      "payment_status": "pending",
+      "sync_status": "synced",
+      "recorded_at": "2026-01-03 13:38:25"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tclient_email\ttotal_amount\tasaas_charge_id\tpayment_status\tsync_status\trecorded_at\n1440001\tDiogo Brito\tdiogobritolemos@gmail.com\t17669\tpay_grpxn74xqvcc15lv\tpending\tsynced\t2026-01-12 21:13:30\n1410001\tlsccsilva\tlsccsilva@outlook.com\t7774\tpay_zem9z3rx34s28iu4\tpending\tsynced\t2026-01-07 16:55:42\n1380001\tErisvaldo Silva\tvia.vips@hotmail.com\t3051\tpay_v32acar6swjg1o1c\tpending\tsynced\t2026-01-03 13:38:25\n",
+  "stderr": "",
+  "execution_time_ms": 391
+}

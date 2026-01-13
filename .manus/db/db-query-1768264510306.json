@@ -1,0 +1,65 @@
+{
+  "query": "SELECT \n  id,\n  client_name,\n  client_email,\n  liters,\n  total_amount,\n  sync_status,\n  payment_status,\n  asaas_charge_id,\n  recorded_at\nFROM fuel_records \nORDER BY recorded_at DESC \nLIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  id,\n  client_name,\n  client_email,\n  liters,\n  total_amount,\n  sync_status,\n  payment_status,\n  asaas_charge_id,\n  recorded_at\nFROM fuel_records \nORDER BY recorded_at DESC \nLIMIT 5;",
+  "rows": [
+    {
+      "id": "1440001",
+      "client_name": "Diogo Brito",
+      "client_email": "diogobritolemos@gmail.com",
+      "liters": "2650",
+      "total_amount": "17669",
+      "sync_status": "synced",
+      "payment_status": "pending",
+      "asaas_charge_id": "pay_grpxn74xqvcc15lv",
+      "recorded_at": "2026-01-12 21:13:30"
+    },
+    {
+      "id": "1410001",
+      "client_name": "lsccsilva",
+      "client_email": "lsccsilva@outlook.com",
+      "liters": "1077",
+      "total_amount": "7774",
+      "sync_status": "synced",
+      "payment_status": "pending",
+      "asaas_charge_id": "pay_zem9z3rx34s28iu4",
+      "recorded_at": "2026-01-07 16:55:42"
+    },
+    {
+      "id": "1380001",
+      "client_name": "Erisvaldo Silva",
+      "client_email": "via.vips@hotmail.com",
+      "liters": "326",
+      "total_amount": "3051",
+      "sync_status": "synced",
+      "payment_status": "pending",
+      "asaas_charge_id": "pay_v32acar6swjg1o1c",
+      "recorded_at": "2026-01-03 13:38:25"
+    },
+    {
+      "id": "1350001",
+      "client_name": "Diogo Brito",
+      "client_email": "diogobritolemos@gmail.com",
+      "liters": "780",
+      "total_amount": "5906",
+      "sync_status": "synced",
+      "payment_status": "pending",
+      "asaas_charge_id": "pay_9j0207fps877pg1u",
+      "recorded_at": "2026-01-02 20:11:28"
+    },
+    {
+      "id": "1320002",
+      "client_name": "Diogo Brito",
+      "client_email": "diogobritolemos@gmail.com",
+      "liters": "1244",
+      "total_amount": "8825",
+      "sync_status": "manual",
+      "payment_status": "paid",
+      "asaas_charge_id": "pay_ps28eeazb6euzr6u",
+      "recorded_at": "2025-12-29 23:33:56"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tclient_email\tliters\ttotal_amount\tsync_status\tpayment_status\tasaas_charge_id\trecorded_at\n1440001\tDiogo Brito\tdiogobritolemos@gmail.com\t2650\t17669\tsynced\tpending\tpay_grpxn74xqvcc15lv\t2026-01-12 21:13:30\n1410001\tlsccsilva\tlsccsilva@outlook.com\t1077\t7774\tsynced\tpending\tpay_zem9z3rx34s28iu4\t2026-01-07 16:55:42\n1380001\tErisvaldo Silva\tvia.vips@hotmail.com\t326\t3051\tsynced\tpending\tpay_v32acar6swjg1o1c\t2026-01-03 13:38:25\n1350001\tDiogo Brito\tdiogobritolemos@gmail.com\t780\t5906\tsynced\tpending\tpay_9j0207fps877pg1u\t2026-01-02 20:11:28\n1320002\tDiogo Brito\tdiogobritolemos@gmail.com\t1244\t8825\tmanual\tpaid\tpay_ps28eeazb6euzr6u\t2025-12-29 23:33:56\n",
+  "stderr": "",
+  "execution_time_ms": 447
+}
