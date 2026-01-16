@@ -61,6 +61,9 @@ export default function EmployeeAbastecimentos() {
   const monthYear = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
   const { data: budget } = trpcAny.fuelBudget?.get.useQuery({ monthYear }) || { data: null };
   const { data: gallonStock, refetch: refetchGallonStock } = trpcAny.fuelPurchases?.getGallonStock.useQuery() || { data: [] };
+  
+  // NOVO: Buscar estoque com herança do mês anterior
+  const { data: stockWithInheritance, refetch: refetchStockInheritance } = trpcAny.fuelBudget?.getCurrentStock.useQuery({ monthYear }) || { data: null };
 
   // Refetch quando mês/ano mudar
   useEffect(() => {
@@ -105,6 +108,7 @@ export default function EmployeeAbastecimentos() {
       resetForm();
       refetch();
       refetchGallonStock();
+      refetchStockInheritance();
       utils.fuelBudget.get.invalidate({ monthYear });
     },
     onError: (error: any) => {
@@ -118,6 +122,8 @@ export default function EmployeeAbastecimentos() {
       setIsDeleteDialogOpen(false);
       setDeleteId(null);
       refetch();
+      refetchGallonStock();
+      refetchStockInheritance();
       utils.fuelBudget.get.invalidate({ monthYear });
     },
     onError: (error: any) => {
@@ -459,8 +465,8 @@ export default function EmployeeAbastecimentos() {
             </div>
           </div>
 
-          {/* Indicador de Estoque (somente visualização) */}
-          {budget && (
+          {/* Indicador de Estoque (somente visualização) - COM HERANÇA */}
+          {stockWithInheritance && (
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between flex-wrap gap-3">
@@ -468,16 +474,19 @@ export default function EmployeeAbastecimentos() {
                     <div className="flex items-center gap-2">
                       <Fuel className="w-5 h-5 text-primary" />
                       <span className="font-semibold">
-                        Estoque: {budget.stockLiters?.toFixed(2) || "0.00"} L disponíveis
+                        Estoque Total: {stockWithInheritance.total?.toFixed(2) || "0.00"} L disponíveis
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      💵 Preço/L atual: R$ {budget.lastPricePerLiter?.toFixed(2) || "0.00"}
+                      Galão 1: {stockWithInheritance.gallon1?.toFixed(2)}L | Galão 2: {stockWithInheritance.gallon2?.toFixed(2)}L | Galão 3: {stockWithInheritance.gallon3?.toFixed(2)}L
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      💵 Preço/L atual: R$ {budget?.lastPricePerLiter?.toFixed(2) || "0.00"}
                     </p>
                   </div>
                   
                   {/* Alerta de estoque baixo */}
-                  {budget.stockLiters && budget.stockLiters < 5 && (
+                  {stockWithInheritance.total && stockWithInheritance.total < 5 && (
                     <div className="flex items-center gap-2 text-red-600 font-semibold">
                       <AlertTriangle className="w-5 h-5" />
                       <span className="text-sm">Estoque baixo! Avise o administrador</span>
