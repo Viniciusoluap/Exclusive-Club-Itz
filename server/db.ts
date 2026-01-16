@@ -421,3 +421,255 @@ export async function updateUserName(userId: number, name: string) {
   if (!db) throw new Error("Database not available");
   await db.update(users).set({ name }).where(eq(users.id, userId));
 }
+
+// ============================================================================
+// FUNÇÕES DE HERANÇA DE ESTOQUE E SALDO DO MÊS ANTERIOR
+// ============================================================================
+
+/**
+ * Busca o orçamento mensal do mês anterior
+ * @param monthYear - Formato: YYYY-MM
+ * @returns monthlyBudgetId do mês anterior ou null
+ */
+export async function getPreviousMonthBudget(monthYear: string): Promise<number | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [year, month] = monthYear.split('-').map(Number);
+  
+  // Calcular mês anterior
+  let prevYear = year;
+  let prevMonth = month - 1;
+  
+  if (prevMonth === 0) {
+    prevMonth = 12;
+    prevYear = year - 1;
+  }
+  
+  const prevMonthYear = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+  
+  // Buscar id do fuel_budget do mês anterior
+  const { fuelBudget } = await import('../drizzle/schema');
+  const { eq } = await import('drizzle-orm');
+  
+  const result = await db.select()
+    .from(fuelBudget)
+    .where(eq(fuelBudget.monthYear, prevMonthYear))
+    .limit(1);
+  
+  return result.length > 0 ? result[0].id : null;
+}
+
+/**
+ * Calcula o estoque final de um galão em um mês específico
+ * @param gallonNumber - Número do galão (1, 2 ou 3)
+ * @param monthYear - Formato: YYYY-MM
+ * @returns Estoque final em centésimos de litro
+ */
+export async function calculateGallonFinalStock(gallonNumber: number, monthYear: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const { fuelBudget, fuelPurchases, fuelRecords, fuelRecordContainers } = await import('../drizzle/schema');
+  const { eq, and, sql } = await import('drizzle-orm');
+  
+  // Buscar id do fuel_budget
+  const budgetResult = await db.select()
+    .from(fuelBudget)
+    .where(eq(fuelBudget.monthYear, monthYear))
+    .limit(1);
+  
+  if (budgetResult.length === 0) return 0;
+  
+  const budgetId = budgetResult[0].id;
+  
+  // Calcular total comprado do galão
+  const purchasesResult = await db.select({
+    total: sql<number>`COALESCE(SUM(${fuelPurchases.litersPurchased}), 0)`
+  })
+    .from(fuelPurchases)
+    .where(and(
+      eq(fuelPurchases.monthYear, monthYear),
+      eq(fuelPurchases.gallonNumber, gallonNumber)
+    ));
+  
+  const totalPurchased = Number(purchasesResult[0]?.total || 0);
+  
+  // Calcular total consumido do galão (via DATE_FORMAT porque não temos monthlyBudgetId)
+  const consumedResult = await db.execute(sql`
+    SELECT COALESCE(SUM(frc.liters_used), 0) as total
+    FROM fuel_record_containers frc
+    INNER JOIN fuel_records fr ON frc.fuel_record_id = fr.id
+    WHERE DATE_FORMAT(fr.created_at, '%Y-%m') = ${monthYear}
+      AND frc.gallon_number = ${gallonNumber}
+  `) as any;
+  
+  const consumedData = (Array.isArray(consumedResult[0]) ? consumedResult[0][0] : consumedResult[0]);
+  
+  const totalConsumed = Number(consumedData?.total || 0);
+  
+  // Estoque final = comprado - consumido
+  return totalPurchased - totalConsumed;
+}
+
+/**
+ * Calcula o estoque atual de um galão considerando herança do mês anterior
+ * @param gallonNumber - Número do galão (1, 2 ou 3)
+ * @param monthYear - Formato: YYYY-MM
+ * @returns Estoque atual em centésimos de litro
+ */
+export async function calculateCurrentGallonStock(gallonNumber: number, monthYear: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  // 1. Buscar estoque final do mês anterior
+  const prevMonthBudgetId = await getPreviousMonthBudget(monthYear);
+  let inheritedStock = 0;
+  
+  if (prevMonthBudgetId) {
+    const [prevYear, prevMonth] = monthYear.split('-').map(Number);
+    let actualPrevMonth = prevMonth - 1;
+    let actualPrevYear = prevYear;
+    
+    if (actualPrevMonth === 0) {
+      actualPrevMonth = 12;
+      actualPrevYear = prevYear - 1;
+    }
+    
+    const prevMonthYear = `${actualPrevYear}-${String(actualPrevMonth).padStart(2, '0')}`;
+    inheritedStock = await calculateGallonFinalStock(gallonNumber, prevMonthYear);
+  }
+  
+  // 2. Calcular compras e consumos do mês atual
+  const { fuelPurchases, fuelRecordContainers } = await import('../drizzle/schema');
+  const { eq, and, sql } = await import('drizzle-orm');
+  
+  // Total comprado no mês atual
+  const purchasesResult = await db.select({
+    total: sql<number>`COALESCE(SUM(${fuelPurchases.litersPurchased}), 0)`
+  })
+    .from(fuelPurchases)
+    .where(and(
+      eq(fuelPurchases.monthYear, monthYear),
+      eq(fuelPurchases.gallonNumber, gallonNumber)
+    ));
+  
+  const currentPurchased = Number(purchasesResult[0]?.total || 0);
+  
+  // Total consumido no mês atual
+  const consumedResult2 = await db.execute(sql`
+    SELECT COALESCE(SUM(frc.liters_used), 0) as total
+    FROM fuel_record_containers frc
+    INNER JOIN fuel_records fr ON frc.fuel_record_id = fr.id
+    WHERE DATE_FORMAT(fr.created_at, '%Y-%m') = ${monthYear}
+      AND frc.gallon_number = ${gallonNumber}
+  `) as any;
+  
+  const consumedData2 = (Array.isArray(consumedResult2[0]) ? consumedResult2[0][0] : consumedResult2[0]);
+  
+  const currentConsumed = Number(consumedData2?.total || 0);
+  
+  // Estoque atual = herdado + comprado - consumido
+  return inheritedStock + currentPurchased - currentConsumed;
+}
+
+/**
+ * Calcula o saldo final de um mês (Orçamento - Gasto)
+ * @param monthYear - Formato: YYYY-MM
+ * @returns Saldo final em centavos
+ */
+export async function calculateMonthFinalBalance(monthYear: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const { sql } = await import('drizzle-orm');
+  
+  // Calcular orçamento (soma das compras)
+  const budgetResult = await db.execute(sql`
+    SELECT COALESCE(SUM(amount_paid), 0) as total
+    FROM fuel_purchases
+    WHERE month_year = ${monthYear}
+  `) as any;
+  
+  const budgetData = (Array.isArray(budgetResult[0]) ? budgetResult[0][0] : budgetResult[0]);
+  const budget = Number(budgetData?.total || 0);
+  
+  // Calcular gasto (soma dos abastecimentos)
+  const spentResult = await db.execute(sql`
+    SELECT COALESCE(SUM(total_amount), 0) as total
+    FROM fuel_records
+    WHERE DATE_FORMAT(created_at, '%Y-%m') = ${monthYear}
+  `) as any;
+  
+  const spentData = (Array.isArray(spentResult[0]) ? spentResult[0][0] : spentResult[0]);
+  const spent = Number(spentData?.total || 0);
+  
+  // Saldo = orçamento - gasto
+  return budget - spent;
+}
+
+/**
+ * Calcula o saldo atual considerando herança do mês anterior
+ * @param monthYear - Formato: YYYY-MM
+ * @returns Objeto com saldo herdado, orçamento, gasto e saldo atual (tudo em centavos)
+ */
+export async function calculateCurrentBalance(monthYear: string): Promise<{
+  inherited: number;
+  budget: number;
+  spent: number;
+  current: number;
+}> {
+  const db = await getDb();
+  if (!db) return { inherited: 0, budget: 0, spent: 0, current: 0 };
+
+  // 1. Buscar saldo final do mês anterior
+  const prevMonthBudgetId = await getPreviousMonthBudget(monthYear);
+  let inheritedBalance = 0;
+  
+  if (prevMonthBudgetId) {
+    const [prevYear, prevMonth] = monthYear.split('-').map(Number);
+    let actualPrevMonth = prevMonth - 1;
+    let actualPrevYear = prevYear;
+    
+    if (actualPrevMonth === 0) {
+      actualPrevMonth = 12;
+      actualPrevYear = prevYear - 1;
+    }
+    
+    const prevMonthYear = `${actualPrevYear}-${String(actualPrevMonth).padStart(2, '0')}`;
+    inheritedBalance = await calculateMonthFinalBalance(prevMonthYear);
+  }
+  
+  // 2. Calcular orçamento e gasto do mês atual
+  const { sql } = await import('drizzle-orm');
+  
+  // Orçamento do mês (soma das compras)
+  const budgetResult = await db.execute(sql`
+    SELECT COALESCE(SUM(amount_paid), 0) as total
+    FROM fuel_purchases
+    WHERE month_year = ${monthYear}
+  `) as any;
+  
+  const budgetData = (Array.isArray(budgetResult[0]) ? budgetResult[0][0] : budgetResult[0]);
+  const currentBudget = Number(budgetData?.total || 0);
+  
+  // Gasto do mês (soma dos abastecimentos)
+  const spentResult = await db.execute(sql`
+    SELECT COALESCE(SUM(total_amount), 0) as total
+    FROM fuel_records
+    WHERE DATE_FORMAT(created_at, '%Y-%m') = ${monthYear}
+  `) as any;
+  
+  const spentData = (Array.isArray(spentResult[0]) ? spentResult[0][0] : spentResult[0]);
+  const currentSpent = Number(spentData?.total || 0);
+  
+  // Saldo atual = herdado + orçamento - gasto
+  const currentBalance = inheritedBalance + currentBudget - currentSpent;
+  
+  return {
+    inherited: inheritedBalance,
+    budget: currentBudget,
+    spent: currentSpent,
+    current: currentBalance
+  };
+}

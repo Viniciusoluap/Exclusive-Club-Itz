@@ -30,6 +30,12 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
   const { data: budget, refetch: refetchBudget } = trpcAny.fuelBudget?.get.useQuery({ monthYear }) || { data: null };
   const { data: purchases, refetch: refetchPurchases } = trpcAny.fuelPurchases?.list.useQuery({ monthYear }) || { data: [] };
   const { data: gallonStock, refetch: refetchGallonStock } = trpcAny.fuelPurchases?.getGallonStock.useQuery() || { data: [] };
+  
+  // NOVO: Buscar estoque com herança do mês anterior
+  const { data: stockWithInheritance, refetch: refetchStockInheritance } = trpcAny.fuelBudget?.getCurrentStock.useQuery({ monthYear }) || { data: null };
+  
+  // NOVO: Buscar saldo com herança do mês anterior
+  const { data: balanceWithInheritance, refetch: refetchBalanceInheritance } = trpcAny.fuelBudget?.getCurrentBalance.useQuery({ monthYear }) || { data: null };
 
   // useEffect removido - orçamento agora é calculado automaticamente
 
@@ -44,6 +50,8 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
       refetchBudget();
       refetchPurchases();
       refetchGallonStock();
+      refetchStockInheritance();
+      refetchBalanceInheritance();
     },
     onError: (error: any) => {
       toast.error(`Erro ao registrar compra: ${error.message}`);
@@ -56,6 +64,8 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
       refetchBudget();
       refetchPurchases();
       refetchGallonStock();
+      refetchStockInheritance();
+      refetchBalanceInheritance();
     },
     onError: (error: any) => {
       toast.error(`Erro ao excluir compra: ${error.message}`);
@@ -97,8 +107,8 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
     ? (parseFloat(purchaseAmount) / parseFloat(purchaseLiters)).toFixed(2)
     : "0.00";
 
-  // Calcular estoque total (soma dos 3 galões)
-  const totalStock = gallonStock?.reduce((sum: number, g: any) => sum + g.stockLiters, 0) || 0;
+  // Calcular estoque total (soma dos 3 galões) - USANDO HERANÇA
+  const totalStock = stockWithInheritance ? stockWithInheritance.total : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,10 +131,11 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Galões 1, 2 e 3 */}
+                {/* Galões 1, 2 e 3 - USANDO HERANÇA */}
                 {[1, 2, 3].map((gallonNum) => {
                   const gallon = gallonStock?.find((g: any) => g.gallonNumber === gallonNum);
-                  const stockLiters = gallon?.stockLiters || 0;
+                  // Usar estoque com herança
+                  const stockLiters = stockWithInheritance ? stockWithInheritance[`gallon${gallonNum}` as 'gallon1' | 'gallon2' | 'gallon3'] : 0;
                   const pricePerL = gallon?.lastPricePerLiter || 0;
                   const isLow = stockLiters > 0 && stockLiters < 5;
                   
@@ -157,17 +168,53 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
             </CardContent>
           </Card>
 
-          {/* Card de Resumo Financeiro */}
+          {/* Card de Resumo Financeiro - COM HERANÇA */}
           <Card>
-            <CardContent className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Resumo Financeiro
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Orçamento Mensal</p>
-                  <p className="text-2xl font-bold">R$ {budget?.totalBudget?.toFixed(2) || "0.00"}</p>
+                  <p className="text-sm text-muted-foreground">Saldo Herdado</p>
+                  <p className={`text-xl font-bold ${
+                    balanceWithInheritance && balanceWithInheritance.inherited < 0 
+                      ? 'text-red-600' 
+                      : 'text-blue-600'
+                  }`}>
+                    R$ {balanceWithInheritance?.inherited?.toFixed(2) || "0.00"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Do mês anterior</p>
                 </div>
                 <div>
+                  <p className="text-sm text-muted-foreground">Orçamento</p>
+                  <p className="text-xl font-bold">R$ {balanceWithInheritance?.budget?.toFixed(2) || "0.00"}</p>
+                  <p className="text-xs text-muted-foreground">Compras do mês</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Gasto</p>
+                  <p className="text-xl font-bold text-orange-600">R$ {balanceWithInheritance?.spent?.toFixed(2) || "0.00"}</p>
+                  <p className="text-xs text-muted-foreground">Abastecimentos</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Saldo Atual</p>
+                  <p className={`text-2xl font-bold ${
+                    balanceWithInheritance && balanceWithInheritance.current < 0 
+                      ? 'text-red-600' 
+                      : 'text-green-600'
+                  }`}>
+                    R$ {balanceWithInheritance?.current?.toFixed(2) || "0.00"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Herdado + Orçamento - Gasto</p>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">Preço/L Médio</p>
-                  <p className="text-2xl font-bold text-blue-600">R$ {budget?.lastPricePerLiter?.toFixed(2) || "0.00"}</p>
+                  <p className="text-lg font-bold text-blue-600">R$ {budget?.lastPricePerLiter?.toFixed(2) || "0.00"}</p>
                 </div>
               </div>
             </CardContent>

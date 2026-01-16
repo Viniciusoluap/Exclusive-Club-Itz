@@ -3049,6 +3049,69 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
     // REMOVIDO: endpoint 'set' não é mais necessário
     // Orçamento agora é calculado automaticamente como soma das compras
+
+    // NOVO: getCurrentStock - Obter estoque com herança do mês anterior
+    getCurrentStock: publicProcedure
+      .input(z.object({
+        monthYear: z.string(), // formato: YYYY-MM
+      }))
+      .query(async ({ input, ctx }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+
+        const { calculateCurrentGallonStock } = await import('./db');
+
+        try {
+          // Calcular estoque atual de cada galão (com herança)
+          const gallon1Stock = await calculateCurrentGallonStock(1, input.monthYear);
+          const gallon2Stock = await calculateCurrentGallonStock(2, input.monthYear);
+          const gallon3Stock = await calculateCurrentGallonStock(3, input.monthYear);
+
+          return {
+            gallon1: gallon1Stock / 100, // Converter centésimos para litros
+            gallon2: gallon2Stock / 100,
+            gallon3: gallon3Stock / 100,
+            total: (gallon1Stock + gallon2Stock + gallon3Stock) / 100,
+          };
+        } catch (error: any) {
+          console.error('[fuelBudget.getCurrentStock] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao calcular estoque: ${error.message}` 
+          });
+        }
+      }),
+
+    // NOVO: getCurrentBalance - Obter saldo com herança do mês anterior
+    getCurrentBalance: publicProcedure
+      .input(z.object({
+        monthYear: z.string(), // formato: YYYY-MM
+      }))
+      .query(async ({ input, ctx }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+
+        const { calculateCurrentBalance } = await import('./db');
+
+        try {
+          const balance = await calculateCurrentBalance(input.monthYear);
+
+          return {
+            inherited: balance.inherited / 100, // Converter centavos para reais
+            budget: balance.budget / 100,
+            spent: balance.spent / 100,
+            current: balance.current / 100,
+          };
+        } catch (error: any) {
+          console.error('[fuelBudget.getCurrentBalance] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao calcular saldo: ${error.message}` 
+          });
+        }
+      }),
   }),
 
   // Fuel Purchases router - Admin only
