@@ -116,7 +116,11 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
         <DialogHeader>
           <DialogTitle>Gestão de Combustível</DialogTitle>
           <DialogDescription>
-            Configure orçamento e registre compras de gasolina para {new Date(monthYear + '-01').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            Configure orçamento e registre compras de gasolina para {(() => {
+              const [year, month] = monthYear.split('-');
+              const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+              return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            })()}
           </DialogDescription>
         </DialogHeader>
 
