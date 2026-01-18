@@ -3112,6 +3112,36 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           });
         }
       }),
+
+    // NOVO: getMonthPurchases - Obter apenas compras do mês (SEM herança)
+    getMonthPurchases: publicProcedure
+      .input(z.object({
+        monthYear: z.string(), // formato: YYYY-MM
+      }))
+      .query(async ({ input, ctx }) => {
+        if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Acesso negado' });
+        }
+
+        const { getMonthPurchasesByGallon } = await import('./db');
+
+        try {
+          const purchases = await getMonthPurchasesByGallon(input.monthYear);
+
+          return {
+            gallon1: purchases.gallon1 / 100, // Converter centésimos para litros
+            gallon2: purchases.gallon2 / 100,
+            gallon3: purchases.gallon3 / 100,
+            total: purchases.total / 100,
+          };
+        } catch (error: any) {
+          console.error('[fuelBudget.getMonthPurchases] Error:', error);
+          throw new TRPCError({ 
+            code: 'INTERNAL_SERVER_ERROR', 
+            message: `Erro ao buscar compras do mês: ${error.message}` 
+          });
+        }
+      }),
   }),
 
   // Fuel Purchases router - Admin only

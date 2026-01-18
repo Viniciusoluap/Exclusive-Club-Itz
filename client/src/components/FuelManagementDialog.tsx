@@ -37,6 +37,9 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
   // NOVO: Buscar saldo com herança do mês anterior
   const { data: balanceWithInheritance, refetch: refetchBalanceInheritance } = trpcAny.fuelBudget?.getCurrentBalance.useQuery({ monthYear }) || { data: null };
 
+  // NOVO: Buscar apenas compras do mês (SEM herança) para exibir no card
+  const { data: monthPurchases, refetch: refetchMonthPurchases } = trpcAny.fuelBudget?.getMonthPurchases.useQuery({ monthYear }) || { data: null };
+
   // useEffect removido - orçamento agora é calculado automaticamente
 
   // Mutations (setBudgetMutation removido - orçamento agora é calculado automaticamente)
@@ -52,6 +55,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
       refetchGallonStock();
       refetchStockInheritance();
       refetchBalanceInheritance();
+      refetchMonthPurchases();
     },
     onError: (error: any) => {
       toast.error(`Erro ao registrar compra: ${error.message}`);
@@ -66,6 +70,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
       refetchGallonStock();
       refetchStockInheritance();
       refetchBalanceInheritance();
+      refetchMonthPurchases();
     },
     onError: (error: any) => {
       toast.error(`Erro ao excluir compra: ${error.message}`);
@@ -107,8 +112,8 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
     ? (parseFloat(purchaseAmount) / parseFloat(purchaseLiters)).toFixed(2)
     : "0.00";
 
-  // Calcular estoque total (soma dos 3 galões) - USANDO HERANÇA
-  const totalStock = stockWithInheritance ? stockWithInheritance.total : 0;
+  // Calcular estoque total (soma dos 3 galões) - USANDO APENAS COMPRAS DO MÊS
+  const totalStock = monthPurchases ? monthPurchases.total : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -135,11 +140,11 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Galões 1, 2 e 3 - USANDO HERANÇA */}
+                {/* Galões 1, 2 e 3 - USANDO APENAS COMPRAS DO MÊS */}
                 {[1, 2, 3].map((gallonNum) => {
                   const gallon = gallonStock?.find((g: any) => g.gallonNumber === gallonNum);
-                  // Usar estoque com herança
-                  const stockLiters = stockWithInheritance ? stockWithInheritance[`gallon${gallonNum}` as 'gallon1' | 'gallon2' | 'gallon3'] : 0;
+                  // Usar apenas compras do mês (SEM herança)
+                  const stockLiters = monthPurchases ? monthPurchases[`gallon${gallonNum}` as 'gallon1' | 'gallon2' | 'gallon3'] : 0;
                   const pricePerL = gallon?.lastPricePerLiter || 0;
                   const isLow = stockLiters > 0 && stockLiters < 5;
                   

@@ -673,3 +673,36 @@ export async function calculateCurrentBalance(monthYear: string): Promise<{
     current: currentBalance
   };
 }
+
+/**
+ * Retorna apenas as compras do mês atual por galão (SEM herança)
+ * @param monthYear - Formato: YYYY-MM
+ * @returns Objeto com litros comprados por galão no mês
+ */
+export async function getMonthPurchasesByGallon(monthYear: string): Promise<{ gallon1: number; gallon2: number; gallon3: number; total: number }> {
+  const db = await getDb();
+  if (!db) return { gallon1: 0, gallon2: 0, gallon3: 0, total: 0 };
+
+  const { fuelPurchases } = await import('../drizzle/schema');
+  const { eq, and, sql } = await import('drizzle-orm');
+
+  const result = { gallon1: 0, gallon2: 0, gallon3: 0, total: 0 };
+
+  // Buscar compras por galão
+  for (let gallonNum = 1; gallonNum <= 3; gallonNum++) {
+    const purchasesResult = await db.select({
+      total: sql<number>`COALESCE(SUM(${fuelPurchases.litersPurchased}), 0)`
+    })
+      .from(fuelPurchases)
+      .where(and(
+        eq(fuelPurchases.monthYear, monthYear),
+        eq(fuelPurchases.gallonNumber, gallonNum)
+      ));
+
+    const liters = Number(purchasesResult[0]?.total || 0);
+    result[`gallon${gallonNum}` as 'gallon1' | 'gallon2' | 'gallon3'] = liters;
+    result.total += liters;
+  }
+
+  return result;
+}
