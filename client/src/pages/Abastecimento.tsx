@@ -79,6 +79,7 @@ export default function Abastecimento() {
   const { data: financialStats } = trpcAny.fuelRecords?.financialStats.useQuery({ monthYear: currentMonthYear }) || { data: null };
   const { data: budget } = trpcAny.fuelBudget?.get.useQuery({ monthYear: currentMonthYear }) || { data: null };
   const { data: gallonStock, refetch: refetchGallonStock } = trpcAny.fuelPurchases?.getGallonStock.useQuery() || { data: [] };
+  const { data: balanceData } = trpcAny.fuelBudget?.getCurrentBalance.useQuery({ monthYear: currentMonthYear }) || { data: null };
 
   useEffect(() => {
     refetch();
@@ -625,7 +626,10 @@ export default function Abastecimento() {
   // Orçamento (usa totalBudget que é calculado automaticamente pelo backend)
   const budgetAmount = budget?.totalBudget || 0;
   const budgetUsedPercent = budgetAmount > 0 ? Math.min((totalCobrado / budgetAmount) * 100, 100) : 0;
-  const saldo = budgetAmount - totalCobrado;
+  
+  // Saldo com herança do mês anterior, multiplicado por -1 para inverter o sinal
+  const inheritedBalance = balanceData?.inheritedBalance || 0;
+  const saldo = (inheritedBalance + budgetAmount - totalCobrado) * -1;
 
   // Estoque total
   const totalStock = gallonStock?.reduce((sum: number, g: any) => sum + (g.stockLiters || 0), 0) || 0;

@@ -6,3 +6,12 @@
 - [x] Manter herança de estoque apenas no cálculo de saldo, não na exibição
 - [x] Testar correção
 - [ ] Criar checkpoint
+
+---
+
+## 🐛 Correção: Card Saldo na Página de Abastecimentos
+- [x] Localizar card "Saldo" na página de abastecimentos do administrador
+- [x] Alterar fórmula de cálculo para: (saldoHerdado + orçamento - gasto) * -1
+- [x] Verificar que o valor exibido corresponde ao modal (mas com sinal invertido)
+- [x] Testar correção
+- [ ] Criar checkpoint
