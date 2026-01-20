@@ -574,7 +574,8 @@ export async function calculateCurrentGallonStock(gallonNumber: number, monthYea
 }
 
 /**
- * Calcula o saldo final de um mês (Orçamento - Gasto)
+ * Calcula o saldo final de um mês (Herdado + Gasto - Orçamento)
+ * Esta função é recursiva e considera a herança completa do mês anterior
  * @param monthYear - Formato: YYYY-MM
  * @returns Saldo final em centavos
  */
@@ -584,7 +585,25 @@ export async function calculateMonthFinalBalance(monthYear: string): Promise<num
 
   const { sql } = await import('drizzle-orm');
   
-  // Calcular orçamento (soma das compras)
+  // 1. Buscar saldo herdado do mês anterior (recursivo)
+  const prevMonthBudgetId = await getPreviousMonthBudget(monthYear);
+  let inheritedBalance = 0;
+  
+  if (prevMonthBudgetId) {
+    const [year, month] = monthYear.split('-').map(Number);
+    let prevMonth = month - 1;
+    let prevYear = year;
+    
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear = year - 1;
+    }
+    
+    const prevMonthYear = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+    inheritedBalance = await calculateMonthFinalBalance(prevMonthYear); // Recursão
+  }
+  
+  // 2. Calcular orçamento (soma das compras)
   const budgetResult = await db.execute(sql`
     SELECT COALESCE(SUM(amount_paid), 0) as total
     FROM fuel_purchases
@@ -594,7 +613,7 @@ export async function calculateMonthFinalBalance(monthYear: string): Promise<num
   const budgetData = (Array.isArray(budgetResult[0]) ? budgetResult[0][0] : budgetResult[0]);
   const budget = Number(budgetData?.total || 0);
   
-  // Calcular gasto (soma dos abastecimentos)
+  // 3. Calcular gasto (soma dos abastecimentos)
   const spentResult = await db.execute(sql`
     SELECT COALESCE(SUM(total_amount), 0) as total
     FROM fuel_records
@@ -604,8 +623,8 @@ export async function calculateMonthFinalBalance(monthYear: string): Promise<num
   const spentData = (Array.isArray(spentResult[0]) ? spentResult[0][0] : spentResult[0]);
   const spent = Number(spentData?.total || 0);
   
-  // Saldo = orçamento - gasto
-  return budget - spent;
+  // 4. Saldo Atual = Herdado + Gasto - Orçamento
+  return inheritedBalance + spent - budget;
 }
 
 /**
@@ -663,8 +682,8 @@ export async function calculateCurrentBalance(monthYear: string): Promise<{
   const spentData = (Array.isArray(spentResult[0]) ? spentResult[0][0] : spentResult[0]);
   const currentSpent = Number(spentData?.total || 0);
   
-  // Saldo atual = herdado + orçamento - gasto
-  const currentBalance = inheritedBalance + currentBudget - currentSpent;
+  // Saldo atual = herdado + gasto - orçamento
+  const currentBalance = inheritedBalance + currentSpent - currentBudget;
   
   return {
     inherited: inheritedBalance,

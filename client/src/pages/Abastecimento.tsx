@@ -627,9 +627,9 @@ export default function Abastecimento() {
   const budgetAmount = budget?.totalBudget || 0;
   const budgetUsedPercent = budgetAmount > 0 ? Math.min((totalCobrado / budgetAmount) * 100, 100) : 0;
   
-  // Saldo com herança do mês anterior, multiplicado por -1 para inverter o sinal
+  // Saldo com herança do mês anterior (fórmula: herdado + gasto - orçamento)
   const inheritedBalance = balanceData?.inheritedBalance || 0;
-  const saldo = (inheritedBalance + budgetAmount - totalCobrado) * -1;
+  const saldo = inheritedBalance + totalCobrado - budgetAmount;
 
   // Estoque total
   const totalStock = gallonStock?.reduce((sum: number, g: any) => sum + (g.stockLiters || 0), 0) || 0;
