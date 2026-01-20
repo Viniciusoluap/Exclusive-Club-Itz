@@ -217,7 +217,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
                   }`}>
                     R$ {balanceWithInheritance?.current?.toFixed(2) || "0.00"}
                   </p>
-                  <p className="text-xs text-muted-foreground">Herdado + Gasto - Orçamento</p>
+                  <p className="text-xs text-muted-foreground">Herdado + Orçamento - Gasto</p>
                 </div>
               </div>
               <div className="mt-4 pt-4 border-t">
