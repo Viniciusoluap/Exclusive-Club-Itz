@@ -604,8 +604,8 @@ export async function calculateMonthFinalBalance(monthYear: string): Promise<num
   const spentData = (Array.isArray(spentResult[0]) ? spentResult[0][0] : spentResult[0]);
   const spent = Number(spentData?.total || 0);
   
-  // Saldo = orçamento - gasto
-  return budget - spent;
+  // Saldo = gasto - orçamento
+  return spent - budget;
 }
 
 /**
@@ -663,8 +663,8 @@ export async function calculateCurrentBalance(monthYear: string): Promise<{
   const spentData = (Array.isArray(spentResult[0]) ? spentResult[0][0] : spentResult[0]);
   const currentSpent = Number(spentData?.total || 0);
   
-  // Saldo atual = herdado + orçamento - gasto
-  const currentBalance = inheritedBalance + currentBudget - currentSpent;
+  // Saldo atual = herdado + gasto - orçamento
+  const currentBalance = inheritedBalance + currentSpent - currentBudget;
   
   return {
     inherited: inheritedBalance,
