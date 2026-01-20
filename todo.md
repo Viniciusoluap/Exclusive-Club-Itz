@@ -15,19 +15,12 @@
 - [x] Verificar que o valor exibido corresponde ao modal (mas com sinal invertido)
 - [x] Testar correção
 - [x] Criar checkpoint
----
 
-## 🐛 Correção: Lógica do Cálculo de Saldo Atual
-- [x] Corrigir fórmula no backend (calculateCurrentBalance): Saldo Atual = Saldo Herdado + Gasto - Orçamento
-- [x] Remover inversão de sinal (*-1) no frontend (FuelManagementDialog.tsx)
-- [x] Remover inversão de sinal (*-1) no frontend (Abastecimento.tsx)
-- [x] Testar cálculo com diferentes cenários (saldo positivo e negativo)
-- [x] Verificar herança de saldo para meses seguintes
-- [x] Criar checkpoint
-
-## 🐛 Bug: Herança Incorreta de Saldo Entre Meses
-- [x] Investigar função que calcula saldo herdado (getPreviousMonthBalance)
-- [x] Corrigir para usar Saldo Atual (Herdado + Gasto - Orçamento) do mês anterior
-- [x] Garantir que não use o valor do card "Saldo" da página principal
-- [x] Testar sequência: Dezembro 2025 → Janeiro 2026 → Fevereiro 2026
+## ✨ Nova Funcionalidade: Botão "Marcar como Recebido" em Cobranças de Danos
+- [x] Localizar componente da lista de cobranças de danos
+- [x] Adicionar botão "Marcar como Recebido" na coluna Ações (apenas para status Pendente)
+- [x] Implementar mutation tRPC para atualizar status da cobrança para "Pago"
+- [x] Sincronizar com Asaas: confirmar recebimento no gateway via API
+- [x] Adicionar confirmação antes de marcar como recebido
+- [x] Testar funcionalidade no navegador
 - [x] Criar checkpoint
