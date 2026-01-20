@@ -24,3 +24,10 @@
 - [x] Testar cálculo com diferentes cenários (saldo positivo e negativo)
 - [x] Verificar herança de saldo para meses seguintes
 - [x] Criar checkpoint
+
+## 🐛 Bug: Herança Incorreta de Saldo Entre Meses
+- [x] Investigar função que calcula saldo herdado (getPreviousMonthBalance)
+- [x] Corrigir para usar Saldo Atual (Herdado + Gasto - Orçamento) do mês anterior
+- [x] Garantir que não use o valor do card "Saldo" da página principal
+- [x] Testar sequência: Dezembro 2025 → Janeiro 2026 → Fevereiro 2026
+- [x] Criar checkpoint
