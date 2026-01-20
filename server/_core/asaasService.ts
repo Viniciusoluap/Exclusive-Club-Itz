@@ -534,48 +534,6 @@ export async function getChargeStatus(chargeId: string): Promise<AsaasChargeData
 }
 
 /**
- * Confirma recebimento manual de uma cobrança no Asaas
- * Endpoint: POST /payments/{id}/receiveInCash
- * Documentação: https://docs.asaas.com/reference/confirmar-recebimento-em-dinheiro
- */
-export async function receiveInCash(chargeId: string, params?: {
-  paymentDate?: string;
-  value?: number;
-  notifyCustomer?: boolean;
-}): Promise<boolean> {
-  const apiKey = await getAsaasApiKey();
-  const apiUrl = await getAsaasApiUrl();
-  
-  try {
-    const body: any = {};
-    if (params?.paymentDate) body.paymentDate = params.paymentDate;
-    if (params?.value) body.value = params.value;
-    if (params?.notifyCustomer !== undefined) body.notifyCustomer = params.notifyCustomer;
-    
-    const response = await fetchWithRetry(`${apiUrl}/payments/${chargeId}/receiveInCash`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'access_token': apiKey,
-      },
-      body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
-    });
-    
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[Asaas] Erro ao confirmar recebimento:', error);
-      return false;
-    }
-    
-    console.log('[Asaas] Recebimento confirmado para cobrança:', chargeId);
-    return true;
-  } catch (error) {
-    console.error('[Asaas] Erro ao confirmar recebimento:', error);
-    return false;
-  }
-}
-
-/**
  * Cancela uma cobrança no Asaas
  */
 export async function cancelCharge(chargeId: string): Promise<boolean> {

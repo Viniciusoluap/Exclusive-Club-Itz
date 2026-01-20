@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, ArrowLeft, Calendar, CheckCircle, CheckCircle2, DollarSign, Edit, Loader2, Plus, Trash2, Upload, X, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Calendar, CheckCircle2, DollarSign, Edit, Loader2, Plus, Trash2, Upload, X, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -123,16 +123,6 @@ export default function CobrancasDanos() {
     },
     onError: (error) => {
       toast.error(`Erro ao atualizar cobrança: ${error.message}`);
-    },
-  });
-
-  const markAsPaidMutation = trpc.inspectionCharges.markAsPaid.useMutation({
-    onSuccess: () => {
-      toast.success("Cobrança marcada como recebida!");
-      refetch();
-    },
-    onError: (error: any) => {
-      toast.error(`Erro ao marcar como recebida: ${error.message}`);
     },
   });
 
@@ -313,12 +303,6 @@ export default function CobrancasDanos() {
   const handleDelete = (chargeId: number) => {
     if (confirm("Tem certeza que deseja EXCLUIR PERMANENTEMENTE esta cobrança? Esta ação não pode ser desfeita.")) {
       deleteMutation.mutate({ chargeId });
-    }
-  };
-
-  const handleMarkAsPaid = (chargeId: number) => {
-    if (confirm("Confirma que recebeu este pagamento manualmente? O sistema irá sincronizar com o Asaas.")) {
-      markAsPaidMutation.mutate({ chargeId });
     }
   };
 
@@ -595,25 +579,14 @@ export default function CobrancasDanos() {
                       <td className="p-2 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {(charge.payment_status === 'pending' || charge.payment_status === 'overdue') && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleMarkAsPaid(charge.id)}
-                                title="Marcar como recebido"
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEdit(charge)}
-                                title="Editar cobrança"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(charge)}
+                              title="Editar cobrança"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
                           )}
                           <Button
                             variant="ghost"

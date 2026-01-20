@@ -3712,7 +3712,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         }
       }),
 
-    // Client: Buscar minhas cobranças3 vistorias reprovadas com dados de cobrança
+    // Cliente: Buscar minhas últimas 3 vistorias reprovadas com dados de cobrança
     myFailedInspections: protectedProcedure
       .query(async ({ ctx }) => {
         if (!ctx.user?.email) {
@@ -4244,74 +4244,6 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           throw new TRPCError({ 
             code: 'INTERNAL_SERVER_ERROR', 
             message: `Erro ao excluir cobrança: ${error.message}` 
-          });
-        }
-      }),
-
-    // Admin: Marcar cobrança como recebida manualmente
-    markAsPaid: adminProcedure
-      .input(z.object({
-        chargeId: z.number(),
-        note: z.string().optional(),
-      }))
-      .mutation(async ({ input }) => {
-        const db = await import('./db').then(m => m.getDb());
-        if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
-
-        try {
-          const { sql } = await import('drizzle-orm');
-          
-          // Buscar cobrança
-          const chargeResult = await db.execute(sql.raw(`
-            SELECT * FROM inspection_charges WHERE id = ${input.chargeId}
-          `)) as any;
-          
-          const charge = (Array.isArray(chargeResult[0]) ? chargeResult[0][0] : chargeResult[0]);
-          if (!charge) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'Cobrança não encontrada' });
-          }
-          
-          if (charge.payment_status === 'paid') {
-            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cobrança já está marcada como paga' });
-          }
-          
-          // Confirmar recebimento no Asaas (se existir asaas_charge_id)
-          if (charge.asaas_charge_id) {
-            try {
-              const { receiveInCash } = await import('./_core/asaasService');
-              const confirmed = await receiveInCash(charge.asaas_charge_id, {
-                paymentDate: new Date().toISOString().split('T')[0],
-                notifyCustomer: false,
-              });
-              
-              if (!confirmed) {
-                console.warn('[inspectionCharges.markAsPaid] Falha ao confirmar no Asaas, continuando com atualização local');
-              }
-            } catch (asaasError: any) {
-              console.warn('[inspectionCharges.markAsPaid] Erro ao confirmar no Asaas:', asaasError.message);
-              // Continua com a atualização local mesmo se falhar no Asaas
-            }
-          }
-          
-          // Atualizar status local
-          await db.execute(sql`
-            UPDATE inspection_charges 
-            SET 
-              payment_status = 'paid',
-              updated_at = NOW()
-            WHERE id = ${input.chargeId}
-          `);
-          
-          // Registrar log de auditoria
-          const note = input.note || 'Pagamento recebido manualmente';
-          console.log(`[inspectionCharges.markAsPaid] Cobrança ${input.chargeId} marcada como paga: ${note}`);
-          
-          return { success: true, message: 'Cobrança marcada como recebida' };
-        } catch (error: any) {
-          console.error('[inspectionCharges.markAsPaid] Error:', error);
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR', 
-            message: `Erro ao marcar cobrança como recebida: ${error.message}` 
           });
         }
       }),
