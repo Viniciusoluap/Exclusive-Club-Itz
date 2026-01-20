@@ -739,6 +739,61 @@ export async function updatePaymentStatus(params: {
 }
 
 /**
+ * Confirma recebimento manual de cobrança no Asaas (dinheiro/cheque)
+ * Endpoint: POST /v3/payments/{id}/receiveInCash
+ */
+export async function receiveInCash(params: {
+  asaasPaymentId: string;
+  paymentDate?: string;
+  value?: number;
+  notifyCustomer?: boolean;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const apiKey = await getAsaasApiKey();
+    const apiUrl = await getAsaasApiUrl();
+    
+    const body: Record<string, unknown> = {
+      paymentDate: params.paymentDate || new Date().toISOString().split('T')[0],
+      notifyCustomer: params.notifyCustomer ?? false,
+    };
+    
+    if (params.value) {
+      body.value = params.value;
+    }
+    
+    const response = await fetchWithRetry(
+      `${apiUrl}/payments/${params.asaasPaymentId}/receiveInCash`,
+      {
+        method: 'POST',
+        headers: {
+          'access_token': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[Asaas] Erro ao confirmar recebimento:', errorData);
+      return {
+        success: false,
+        error: errorData.errors?.[0]?.description || 'Erro ao confirmar recebimento no Asaas',
+      };
+    }
+    
+    console.log('[Asaas] Recebimento confirmado:', params.asaasPaymentId);
+    return { success: true };
+  } catch (error) {
+    console.error('[Asaas] Erro ao confirmar recebimento:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    };
+  }
+}
+
+/**
  * Busca pagamento por ID do Asaas
  */
 export async function getPaymentByAsaasId(asaasPaymentId: string): Promise<{
