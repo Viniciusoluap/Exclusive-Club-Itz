@@ -398,6 +398,162 @@ export async function getReconciliationHistory(limit = 10): Promise<Array<{
 }
 
 /**
+ * Migra fuel_records antigos para asaas_payments
+ * Executa apenas uma vez para registros que ainda não foram migrados
+ */
+export async function migrateFuelRecordsToAsaasPayments(): Promise<{
+  migrated: number;
+  errors: number;
+}> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error('Database not available');
+  }
+
+  console.log('[Migration] Iniciando migração de fuel_records para asaas_payments...');
+
+  const result = { migrated: 0, errors: 0 };
+
+  try {
+    // Busca todos os fuel_records com asaas_charge_id que não estão em asaas_payments
+    const fuelRecords = await db.execute(sql`
+      SELECT fr.*
+      FROM fuel_records fr
+      LEFT JOIN asaas_payments ap ON ap.asaas_payment_id = fr.asaas_charge_id
+      WHERE fr.asaas_charge_id IS NOT NULL
+      AND ap.id IS NULL
+      ORDER BY fr.created_at ASC
+    `) as any;
+
+    const records = Array.isArray(fuelRecords[0]) ? fuelRecords[0] : [];
+
+    console.log(`[Migration] Encontrados ${records.length} fuel_records para migrar`);
+
+    for (const record of records) {
+      try {
+        const { savePaymentRecord } = await import('./asaasService');
+        
+        // Registra em asaas_payments
+        await savePaymentRecord({
+          asaasPaymentId: record.asaas_charge_id,
+          asaasCustomerId: '', // Não temos customer_id em fuel_records antigos
+          chargeType: 'fuel',
+          chargeId: record.id,
+          value: record.total_amount,
+          billingType: 'UNDEFINED',
+          dueDate: record.due_date || new Date(),
+          clientEmail: record.client_email || '',
+          description: `Abastecimento - ${record.vessel_name || 'Embarcação'}`,
+        });
+
+        result.migrated++;
+        console.log(`[Migration] Migrado fuel_record #${record.id} -> asaas_payments`);
+      } catch (error) {
+        console.error(`[Migration] Erro ao migrar fuel_record #${record.id}:`, error);
+        result.errors++;
+      }
+    }
+
+  } catch (error) {
+    console.error('[Migration] Erro geral:', error);
+    throw error;
+  }
+
+  console.log(`[Migration] Concluído: ${result.migrated} migrados, ${result.errors} erros`);
+  return result;
+}
+
+/**
+ * Sincroniza status de pagamentos pendentes consultando API do Asaas
+ * Atualiza fuel_records e asaas_payments com status real
+ */
+export async function syncPaymentStatuses(): Promise<{
+  checked: number;
+  updated: number;
+  errors: number;
+}> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error('Database not available');
+  }
+
+  console.log('[Sync] Iniciando sincronização de status de pagamentos...');
+
+  const result = { checked: 0, updated: 0, errors: 0 };
+
+  try {
+    // Busca todos os fuel_records com asaas_charge_id e status pendente
+    const pendingRecords = await db.execute(sql`
+      SELECT id, asaas_charge_id, payment_status
+      FROM fuel_records
+      WHERE asaas_charge_id IS NOT NULL
+      AND payment_status = 'pending'
+      ORDER BY created_at DESC
+    `) as any;
+
+    const records = Array.isArray(pendingRecords[0]) ? pendingRecords[0] : [];
+
+    console.log(`[Sync] Encontrados ${records.length} abastecimentos pendentes para verificar`);
+
+    for (const record of records) {
+      result.checked++;
+      
+      try {
+        const { fetchPaymentFromAsaas } = await import('./asaasService');
+        
+        // Consulta status real no Asaas
+        const payment = await fetchPaymentFromAsaas(record.asaas_charge_id);
+        
+        if (!payment) {
+          console.warn(`[Sync] Pagamento ${record.asaas_charge_id} não encontrado no Asaas`);
+          continue;
+        }
+
+        // Mapeia status do Asaas para status local
+        let newStatus: 'pending' | 'paid' | 'overdue' = 'pending';
+        
+        if (payment.status === 'RECEIVED' || payment.status === 'CONFIRMED') {
+          newStatus = 'paid';
+        } else if (payment.status === 'OVERDUE') {
+          newStatus = 'overdue';
+        }
+
+        // Se status mudou, atualiza
+        if (newStatus !== record.payment_status) {
+          // Atualiza fuel_records
+          await db.execute(sql`
+            UPDATE fuel_records
+            SET payment_status = ${newStatus}
+            WHERE id = ${record.id}
+          `);
+
+          // Atualiza asaas_payments (se existir)
+          await db.execute(sql`
+            UPDATE asaas_payments
+            SET payment_status = ${newStatus}, updated_at = NOW()
+            WHERE asaas_payment_id = ${record.asaas_charge_id}
+          `);
+
+          result.updated++;
+          console.log(`[Sync] Atualizado fuel_record #${record.id}: ${record.payment_status} → ${newStatus}`);
+        }
+
+      } catch (error) {
+        console.error(`[Sync] Erro ao verificar fuel_record #${record.id}:`, error);
+        result.errors++;
+      }
+    }
+
+  } catch (error) {
+    console.error('[Sync] Erro geral:', error);
+    throw error;
+  }
+
+  console.log(`[Sync] Concluído: ${result.checked} verificados, ${result.updated} atualizados, ${result.errors} erros`);
+  return result;
+}
+
+/**
  * Executa todas as verificações de manutenção
  * Pode ser chamado periodicamente (ex: a cada 5 minutos)
  */
@@ -405,12 +561,30 @@ export async function runMaintenanceTasks(): Promise<{
   reconciliation: ReconciliationResult | null;
   expiration: { expired: number; errors: number } | null;
   overdue: { updated: number; errors: number } | null;
+  migration: { migrated: number; errors: number } | null;
+  sync: { checked: number; updated: number; errors: number } | null;
 }> {
   const result = {
     reconciliation: null as ReconciliationResult | null,
     expiration: null as { expired: number; errors: number } | null,
     overdue: null as { updated: number; errors: number } | null,
+    migration: null as { migrated: number; errors: number } | null,
+    sync: null as { checked: number; updated: number; errors: number } | null,
   };
+
+  try {
+    // 0. Migra fuel_records antigos para asaas_payments (executa apenas uma vez)
+    result.migration = await migrateFuelRecordsToAsaasPayments();
+  } catch (error) {
+    console.error('[Maintenance] Erro na migração:', error);
+  }
+
+  try {
+    // 0.5. Sincroniza status de pagamentos pendentes com Asaas
+    result.sync = await syncPaymentStatuses();
+  } catch (error) {
+    console.error('[Maintenance] Erro na sincronização:', error);
+  }
 
   try {
     // 1. Expira PIX antigos

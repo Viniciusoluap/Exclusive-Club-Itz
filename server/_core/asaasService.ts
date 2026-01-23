@@ -681,6 +681,49 @@ export async function savePaymentRecord(params: {
 }
 
 /**
+ * Consulta status de um pagamento diretamente na API do Asaas
+ */
+export async function fetchPaymentFromAsaas(paymentId: string): Promise<{
+  id: string;
+  status: string;
+  value: number;
+  netValue?: number;
+  billingType: string;
+  dueDate: string;
+  paymentDate?: string;
+  description?: string;
+} | null> {
+  const apiUrl = process.env.ASAAS_API_URL || 'https://api.asaas.com/v3';
+  const apiKey = process.env.ASAAS_API_KEY;
+
+  if (!apiUrl || !apiKey) {
+    console.error('[Asaas] API URL ou API Key não configurados');
+    return null;
+  }
+
+  try {
+    const response = await fetchWithRetry(`${apiUrl}/payments/${paymentId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'access_token': apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`[Asaas] Erro ao consultar pagamento ${paymentId}:`, response.status);
+      return null;
+    }
+
+    const payment = await response.json();
+    return payment;
+  } catch (error) {
+    console.error(`[Asaas] Erro ao consultar pagamento ${paymentId}:`, error);
+    return null;
+  }
+}
+
+/**
  * Atualiza status de pagamento no banco de dados central
  */
 export async function updatePaymentStatus(params: {

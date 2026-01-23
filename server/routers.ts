@@ -1843,6 +1843,10 @@ Nenhuma reserva foi afetada.
         let syncStatus = 'pending';
         let syncError = null;
         
+        // Definir data de vencimento (para uso posterior)
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 1); // Vencimento em 1 dia
+        
         try {
           console.log('[fuelRecords.create] Iniciando criação de cobrança Asaas...');
           console.log('[fuelRecords.create] Usuário criador:', ctx.user?.name, '| Role:', ctx.user?.role, '| ID:', ctx.user?.id);
@@ -1856,9 +1860,6 @@ Nenhuma reserva foi afetada.
           console.log('[fuelRecords.create] Cliente Asaas ID:', asaasCustomerId);
 
           // Criar cobrança no Asaas
-          const dueDate = new Date();
-          dueDate.setDate(dueDate.getDate() + 1); // Vencimento em 1 dia
-          
           console.log('[fuelRecords.create] Criando cobrança...');
           const charge = await asaas.createCharge({
             customer: asaasCustomerId,
@@ -1959,7 +1960,29 @@ Nenhuma reserva foi afetada.
           console.log('[fuelRecords.create] Containers salvos com sucesso!');
         }
         
-        console.log('[fuelRecords.create] Abastecimento salvo no banco com sync_status:', syncStatus); 
+        console.log('[fuelRecords.create] Abastecimento salvo no banco com sync_status:', syncStatus);
+
+        // Registrar pagamento em asaas_payments se cobrança foi criada com sucesso
+        if (asaasChargeId && syncStatus === 'synced') {
+          try {
+            const { savePaymentRecord } = await import('./_core/asaasService');
+            await savePaymentRecord({
+              asaasPaymentId: asaasChargeId,
+              asaasCustomerId: asaasCustomerId,
+              chargeType: 'fuel',
+              chargeId: fuelRecordId,
+              value: totalAmount / 100,
+              billingType: 'PIX',
+              dueDate: dueDate,
+              clientEmail: booking.client_email,
+              description: `Abastecimento - ${booking.vessel_name_actual} - ${finalLiters.toFixed(2)}L`,
+            });
+            console.log('[fuelRecords.create] ✅ Pagamento registrado em asaas_payments');
+          } catch (error) {
+            console.error('[fuelRecords.create] ⚠️ Erro ao registrar em asaas_payments:', error);
+            // Não falhar a operação se apenas o registro falhar
+          }
+        }
 
         return { 
           success: true,
