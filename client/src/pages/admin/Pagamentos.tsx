@@ -4,7 +4,8 @@
  * Visualização completa de pagamentos, logs de webhook e reconciliação.
  */
 import { useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import { useLocation } from "wouter";
+import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -129,9 +130,28 @@ export default function Pagamentos() {
     return <Badge className={config.color}>{config.label}</Badge>;
   };
 
+  const [, setLocation] = useLocation();
+
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+    <div className="min-h-screen bg-background">
+      {/* Header com botão voltar */}
+      <div className="border-b bg-white sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-3 flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation('/admin')}
+            className="shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold">Exclusive Club - Compartilhando Sonhos</h1>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -595,6 +615,6 @@ export default function Pagamentos() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
