@@ -45,3 +45,18 @@
 - [x] Remover inversão de sinal no frontend
 - [x] Testar sequência: Dezembro 2025 → Janeiro 2026 → Fevereiro 2026
 - [x] Criar checkpoint (842a4100)
+
+## 🎨 UI: Remover Sidebar da Página de Pagamentos
+====================================================================================
+
+**Problema:**
+- No modo paisagem (iPad/tablet), aparece sidebar com "Page 1" e "Page 2"
+- No modo retrato, aparece botão de voltar simples (correto)
+- Usuário quer comportamento consistente: apenas botão de voltar
+
+**Tarefas:**
+- [x] Analisar DashboardLayout e página Pagamentos
+- [x] Remover uso de DashboardLayout ou desabilitar sidebar
+- [x] Adicionar botão de voltar simples no header
+- [x] Testar no navegador em modo paisagem
+- [ ] Criar checkpoint
