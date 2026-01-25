@@ -1,0 +1,8 @@
+{
+  "query": "INSERT INTO bookings (client_id, vessel_id, booking_date, status, notes, created_at, updated_at)\nSELECT \n  c.id,\n  v.id,\n  1738281600000, -- 30/01/2026 10:00:00 GMT-3 = timestamp\n  'confirmed',\n  'Reserva de teste para validar correção do bug',\n  NOW(),\n  NOW()\nFROM clients c\nCROSS JOIN vessels v\nWHERE c.email = 'laecio.silversat@gmail.com'\n  AND v.name = 'Focker 215 150HP'\nLIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute INSERT INTO bookings (client_id, vessel_id, booking_date, status, notes, created_at, updated_at)\nSELECT \n  c.id,\n  v.id,\n  1738281600000, -- 30/01/2026 10:00:00 GMT-3 = timestamp\n  'confirmed',\n  'Reserva de teste para validar correção do bug',\n  NOW(),\n  NOW()\nFROM clients c\nCROSS JOIN vessels v\nWHERE c.email = 'laecio.silversat@gmail.com'\n  AND v.name = 'Focker 215 150HP'\nLIMIT 1;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table '4svap8mpse4tem3hhe5wes.clients' doesn't exist"
+  ]
+}

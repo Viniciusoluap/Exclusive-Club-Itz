@@ -1,0 +1,23 @@
+{
+  "query": "SELECT \n  id,\n  client_email,\n  client_name,\n  vessel_id,\n  vessel_name,\n  FROM_UNIXTIME(booking_date/1000) as booking_date_formatted,\n  booking_date,\n  status,\n  notes,\n  created_at,\n  updated_at\nFROM bookings\nWHERE FROM_UNIXTIME(booking_date/1000) >= '2026-01-30 00:00:00'\n  AND FROM_UNIXTIME(booking_date/1000) < '2026-01-31 00:00:00'\nORDER BY booking_date;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  id,\n  client_email,\n  client_name,\n  vessel_id,\n  vessel_name,\n  FROM_UNIXTIME(booking_date/1000) as booking_date_formatted,\n  booking_date,\n  status,\n  notes,\n  created_at,\n  updated_at\nFROM bookings\nWHERE FROM_UNIXTIME(booking_date/1000) >= '2026-01-30 00:00:00'\n  AND FROM_UNIXTIME(booking_date/1000) < '2026-01-31 00:00:00'\nORDER BY booking_date;",
+  "rows": [
+    {
+      "id": "3540001",
+      "client_email": "laecio.silversat@gmail.com",
+      "client_name": "Laecio Sousa Silva",
+      "vessel_id": "4",
+      "vessel_name": "Focker 215 150HP",
+      "booking_date_formatted": "2026-01-30 03:00:00.0000",
+      "booking_date": "1769742000000",
+      "status": "cancelled",
+      "notes": "NULL",
+      "created_at": "2026-01-25 19:35:31",
+      "updated_at": "2026-01-25 19:36:21"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_email\tclient_name\tvessel_id\tvessel_name\tbooking_date_formatted\tbooking_date\tstatus\tnotes\tcreated_at\tupdated_at\n3540001\tlaecio.silversat@gmail.com\tLaecio Sousa Silva\t4\tFocker 215 150HP\t2026-01-30 03:00:00.0000\t1769742000000\tcancelled\tNULL\t2026-01-25 19:35:31\t2026-01-25 19:36:21\n",
+  "stderr": "",
+  "execution_time_ms": 351
+}
