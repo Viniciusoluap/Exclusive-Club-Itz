@@ -60,3 +60,23 @@
 - [x] Adicionar botão de voltar simples no header
 - [x] Testar no navegador em modo paisagem
 - [ ] Criar checkpoint
+
+## 🐛 BUG: Cancelamento Incorreto de Reservas Durante Manutenção
+====================================================================================
+
+**Problema:**
+- Ao criar manutenção de 26/01/2026 a 29/01/2026 (término dia 29)
+- Sistema cancelou reserva do dia 30/01/2026 (Laécio Silversat)
+- Reserva do dia 30 deveria permanecer ativa (está FORA do período de manutenção)
+- Sistema está usando lógica incorreta de comparação de datas
+
+**Comportamento Esperado:**
+- Cancelar APENAS reservas dentro do período: 26/01 <= data <= 29/01
+- Reserva do dia 30/01 NÃO deve ser cancelada
+
+**Tarefas:**
+- [x] Analisar código de cancelamento de reservas na criação de manutenção
+- [x] Identificar lógica incorreta de comparação de datas (problema de timezone)
+- [x] Corrigir normalização de datas usando new Date(year, month, date)
+- [x] Verificar estado atual das reservas (reserva 30/01 foi cancelada pelo bug)
+- [ ] Criar checkpoint
