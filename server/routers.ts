@@ -999,23 +999,40 @@ export const appRouter = router({
         // Buscar reservas conflitantes
         const allBookings = await db.getAllBookings();
         
-        // Normalizar datas usando apenas a parte da data (sem considerar horário)
-        // Converter timestamps para datas e extrair apenas ano/mês/dia
+        // Normalizar datas usando UTC para evitar problemas de timezone
+        // O frontend envia timestamps com horário local (GMT-3), então precisamos usar UTC
         const startDate = new Date(input.startDate);
         const endDate = new Date(input.endDate);
         
-        const startNormalized = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-        const endNormalized = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+
+        // Usar Date.UTC para criar datas normalizadas em UTC
+        const startNormalized = new Date(Date.UTC(
+          startDate.getUTCFullYear(),
+          startDate.getUTCMonth(),
+          startDate.getUTCDate(),
+          0, 0, 0, 0
+        ));
         
-        // Ajustar endNormalized para fim do dia (23:59:59.999)
-        endNormalized.setHours(23, 59, 59, 999);
+        const endNormalized = new Date(Date.UTC(
+          endDate.getUTCFullYear(),
+          endDate.getUTCMonth(),
+          endDate.getUTCDate(),
+          23, 59, 59, 999
+        ));
         
+
         const conflictingBookings = allBookings.filter((booking: any) => {
           if (booking.vesselId !== input.vesselId) return false;
           if (booking.status === 'cancelled' || booking.status === 'used') return false;
           
-          const bookingDate = new Date(booking.bookingDate);
-          bookingDate.setHours(0, 0, 0, 0);
+          // Normalizar bookingDate usando UTC para evitar problemas de timezone
+          const bookingDateObj = new Date(booking.bookingDate);
+          const bookingDate = new Date(Date.UTC(
+            bookingDateObj.getUTCFullYear(),
+            bookingDateObj.getUTCMonth(),
+            bookingDateObj.getUTCDate(),
+            0, 0, 0, 0
+          ));
           
           return bookingDate >= startNormalized && bookingDate <= endNormalized;
         });

@@ -144,9 +144,13 @@ export default function AdminManutencao() {
       return;
     }
 
-    // Converter data para timestamp (início do dia para startDate, fim do dia para endDate)
-    const startTimestamp = new Date(startDate + 'T00:00:00').getTime();
-    const endTimestamp = new Date(endDate + 'T23:59:59').getTime();
+    // Converter data para timestamp UTC (início do dia para startDate, fim do dia para endDate)
+    // Usar Date.UTC para evitar problemas de timezone
+    const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+    const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+    
+    const startTimestamp = Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+    const endTimestamp = Date.UTC(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
 
     if (startTimestamp >= endTimestamp) {
       toast.error("Data de início deve ser anterior à data de término");
@@ -222,9 +226,13 @@ export default function AdminManutencao() {
       return;
     }
 
-    // Converter data para timestamp (início do dia para startDate, fim do dia para endDate)
-    const startTimestamp = new Date(startDate + 'T00:00:00').getTime();
-    const endTimestamp = new Date(endDate + 'T23:59:59').getTime();
+    // Converter data para timestamp UTC (início do dia para startDate, fim do dia para endDate)
+    // Usar Date.UTC para evitar problemas de timezone
+    const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+    const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+    
+    const startTimestamp = Date.UTC(startYear, startMonth - 1, startDay, 0, 0, 0, 0);
+    const endTimestamp = Date.UTC(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
 
     if (startTimestamp >= endTimestamp) {
       toast.error("Data de início deve ser anterior à data de término");

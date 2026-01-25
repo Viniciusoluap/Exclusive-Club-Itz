@@ -80,3 +80,27 @@
 - [x] Corrigir normalização de datas usando new Date(year, month, date)
 - [x] Verificar estado atual das reservas (reserva 30/01 foi cancelada pelo bug)
 - [ ] Criar checkpoint
+
+## ✅ BUG CORRIGIDO DEFINITIVAMENTE!
+====================================================================================
+
+**Problema identificado:**
+Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 'T23:59:59').getTime()`, que eram interpretados como UTC no backend, causando mudança de dia.
+
+**Exemplo do bug:**
+- Frontend: `new Date('2026-01-29T23:59:59').getTime()` = 29/01 23:59:59 GMT-3
+- Timestamp UTC: 30/01 02:59:59 UTC
+- Backend: `getDate()` retorna dia 30 ❌
+
+**Solução aplicada:**
+- [x] Adicionar logs de debug para ver valores exatos das datas
+- [x] Identificar problema no frontend (AdminManutencao.tsx linha 149)
+- [x] Corrigir frontend para usar `Date.UTC(year, month-1, day, 23, 59, 59, 999)`
+- [x] Corrigir backend para usar `getUTCFullYear()`, `getUTCMonth()`, `getUTCDate()`
+- [x] Testar exaustivamente - SUCESSO! ✅
+  * Manutenção: 26/01 a 29/01
+  * Reserva 30/01: CONFIRMADA (não cancelada) ✅
+  * Reserva 31/01: CONFIRMADA (não cancelada) ✅
+  * Logs: `endNormalized: 2026-01-29T23:59:59.999Z` ✅
+- [x] Remover logs de debug
+- [ ] Criar checkpoint final
