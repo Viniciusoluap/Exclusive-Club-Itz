@@ -998,9 +998,16 @@ export const appRouter = router({
 
         // Buscar reservas conflitantes
         const allBookings = await db.getAllBookings();
-        const startNormalized = new Date(input.startDate);
-        startNormalized.setHours(0, 0, 0, 0);
-        const endNormalized = new Date(input.endDate);
+        
+        // Normalizar datas usando apenas a parte da data (sem considerar horário)
+        // Converter timestamps para datas e extrair apenas ano/mês/dia
+        const startDate = new Date(input.startDate);
+        const endDate = new Date(input.endDate);
+        
+        const startNormalized = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const endNormalized = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        
+        // Ajustar endNormalized para fim do dia (23:59:59.999)
         endNormalized.setHours(23, 59, 59, 999);
         
         const conflictingBookings = allBookings.filter((booking: any) => {
