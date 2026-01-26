@@ -125,4 +125,24 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Corrigir função de migração (dividir por 100)
 - [x] Corrigir valores existentes no banco (UPDATE value / 100)
 - [x] Testar e validar correção - SUCESSO!
+- [x] Criar checkpoint (84fbc568)
+
+## 💰 Feature: Botão "Recebido em Dinheiro" para Baixa Manual
+====================================================================================
+
+**Requisito:** Adicionar botão para dar baixa manual em pagamentos de abastecimento
+
+**Localização:** Página de Abastecimento (Registros Recentes)
+
+**Comportamento:**
+- Exibir botão "Recebido em Dinheiro" apenas para abastecimentos com status "Vencido" ou "Pendente"
+- Ao clicar, marcar pagamento como "Pago" (received)
+- Atualizar tanto `fuel_records` quanto `asaas_payments`
+- Registrar no log de auditoria
+
+**Tarefas:**
+- [x] Adicionar botão na interface (Abastecimento.tsx)
+- [x] Mutation tRPC já existe (fuelRecords.markAsPaid)
+- [x] Lógica backend já implementada (atualiza fuel_records)
+- [x] Testar funcionalidade - SUCESSO! Botão aparece para Vencido/Pendente
 - [ ] Criar checkpoint
