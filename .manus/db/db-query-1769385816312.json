@@ -1,0 +1,101 @@
+{
+  "query": "SELECT id, charge_type, value, status, created_at FROM asaas_payments ORDER BY created_at DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, charge_type, value, status, created_at FROM asaas_payments ORDER BY created_at DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "60001",
+      "charge_type": "fuel",
+      "value": "20757.00",
+      "status": "overdue",
+      "created_at": "2026-01-23 00:52:19"
+    },
+    {
+      "id": "30006",
+      "charge_type": "fuel",
+      "value": "3051.00",
+      "status": "received",
+      "created_at": "2026-01-22 01:06:25"
+    },
+    {
+      "id": "30007",
+      "charge_type": "fuel",
+      "value": "7774.00",
+      "status": "received",
+      "created_at": "2026-01-22 01:06:25"
+    },
+    {
+      "id": "30005",
+      "charge_type": "fuel",
+      "value": "5906.00",
+      "status": "received",
+      "created_at": "2026-01-22 01:06:25"
+    },
+    {
+      "id": "30008",
+      "charge_type": "fuel",
+      "value": "17669.00",
+      "status": "received",
+      "created_at": "2026-01-22 01:06:25"
+    },
+    {
+      "id": "30009",
+      "charge_type": "fuel",
+      "value": "8951.00",
+      "status": "overdue",
+      "created_at": "2026-01-22 01:06:25"
+    },
+    {
+      "id": "30004",
+      "charge_type": "fuel",
+      "value": "8825.00",
+      "status": "received",
+      "created_at": "2026-01-22 01:06:25"
+    },
+    {
+      "id": "30001",
+      "charge_type": "fuel",
+      "value": "10435.00",
+      "status": "received",
+      "created_at": "2026-01-22 01:06:24"
+    },
+    {
+      "id": "30003",
+      "charge_type": "fuel",
+      "value": "13718.00",
+      "status": "received",
+      "created_at": "2026-01-22 01:06:24"
+    },
+    {
+      "id": "30002",
+      "charge_type": "fuel",
+      "value": "24311.00",
+      "status": "received",
+      "created_at": "2026-01-22 01:06:24"
+    },
+    {
+      "id": "3",
+      "charge_type": "fuel",
+      "value": "120.01",
+      "status": "cancelled",
+      "created_at": "2026-01-16 15:47:41"
+    },
+    {
+      "id": "2",
+      "charge_type": "fuel",
+      "value": "134.98",
+      "status": "cancelled",
+      "created_at": "2026-01-14 18:12:01"
+    },
+    {
+      "id": "1",
+      "charge_type": "fuel",
+      "value": "234.53",
+      "status": "cancelled",
+      "created_at": "2025-12-21 22:41:11"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcharge_type\tvalue\tstatus\tcreated_at\n60001\tfuel\t20757.00\toverdue\t2026-01-23 00:52:19\n30006\tfuel\t3051.00\treceived\t2026-01-22 01:06:25\n30007\tfuel\t7774.00\treceived\t2026-01-22 01:06:25\n30005\tfuel\t5906.00\treceived\t2026-01-22 01:06:25\n30008\tfuel\t17669.00\treceived\t2026-01-22 01:06:25\n30009\tfuel\t8951.00\toverdue\t2026-01-22 01:06:25\n30004\tfuel\t8825.00\treceived\t2026-01-22 01:06:25\n30001\tfuel\t10435.00\treceived\t2026-01-22 01:06:24\n30003\tfuel\t13718.00\treceived\t2026-01-22 01:06:24\n30002\tfuel\t24311.00\treceived\t2026-01-22 01:06:24\n3\tfuel\t120.01\tcancelled\t2026-01-16 15:47:41\n2\tfuel\t134.98\tcancelled\t2026-01-14 18:12:01\n1\tfuel\t234.53\tcancelled\t2025-12-21 22:41:11\n",
+  "stderr": "",
+  "execution_time_ms": 360
+}

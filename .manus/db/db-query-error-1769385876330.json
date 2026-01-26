@@ -1,0 +1,8 @@
+{
+  "query": "SELECT \n  f.id as fuel_id,\n  f.total_value as fuel_value,\n  f.asaas_charge_id,\n  a.id as payment_id,\n  a.value as payment_value,\n  a.status\nFROM fuel_records f\nLEFT JOIN asaas_payments a ON f.asaas_charge_id = a.asaas_charge_id\nWHERE f.asaas_charge_id IS NOT NULL\nORDER BY f.id DESC\nLIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  f.id as fuel_id,\n  f.total_value as fuel_value,\n  f.asaas_charge_id,\n  a.id as payment_id,\n  a.value as payment_value,\n  a.status\nFROM fuel_records f\nLEFT JOIN asaas_payments a ON f.asaas_charge_id = a.asaas_charge_id\nWHERE f.asaas_charge_id IS NOT NULL\nORDER BY f.id DESC\nLIMIT 10;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'a.asaas_charge_id' in 'on clause'"
+  ]
+}

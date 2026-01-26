@@ -1,0 +1,19 @@
+{
+  "query": "SELECT \n  COUNT(*) as total,\n  SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,\n  SUM(CASE WHEN status IN ('confirmed', 'received') THEN 1 ELSE 0 END) as paid,\n  SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as overdue,\n  SUM(CASE WHEN status IN ('confirmed', 'received') THEN value ELSE 0 END) as total_received,\n  SUM(CASE WHEN status = 'pending' THEN value ELSE 0 END) as total_pending,\n  SUM(CASE WHEN status = 'overdue' THEN value ELSE 0 END) as total_overdue\nFROM asaas_payments;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  COUNT(*) as total,\n  SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,\n  SUM(CASE WHEN status IN ('confirmed', 'received') THEN 1 ELSE 0 END) as paid,\n  SUM(CASE WHEN status = 'overdue' THEN 1 ELSE 0 END) as overdue,\n  SUM(CASE WHEN status IN ('confirmed', 'received') THEN value ELSE 0 END) as total_received,\n  SUM(CASE WHEN status = 'pending' THEN value ELSE 0 END) as total_pending,\n  SUM(CASE WHEN status = 'overdue' THEN value ELSE 0 END) as total_overdue\nFROM asaas_payments;",
+  "rows": [
+    {
+      "total": "13",
+      "pending": "0",
+      "paid": "8",
+      "overdue": "2",
+      "total_received": "91689.00",
+      "total_pending": "0.00",
+      "total_overdue": "29708.00"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\tpending\tpaid\toverdue\ttotal_received\ttotal_pending\ttotal_overdue\n13\t0\t8\t2\t91689.00\t0.00\t29708.00\n",
+  "stderr": "",
+  "execution_time_ms": 363
+}
