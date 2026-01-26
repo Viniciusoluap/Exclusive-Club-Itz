@@ -145,4 +145,20 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Mutation tRPC já existe (fuelRecords.markAsPaid)
 - [x] Lógica backend já implementada (atualiza fuel_records)
 - [x] Testar funcionalidade - SUCESSO! Botão aparece para Vencido/Pendente
+- [x] Criar checkpoint (b2537599)
+
+## 🐛 BUG: Estoque Total Incorreto no Painel do Funcionário
+===============================================================
+
+**Problema:**
+- Painel funcionário mostra: "Estoque Total: 167,95 L disponíveis" ❌
+- Painel admin mostra: "Estoque: 18,59 L" ✅ (correto)
+- Detalhes por galão desnecessários: "Galão 1: 155,51L / Galão 2: 12,44L / Galão 3: 0,00L"
+
+**Tarefas:**
+- [x] Analisar código do painel de funcionário (Abastecimento.tsx ou similar)
+- [x] Identificar por que cálculo de estoque está diferente do admin
+- [x] Corrigir cálculo para usar mesma lógica do admin
+- [x] Remover exibição de detalhes por galão
+- [x] Testar e validar correção
 - [ ] Criar checkpoint

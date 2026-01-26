@@ -474,12 +474,9 @@ export default function EmployeeAbastecimentos() {
                     <div className="flex items-center gap-2">
                       <Fuel className="w-5 h-5 text-primary" />
                       <span className="font-semibold">
-                        Estoque Total: {stockWithInheritance.total?.toFixed(2) || "0.00"} L disponíveis
+                        Estoque Total: {gallonStock?.reduce((sum: number, g: any) => sum + (g.stockLiters || 0), 0).toFixed(2) || "0.00"} L disponíveis
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Galão 1: {stockWithInheritance.gallon1?.toFixed(2)}L | Galão 2: {stockWithInheritance.gallon2?.toFixed(2)}L | Galão 3: {stockWithInheritance.gallon3?.toFixed(2)}L
-                    </p>
                     <p className="text-sm text-muted-foreground">
                       💵 Preço/L atual: R$ {budget?.lastPricePerLiter?.toFixed(2) || "0.00"}
                     </p>
