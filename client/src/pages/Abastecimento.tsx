@@ -933,12 +933,12 @@ export default function Abastecimento() {
                               <RefreshCw className={`w-4 h-4 ${syncWithAsaasMutation.isPending ? 'animate-spin' : ''}`} />
                             </Button>
                           )}
-                          {record.payment_status === 'pending' && (
+                          {(record.payment_status === 'pending' || record.payment_status === 'overdue') && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleMarkAsPaid(record.id)}
-                              title="Marcar como pago"
+                              title="Recebido em Dinheiro"
                             >
                               <CheckCircle className="w-4 h-4 text-green-600" />
                             </Button>
