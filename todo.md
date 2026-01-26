@@ -103,4 +103,26 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
   * Reserva 31/01: CONFIRMADA (não cancelada) ✅
   * Logs: `endNormalized: 2026-01-29T23:59:59.999Z` ✅
 - [x] Remover logs de debug
-- [ ] Criar checkpoint final
+- [x] Criar checkpoint final (207af728)
+
+## 🐛 BUG: Valores Incorretos na Página de Pagamentos
+====================================================================================
+
+**Problema:**
+- Página mostra "Total Recebido: R$ 91.689,00" mas valores reais são diferentes
+- Página mostra "Vencido: R$ 29.708,00 (2 cobranças)" mas valores reais são:
+  * Abastecimento #60001: R$ 207,57 (Vencido)
+  * Abastecimento #30009: R$ 120,01 (Pago)
+  * Abastecimento #30005: R$ 89,51 (Vencido)
+- Total real de vencidos deveria ser R$ 297,08 (207,57 + 89,51)
+- Valores "Pago" também parecem incorretos
+
+**Tarefas:**
+- [x] Analisar código de cálculo de estatísticas em Pagamentos.tsx
+- [x] Verificar query que busca dados de asaas_payments
+- [x] Comparar valores calculados com valores reais do banco
+- [x] Identificar lógica incorreta: migração salvava centavos como reais
+- [x] Corrigir função de migração (dividir por 100)
+- [x] Corrigir valores existentes no banco (UPDATE value / 100)
+- [x] Testar e validar correção - SUCESSO!
+- [ ] Criar checkpoint

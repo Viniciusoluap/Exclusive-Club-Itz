@@ -439,7 +439,7 @@ export async function migrateFuelRecordsToAsaasPayments(): Promise<{
           asaasCustomerId: '', // Não temos customer_id em fuel_records antigos
           chargeType: 'fuel',
           chargeId: record.id,
-          value: record.total_amount,
+          value: record.total_amount / 100, // Converter centavos para reais
           billingType: 'UNDEFINED',
           dueDate: record.due_date || new Date(),
           clientEmail: record.client_email || '',
