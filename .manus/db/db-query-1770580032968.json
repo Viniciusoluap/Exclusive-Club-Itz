@@ -1,0 +1,17 @@
+{
+  "query": "SELECT \n  COUNT(*) as total_records,\n  SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) as total_received,\n  SUM(total_amount) as total_billed,\n  SUM(CASE WHEN payment_status = 'pending' THEN total_amount ELSE 0 END) as total_pending,\n  SUM(CASE WHEN payment_status = 'overdue' THEN total_amount ELSE 0 END) as total_overdue\nFROM fuel_records\nWHERE DATE_FORMAT(created_at, '%Y-%m') = '2026-02'\n  AND (is_operational = 0 OR is_operational IS NULL);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  COUNT(*) as total_records,\n  SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) as total_received,\n  SUM(total_amount) as total_billed,\n  SUM(CASE WHEN payment_status = 'pending' THEN total_amount ELSE 0 END) as total_pending,\n  SUM(CASE WHEN payment_status = 'overdue' THEN total_amount ELSE 0 END) as total_overdue\nFROM fuel_records\nWHERE DATE_FORMAT(created_at, '%Y-%m') = '2026-02'\n  AND (is_operational = 0 OR is_operational IS NULL);",
+  "rows": [
+    {
+      "total_records": "0",
+      "total_received": "NULL",
+      "total_billed": "NULL",
+      "total_pending": "NULL",
+      "total_overdue": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_records\ttotal_received\ttotal_billed\ttotal_pending\ttotal_overdue\n0\tNULL\tNULL\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 55
+}
