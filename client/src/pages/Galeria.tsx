@@ -13,9 +13,9 @@ interface Photo {
 const photos: Photo[] = [
   // Fotos da Lancha
   { id: 1, src: "/images/vessels/IMG_9049.jpg", alt: "Lancha Focker 215 - Vista lateral", category: "lancha" },
-  { id: 2, src: "/images/vessels/IMG_9048.jpg", alt: "Lancha Focker 215 - Proa", category: "lancha" },
-  { id: 3, src: "/images/vessels/IMG_9047.jpg", alt: "Lancha Focker 215 - Interior completo", category: "lancha" },
-  { id: 4, src: "/images/vessels/IMG_9046.jpg", alt: "Lancha Focker 215 - Vista aérea", category: "lancha" },
+  { id: 2, src: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028705863/zSVYOTGDStntPscX.jpg", alt: "Lancha Focker 215 - Proa", category: "lancha" },
+  { id: 3, src: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028705863/PewUysetmNieAOBg.jpg", alt: "Lancha Focker 215 - Interior completo", category: "lancha" },
+  { id: 4, src: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028705863/fVpvABTaxUqQXRRk.jpg", alt: "Lancha Focker 215 - Vista aérea", category: "lancha" },
   { id: 5, src: "/images/vessels/IMG_9045.jpg", alt: "Lancha Focker 215 - Cabine interna", category: "lancha" },
   { id: 6, src: "/images/vessels/IMG_9044.jpg", alt: "Lancha Focker 215 - Cockpit", category: "lancha" },
   { id: 7, src: "/images/vessels/IMG_9043.jpg", alt: "Lancha Focker 215 - Deck completo", category: "lancha" },
@@ -25,7 +25,7 @@ const photos: Photo[] = [
   { id: 9, src: "/images/vessels/IMG_0485.jpg", alt: "Jetski Sea-Doo - Em movimento", category: "jetski" },
   { id: 11, src: "/images/vessels/IMG_8551.jpg", alt: "Jetski Sea-Doo - Na margem", category: "jetski" },
   { id: 12, src: "/images/vessels/IMG_8550.jpg", alt: "Jetski Sea-Doo - Vista lateral", category: "jetski" },
-  { id: 13, src: "/images/vessels/IMG_8549.jpg", alt: "Jetski Sea-Doo - Detalhes", category: "jetski" },
+  { id: 13, src: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028705863/XxrTfvztiVVXnIme.jpg", alt: "Jetski Sea-Doo - Detalhes", category: "jetski" },
   { id: 14, src: "/images/vessels/IMG_8548.jpg", alt: "Jetski Sea-Doo - Painel", category: "jetski" },
   { id: 15, src: "/images/vessels/IMG_8546.jpg", alt: "Jetski Sea-Doo - Na praia", category: "jetski" },
 ];
