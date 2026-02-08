@@ -1,0 +1,17 @@
+{
+  "query": "SELECT COUNT(*) as total, \n       SUM(CASE WHEN is_operational = 1 THEN 1 ELSE 0 END) as operacionais,\n       SUM(CASE WHEN is_operational = 0 OR is_operational IS NULL THEN 1 ELSE 0 END) as clientes,\n       SUM(CASE WHEN is_operational = 1 THEN total_amount ELSE 0 END) as valor_operacional,\n       SUM(CASE WHEN is_operational = 0 OR is_operational IS NULL THEN total_amount ELSE 0 END) as valor_clientes\nFROM fuel_records \nWHERE DATE_FORMAT(created_at, '%Y-%m') = '2026-02';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT COUNT(*) as total, \n       SUM(CASE WHEN is_operational = 1 THEN 1 ELSE 0 END) as operacionais,\n       SUM(CASE WHEN is_operational = 0 OR is_operational IS NULL THEN 1 ELSE 0 END) as clientes,\n       SUM(CASE WHEN is_operational = 1 THEN total_amount ELSE 0 END) as valor_operacional,\n       SUM(CASE WHEN is_operational = 0 OR is_operational IS NULL THEN total_amount ELSE 0 END) as valor_clientes\nFROM fuel_records \nWHERE DATE_FORMAT(created_at, '%Y-%m') = '2026-02';",
+  "rows": [
+    {
+      "total": "1",
+      "operacionais": "1",
+      "clientes": "0",
+      "valor_operacional": "12693",
+      "valor_clientes": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\toperacionais\tclientes\tvalor_operacional\tvalor_clientes\n1\t1\t0\t12693\t0\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

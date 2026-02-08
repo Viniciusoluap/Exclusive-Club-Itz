@@ -942,7 +942,8 @@ export default function Abastecimento() {
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-lg font-bold text-primary">R$ {record.total_cost?.toFixed(2)}</span>
                         <div className="flex gap-1">
-                          {record.payment_status === 'pending' && !record.asaas_charge_id && (
+                          {/* Ocultar botões de sync/pagamento para abastecimentos operacionais */}
+                          {!record.is_operational && record.payment_status === 'pending' && !record.asaas_charge_id && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -953,7 +954,7 @@ export default function Abastecimento() {
                               <RefreshCw className={`w-4 h-4 ${syncWithAsaasMutation.isPending ? 'animate-spin' : ''}`} />
                             </Button>
                           )}
-                          {(record.payment_status === 'pending' || record.payment_status === 'overdue') && (
+                          {!record.is_operational && (record.payment_status === 'pending' || record.payment_status === 'overdue') && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -963,7 +964,7 @@ export default function Abastecimento() {
                               <CheckCircle className="w-4 h-4 text-green-600" />
                             </Button>
                           )}
-                          {record.asaas_charge_id && (
+                          {!record.is_operational && record.asaas_charge_id && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -999,21 +1000,24 @@ export default function Abastecimento() {
                         <span className="text-muted-foreground">Subtotal:</span>
                         <span className="font-medium ml-1">R$ {(record.liters * record.price_per_liter)?.toFixed(2)}</span>
                       </div>
-                      <div>
-                        <span className="text-muted-foreground">Status:</span>
-                        <span className={`ml-1 font-medium ${
-                          record.payment_status === 'paid' ? 'text-green-600' : 
-                          record.payment_status === 'overdue' ? 'text-red-600' : 
-                          'text-yellow-600'
-                        }`}>
-                          {record.payment_status === 'paid' ? '✓ Pago' : 
-                           record.payment_status === 'overdue' ? '⚠️ Vencido' : 
-                           '⏳ Pendente'}
-                        </span>
-                        {record.asaas_charge_id && (
-                          <span className="ml-1 text-xs text-muted-foreground">Asaas OK</span>
-                        )}
-                      </div>
+                      {/* Ocultar status de pagamento para abastecimentos operacionais */}
+                      {!record.is_operational && (
+                        <div>
+                          <span className="text-muted-foreground">Status:</span>
+                          <span className={`ml-1 font-medium ${
+                            record.payment_status === 'paid' ? 'text-green-600' : 
+                            record.payment_status === 'overdue' ? 'text-red-600' : 
+                            'text-yellow-600'
+                          }`}>
+                            {record.payment_status === 'paid' ? '✓ Pago' : 
+                             record.payment_status === 'overdue' ? '⚠️ Vencido' : 
+                             '⏳ Pendente'}
+                          </span>
+                          {record.asaas_charge_id && (
+                            <span className="ml-1 text-xs text-muted-foreground">Asaas OK</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                     
                     {/* Detalhes de pesagem */}

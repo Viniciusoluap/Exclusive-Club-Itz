@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, client_name, is_operational, total_amount, created_at \nFROM fuel_records \nWHERE DATE_FORMAT(created_at, '%Y-%m') = '2026-02'\nORDER BY created_at DESC\nLIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, client_name, is_operational, total_amount, created_at \nFROM fuel_records \nWHERE DATE_FORMAT(created_at, '%Y-%m') = '2026-02'\nORDER BY created_at DESC\nLIMIT 10;",
+  "rows": [
+    {
+      "id": "1620001",
+      "client_name": "Exclusive Club (Operacional)",
+      "is_operational": "1",
+      "total_amount": "12693",
+      "created_at": "2026-02-08 18:20:54"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tis_operational\ttotal_amount\tcreated_at\n1620001\tExclusive Club (Operacional)\t1\t12693\t2026-02-08 18:20:54\n",
+  "stderr": "",
+  "execution_time_ms": 53
+}
