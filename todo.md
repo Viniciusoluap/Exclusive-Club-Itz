@@ -224,4 +224,18 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Criar query para calcular Custo Operacional acumulativo anual
 - [x] Adicionar campo "Custo Operacional (Ano)" no Resumo Financeiro
 - [x] Testar todas as correções (TODOS OS TESTES PASSARAM)
+- [x] Criar checkpoint (1a445c17)
+
+## 🔧 Correção: Exibição e Cálculo de Abastecimentos Operacionais
+
+**Problema 1:** Abastecimentos operacionais mostram botões de sincronização/pagamento que não fazem sentido  
+**Problema 2:** Gasto ainda está incluindo abastecimentos operacionais (R$ 126,93 em vez de R$ 0,00)
+
+**Tarefas:**
+- [x] Remover botões de sincronização e "marcar como recebido" de operacionais
+- [x] Remover exibição de "Status: Pendente" de operacionais
+- [x] Manter apenas botão de excluir (lixeira) para operacionais
+- [x] Debugar query de Gasto no backend (já está correto)
+- [x] Confirmar filtro is_operational=1 (correto desde checkpoint anterior)
+- [x] Testar e validar que Gasto = R$ 0,00 e Saldo = R$ -314,35 (TODOS OS TESTES PASSARAM)
 - [ ] Criar checkpoint
