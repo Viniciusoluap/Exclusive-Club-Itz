@@ -1646,10 +1646,9 @@ Nenhuma reserva foi afetada.
   }),
 
   // Fuel Records router - Admin and Employee
-  fuelRecords: router({  
-    create: publicProcedure
+  fuelRecords: router({    create: protectedProcedure
       .input(z.object({
-        bookingId: z.number(),
+        bookingId: z.number().optional(), // Opcional quando isOperational = true
         vesselId: z.number(),
         liters: z.number().positive().optional(), // Opcional quando usa método por peso
         pricePerLiter: z.number().positive().optional(), // Opcional - busca do estoque se não informado
@@ -1670,6 +1669,7 @@ Nenhuma reserva foi afetada.
           photoBeforeUrl: z.string().url(),
           photoAfterUrl: z.string().url(),
         })).optional(),
+        isOperational: z.boolean().optional().default(false), // Abastecimento operacional (custo da empresa)
       }))
       .mutation(async ({ ctx, input }) => {
         if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'employee')) {
@@ -1678,17 +1678,42 @@ Nenhuma reserva foi afetada.
         const database = await import('./db').then(m => m.getDb());
         if (!database) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        // Buscar dados da reserva e embarcação
+        // Validar entrada: se não for operacional, bookingId é obrigatório
+        if (!input.isOperational && !input.bookingId) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Reserva é obrigatória para abastecimentos de clientes' });
+        }
+
+        // Buscar dados da reserva e embarcação (apenas se não for operacional)
         const { sql } = await import('drizzle-orm');
-        const bookingResult = await database.execute(sql`
-          SELECT b.client_name, b.client_email, b.vessel_name, v.name as vessel_name_actual
-          FROM bookings b
-          JOIN vessels v ON b.vessel_id = v.id
-          WHERE b.id = ${input.bookingId}
-        `) as any;
-        const booking = (Array.isArray(bookingResult[0]) ? bookingResult[0][0] : bookingResult[0]);
-        if (!booking) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Reserva não encontrada' });
+        let booking: any = null;
+        
+        if (!input.isOperational && input.bookingId) {
+          const bookingResult = await database.execute(sql`
+            SELECT b.client_name, b.client_email, b.vessel_name, v.name as vessel_name_actual
+            FROM bookings b
+            JOIN vessels v ON b.vessel_id = v.id
+            WHERE b.id = ${input.bookingId}
+          `) as any;
+          booking = (Array.isArray(bookingResult[0]) ? bookingResult[0][0] : bookingResult[0]);
+          if (!booking) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Reserva não encontrada' });
+          }
+        } else if (input.isOperational) {
+          // Para abastecimento operacional, buscar apenas nome da embarcação
+          const vesselResult = await database.execute(sql`
+            SELECT name FROM vessels WHERE id = ${input.vesselId}
+          `) as any;
+          const vessel = (Array.isArray(vesselResult[0]) ? vesselResult[0][0] : vesselResult[0]);
+          if (!vessel) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Embarcação não encontrada' });
+          }
+          // Criar objeto booking fictício para abastecimento operacional
+          booking = {
+            client_name: 'Exclusive Club (Operacional)',
+            client_email: 'operacional@exclusiveclub.com',
+            vessel_name: vessel.name,
+            vessel_name_actual: vessel.name
+          };
         }
 
         // NOVO: Suporte a múltiplos galões
@@ -1859,18 +1884,20 @@ Nenhuma reserva foi afetada.
           WHERE month_year = ${currentMonthYear}
         `);
 
-        // Criar ou buscar cliente no Asaas
+        // Criar ou buscar cliente no Asaas (PULAR se for operacional)
         const asaas = await import('./_core/asaas');
         let asaasCustomerId = '';
         let asaasChargeId = '';
         let paymentUrl = '';
-        let syncStatus = 'pending';
+        let syncStatus = input.isOperational ? 'manual' : 'pending'; // Operacional = manual (sem cobrança)
         let syncError = null;
         
         // Definir data de vencimento (para uso posterior)
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + 1); // Vencimento em 1 dia
         
+        // PULAR criação de cobrança se for abastecimento operacional
+        if (!input.isOperational) {
         try {
           console.log('[fuelRecords.create] Iniciando criação de cobrança Asaas...');
           console.log('[fuelRecords.create] Usuário criador:', ctx.user?.name, '| Role:', ctx.user?.role, '| ID:', ctx.user?.id);
@@ -1912,6 +1939,7 @@ Nenhuma reserva foi afetada.
           console.error('[fuelRecords.create] Response completo:', JSON.stringify(error));
           console.error('[fuelRecords.create] Abastecimento será salvo, mas cobrança pode ser criada manualmente depois');
         }
+        } // Fechar bloco if (!input.isOperational)
 
         const notesValue = input.notes ? `'${input.notes.replace(/'/g, "''")}'` : 'NULL';
         const photoBeforeUrlValue = input.photoBeforeUrl ? `'${input.photoBeforeUrl}'` : 'NULL';
@@ -1935,19 +1963,20 @@ Nenhuma reserva foi afetada.
             photo_before_url, photo_after_url,
             asaas_charge_id, asaas_customer_id, payment_url, payment_status,
             sync_status, sync_error, last_sync_attempt,
-            recorded_by, recorded_at, gallon_number
+            recorded_by, recorded_at, gallon_number, is_operational
           )
           VALUES (
-            ${input.bookingId}, ${input.vesselId}, '${booking.vessel_name_actual}', 
+            ${input.bookingId || 'NULL'}, ${input.vesselId}, '${booking.vessel_name_actual}', 
             '${booking.client_email}', '${booking.client_name}', 
             ${finalLitersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${notesValue}, 
             ${litersInitialInCents}, ${weightFullInGrams}, ${weightAfterInGrams}, ${weightConsumedInGrams}, ${litersCalculatedInCents},
             ${primaryPhotoBeforeUrl}, ${primaryPhotoAfterUrl},
             ${asaasChargeIdValue}, ${asaasCustomerIdValue}, ${paymentUrlValue}, 'pending',
             '${syncStatus}', ${syncErrorValue}, NOW(),
-            ${ctx.user?.id || 'NULL'}, NOW(), ${primaryGallonNumber}
+            ${ctx.user?.id || 'NULL'}, NOW(), ${primaryGallonNumber}, ${input.isOperational ? 1 : 0}
           )
         `) as any;
+        
         
         // Obter o ID do registro inserido
         const fuelRecordId = insertResult[0]?.insertId || insertResult.insertId;
@@ -1986,8 +2015,8 @@ Nenhuma reserva foi afetada.
         
         console.log('[fuelRecords.create] Abastecimento salvo no banco com sync_status:', syncStatus);
 
-        // Registrar pagamento em asaas_payments se cobrança foi criada com sucesso
-        if (asaasChargeId && syncStatus === 'synced') {
+        // Registrar pagamento em asaas_payments se cobrança foi criada com sucesso (PULAR se operacional)
+        if (!input.isOperational && asaasChargeId && syncStatus === 'synced') {
           try {
             const { savePaymentRecord } = await import('./_core/asaasService');
             await savePaymentRecord({

@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO fuel_records (\n  booking_id, vessel_id, vessel_name, client_email, client_name,\n  liters, price_per_liter, total_amount, notes,\n  liters_initial, weight_full, weight_after, weight_consumed, liters_calculated,\n  photo_before_url, photo_after_url,\n  asaas_charge_id, asaas_customer_id, payment_url, payment_status,\n  sync_status, sync_error, last_sync_attempt,\n  recorded_by, recorded_at, gallon_number, is_operational\n) VALUES (\n  NULL, 1, 'Teste Operacional', 'operacional@exclusiveclub.com', 'Exclusive Club (Operacional)',\n  50, 629, 3145, 'Teste manual INSERT com booking_id NULL',\n  0, 0, 0, 0, 0,\n  NULL, NULL,\n  NULL, NULL, NULL, 'pending',\n  'manual', NULL, NOW(),\n  1, NOW(), 1, 1\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute INSERT INTO fuel_records (\n  booking_id, vessel_id, vessel_name, client_email, client_name,\n  liters, price_per_liter, total_amount, notes,\n  liters_initial, weight_full, weight_after, weight_consumed, liters_calculated,\n  photo_before_url, photo_after_url,\n  asaas_charge_id, asaas_customer_id, payment_url, payment_status,\n  sync_status, sync_error, last_sync_attempt,\n  recorded_by, recorded_at, gallon_number, is_operational\n) VALUES (\n  NULL, 1, 'Teste Operacional', 'operacional@exclusiveclub.com', 'Exclusive Club (Operacional)',\n  50, 629, 3145, 'Teste manual INSERT com booking_id NULL',\n  0, 0, 0, 0, 0,\n  NULL, NULL,\n  NULL, NULL, NULL, 'pending',\n  'manual', NULL, NOW(),\n  1, NOW(), 1, 1\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 70
+}

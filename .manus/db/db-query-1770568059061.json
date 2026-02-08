@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, vessel_name, client_name, liters/100 as liters, is_operational, booking_id, sync_status, notes FROM fuel_records ORDER BY id DESC LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, vessel_name, client_name, liters/100 as liters, is_operational, booking_id, sync_status, notes FROM fuel_records ORDER BY id DESC LIMIT 3;",
+  "rows": [
+    {
+      "id": "1560001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "Diogo Brito",
+      "liters": "31.4100",
+      "is_operational": "0",
+      "booking_id": "3390001",
+      "sync_status": "synced",
+      "notes": "Ok"
+    },
+    {
+      "id": "1530001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "lsccsilva",
+      "liters": "17.4900",
+      "is_operational": "0",
+      "booking_id": "3300001",
+      "sync_status": "synced",
+      "notes": "NULL"
+    },
+    {
+      "id": "1500001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "Diogo Brito",
+      "liters": "12.6400",
+      "is_operational": "0",
+      "booking_id": "3330001",
+      "sync_status": "manual",
+      "notes": "Ok"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_name\tclient_name\tliters\tis_operational\tbooking_id\tsync_status\tnotes\n1560001\tFocker 215 150HP\tDiogo Brito\t31.4100\t0\t3390001\tsynced\tOk\n1530001\tFocker 215 150HP\tlsccsilva\t17.4900\t0\t3300001\tsynced\tNULL\n1500001\tFocker 215 150HP\tDiogo Brito\t12.6400\t0\t3330001\tmanual\tOk\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

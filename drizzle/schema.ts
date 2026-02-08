@@ -100,7 +100,7 @@ export const fuelPurchases = mysqlTable("fuel_purchases", {
 
 export const fuelRecords = mysqlTable("fuel_records", {
 	id: int().autoincrement().notNull(),
-	bookingId: int("booking_id").notNull(),
+	bookingId: int("booking_id"), // Nullable para abastecimentos operacionais
 	vesselId: int("vessel_id").notNull(),
 	vesselName: text("vessel_name").notNull(),
 	clientEmail: varchar("client_email", { length: 320 }).notNull(),
@@ -131,6 +131,7 @@ export const fuelRecords = mysqlTable("fuel_records", {
 	photoBeforeUrl: text("photo_before_url"),
 	photoAfterUrl: text("photo_after_url"),
 	gallonNumber: int("gallon_number").default(1).notNull(),
+	isOperational: tinyint("is_operational").default(0).notNull(),
 });
 
 export const gallonStock = mysqlTable("gallon_stock", {

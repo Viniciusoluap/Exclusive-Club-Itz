@@ -62,6 +62,9 @@ export default function Abastecimento() {
   const [useMultipleGallons, setUseMultipleGallons] = useState(false);
   const [containers, setContainers] = useState<ContainerData[]>([]);
   const [uploadingContainerPhotos, setUploadingContainerPhotos] = useState(false);
+  
+  // Estado para abastecimento operacional (custo da empresa)
+  const [isOperational, setIsOperational] = useState(false);
 
   // Estado de filtro de mês/ano
   const currentDate = new Date();
@@ -397,6 +400,7 @@ export default function Abastecimento() {
     setSelectedGallon("1");
     setUseMultipleGallons(false);
     setContainers([]);
+    setIsOperational(false);
   };
 
   const handleDeleteClick = (id: number) => {
@@ -440,15 +444,19 @@ export default function Abastecimento() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedBookingId) {
+    // Validar reserva apenas se não for operacional
+    if (!isOperational && !selectedBookingId) {
       toast.error('Selecione uma reserva');
       return;
     }
 
-    const booking = recentBookings?.find((b: any) => b.id === selectedBookingId);
-    if (!booking) {
-      toast.error('Reserva não encontrada');
-      return;
+    let booking: any = null;
+    if (!isOperational) {
+      booking = recentBookings?.find((b: any) => b.id === selectedBookingId);
+      if (!booking) {
+        toast.error('Reserva não encontrada');
+        return;
+      }
     }
 
     // MODO MÚLTIPLOS GALÕES
@@ -491,12 +499,13 @@ export default function Abastecimento() {
       }));
 
       createMutation.mutate({
-        bookingId: selectedBookingId,
-        vesselId: booking.vesselId,
+        bookingId: isOperational ? undefined : selectedBookingId,
+        vesselId: isOperational ? (vessels?.[0]?.id || 1) : booking?.vesselId,
         pricePerLiter: parseFloat(pricePerLiter),
         notes: notes || undefined,
         gallonNumber: containers[0].gallonNumber,
         containers: containersData,
+        isOperational,
       });
       return;
     }
@@ -585,8 +594,8 @@ export default function Abastecimento() {
     }
 
     createMutation.mutate({
-      bookingId: selectedBookingId,
-      vesselId: booking.vesselId,
+      bookingId: isOperational ? undefined : selectedBookingId,
+      vesselId: isOperational ? (vessels?.[0]?.id || 1) : booking?.vesselId,
       liters: finalLiters,
       pricePerLiter: parseFloat(pricePerLiter),
       notes: notes || undefined,
@@ -597,6 +606,7 @@ export default function Abastecimento() {
       photoBeforeUrl: uploadedPhotoBeforeUrl,
       photoAfterUrl: uploadedPhotoAfterUrl,
       gallonNumber: parseInt(selectedGallon),
+      isOperational,
     });
   };
 
@@ -1066,13 +1076,14 @@ export default function Abastecimento() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="booking">Reserva *</Label>
+                <Label htmlFor="booking">Reserva {!isOperational && '*'}</Label>
                 <Select 
                   value={selectedBookingId?.toString()} 
                   onValueChange={(value) => setSelectedBookingId(parseInt(value))}
+                  disabled={isOperational}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma reserva" />
+                    <SelectValue placeholder={isOperational ? "N/A (abastecimento operacional)" : "Selecione uma reserva"} />
                   </SelectTrigger>
                   <SelectContent>
                     {recentBookings?.map((booking: any) => {
@@ -1085,6 +1096,23 @@ export default function Abastecimento() {
                     })}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Toggle para abastecimento operacional */}
+              <div className="flex items-center space-x-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                <Checkbox 
+                  id="isOperational" 
+                  checked={isOperational}
+                  onCheckedChange={(checked) => {
+                    setIsOperational(checked as boolean);
+                    if (checked) {
+                      setSelectedBookingId(null); // Limpar reserva quando operacional
+                    }
+                  }}
+                />
+                <Label htmlFor="isOperational" className="text-sm font-medium cursor-pointer">
+                  ⚠️ Abastecimento operacional (custo da empresa)
+                </Label>
               </div>
 
               {/* Toggle para múltiplos galões */}

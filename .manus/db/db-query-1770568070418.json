@@ -1,0 +1,18 @@
+{
+  "query": "SHOW COLUMNS FROM fuel_records LIKE 'is_operational';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SHOW COLUMNS FROM fuel_records LIKE 'is_operational';",
+  "rows": [
+    {
+      "Field": "is_operational",
+      "Type": "tinyint(4)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nis_operational\ttinyint(4)\tNO\t\t0\t\n",
+  "stderr": "",
+  "execution_time_ms": 48
+}

@@ -162,3 +162,38 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Remover exibição de detalhes por galão
 - [x] Testar e validar correção
 - [ ] Criar checkpoint
+
+## 🔧 Feature: Abastecimento Operacional (Custo da Empresa)
+===============================================================
+
+**Requisito:** Adicionar opção de registrar abastecimento operacional sem vincular a cliente/reserva
+
+**Contexto:**
+- Embarcação precisa abastecer para manutenção, testes, treinamento
+- Custo é da empresa, não de nenhum cliente
+- Deve consumir estoque mas NÃO gerar cobrança
+
+**Localização:** Modal "Registrar Abastecimento" (APENAS página Admin)
+
+**Comportamento:**
+1. Adicionar checkbox "Abastecimento operacional (custo da empresa)"
+2. Quando marcado: campo Reserva fica desabilitado/oculto
+3. Registra consumo de combustível normalmente
+4. NÃO cria cobrança (não gera registro em asaas_payments)
+5. Aparece em relatórios como consumo operacional
+
+**Tarefas:**
+- [x] Analisar estrutura atual do modal de abastecimento (Admin)
+- [x] Analisar schema do banco (fuel_records) para identificar campos necessários
+- [x] Adicionar campo is_operational na tabela fuel_records
+- [x] Modificar backend para aceitar abastecimento sem reserva
+- [x] Modificar lógica de cobrança para pular abastecimentos operacionais
+- [x] Adicionar checkbox no modal Admin
+- [x] Implementar lógica de desabilitar campo Reserva quando marcado
+- [x] Debugar e corrigir salvamento de is_operational (booking_id NOT NULL -> NULL)
+- [x] Testar criação de abastecimento operacional via frontend
+- [x] Verificar que não gera cobrança (asaas_charge_id = NULL confirmado)
+- [x] Verificar que consome estoque corretamente (2L descontados, estoque atualizado)
+- [x] Criar teste unitário de validação (passou com sucesso)
+- [x] Garantir ZERO impacto em outras páginas (apenas modal Admin modificado)
+- [ ] Criar checkpoint final

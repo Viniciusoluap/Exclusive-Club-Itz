@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, vessel_name, client_name, liters/100 as liters, is_operational, booking_id, notes FROM fuel_records WHERE is_operational = 1 ORDER BY id DESC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, vessel_name, client_name, liters/100 as liters, is_operational, booking_id, notes FROM fuel_records WHERE is_operational = 1 ORDER BY id DESC LIMIT 1;",
+  "rows": [
+    {
+      "id": "1590001",
+      "vessel_name": "Teste Operacional",
+      "client_name": "Exclusive Club (Operacional)",
+      "liters": "0.5000",
+      "is_operational": "1",
+      "booking_id": "NULL",
+      "notes": "Teste manual INSERT com booking_id NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_name\tclient_name\tliters\tis_operational\tbooking_id\tnotes\n1590001\tTeste Operacional\tExclusive Club (Operacional)\t0.5000\t1\tNULL\tTeste manual INSERT com booking_id NULL\n",
+  "stderr": "",
+  "execution_time_ms": 65
+}

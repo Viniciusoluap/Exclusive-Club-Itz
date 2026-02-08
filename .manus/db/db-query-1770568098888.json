@@ -1,0 +1,23 @@
+{
+  "query": "SELECT id, vessel_name, client_name, liters/100 as liters, price_per_liter/100 as price, is_operational, booking_id, sync_status, asaas_charge_id, DATE_FORMAT(recorded_at, '%Y-%m-%d %H:%i') as recorded, notes FROM fuel_records ORDER BY id DESC LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, vessel_name, client_name, liters/100 as liters, price_per_liter/100 as price, is_operational, booking_id, sync_status, asaas_charge_id, DATE_FORMAT(recorded_at, '%Y-%m-%d %H:%i') as recorded, notes FROM fuel_records ORDER BY id DESC LIMIT 1;",
+  "rows": [
+    {
+      "id": "1560001",
+      "vessel_name": "Focker 215 150HP",
+      "client_name": "Diogo Brito",
+      "liters": "31.4100",
+      "price": "6.2900",
+      "is_operational": "0",
+      "booking_id": "3390001",
+      "sync_status": "synced",
+      "asaas_charge_id": "pay_vvk9cinmn9d517j1",
+      "recorded": "2026-01-22 21:07",
+      "notes": "Ok"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvessel_name\tclient_name\tliters\tprice\tis_operational\tbooking_id\tsync_status\tasaas_charge_id\trecorded\tnotes\n1560001\tFocker 215 150HP\tDiogo Brito\t31.4100\t6.2900\t0\t3390001\tsynced\tpay_vvk9cinmn9d517j1\t2026-01-22 21:07\tOk\n",
+  "stderr": "",
+  "execution_time_ms": 51
+}

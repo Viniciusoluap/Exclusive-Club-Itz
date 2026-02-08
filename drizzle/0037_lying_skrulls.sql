@@ -1,0 +1,1 @@
+ALTER TABLE `fuel_records` MODIFY COLUMN `booking_id` int;

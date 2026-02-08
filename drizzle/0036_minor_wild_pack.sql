@@ -1,0 +1,1 @@
+ALTER TABLE `fuel_records` ADD `is_operational` tinyint DEFAULT 0 NOT NULL;

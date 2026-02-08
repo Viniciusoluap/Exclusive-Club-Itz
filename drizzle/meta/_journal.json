@@ -253,6 +253,20 @@
       "when": 1766977593128,
       "tag": "0035_dear_inhumans",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1770567243270,
+      "tag": "0036_minor_wild_pack",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1770569430440,
+      "tag": "0037_lying_skrulls",
+      "breakpoints": true
     }
   ]
 }
