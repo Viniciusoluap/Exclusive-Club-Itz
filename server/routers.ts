@@ -2079,7 +2079,7 @@ Nenhuma reserva foi afetada.
             u.name as recorded_by_name,
             fr.recorded_at
           FROM fuel_records fr
-          JOIN bookings b ON fr.booking_id = b.id
+          LEFT JOIN bookings b ON fr.booking_id = b.id
           LEFT JOIN users u ON fr.recorded_by = u.id
           WHERE 1=1
         `;
@@ -2111,9 +2111,9 @@ Nenhuma reserva foi afetada.
         // Converter valores de centavos para reais
         return records.map((record: any) => ({
           ...record,
-          date: record.booking_date, // Mapear booking_date para date
-          clientName: record.client_name, // Nome do cliente
-          vesselName: record.vessel_name, // Nome da embarcação
+          date: record.booking_date || record.created_at, // Usar created_at se booking_date for null (operacional)
+          clientName: record.client_name || 'Exclusive Club (Operacional)', // Nome do cliente ou operacional
+          vesselName: record.vessel_name || 'N/A', // Nome da embarcação ou N/A
           liters: record.liters / 100,
           price_per_liter: record.price_per_liter / 100,
           total_cost: record.total_amount / 100,
@@ -3005,6 +3005,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             SUM(CASE WHEN payment_status = 'overdue' THEN total_amount ELSE 0 END) as total_overdue
           FROM fuel_records
           WHERE DATE_FORMAT(created_at, '%Y-%m') = ${monthYear}
+            AND (is_operational = 0 OR is_operational IS NULL)
         `) as any;
 
         const stats = (Array.isArray(result[0]) ? result[0][0] : result[0]);
@@ -3024,6 +3025,18 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         const totalOverdue = Number(stats.total_overdue) || 0;
         const totalBudget = Number(budgetData.total_budget) || 0;
 
+        // Buscar custo operacional acumulativo do ano
+        const currentYear = monthYear.split('-')[0];
+        const operationalCostResult = await db.execute(sql`
+          SELECT COALESCE(SUM(total_amount), 0) as operational_cost
+          FROM fuel_records
+          WHERE YEAR(created_at) = ${currentYear}
+            AND is_operational = 1
+        `) as any;
+
+        const operationalCostData = (Array.isArray(operationalCostResult[0]) ? operationalCostResult[0][0] : operationalCostResult[0]);
+        const operationalCost = Number(operationalCostData.operational_cost) || 0;
+
         // Calcular saldo (Gasto - Orçamento)
         // Saldo = diferença entre o que foi gasto e o orçamento disponível
         // Negativo = dentro do orçamento, Positivo = acima do orçamento
@@ -3039,6 +3052,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           balance: balance / 100,
           totalBudget: totalBudget / 100,
           budgetUsagePercent: totalBudget > 0 ? (totalBilled / totalBudget) * 100 : 0,
+          operationalCost: operationalCost / 100, // Custo operacional acumulativo do ano
+          operationalCostYear: currentYear, // Ano do custo operacional
         };
       }),
   }),

@@ -817,6 +817,16 @@ export default function Abastecimento() {
               <p className="text-xs text-muted-foreground">Preço/L atual: R$ {avgPricePerLiter.toFixed(2)}</p>
             </div>
           </div>
+
+          {financialStats?.operationalCost > 0 && (
+            <div className="mt-3 pt-3 border-t flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-orange-600" />
+                <span className="text-sm font-medium">Custo Operacional ({financialStats.operationalCostYear}):</span>
+              </div>
+              <p className="font-bold text-orange-600">R$ {financialStats.operationalCost.toFixed(2)}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
