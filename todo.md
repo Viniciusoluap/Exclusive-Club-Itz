@@ -238,4 +238,19 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Debugar query de Gasto no backend (já está correto)
 - [x] Confirmar filtro is_operational=1 (correto desde checkpoint anterior)
 - [x] Testar e validar que Gasto = R$ 0,00 e Saldo = R$ -314,35 (TODOS OS TESTES PASSARAM)
+- [x] Criar checkpoint (5167210a)
+
+## 🔧 BUG CRÍTICO: Gasto ainda inclui abastecimentos operacionais
+
+**Problema:** Gasto mostra R$ 126,93 (deveria ser R$ 0,00) e Saldo Atual mostra R$ -155,40 (deveria ser R$ -314,35)
+
+**Causa:** Query SQL de cálculo de Gasto ainda está incluindo abastecimentos operacionais
+
+**Tarefas:**
+- [x] Investigar query SQL de totalBilled no financialStats
+- [x] Verificar se filtro is_operational está sendo aplicado corretamente
+- [x] Testar query manualmente no banco
+- [x] Corrigir query calculateCurrentBalance em server/db.ts (linha 680)
+- [x] Testar e validar que Gasto = R$ 0,00 (CORRETO!)
+- [x] Testar e validar que Saldo Atual = R$ -282,33 (CORRETO! 32,02 + 0 - 314,35)
 - [ ] Criar checkpoint

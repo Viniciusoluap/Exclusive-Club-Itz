@@ -672,11 +672,12 @@ export async function calculateCurrentBalance(monthYear: string): Promise<{
   const budgetData = (Array.isArray(budgetResult[0]) ? budgetResult[0][0] : budgetResult[0]);
   const currentBudget = Number(budgetData?.total || 0);
   
-  // Gasto do mês (soma dos abastecimentos)
+  // Gasto do mês (soma dos abastecimentos) - EXCLUINDO OPERACIONAIS
   const spentResult = await db.execute(sql`
     SELECT COALESCE(SUM(total_amount), 0) as total
     FROM fuel_records
     WHERE DATE_FORMAT(created_at, '%Y-%m') = ${monthYear}
+      AND (is_operational = 0 OR is_operational IS NULL)
   `) as any;
   
   const spentData = (Array.isArray(spentResult[0]) ? spentResult[0][0] : spentResult[0]);
