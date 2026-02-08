@@ -196,4 +196,32 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Verificar que consome estoque corretamente (2L descontados, estoque atualizado)
 - [x] Criar teste unitário de validação (passou com sucesso)
 - [x] Garantir ZERO impacto em outras páginas (apenas modal Admin modificado)
-- [ ] Criar checkpoint final
+- [x] Criar checkpoint final (4e15590d)
+
+## 🔧 Correção: Lógica de Abastecimentos Operacionais
+===============================================================
+
+**Problemas identificados:**
+1. Abastecimentos operacionais NÃO aparecem em "Registros Recentes"
+2. Abastecimentos operacionais estão sendo contabilizados em "Gasto" (errado)
+3. Abastecimentos operacionais estão afetando "Saldo Atual" (errado)
+4. Falta métrica de "Custo Operacional" acumulativo anual
+
+**Comportamento esperado:**
+- ✅ Estoque: Continua sendo descontado (já está correto)
+- ✅ Registros Recentes: Operacionais DEVEM aparecer na lista
+- ✅ Gasto: Deve contar APENAS abastecimentos de clientes (excluir operacionais)
+- ✅ Saldo Atual: Não pode ser afetado por operacionais
+- ✅ Nova métrica: "Custo Operacional (2026): R$ XX,XX" acumulativo anual (reinicia em janeiro)
+
+**Tarefas:**
+- [x] Analisar query de "Registros Recentes" (fuelRecords.list)
+- [x] Corrigir query para incluir abastecimentos operacionais (LEFT JOIN)
+- [x] Analisar cálculo de "Gasto" no Resumo Financeiro
+- [x] Modificar cálculo para excluir is_operational=1
+- [x] Analisar cálculo de "Saldo Atual"
+- [x] Garantir que operacionais não afetem saldo (já garantido pelo Gasto)
+- [x] Criar query para calcular Custo Operacional acumulativo anual
+- [x] Adicionar campo "Custo Operacional (Ano)" no Resumo Financeiro
+- [x] Testar todas as correções (TODOS OS TESTES PASSARAM)
+- [ ] Criar checkpoint
