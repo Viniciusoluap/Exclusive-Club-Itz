@@ -253,4 +253,17 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Corrigir query calculateCurrentBalance em server/db.ts (linha 680)
 - [x] Testar e validar que Gasto = R$ 0,00 (CORRETO!)
 - [x] Testar e validar que Saldo Atual = R$ -282,33 (CORRETO! 32,02 + 0 - 314,35)
+- [x] Criar checkpoint (2c6af0df)
+
+
+## 🎨 Reorganização de Layout: Página de Abastecimento
+
+**Objetivo:** Substituir cards antigos (Total Cobrado, Total Recebido, Pendente, Saldo) por Resumo Financeiro (Saldo Herdado, Orçamento, Gasto, Saldo Atual) na página principal e remover Resumo Financeiro do modal.
+
+**Tarefas:**
+- [x] Remover seção "Resumo Financeiro" do modal FuelManagementDialog.tsx
+- [x] Identificar cards antigos na página Abastecimento.tsx (Total Cobrado, Total Recebido, Pendente, Saldo)
+- [x] Substituir por cards do Resumo Financeiro (Saldo Herdado, Orçamento, Gasto, Saldo Atual)
+- [x] Garantir que toda lógica e cálculos permaneçam intactos (apenas UI mudou)
+- [x] Testar visualmente ambas as páginas (TODOS OS TESTES PASSARAM)
 - [ ] Criar checkpoint

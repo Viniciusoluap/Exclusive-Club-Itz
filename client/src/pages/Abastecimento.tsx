@@ -719,61 +719,57 @@ export default function Abastecimento() {
         </div>
       </div>
 
-      {/* Cards de Estatísticas */}
+      {/* Cards de Resumo Financeiro */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <DollarSign className="w-4 h-4" />
-              Total Cobrado
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Herdado</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">R$ {totalCobrado.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">{countRecords} abastecimento(s)</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Total Recebido
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-green-600">R$ {totalRecebido.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">Pagamentos confirmados</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Pendente
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-yellow-600">R$ {totalPendente.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">
-              {totalVencido > 0 ? `${totalVencido.toFixed(2)} vencido` : 'Nenhum vencido'}
+            <p className={`text-2xl font-bold ${
+              balanceData && balanceData.inherited < 0 
+                ? 'text-red-600' 
+                : 'text-blue-600'
+            }`}>
+              R$ {balanceData?.inherited?.toFixed(2) || "0.00"}
             </p>
+            <p className="text-xs text-muted-foreground">Do mês anterior</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Banknote className="w-4 h-4" />
-              Saldo
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Orçamento</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              R$ {saldo.toFixed(2)}
+            <p className="text-2xl font-bold">R$ {balanceData?.budget?.toFixed(2) || "0.00"}</p>
+            <p className="text-xs text-muted-foreground">Compras do mês</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Gasto</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-orange-600">R$ {balanceData?.spent?.toFixed(2) || "0.00"}</p>
+            <p className="text-xs text-muted-foreground">Abastecimentos</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Atual</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className={`text-2xl font-bold ${
+              balanceData && balanceData.current < 0 
+                ? 'text-red-600' 
+                : 'text-green-600'
+            }`}>
+              R$ {balanceData?.current?.toFixed(2) || "0.00"}
             </p>
-            <p className="text-xs text-muted-foreground">Orçamento - Gasto</p>
+            <p className="text-xs text-muted-foreground">Herdado + Gasto - Orçamento</p>
           </CardContent>
         </Card>
       </div>

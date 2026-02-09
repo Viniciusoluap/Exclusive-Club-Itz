@@ -177,58 +177,6 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
             </CardContent>
           </Card>
 
-          {/* Card de Resumo Financeiro - COM HERANÇA */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                Resumo Financeiro
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Saldo Herdado</p>
-                  <p className={`text-xl font-bold ${
-                    balanceWithInheritance && balanceWithInheritance.inherited < 0 
-                      ? 'text-red-600' 
-                      : 'text-blue-600'
-                  }`}>
-                    R$ {balanceWithInheritance?.inherited?.toFixed(2) || "0.00"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Do mês anterior</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Orçamento</p>
-                  <p className="text-xl font-bold">R$ {balanceWithInheritance?.budget?.toFixed(2) || "0.00"}</p>
-                  <p className="text-xs text-muted-foreground">Compras do mês</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Gasto</p>
-                  <p className="text-xl font-bold text-orange-600">R$ {balanceWithInheritance?.spent?.toFixed(2) || "0.00"}</p>
-                  <p className="text-xs text-muted-foreground">Abastecimentos</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Saldo Atual</p>
-                  <p className={`text-2xl font-bold ${
-                    balanceWithInheritance && balanceWithInheritance.current < 0 
-                      ? 'text-red-600' 
-                      : 'text-green-600'
-                  }`}>
-                    R$ {balanceWithInheritance?.current?.toFixed(2) || "0.00"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Herdado + Gasto - Orçamento</p>
-                </div>
-              </div>
-              <div className="mt-4 pt-4 border-t">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">Preço/L Médio</p>
-                  <p className="text-lg font-bold text-blue-600">R$ {budget?.lastPricePerLiter?.toFixed(2) || "0.00"}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Registrar Compra de Gasolina */}
           <Card>
             <CardHeader>
