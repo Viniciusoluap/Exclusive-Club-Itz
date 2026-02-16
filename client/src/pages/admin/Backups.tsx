@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2, XCircle, Clock, HardDrive, Calendar, Download, AlertTriangle, Play } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Clock, HardDrive, Calendar, Download, AlertTriangle, Play, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -110,23 +110,32 @@ export default function AdminBackups() {
               <p className="text-sm text-gray-500">Monitoramento e histórico de backups automáticos</p>
             </div>
           </div>
-          <Button
-            onClick={handleRunBackup}
-            disabled={isRunningBackup}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {isRunningBackup ? (
-              <>
-                <Clock className="w-4 h-4 mr-2 animate-spin" />
-                Executando...
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 mr-2" />
-                Executar Backup Agora
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setLocation('/admin/backup-config')}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Configurar
+            </Button>
+            <Button
+              onClick={handleRunBackup}
+              disabled={isRunningBackup}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isRunningBackup ? (
+                <>
+                  <Clock className="w-4 h-4 mr-2 animate-spin" />
+                  Executando...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Executar Backup Agora
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 

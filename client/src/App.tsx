@@ -27,6 +27,7 @@ import RoleRedirect from "./components/RoleRedirect";
 import PagamentoDanos from "./pages/PagamentoDanos";
 import Pagamentos from "./pages/admin/Pagamentos";
 import AdminBackups from "./pages/admin/Backups";
+import AdminBackupConfig from "./pages/admin/BackupConfig";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -48,6 +49,7 @@ function Router() {
       <Route path={"/admin/configuracoes"} component={SystemSettings} />
       <Route path={"/admin/pagamentos"} component={Pagamentos} />
       <Route path={"/admin/backups"} component={AdminBackups} />
+      <Route path={"/admin/backup-config"} component={AdminBackupConfig} />
       <Route path={"/employee/reservas"} component={EmployeeReservas} />
       <Route path={"/employee/manutencoes"} component={EmployeeManutencoes} />
       <Route path={"/employee/abastecimentos"} component={EmployeeAbastecimentos} />
