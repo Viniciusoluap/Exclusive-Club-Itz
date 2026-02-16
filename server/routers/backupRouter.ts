@@ -165,4 +165,130 @@ export const backupRouter = router({
         createdAt: backupData.startedAt,
       };
     }),
+
+  /**
+   * Exclui um backup (arquivo e registro do banco)
+   */
+  deleteBackup: adminProcedure
+    .input(z.object({ backupId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error('Database not available');
+      }
+
+      // Busca o backup
+      const backup = await db
+        .select()
+        .from(backupHistory)
+        .where(eq(backupHistory.id, input.backupId))
+        .limit(1);
+
+      if (backup.length === 0) {
+        throw new Error('Backup não encontrado');
+      }
+
+      const backupData = backup[0];
+
+      // Remove o arquivo físico se existir
+      if (backupData.localFilePath && fs.existsSync(backupData.localFilePath)) {
+        try {
+          fs.unlinkSync(backupData.localFilePath);
+        } catch (error: any) {
+          console.error('Erro ao excluir arquivo de backup:', error);
+          throw new Error(`Erro ao excluir arquivo: ${error.message}`);
+        }
+      }
+
+      // Remove o registro do banco
+      await db.delete(backupHistory).where(eq(backupHistory.id, input.backupId));
+
+      return {
+        success: true,
+        message: 'Backup excluído com sucesso',
+      };
+    }),
+
+  /**
+   * Restaura um backup (importa o SQL do ZIP para o banco de dados)
+   */
+  restoreBackup: adminProcedure
+    .input(z.object({ backupId: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error('Database not available');
+      }
+
+      // Busca o backup
+      const backup = await db
+        .select()
+        .from(backupHistory)
+        .where(eq(backupHistory.id, input.backupId))
+        .limit(1);
+
+      if (backup.length === 0) {
+        throw new Error('Backup não encontrado');
+      }
+
+      const backupData = backup[0];
+
+      // Verifica se o arquivo existe
+      if (!backupData.localFilePath || !fs.existsSync(backupData.localFilePath)) {
+        throw new Error('Arquivo de backup não encontrado no servidor');
+      }
+
+      try {
+        // Extrai o SQL do ZIP
+        const backupDir = path.dirname(backupData.localFilePath);
+        const extractDir = path.join(backupDir, `restore-${Date.now()}`);
+        fs.mkdirSync(extractDir, { recursive: true });
+
+        // Descompacta o ZIP
+        await execAsync(`unzip -q "${backupData.localFilePath}" -d "${extractDir}"`);
+
+        // Procura o arquivo SQL
+        const files = fs.readdirSync(extractDir);
+        const sqlFile = files.find(f => f.endsWith('.sql'));
+
+        if (!sqlFile) {
+          throw new Error('Arquivo SQL não encontrado no backup');
+        }
+
+        const sqlFilePath = path.join(extractDir, sqlFile);
+
+        // Importa o SQL para o banco
+        const dbUrl = process.env.DATABASE_URL;
+        if (!dbUrl) {
+          throw new Error('DATABASE_URL não configurada');
+        }
+
+        // Parse da URL do banco
+        const dbUrlObj = new URL(dbUrl);
+        const host = dbUrlObj.hostname;
+        const port = dbUrlObj.port || '4000';
+        const user = dbUrlObj.username;
+        const password = dbUrlObj.password;
+        const database = dbUrlObj.pathname.slice(1);
+
+        // Executa o restore
+        await execAsync(
+          `mysql -h ${host} -P ${port} -u ${user} -p${password} ${database} < "${sqlFilePath}"`,
+          {
+            timeout: 300000, // 5 minutos
+          }
+        );
+
+        // Limpa o diretório temporário
+        await execAsync(`rm -rf "${extractDir}"`);
+
+        return {
+          success: true,
+          message: 'Backup restaurado com sucesso',
+        };
+      } catch (error: any) {
+        console.error('Erro ao restaurar backup:', error);
+        throw new Error(`Falha ao restaurar backup: ${error.message}`);
+      }
+    }),
 });

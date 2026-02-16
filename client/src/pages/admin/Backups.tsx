@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2, XCircle, Clock, HardDrive, Calendar, Download, AlertTriangle, Play, Settings } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Clock, HardDrive, Calendar, Download, AlertTriangle, Play, Trash2, RotateCcw } from "lucide-react";
 import { useLocation } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -38,6 +38,40 @@ export default function AdminBackups() {
     setIsRunningBackup(true);
     toast.info('Iniciando backup... Isso pode levar alguns minutos.');
     runBackupMutation.mutate();
+  };
+
+  const deleteBackupMutation = trpc.backup.deleteBackup.useMutation({
+    onSuccess: () => {
+      toast.success('Backup excluído com sucesso!');
+      utils.backup.getStats.invalidate();
+      utils.backup.getHistory.invalidate();
+      utils.backup.getLatest.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao excluir backup: ${error.message}`);
+    },
+  });
+
+  const restoreBackupMutation = trpc.backup.restoreBackup.useMutation({
+    onSuccess: () => {
+      toast.success('Backup restaurado com sucesso! O banco de dados foi restaurado.');
+    },
+    onError: (error) => {
+      toast.error(`Erro ao restaurar backup: ${error.message}`);
+    },
+  });
+
+  const handleDelete = (backupId: number) => {
+    if (confirm('Tem certeza que deseja excluir este backup? Esta ação não pode ser desfeita.')) {
+      deleteBackupMutation.mutate({ backupId });
+    }
+  };
+
+  const handleRestore = (backupId: number) => {
+    if (confirm('Tem certeza que deseja restaurar este backup? O banco de dados atual será substituído. Esta ação não pode ser desfeita.')) {
+      toast.info('Iniciando restauração... Isso pode levar alguns minutos.');
+      restoreBackupMutation.mutate({ backupId });
+    }
   };
 
   if (loading || !user) {
@@ -320,14 +354,34 @@ export default function AdminBackups() {
                       </div>
 
                       {backup.status === 'success' && backup.localFilePath && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => window.open(`/api/backup/download/${backup.id}`, '_blank')}
-                          title="Baixar backup"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => window.open(`/api/backup/download/${backup.id}`, '_blank')}
+                            title="Baixar backup"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRestore(backup.id)}
+                            title="Restaurar backup"
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(backup.id)}
+                            title="Excluir backup"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
