@@ -252,6 +252,19 @@ export const fuelRecordContainers = mysqlTable("fuel_record_containers", {
 	index("fuel_record_id_idx").on(table.fuelRecordId),
 ]);
 
+export const backupHistory = mysqlTable("backup_history", {
+	id: int().autoincrement().notNull(),
+	startedAt: timestamp("started_at", { mode: 'string' }).notNull(),
+	completedAt: timestamp("completed_at", { mode: 'string' }),
+	status: mysqlEnum(['running','success','failed']).notNull(),
+	fileName: text("file_name"),
+	fileSizeBytes: bigint("file_size_bytes", { mode: "number" }),
+	durationSeconds: int("duration_seconds"),
+	errorMessage: text("error_message"),
+	driveFileId: text("drive_file_id"),
+	driveFileUrl: text("drive_file_url"),
+});
+
 export const vessels = mysqlTable("vessels", {
 	id: int().autoincrement().notNull(),
 	name: text().notNull(),
@@ -290,3 +303,5 @@ export type FuelRecord = typeof fuelRecords.$inferSelect;
 export type InsertFuelRecord = typeof fuelRecords.$inferInsert;
 export type FuelRecordContainer = typeof fuelRecordContainers.$inferSelect;
 export type InsertFuelRecordContainer = typeof fuelRecordContainers.$inferInsert;
+export type BackupHistory = typeof backupHistory.$inferSelect;
+export type InsertBackupHistory = typeof backupHistory.$inferInsert;

@@ -267,6 +267,13 @@
       "when": 1770569430440,
       "tag": "0037_lying_skrulls",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1771203617695,
+      "tag": "0038_big_khan",
+      "breakpoints": true
     }
   ]
 }

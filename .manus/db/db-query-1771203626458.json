@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `backup_history` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `started_at` timestamp NOT NULL,\n  `completed_at` timestamp,\n  `status` enum('running','success','failed') NOT NULL,\n  `file_name` text,\n  `file_size_bytes` bigint,\n  `duration_seconds` int,\n  `error_message` text,\n  `drive_file_id` text,\n  `drive_file_url` text,\n  CONSTRAINT `backup_history_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute CREATE TABLE IF NOT EXISTS `backup_history` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `started_at` timestamp NOT NULL,\n  `completed_at` timestamp,\n  `status` enum('running','success','failed') NOT NULL,\n  `file_name` text,\n  `file_size_bytes` bigint,\n  `duration_seconds` int,\n  `error_message` text,\n  `drive_file_id` text,\n  `drive_file_url` text,\n  CONSTRAINT `backup_history_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 259
+}

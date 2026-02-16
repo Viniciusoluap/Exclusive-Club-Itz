@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, Fuel, Loader2, Pencil, Plus, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
+import { BarChart3, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, Fuel, HardDrive, Loader2, Pencil, Plus, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -552,6 +552,12 @@ export default function Admin() {
                 <Button variant="outline" size="sm">
                   <Settings className="h-4 w-4 mr-2" />
                   Configurações
+                </Button>
+              </Link>
+              <Link href="/admin/backups">
+                <Button variant="outline" size="sm">
+                  <HardDrive className="h-4 w-4 mr-2" />
+                  Backups
                 </Button>
               </Link>
               <Link href="/reservas">

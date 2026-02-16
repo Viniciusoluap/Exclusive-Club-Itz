@@ -3,6 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { webhookRouter } from "./webhookRouter";
 import { paymentsRouter } from "./paymentsRouter";
+import { backupRouter } from "./routers/backupRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -55,6 +56,7 @@ export const appRouter = router({
   system: systemRouter,
   webhooks: webhookRouter,
   payments: paymentsRouter,
+  backup: backupRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
