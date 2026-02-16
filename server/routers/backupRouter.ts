@@ -5,6 +5,9 @@ import { desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
+import { eq } from 'drizzle-orm';
 
 const execAsync = promisify(exec);
 
@@ -104,6 +107,10 @@ export const backupRouter = router({
       const { stdout, stderr } = await execAsync('pnpm backup', {
         cwd: '/home/ubuntu/exclusive-club-reservas',
         timeout: 300000, // 5 minutos de timeout
+        env: {
+          ...process.env,
+          PATH: process.env.PATH || '/home/ubuntu/.nvm/versions/node/v22.13.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        },
       });
 
       if (stderr && !stderr.includes('deprecated')) {
@@ -121,4 +128,41 @@ export const backupRouter = router({
       throw new Error(`Falha ao executar backup: ${error.message}`);
     }
   }),
+
+  /**
+   * Obtém informações de um backup específico para download
+   */
+  getBackupFile: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) {
+        throw new Error('Database not available');
+      }
+
+      const backup = await db
+        .select()
+        .from(backupHistory)
+        .where(eq(backupHistory.id, input.id))
+        .limit(1);
+
+      if (backup.length === 0) {
+        throw new Error('Backup não encontrado');
+      }
+
+      const backupData = backup[0];
+
+      // Verifica se o arquivo existe
+      if (!backupData.localFilePath || !fs.existsSync(backupData.localFilePath)) {
+        throw new Error('Arquivo de backup não encontrado no servidor');
+      }
+
+      return {
+        id: backupData.id,
+        fileName: backupData.fileName,
+        filePath: backupData.localFilePath,
+        fileSizeBytes: backupData.fileSizeBytes,
+        createdAt: backupData.startedAt,
+      };
+    }),
 });

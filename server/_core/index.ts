@@ -215,6 +215,10 @@ async function startServer() {
   });
 
   // tRPC API
+  // Backup download route
+  const { downloadBackupRoute } = await import('../downloadBackupRoute');
+  app.get('/api/backup/download/:id', downloadBackupRoute);
+
   app.use(
     "/api/trpc",
     createExpressMiddleware({

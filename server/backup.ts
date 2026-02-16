@@ -1,4 +1,3 @@
-import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
@@ -6,77 +5,25 @@ import { promisify } from 'util';
 import archiver from 'archiver';
 import { getDb } from './db';
 import { backupHistory } from '../drizzle/schema';
-import { sendBackupFailureNotification, sendBackupSuccessNotification } from './backupNotification';
+import { sendBackupFailureNotification } from './backupNotification';
 import { eq } from 'drizzle-orm';
 
 const execAsync = promisify(exec);
 
-// ID da pasta do Google Drive onde os backups serão salvos
-const DRIVE_FOLDER_ID = '1GStmc8RxPQTK_DmDz83x8e_dLUKUALZ1';
+// Diretório onde os backups serão salvos
+const BACKUP_DIR = '/home/ubuntu/backups';
 
-// Caminho para as credenciais OAuth2
-const CREDENTIALS_PATH = path.join(process.cwd(), 'google-drive-credentials.json');
-const TOKEN_PATH = path.join(process.cwd(), 'google-drive-token.json');
-
-/**
- * Carrega as credenciais salvas ou solicita nova autenticação
- */
-async function authorize() {
-  let credentials;
-  
-  try {
-    const content = fs.readFileSync(CREDENTIALS_PATH, 'utf-8');
-    credentials = JSON.parse(content);
-  } catch (error) {
-    console.error('❌ Arquivo de credenciais não encontrado.');
-    console.error('Por favor, configure as credenciais do Google Drive primeiro.');
-    process.exit(1);
-  }
-
-  const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
-  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-
-  // Verifica se já existe um token salvo
-  try {
-    const token = fs.readFileSync(TOKEN_PATH, 'utf-8');
-    oAuth2Client.setCredentials(JSON.parse(token));
-    return oAuth2Client;
-  } catch (error) {
-    // Token não existe, precisa autenticar
-    return getNewToken(oAuth2Client);
-  }
-}
-
-/**
- * Obtém novo token de autenticação
- */
-async function getNewToken(oAuth2Client: any) {
-  const authUrl = oAuth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/drive.file'],
-  });
-
-  console.log('🔐 Autorize este app visitando esta URL:', authUrl);
-  console.log('\n⚠️  Este processo requer interação manual.');
-  console.log('Após autorizar, cole o código aqui e pressione Enter.');
-  
-  // Em produção, isso seria feito via interface web
-  // Por enquanto, retornamos erro para configuração manual
-  throw new Error('Autenticação manual necessária. Execute o script de setup primeiro.');
+// Garante que o diretório de backups existe
+if (!fs.existsSync(BACKUP_DIR)) {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
 }
 
 /**
  * Exporta o banco de dados para arquivo SQL
  */
 async function exportDatabase(): Promise<string> {
-  const timestamp = new Date().toISOString().split('T')[0];
-  const backupDir = path.join(process.cwd(), 'temp-backup');
-  const dbBackupPath = path.join(backupDir, `database-${timestamp}.sql`);
-
-  // Cria diretório temporário se não existir
-  if (!fs.existsSync(backupDir)) {
-    fs.mkdirSync(backupDir, { recursive: true });
-  }
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const dbBackupPath = path.join(BACKUP_DIR, `database-${timestamp}.sql`);
 
   console.log('📦 Exportando banco de dados...');
 
@@ -86,16 +33,19 @@ async function exportDatabase(): Promise<string> {
     throw new Error('DATABASE_URL não configurada');
   }
 
-  // Parse da URL do banco (formato: mysql://user:pass@host:port/database)
-  const urlMatch = dbUrl.match(/mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/);
+  // Parse da URL do banco (formato: mysql://user:pass@host:port/database?params)
+  const urlMatch = dbUrl.match(/mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/([^?]+)/);
   if (!urlMatch) {
     throw new Error('Formato de DATABASE_URL inválido');
   }
 
   const [, user, password, host, port, database] = urlMatch;
+  
+  // Remove qualquer query parameter do nome do banco
+  const dbName = database.split('?')[0];
 
   // Executa mysqldump
-  const dumpCommand = `mysqldump -h ${host} -P ${port} -u ${user} -p'${password}' ${database} > ${dbBackupPath}`;
+  const dumpCommand = `mysqldump -h ${host} -P ${port} -u ${user} -p'${password}' ${dbName} > ${dbBackupPath}`;
   
   try {
     await execAsync(dumpCommand);
@@ -110,9 +60,9 @@ async function exportDatabase(): Promise<string> {
 /**
  * Cria arquivo ZIP com backup completo
  */
-async function createBackupZip(dbBackupPath: string): Promise<string> {
-  const timestamp = new Date().toISOString().split('T')[0];
-  const zipPath = path.join(process.cwd(), `exclusive-club-backup-${timestamp}.zip`);
+async function createBackupZip(dbBackupPath: string): Promise<{ zipPath: string; fileSizeBytes: number }> {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const zipPath = path.join(BACKUP_DIR, `exclusive-club-backup-${timestamp}.zip`);
 
   console.log('📦 Criando arquivo ZIP...');
 
@@ -121,8 +71,9 @@ async function createBackupZip(dbBackupPath: string): Promise<string> {
     const archive = archiver('zip', { zlib: { level: 9 } });
 
     output.on('close', () => {
-      console.log(`✅ Backup criado: ${archive.pointer()} bytes`);
-      resolve(zipPath);
+      const fileSizeBytes = archive.pointer();
+      console.log(`✅ Backup criado: ${fileSizeBytes} bytes`);
+      resolve({ zipPath, fileSizeBytes });
     });
 
     archive.on('error', (err) => {
@@ -139,12 +90,11 @@ async function createBackupZip(dbBackupPath: string): Promise<string> {
       cwd: process.cwd(),
       ignore: [
         'node_modules/**',
-        'temp-backup/**',
         '.git/**',
         'dist/**',
         '*.zip',
-        'google-drive-*.json',
-        '*.log'
+        '*.log',
+        'backups/**'
       ]
     });
 
@@ -153,94 +103,53 @@ async function createBackupZip(dbBackupPath: string): Promise<string> {
 }
 
 /**
- * Faz upload do backup para Google Drive
+ * Limpa backups antigos (mantém últimos 7 dias)
  */
-async function uploadToDrive(auth: any, filePath: string): Promise<{ fileId: string; fileUrl: string }> {
-  const drive = google.drive({ version: 'v3', auth });
-  const fileName = path.basename(filePath);
-
-  console.log('☁️  Fazendo upload para Google Drive...');
-
-  // Verifica se já existe backup anterior na pasta
+async function cleanupOldBackups(): Promise<void> {
+  console.log('🧹 Limpando backups antigos...');
+  
   try {
-    const response = await drive.files.list({
-      q: `'${DRIVE_FOLDER_ID}' in parents and name contains 'exclusive-club-backup-' and trashed=false`,
-      fields: 'files(id, name)',
-    });
-
-    // Deleta backups anteriores
-    if (response.data.files && response.data.files.length > 0) {
-      console.log(`🗑️  Removendo ${response.data.files.length} backup(s) anterior(es)...`);
-      for (const file of response.data.files) {
-        await drive.files.delete({ fileId: file.id! });
-        console.log(`   Removido: ${file.name}`);
+    const files = fs.readdirSync(BACKUP_DIR);
+    const now = Date.now();
+    const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+    
+    let removedCount = 0;
+    
+    for (const file of files) {
+      if (file.startsWith('exclusive-club-backup-') && file.endsWith('.zip')) {
+        const filePath = path.join(BACKUP_DIR, file);
+        const stats = fs.statSync(filePath);
+        const fileAge = now - stats.mtimeMs;
+        
+        if (fileAge > sevenDaysInMs) {
+          fs.unlinkSync(filePath);
+          removedCount++;
+          console.log(`   Removido: ${file}`);
+        }
       }
     }
-  } catch (error) {
-    console.warn('⚠️  Não foi possível verificar backups anteriores:', error);
-  }
-
-  // Faz upload do novo backup
-  const fileMetadata = {
-    name: fileName,
-    parents: [DRIVE_FOLDER_ID],
-  };
-
-  const media = {
-    mimeType: 'application/zip',
-    body: fs.createReadStream(filePath),
-  };
-
-  try {
-    const file = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: 'id, name, webViewLink',
-    });
-
-    console.log('✅ Upload concluído!');
-    console.log(`   Nome: ${file.data.name}`);
-    console.log(`   ID: ${file.data.id}`);
-    console.log(`   Link: ${file.data.webViewLink}`);
     
-    return {
-      fileId: file.data.id!,
-      fileUrl: file.data.webViewLink!,
-    };
+    if (removedCount > 0) {
+      console.log(`✅ ${removedCount} backup(s) antigo(s) removido(s)`);
+    } else {
+      console.log('✅ Nenhum backup antigo para remover');
+    }
   } catch (error) {
-    console.error('❌ Erro ao fazer upload:', error);
-    throw error;
+    console.warn('⚠️  Erro ao limpar backups antigos:', error);
   }
-  
-  throw new Error('Falha ao fazer upload: nenhum arquivo retornado');
 }
 
 /**
- * Limpa arquivos temporários
+ * Remove arquivo SQL temporário
  */
-function cleanup(dbBackupPath: string, zipPath: string): void {
-  console.log('🧹 Limpando arquivos temporários...');
-  
+function cleanupTempFiles(dbBackupPath: string): void {
   try {
-    // Remove arquivo SQL
     if (fs.existsSync(dbBackupPath)) {
       fs.unlinkSync(dbBackupPath);
+      console.log('✅ Arquivo temporário removido');
     }
-
-    // Remove diretório temporário
-    const backupDir = path.dirname(dbBackupPath);
-    if (fs.existsSync(backupDir)) {
-      fs.rmdirSync(backupDir, { recursive: true });
-    }
-
-    // Remove arquivo ZIP local
-    if (fs.existsSync(zipPath)) {
-      fs.unlinkSync(zipPath);
-    }
-
-    console.log('✅ Limpeza concluída');
   } catch (error) {
-    console.warn('⚠️  Erro ao limpar arquivos temporários:', error);
+    console.warn('⚠️  Erro ao remover arquivo temporário:', error);
   }
 }
 
@@ -254,7 +163,6 @@ export async function runBackup(): Promise<void> {
   console.log('');
 
   let dbBackupPath = '';
-  let zipPath = '';
   let backupId: number | null = null;
   const db = await getDb();
 
@@ -269,25 +177,18 @@ export async function runBackup(): Promise<void> {
       console.log(`💾 Backup registrado no banco (ID: ${backupId})`);
     }
 
-    // 1. Autentica com Google Drive
-    const auth = await authorize();
-
-    // 2. Exporta banco de dados
+    // 1. Exporta banco de dados
     dbBackupPath = await exportDatabase();
 
-    // 3. Cria arquivo ZIP
-    zipPath = await createBackupZip(dbBackupPath);
-
-    // Obtém tamanho do arquivo
-    const fileStats = fs.statSync(zipPath);
-    const fileSizeBytes = fileStats.size;
+    // 2. Cria arquivo ZIP
+    const { zipPath, fileSizeBytes } = await createBackupZip(dbBackupPath);
     const fileName = path.basename(zipPath);
 
-    // 4. Faz upload para Google Drive
-    const { fileId, fileUrl } = await uploadToDrive(auth, zipPath);
+    // 3. Remove arquivo SQL temporário
+    cleanupTempFiles(dbBackupPath);
 
-    // 5. Limpa arquivos temporários
-    cleanup(dbBackupPath, zipPath);
+    // 4. Limpa backups antigos
+    await cleanupOldBackups();
 
     // Calcula duração
     const endTime = new Date();
@@ -302,8 +203,7 @@ export async function runBackup(): Promise<void> {
           fileName,
           fileSizeBytes,
           durationSeconds,
-          driveFileId: fileId,
-          driveFileUrl: fileUrl,
+          localFilePath: zipPath,
         })
         .where(eq(backupHistory.id, backupId));
       console.log(`✅ Backup atualizado no banco`);
@@ -311,9 +211,7 @@ export async function runBackup(): Promise<void> {
 
     console.log('');
     console.log('✅ Backup concluído com sucesso!');
-
-    // Envia notificação de sucesso (opcional, pode comentar se não quiser)
-    // await sendBackupSuccessNotification(fileName, fileSizeBytes, durationSeconds, fileUrl);
+    console.log(`📁 Arquivo salvo em: ${zipPath}`);
   } catch (error) {
     console.error('');
     console.error('❌ Erro durante o backup:', error);
@@ -339,9 +237,9 @@ export async function runBackup(): Promise<void> {
       await sendBackupFailureNotification(error, startTime);
     }
     
-    // Tenta limpar arquivos mesmo em caso de erro
-    if (dbBackupPath || zipPath) {
-      cleanup(dbBackupPath, zipPath);
+    // Tenta limpar arquivo temporário mesmo em caso de erro
+    if (dbBackupPath) {
+      cleanupTempFiles(dbBackupPath);
     }
     
     throw error;

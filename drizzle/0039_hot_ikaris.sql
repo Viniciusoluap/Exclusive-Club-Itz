@@ -1,0 +1,1 @@
+ALTER TABLE `backup_history` ADD `local_file_path` text;
