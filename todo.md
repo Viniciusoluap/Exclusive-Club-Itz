@@ -360,4 +360,37 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Criar testes para backupConfigRouter (10 testes passaram)
 - [ ] Testar backup manual via UI (requer configuração de credenciais pelo usuário)
 - [ ] Verificar se arquivo aparece no Google Drive (requer configuração)
+- [x] Criar checkpoint (80136c2c)
+
+
+## 🐛 Bug: Erro "spawn /bin/sh ENOENT" no Backup
+
+**Descrição:** Ao clicar em "Executar Backup Agora", o sistema retorna erro "spawn /bin/sh ENOENT", indicando que não consegue encontrar o shell para executar o comando.
+
+**Tarefas:**
+- [x] Investigar causa do erro spawn /bin/sh ENOENT (PATH não incluía diretório do pnpm)
+- [x] Verificar se o problema está no execAsync ou no ambiente de execução (ambiente)
+- [x] Corrigir execução do comando de backup (adicionar PATH ao env)
+- [ ] Testar backup manual via UI
+- [ ] Criar checkpoint
+
+
+## 🔄 Refatoração: Simplificar Sistema de Backup
+
+**Descrição:** Remover complexidade do Google Drive e implementar solução simples com backup local e download direto pela interface.
+
+**Tarefas:**
+- [x] Remover código de integração com Google Drive do backup.ts
+- [x] Simplificar script de backup para salvar apenas localmente
+- [x] Criar diretório de backups (/home/ubuntu/backups)
+- [x] Adicionar campo local_file_path ao schema
+- [x] Implementar endpoint para download de backup (/api/backup/download/:id)
+- [x] Adicionar botão "Baixar Backup" na interface (card último backup + histórico)
+- [x] Implementar limpeza automática (manter últimos 7 dias - já no backup.ts)
+- [x] Atualizar notificações para refletir novo fluxo (já simplificado)
+- [x] Remover página de configuração do Google Drive
+- [x] Remover rotas e imports de BackupConfig
+- [x] Reiniciar servidor
+- [x] Corrigir parsing da DATABASE_URL (remover query params)
+- [x] Testar backup e download (backup executado com sucesso - 12MB)
 - [ ] Criar checkpoint

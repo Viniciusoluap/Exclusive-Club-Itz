@@ -112,13 +112,6 @@ export default function AdminBackups() {
           </div>
           <div className="flex gap-2">
             <Button
-              variant="outline"
-              onClick={() => setLocation('/admin/backup-config')}
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Configurar
-            </Button>
-            <Button
               onClick={handleRunBackup}
               disabled={isRunningBackup}
               className="bg-blue-600 hover:bg-blue-700"
@@ -237,13 +230,13 @@ export default function AdminBackups() {
                     )}
                   </div>
                 )}
-                {stats.lastBackup.driveFileUrl && (
+                {stats.lastBackup.status === 'success' && stats.lastBackup.localFilePath && (
                   <div>
                     <div className="text-sm text-gray-600 mb-1">Ações</div>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => window.open(stats.lastBackup!.driveFileUrl!, '_blank')}
+                      onClick={() => window.open(`/api/backup/download/${stats.lastBackup!.id}`, '_blank')}
                     >
                       <Download className="w-4 h-4 mr-2" />
                       Baixar
@@ -326,11 +319,12 @@ export default function AdminBackups() {
                         )}
                       </div>
 
-                      {backup.driveFileUrl && (
+                      {backup.status === 'success' && backup.localFilePath && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => window.open(backup.driveFileUrl!, '_blank')}
+                          onClick={() => window.open(`/api/backup/download/${backup.id}`, '_blank')}
+                          title="Baixar backup"
                         >
                           <Download className="w-4 h-4" />
                         </Button>

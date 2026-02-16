@@ -263,6 +263,7 @@ export const backupHistory = mysqlTable("backup_history", {
 	errorMessage: text("error_message"),
 	driveFileId: text("drive_file_id"),
 	driveFileUrl: text("drive_file_url"),
+	localFilePath: text("local_file_path"),
 });
 
 export const vessels = mysqlTable("vessels", {
