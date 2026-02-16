@@ -266,4 +266,36 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Substituir por cards do Resumo Financeiro (Saldo Herdado, Orçamento, Gasto, Saldo Atual)
 - [x] Garantir que toda lógica e cálculos permaneçam intactos (apenas UI mudou)
 - [x] Testar visualmente ambas as páginas (TODOS OS TESTES PASSARAM)
+- [x] Criar checkpoint (dd2ee614)
+
+## 📦 Feature: Backup Diário Automático para Google Drive
+===============================================================
+
+**Requisito:** Sistema de backup completo diário com upload automático para Google Drive
+
+**Escopo do Backup:**
+- ✅ Banco de dados completo (todas as tabelas em SQL)
+- ✅ Código-fonte completo do site
+- ✅ Arquivos enviados (fotos de abastecimento, etc.)
+- ✅ Configurações do sistema
+
+**Comportamento:**
+- Execução automática diária às 3h da manhã
+- Arquivo compactado: `exclusive-club-backup-YYYY-MM-DD.zip`
+- Upload para Google Drive do usuário
+- Substitui backup do dia anterior (mantém apenas o mais recente)
+
+**Tarefas:**
+- [x] Planejar arquitetura do sistema de backup
+- [x] Pesquisar e escolher método de integração com Google Drive (googleapis + OAuth2)
+- [x] Configurar autenticação OAuth2 com Google Drive API (script setup-google-drive.ts)
+- [x] Criar script de exportação do banco de dados (mysqldump em backup.ts)
+- [x] Criar script de compactação (banco + código + arquivos com archiver)
+- [x] Implementar função de upload para Google Drive (uploadToDrive)
+- [x] Implementar lógica de substituição do backup anterior (deleta antes de upload)
+- [x] Configurar agendamento diário (node-cron às 3h da manhã)
+- [ ] Testar backup manual (requer configuração do usuário)
+- [ ] Testar upload para Google Drive (requer autenticação)
+- [ ] Validar que backup anterior é substituído
+- [x] Documentar processo de restauração (BACKUP-SETUP.md)
 - [ ] Criar checkpoint
