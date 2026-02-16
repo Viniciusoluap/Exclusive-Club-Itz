@@ -4,6 +4,10 @@ import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import archiver from 'archiver';
+import { getDb } from './db';
+import { backupHistory } from '../drizzle/schema';
+import { sendBackupFailureNotification, sendBackupSuccessNotification } from './backupNotification';
+import { eq } from 'drizzle-orm';
 
 const execAsync = promisify(exec);
 
@@ -151,7 +155,7 @@ async function createBackupZip(dbBackupPath: string): Promise<string> {
 /**
  * Faz upload do backup para Google Drive
  */
-async function uploadToDrive(auth: any, filePath: string): Promise<void> {
+async function uploadToDrive(auth: any, filePath: string): Promise<{ fileId: string; fileUrl: string }> {
   const drive = google.drive({ version: 'v3', auth });
   const fileName = path.basename(filePath);
 
@@ -198,10 +202,17 @@ async function uploadToDrive(auth: any, filePath: string): Promise<void> {
     console.log(`   Nome: ${file.data.name}`);
     console.log(`   ID: ${file.data.id}`);
     console.log(`   Link: ${file.data.webViewLink}`);
+    
+    return {
+      fileId: file.data.id!,
+      fileUrl: file.data.webViewLink!,
+    };
   } catch (error) {
     console.error('❌ Erro ao fazer upload:', error);
     throw error;
   }
+  
+  throw new Error('Falha ao fazer upload: nenhum arquivo retornado');
 }
 
 /**
@@ -237,14 +248,27 @@ function cleanup(dbBackupPath: string, zipPath: string): void {
  * Executa o backup completo
  */
 export async function runBackup(): Promise<void> {
+  const startTime = new Date();
   console.log('🚀 Iniciando backup automático...');
-  console.log(`📅 Data: ${new Date().toLocaleString('pt-BR')}`);
+  console.log(`📅 Data: ${startTime.toLocaleString('pt-BR')}`);
   console.log('');
 
   let dbBackupPath = '';
   let zipPath = '';
+  let backupId: number | null = null;
+  const db = await getDb();
 
   try {
+    // Registra início do backup no banco
+    if (db) {
+      const result = await db.insert(backupHistory).values({
+        startedAt: startTime.toISOString(),
+        status: 'running',
+      });
+      backupId = result[0].insertId;
+      console.log(`💾 Backup registrado no banco (ID: ${backupId})`);
+    }
+
     // 1. Autentica com Google Drive
     const auth = await authorize();
 
@@ -254,17 +278,66 @@ export async function runBackup(): Promise<void> {
     // 3. Cria arquivo ZIP
     zipPath = await createBackupZip(dbBackupPath);
 
+    // Obtém tamanho do arquivo
+    const fileStats = fs.statSync(zipPath);
+    const fileSizeBytes = fileStats.size;
+    const fileName = path.basename(zipPath);
+
     // 4. Faz upload para Google Drive
-    await uploadToDrive(auth, zipPath);
+    const { fileId, fileUrl } = await uploadToDrive(auth, zipPath);
 
     // 5. Limpa arquivos temporários
     cleanup(dbBackupPath, zipPath);
 
+    // Calcula duração
+    const endTime = new Date();
+    const durationSeconds = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
+
+    // Atualiza registro no banco com sucesso
+    if (db && backupId) {
+      await db.update(backupHistory)
+        .set({
+          completedAt: endTime.toISOString(),
+          status: 'success',
+          fileName,
+          fileSizeBytes,
+          durationSeconds,
+          driveFileId: fileId,
+          driveFileUrl: fileUrl,
+        })
+        .where(eq(backupHistory.id, backupId));
+      console.log(`✅ Backup atualizado no banco`);
+    }
+
     console.log('');
     console.log('✅ Backup concluído com sucesso!');
+
+    // Envia notificação de sucesso (opcional, pode comentar se não quiser)
+    // await sendBackupSuccessNotification(fileName, fileSizeBytes, durationSeconds, fileUrl);
   } catch (error) {
     console.error('');
     console.error('❌ Erro durante o backup:', error);
+    
+    const endTime = new Date();
+    const durationSeconds = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
+
+    // Registra falha no banco
+    if (db && backupId) {
+      await db.update(backupHistory)
+        .set({
+          completedAt: endTime.toISOString(),
+          status: 'failed',
+          durationSeconds,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        })
+        .where(eq(backupHistory.id, backupId));
+      console.log(`❌ Falha registrada no banco`);
+    }
+
+    // Envia notificação de falha
+    if (error instanceof Error) {
+      await sendBackupFailureNotification(error, startTime);
+    }
     
     // Tenta limpar arquivos mesmo em caso de erro
     if (dbBackupPath || zipPath) {

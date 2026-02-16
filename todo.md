@@ -298,4 +298,34 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [ ] Testar upload para Google Drive (requer autenticação)
 - [ ] Validar que backup anterior é substituído
 - [x] Documentar processo de restauração (BACKUP-SETUP.md)
+- [x] Criar checkpoint (f47677a5)
+
+## 📊 Feature: Dashboard de Monitoramento de Backups + Notificações
+===============================================================
+
+**Requisito:** Sistema de monitoramento e alertas para backups automáticos
+
+**Funcionalidades:**
+1. **Notificações de Falha:**
+   - Enviar email ao admin quando backup falhar
+   - Incluir detalhes do erro e timestamp
+   - Usar sistema de email já existente (nodemailer)
+
+2. **Dashboard de Monitoramento:**
+   - Página admin com histórico de backups
+   - Exibir: data/hora, status (sucesso/falha), tamanho do arquivo, duração
+   - Filtros por período e status
+   - Indicador visual do último backup
+
+**Tarefas:**
+- [x] Criar tabela backup_history no schema
+- [x] Implementar função de notificação de falha (sendBackupFailureNotification)
+- [x] Atualizar backup.ts para registrar histórico no banco
+- [x] Atualizar backup.ts para enviar notificação em caso de falha
+- [x] Criar tRPC router para backups (backup.getHistory)
+- [x] Criar página AdminBackups.tsx com dashboard
+- [x] Adicionar rota /admin/backups no App.tsx
+- [x] Adicionar link no menu admin
+- [x] Testar notificação de falha (via testes unitários)
+- [x] Testar dashboard com dados reais (via testes unitários - 8 testes passaram)
 - [ ] Criar checkpoint
