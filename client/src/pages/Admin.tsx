@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, Fuel, HardDrive, Loader2, Pencil, Plus, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
+import { BarChart3, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, Fuel, HardDrive, Loader2, Menu, Pencil, Plus, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -197,7 +197,10 @@ export default function Admin() {
 
   // Vessel Management State
   const [showVesselDialog, setShowVesselDialog] = useState(false);
+  const [editingVessel, setEditingVessel] = useState<any>(null);
   const [editingVesselId, setEditingVesselId] = useState<number | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [editingQuotaVesselId, setEditingQuotaVesselId] = useState<number | null>(null);
   
   // Booking Management State
   const [showBookingDialog, setShowBookingDialog] = useState(false);
@@ -538,26 +541,15 @@ export default function Admin() {
               <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10" style={{width: '70px', height: '65px', backgroundColor: '#1aacea', borderRadius: '8px', padding: '4px'}} />
               <span className="text-lg font-bold text-primary">Exclusive Club Admin</span>
             </Link>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground hidden sm:inline">
+            {/* Desktop Menu */}
+            <div className="hidden md:flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">
                 Olá, {user?.name}
               </span>
-              <Link href="/admin/pagamentos">
-                <Button variant="outline" size="sm">
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Pagamentos
-                </Button>
-              </Link>
               <Link href="/admin/configuracoes">
                 <Button variant="outline" size="sm">
                   <Settings className="h-4 w-4 mr-2" />
                   Configurações
-                </Button>
-              </Link>
-              <Link href="/admin/backups">
-                <Button variant="outline" size="sm">
-                  <HardDrive className="h-4 w-4 mr-2" />
-                  Backups
                 </Button>
               </Link>
               <Link href="/reservas">
@@ -574,9 +566,58 @@ export default function Admin() {
                 Sair
               </Button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
+
+      {/* Mobile Dropdown Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-background border-b shadow-lg">
+          <div className="container px-4 py-4 space-y-2">
+            <div className="text-sm text-muted-foreground mb-3">
+              Olá, {user?.name}
+            </div>
+            <Link href="/admin/configuracoes" onClick={() => setMobileMenuOpen(false)}>
+              <Button variant="ghost" className="w-full justify-start">
+                <Settings className="h-4 w-4 mr-2" />
+                Configurações
+              </Button>
+            </Link>
+            <Link href="/reservas" onClick={() => setMobileMenuOpen(false)}>
+              <Button variant="ghost" className="w-full justify-start">
+                <Calendar className="h-4 w-4 mr-2" />
+                Minhas Reservas
+              </Button>
+            </Link>
+            <Link href="/" onClick={() => setMobileMenuOpen(false)}>
+              <Button variant="ghost" className="w-full justify-start">
+                Voltar ao Site
+              </Button>
+            </Link>
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                handleLogout();
+              }}
+            >
+              Sair
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="container py-8">
         <Tabs defaultValue="clients" className="space-y-6">
