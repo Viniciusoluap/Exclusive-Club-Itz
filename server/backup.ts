@@ -7,6 +7,7 @@ import { getDb } from './db';
 import { backupHistory } from '../drizzle/schema';
 import { sendBackupFailureNotification } from './backupNotification';
 import { eq } from 'drizzle-orm';
+import { uploadToGoogleDrive } from './googleDriveUpload';
 
 const execAsync = promisify(exec);
 
@@ -187,7 +188,15 @@ export async function runBackup(): Promise<void> {
     // 3. Remove arquivo SQL temporário
     cleanupTempFiles(dbBackupPath);
 
-    // 4. Limpa backups antigos
+    // 4. Faz upload para Google Drive (se configurado)
+    let driveUrl: string | null = null;
+    try {
+      driveUrl = await uploadToGoogleDrive(zipPath);
+    } catch (driveError) {
+      console.warn('⚠️  Erro ao fazer upload para Google Drive (continuando):', driveError);
+    }
+
+    // 5. Limpa backups antigos
     await cleanupOldBackups();
 
     // Calcula duração
@@ -204,6 +213,7 @@ export async function runBackup(): Promise<void> {
           fileSizeBytes,
           durationSeconds,
           localFilePath: zipPath,
+          driveFileUrl: driveUrl || undefined,
         })
         .where(eq(backupHistory.id, backupId));
       console.log(`✅ Backup atualizado no banco`);

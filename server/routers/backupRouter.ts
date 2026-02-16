@@ -109,7 +109,7 @@ export const backupRouter = router({
         timeout: 300000, // 5 minutos de timeout
         env: {
           ...process.env,
-          PATH: process.env.PATH || '/home/ubuntu/.nvm/versions/node/v22.13.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+          PATH: process.env.PATH || '/home/ubuntu/.local/share/pnpm:/home/ubuntu/.nvm/versions/node/v22.13.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
         },
       });
 

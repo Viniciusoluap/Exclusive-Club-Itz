@@ -393,4 +393,30 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Reiniciar servidor
 - [x] Corrigir parsing da DATABASE_URL (remover query params)
 - [x] Testar backup e download (backup executado com sucesso - 12MB)
-- [ ] Criar checkpoint
+- [x] Criar checkpoint (bd2f333c)
+
+
+## 🔧 Correção Urgente: Sistema de Backup Completo
+
+**Descrição:** Corrigir todos os problemas do sistema de backup e adicionar integração com Google Drive conforme solicitado originalmente.
+
+**Passo 1: Manter backup local funcionando**
+- [x] Backup via terminal já funciona (pnpm backup)
+
+**Passo 2: Corrigir botão "Executar Backup Agora"**
+- [x] Investigar erro "spawn /bin/sh ENOENT" no endpoint backup.runNow (PATH incompleto)
+- [x] Corrigir execução do backup via interface web (adicionado /home/ubuntu/.local/share/pnpm ao PATH)
+- [ ] Testar botão "Executar Backup Agora" na interface (aguardando teste do usuário)
+
+**Passo 3: Corrigir download de backups**
+- [x] Investigar erro "Arquivo de backup não encontrado no servidor" (backups antigos sem localFilePath)
+- [x] Corrigir endpoint /api/backup/download/:id (já estava correto)
+- [x] Testar download de backup pela interface (funcionando para backups novos - ID 90006)
+
+**Passo 4: Adicionar upload automático para Google Drive**
+- [x] Restaurar integração com Google Drive API (googleDriveUpload.ts)
+- [x] Configurar upload para pasta específica (1GStmc8RxPQTK_DmDz83x8e_dLUKUALZ1)
+- [x] Fazer upload automático após backup local bem-sucedido
+- [x] Salvar URL do Google Drive no banco (driveFileUrl)
+- [ ] Testar upload para Google Drive (requer credentials.json e token.json)
+- [ ] Criar checkpoint final

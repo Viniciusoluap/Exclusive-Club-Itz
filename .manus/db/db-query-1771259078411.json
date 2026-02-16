@@ -1,0 +1,16 @@
+{
+  "query": "SELECT id, status, file_name, local_file_path FROM backup_history WHERE id = 90006;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, status, file_name, local_file_path FROM backup_history WHERE id = 90006;",
+  "rows": [
+    {
+      "id": "90006",
+      "status": "success",
+      "file_name": "exclusive-club-backup-2026-02-16T16-24-29-802Z.zip",
+      "local_file_path": "/home/ubuntu/backups/exclusive-club-backup-2026-02-16T16-24-29-802Z.zip"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\tfile_name\tlocal_file_path\n90006\tsuccess\texclusive-club-backup-2026-02-16T16-24-29-802Z.zip\t/home/ubuntu/backups/exclusive-club-backup-2026-02-16T16-24-29-802Z.zip\n",
+  "stderr": "",
+  "execution_time_ms": 50
+}

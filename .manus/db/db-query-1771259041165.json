@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, status, file_name, local_file_path, started_at FROM backup_history ORDER BY started_at DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, status, file_name, local_file_path, started_at FROM backup_history ORDER BY started_at DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "90005",
+      "status": "success",
+      "file_name": "exclusive-club-backup-2026-02-16T16-08-58-866Z.zip",
+      "local_file_path": "/home/ubuntu/backups/exclusive-club-backup-2026-02-16T16-08-58-866Z.zip",
+      "started_at": "2026-02-16 16:08:58"
+    },
+    {
+      "id": "90004",
+      "status": "failed",
+      "file_name": "NULL",
+      "local_file_path": "NULL",
+      "started_at": "2026-02-16 16:08:15"
+    },
+    {
+      "id": "90003",
+      "status": "failed",
+      "file_name": "NULL",
+      "local_file_path": "NULL",
+      "started_at": "2026-02-16 16:08:12"
+    },
+    {
+      "id": "90001",
+      "status": "success",
+      "file_name": "test-backup-1.zip",
+      "local_file_path": "NULL",
+      "started_at": "2026-02-16 16:08:12"
+    },
+    {
+      "id": "90002",
+      "status": "success",
+      "file_name": "test-backup-2.zip",
+      "local_file_path": "NULL",
+      "started_at": "2026-02-16 16:08:12"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\tfile_name\tlocal_file_path\tstarted_at\n90005\tsuccess\texclusive-club-backup-2026-02-16T16-08-58-866Z.zip\t/home/ubuntu/backups/exclusive-club-backup-2026-02-16T16-08-58-866Z.zip\t2026-02-16 16:08:58\n90004\tfailed\tNULL\tNULL\t2026-02-16 16:08:15\n90003\tfailed\tNULL\tNULL\t2026-02-16 16:08:12\n90001\tsuccess\ttest-backup-1.zip\tNULL\t2026-02-16 16:08:12\n90002\tsuccess\ttest-backup-2.zip\tNULL\t2026-02-16 16:08:12\n",
+  "stderr": "",
+  "execution_time_ms": 49
+}
