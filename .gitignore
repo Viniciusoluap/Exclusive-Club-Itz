@@ -105,3 +105,10 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
+
+# Google Drive Backup System (NUNCA commitar credenciais!)
+google-drive-credentials.json
+google-drive-token.json
+temp-backup/
+exclusive-club-backup-*.zip
+database-*.sql
