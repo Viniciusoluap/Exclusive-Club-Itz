@@ -101,7 +101,8 @@ export const backupRouter = router({
   runNow: adminProcedure.mutation(async () => {
     try {
       // Executa o script de backup em background
-      const { stdout, stderr } = await execAsync('cd /home/ubuntu/exclusive-club-reservas && pnpm backup', {
+      const { stdout, stderr } = await execAsync('pnpm backup', {
+        cwd: '/home/ubuntu/exclusive-club-reservas',
         timeout: 300000, // 5 minutos de timeout
       });
 

@@ -342,4 +342,22 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Atualizar lista de backups automaticamente após conclusão (invalidate queries)
 - [x] Testar execução manual via UI (2 testes passaram - permissões e endpoint)
 - [x] Corrigir erro de require.main em ES module
+- [x] Criar checkpoint (f9908d30)
+
+
+## 🐛 Bug: Erro no Sistema de Backup
+
+**Descrição:** Backup está falhando com erro "cd: can't cd to /home/ubuntu/exclusive-club-reservas" e nenhum arquivo está sendo enviado para o Google Drive.
+
+**Tarefas:**
+- [x] Investigar erro de diretório no endpoint backup.runNow (problema: cd dentro de execAsync)
+- [x] Verificar se credenciais do Google Drive estão configuradas (não existem)
+- [x] Corrigir comando de execução do backup (usar cwd ao invés de cd)
+- [x] Criar router tRPC para configuração de backup (backupConfigRouter)
+- [x] Criar página de configuração de backup (/admin/backup-config)
+- [x] Adicionar upload de credentials.json via UI
+- [x] Adicionar botão "Configurar" no dashboard de backups
+- [x] Criar testes para backupConfigRouter (10 testes passaram)
+- [ ] Testar backup manual via UI (requer configuração de credenciais pelo usuário)
+- [ ] Verificar se arquivo aparece no Google Drive (requer configuração)
 - [ ] Criar checkpoint
