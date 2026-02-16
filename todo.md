@@ -328,4 +328,18 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Adicionar link no menu admin
 - [x] Testar notificação de falha (via testes unitários)
 - [x] Testar dashboard com dados reais (via testes unitários - 8 testes passaram)
+- [x] Criar checkpoint (395718a4)
+
+## 🔘 Feature: Botão "Executar Backup Agora"
+
+**Descrição:** Adicionar botão no dashboard de backups que permite executar o backup manualmente com um clique, sem necessidade de acesso ao terminal.
+
+**Tarefas:**
+- [x] Criar endpoint tRPC `backup.runNow` para executar backup manual
+- [x] Adicionar botão "Executar Backup Agora" no dashboard
+- [x] Implementar loading state durante execução
+- [x] Mostrar feedback de sucesso/erro após execução (toast notifications)
+- [x] Atualizar lista de backups automaticamente após conclusão (invalidate queries)
+- [x] Testar execução manual via UI (2 testes passaram - permissões e endpoint)
+- [x] Corrigir erro de require.main em ES module
 - [ ] Criar checkpoint

@@ -349,7 +349,8 @@ export async function runBackup(): Promise<void> {
 }
 
 // Permite executar diretamente via CLI
-if (require.main === module) {
+// Em ES modules, verificamos se o script está sendo executado diretamente
+if (import.meta.url === `file://${process.argv[1]}`) {
   runBackup()
     .then(() => process.exit(0))
     .catch((error) => {

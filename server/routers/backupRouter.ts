@@ -3,6 +3,10 @@ import { getDb } from '../db';
 import { backupHistory } from '../../drizzle/schema';
 import { desc } from 'drizzle-orm';
 import { z } from 'zod';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 export const backupRouter = router({
   /**
@@ -89,5 +93,31 @@ export const backupRouter = router({
       .limit(1);
 
     return latest.length > 0 ? latest[0] : null;
+  }),
+
+  /**
+   * Executa backup manualmente
+   */
+  runNow: adminProcedure.mutation(async () => {
+    try {
+      // Executa o script de backup em background
+      const { stdout, stderr } = await execAsync('cd /home/ubuntu/exclusive-club-reservas && pnpm backup', {
+        timeout: 300000, // 5 minutos de timeout
+      });
+
+      if (stderr && !stderr.includes('deprecated')) {
+        console.error('Backup stderr:', stderr);
+      }
+
+      console.log('Backup stdout:', stdout);
+
+      return {
+        success: true,
+        message: 'Backup executado com sucesso',
+      };
+    } catch (error: any) {
+      console.error('Erro ao executar backup:', error);
+      throw new Error(`Falha ao executar backup: ${error.message}`);
+    }
   }),
 });

@@ -3,17 +3,42 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2, XCircle, Clock, HardDrive, Calendar, Download, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Clock, HardDrive, Calendar, Download, AlertTriangle, Play } from "lucide-react";
 import { useLocation } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
+import { useState } from "react";
 
 export default function AdminBackups() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const [isRunningBackup, setIsRunningBackup] = useState(false);
 
+  const utils = trpc.useUtils();
   const { data: stats, isLoading: statsLoading } = trpc.backup.getStats.useQuery();
   const { data: history, isLoading: historyLoading } = trpc.backup.getHistory.useQuery({ limit: 20 });
+
+  const runBackupMutation = trpc.backup.runNow.useMutation({
+    onSuccess: () => {
+      toast.success('Backup executado com sucesso!');
+      // Atualiza as queries de stats e history
+      utils.backup.getStats.invalidate();
+      utils.backup.getHistory.invalidate();
+      utils.backup.getLatest.invalidate();
+      setIsRunningBackup(false);
+    },
+    onError: (error) => {
+      toast.error(`Erro ao executar backup: ${error.message}`);
+      setIsRunningBackup(false);
+    },
+  });
+
+  const handleRunBackup = () => {
+    setIsRunningBackup(true);
+    toast.info('Iniciando backup... Isso pode levar alguns minutos.');
+    runBackupMutation.mutate();
+  };
 
   if (loading || !user) {
     return (
@@ -85,6 +110,23 @@ export default function AdminBackups() {
               <p className="text-sm text-gray-500">Monitoramento e histórico de backups automáticos</p>
             </div>
           </div>
+          <Button
+            onClick={handleRunBackup}
+            disabled={isRunningBackup}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {isRunningBackup ? (
+              <>
+                <Clock className="w-4 h-4 mr-2 animate-spin" />
+                Executando...
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 mr-2" />
+                Executar Backup Agora
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
