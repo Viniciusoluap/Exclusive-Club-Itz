@@ -68,22 +68,55 @@ export default function SystemSettings() {
     }, 2000);
   };
 
+  const [activeTab, setActiveTab] = useState<"asaas" | "pagamentos" | "backups">("asaas");
+
   return (
-    <div className="container max-w-4xl py-8">
-      <div className="mb-8">
-        <Button
-          variant="ghost"
-          onClick={() => setLocation("/admin")}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
-        </Button>
-        <h1 className="text-3xl font-bold">Configurações do Sistema</h1>
-        <p className="text-muted-foreground mt-2">
-          Configure integrações e chaves de API
-        </p>
-      </div>
+    <div className="min-h-screen bg-muted/30">
+      {/* Header */}
+      <header className="bg-background border-b sticky top-0 z-40">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation("/admin")}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+              <h1 className="text-xl font-bold">Configurações</h1>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="container py-8">
+        {/* Submenu */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          <Button
+            variant={activeTab === "asaas" ? "default" : "outline"}
+            onClick={() => setActiveTab("asaas")}
+          >
+            Integração Asaas
+          </Button>
+          <Button
+            variant={activeTab === "pagamentos" ? "default" : "outline"}
+            onClick={() => setLocation("/admin/pagamentos")}
+          >
+            Pagamentos
+          </Button>
+          <Button
+            variant={activeTab === "backups" ? "default" : "outline"}
+            onClick={() => setLocation("/admin/backups")}
+          >
+            Backups
+          </Button>
+        </div>
+
+        {/* Conteúdo */}
+        {activeTab === "asaas" && (
+          <div>
 
       {/* Alert sobre workaround */}
       <Alert className="mb-6 border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
@@ -200,6 +233,9 @@ export default function SystemSettings() {
           </div>
         </CardContent>
       </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

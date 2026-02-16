@@ -420,3 +420,22 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Salvar URL do Google Drive no banco (driveFileUrl)
 - [ ] Testar upload para Google Drive (requer credentials.json e token.json)
 - [ ] Criar checkpoint final
+
+## 🎨 UI: Reorganizar Menu Admin e Implementar Menu Mobile Responsivo
+===============================================================
+
+**Problema:**
+- Menu admin no mobile está quebrado (textos cortados, layout desorganizado)
+- Botões "Pagamentos" e "Backups" devem estar dentro de "Configurações"
+- Navegação difícil em telas pequenas
+
+**Tarefas:**
+- [x] Mover botão "Pagamentos" para submenu de Configurações
+- [x] Mover botão "Backups" para submenu de Configurações
+- [x] Implementar menu dropdown mobile (Opção 2)
+  - Desktop: menu horizontal (manter como está)
+  - Mobile: logo + ícone ☰ que abre dropdown vertical
+  - Todos os itens organizados em lista vertical
+- [x] Ajustar responsividade para evitar textos cortados
+- [ ] Testar no navegador (modo mobile)
+- [ ] Criar checkpoint
