@@ -745,14 +745,14 @@ export default function Dashboard() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <Link href="/">
               <div className="flex items-center gap-3 cursor-pointer">
-                <img src={APP_LOGO} alt={APP_TITLE} className="h-12" />
-                <span className="font-bold text-xl text-gray-900">{APP_TITLE}</span>
+                <img src={APP_LOGO} alt={APP_TITLE} className="h-10 md:h-12" />
+                <span className="font-bold text-base md:text-xl text-gray-900 truncate">{APP_TITLE}</span>
               </div>
             </Link>
-            <nav className="flex items-center gap-4">
+            <nav className="flex flex-wrap items-center gap-2 md:gap-4">
               <Link href="/reservas">
                 <Button variant="ghost">Minhas Reservas</Button>
               </Link>
