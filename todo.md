@@ -437,5 +437,27 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
   - Mobile: logo + ícone ☰ que abre dropdown vertical
   - Todos os itens organizados em lista vertical
 - [x] Ajustar responsividade para evitar textos cortados
-- [ ] Testar no navegador (modo mobile)
+- [x] Testar no navegador (modo mobile)
+- [x] Criar checkpoint
+
+## 📱 UX: Correção Completa de Responsividade Mobile
+
+**Problema:**
+- Print 1 (Admin/Clientes): Tabs sobrepostas, botões saindo da tela, cards muito largos
+- Print 2 (Pagamentos): Botões "Executar Manutenção" e "Reconciliar" fora da margem
+- Print 3 (Dashboard Cliente): Título + menu sobrepostos no header
+- Print 4 (Home): Logo "Exclusive Club" sobrepondo menu de navegação
+
+**Tarefas:**
+- [x] Admin.tsx: Transformar TabsList em scroll horizontal ou dropdown no mobile
+- [x] Admin.tsx: Empilhar botões "Gerar Relatório" e "Adicionar Cliente" verticalmente no mobile
+- [x] Admin.tsx: Ajustar largura dos cards de clientes para mobile
+- [x] Pagamentos.tsx: Empilhar botões do header verticalmente no mobile
+- [x] Pagamentos.tsx: Reduzir tamanho de fonte do título no mobile
+- [x] Dashboard.tsx (cliente): Quebrar header em múltiplas linhas no mobile
+- [x] Dashboard.tsx (cliente): Empilhar menu verticalmente no mobile
+- [x] Home.tsx: Reduzir tamanho do logo e texto "Exclusive Club" no mobile
+- [x] Home.tsx: Forçar quebra de linha entre logo e menu no mobile
+- [x] Adicionar classes globais: max-w-full, overflow-x-hidden em containers
+- [ ] Testar todas as páginas no modo mobile do navegador
 - [ ] Criar checkpoint

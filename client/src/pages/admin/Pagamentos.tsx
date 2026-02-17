@@ -145,22 +145,23 @@ export default function Pagamentos() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold">Exclusive Club - Compartilhando Sonhos</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm sm:text-base md:text-xl font-bold truncate">Exclusive Club - Compartilhando Sonhos</h1>
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">Pagamentos</h1>
             <p className="text-muted-foreground">Gerencie cobranças e acompanhe pagamentos</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => runMaintenanceMutation.mutate()}
               disabled={runMaintenanceMutation.isPending}
             >
@@ -172,6 +173,7 @@ export default function Pagamentos() {
               Executar Manutenção
             </Button>
             <Button
+              className="w-full sm:w-auto"
               onClick={() => runReconciliationMutation.mutate()}
               disabled={runReconciliationMutation.isPending}
             >

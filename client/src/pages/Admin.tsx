@@ -621,33 +621,33 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 max-w-3xl">
-            <TabsTrigger value="clients">
+          <TabsList className="w-full max-w-full overflow-x-auto flex md:grid md:grid-cols-5 md:max-w-3xl gap-2 p-1 flex-nowrap">
+            <TabsTrigger value="clients" className="flex-shrink-0 whitespace-nowrap">
               <Users className="h-4 w-4 mr-2" />
               Clientes
             </TabsTrigger>
-            <TabsTrigger value="vessels">
+            <TabsTrigger value="vessels" className="flex-shrink-0 whitespace-nowrap">
               <Ship className="h-4 w-4 mr-2" />
               Embarcações
             </TabsTrigger>
-            <TabsTrigger value="bookings">Reservas</TabsTrigger>
-            <TabsTrigger value="maintenance">
+            <TabsTrigger value="bookings" className="flex-shrink-0 whitespace-nowrap">Reservas</TabsTrigger>
+            <TabsTrigger value="maintenance" className="flex-shrink-0 whitespace-nowrap">
               <Settings className="h-4 w-4 mr-2" />
               Manutenção
             </TabsTrigger>
-            <TabsTrigger value="employees">
+            <TabsTrigger value="employees" className="flex-shrink-0 whitespace-nowrap">
               <UserCog className="h-4 w-4 mr-2" />
               Funcionários
             </TabsTrigger>
-            <TabsTrigger value="fuel">
+            <TabsTrigger value="fuel" className="flex-shrink-0 whitespace-nowrap">
               <Fuel className="h-4 w-4 mr-2" />
               Abastecimento
             </TabsTrigger>
-            <TabsTrigger value="inspections">
+            <TabsTrigger value="inspections" className="flex-shrink-0 whitespace-nowrap">
               <ClipboardCheck className="h-4 w-4 mr-2" />
               Vistorias
             </TabsTrigger>
-            <TabsTrigger value="reports">
+            <TabsTrigger value="reports" className="flex-shrink-0 whitespace-nowrap">
               <BarChart3 className="h-4 w-4 mr-2" />
               Relatórios
             </TabsTrigger>
@@ -657,16 +657,17 @@ export default function Admin() {
           <TabsContent value="clients" className="space-y-4">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
                     <CardTitle>Clientes Autorizados</CardTitle>
                     <CardDescription>
                       Gerencie os emails autorizados a fazer reservas
                     </CardDescription>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                     <Button 
                       variant="outline"
+                      className="w-full sm:w-auto"
                       onClick={() => {
                         if (!clients || clients.length === 0) {
                           toast.error('Nenhum cliente cadastrado');
@@ -678,7 +679,7 @@ export default function Admin() {
                       <ClipboardCheck className="h-4 w-4 mr-2" />
                       Gerar Relatório PDF
                     </Button>
-                    <Button onClick={() => setShowClientDialog(true)}>
+                    <Button onClick={() => setShowClientDialog(true)} className="w-full sm:w-auto">
                       <UserPlus className="h-4 w-4 mr-2" />
                       Adicionar Cliente
                     </Button>
