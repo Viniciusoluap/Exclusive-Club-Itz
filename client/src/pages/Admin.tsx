@@ -374,7 +374,7 @@ export default function Admin() {
   });
 
   const handleCreateClient = () => {
-    if (!clientForm.email || !clientForm.name || clientForm.quotas.length === 0) {
+    if (!clientForm.email || !clientForm.name) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
@@ -771,18 +771,27 @@ export default function Admin() {
                         className="flex items-center justify-between p-4 border rounded-lg"
                       >
                         <div className="flex-1">
-                          <div className="font-semibold">{client.name}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-semibold">{client.name}</div>
+                            {(!client.quotas || client.quotas.length === 0) && (
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
+                                SEM COTAS
+                              </span>
+                            )}
+                          </div>
                           <div className="text-sm text-muted-foreground">{client.email}</div>
                           {client.phone && (
                             <div className="text-sm text-muted-foreground">{client.phone}</div>
                           )}
-                          <div className="text-sm font-medium text-primary mt-1">
-                            {client.quotas?.map((q: any) => (
-                              <span key={q.id} className="mr-2">
-                                {vessels?.find(v => v.id === q.vesselId)?.name} #{q.quotaNumber} ({q.quotaType === "full" ? "Inteira" : "Meia"})
-                              </span>
-                            ))}
-                          </div>
+                          {client.quotas && client.quotas.length > 0 && (
+                            <div className="text-sm font-medium text-primary mt-1">
+                              {client.quotas.map((q: any) => (
+                                <span key={q.id} className="mr-2">
+                                  {vessels?.find(v => v.id === q.vesselId)?.name} #{q.quotaNumber} ({q.quotaType === "full" ? "Inteira" : "Meia"})
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
@@ -1429,7 +1438,7 @@ export default function Admin() {
             </div>
             
             <div>
-              <Label>Cotas *</Label>
+              <Label>Cotas</Label>
               <div className="space-y-2 mt-2">
                 {clientForm.quotas.map((quota, index) => (
                   <div key={index} className="flex items-center gap-2 p-2 border rounded">

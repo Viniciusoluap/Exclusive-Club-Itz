@@ -459,5 +459,24 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Home.tsx: Reduzir tamanho do logo e texto "Exclusive Club" no mobile
 - [x] Home.tsx: Forçar quebra de linha entre logo e menu no mobile
 - [x] Adicionar classes globais: max-w-full, overflow-x-hidden em containers
-- [ ] Testar todas as páginas no modo mobile do navegador
+- [x] Testar todas as páginas no modo mobile do navegador
+- [x] Criar checkpoint
+
+## 🔴 Feature: Desativação Total de Clientes (Sem Cotas)
+
+**Objetivo:** Permitir que clientes fiquem sem nenhuma cota/embarcação vinculada, diferente da desativação simples (que mantém cotas mas suspende acesso).
+
+**Diferença entre os dois tipos:**
+- **Desativação Simples (já existe):** Toggle ativo/inativo - cliente mantém cotas mas não pode usar temporariamente
+- **Desativação Total (NOVA):** Remove todas as cotas - cliente sai definitivamente mas histórico é preservado
+
+**Tarefas:**
+- [x] Backend: Remover validação que exige pelo menos 1 cota
+- [x] Frontend (Admin.tsx): Remover asterisco (*) do campo "Cotas"
+- [x] Frontend (Admin.tsx): Permitir salvar cliente com array vazio de cotas
+- [x] UI: Adicionar badge "SEM COTAS" para clientes com quotas.length === 0
+- [ ] Testar: Criar cliente com cotas, depois remover todas e salvar
+- [ ] Testar: Verificar que histórico (reservas, abastecimentos) é preservado
+- [ ] Testar: Verificar que desativação simples (botão Desativar/Ativar) continua funcionando
+- [x] Criar testes unitários
 - [ ] Criar checkpoint

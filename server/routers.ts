@@ -90,7 +90,7 @@ export const appRouter = router({
           vesselId: z.number(),
           quotaNumber: z.number().min(1).max(10), // 1-7 para lancha, 1-6 para jetski
           quotaType: z.enum(["full", "half"]),
-        })),
+        })).optional().default([]),
       }))
       .mutation(async ({ input }) => {
         const existing = await db.getAllowedClientByEmail(input.email);
@@ -143,12 +143,14 @@ export const appRouter = router({
           }
         }
         
-        // Send welcome email
-        await sendWelcomeEmail({
-          clientName: input.name,
-          clientEmail: input.email,
-          quotaName: quotaNames.join(', '),
-        });
+        // Send welcome email only if there are quotas
+        if (quotaNames.length > 0) {
+          await sendWelcomeEmail({
+            clientName: input.name,
+            clientEmail: input.email,
+            quotaName: quotaNames.join(', '),
+          });
+        }
         
         return { success: true };
       }),
