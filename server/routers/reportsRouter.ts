@@ -62,7 +62,7 @@ export const reportsRouter = router({
       .groupBy(fuelRecords.clientEmail);
 
       const avgTicket = clientsWithRevenue.length > 0
-        ? clientsWithRevenue.reduce((sum, c) => sum + c.total, 0) / clientsWithRevenue.length
+        ? clientsWithRevenue.reduce((sum, c) => sum + parseFloat(String(c.total || 0)), 0) / clientsWithRevenue.length
         : 0;
 
       // 3. Receita por Embarcação
@@ -107,10 +107,11 @@ export const reportsRouter = router({
 
       for (const client of clientsWithRevenue) {
         const quotaType = emailToQuotaType.get(client.clientEmail);
+        const total = parseFloat(String(client.total || 0));
         if (quotaType === 'full') {
-          fullQuotaRevenue += client.total;
+          fullQuotaRevenue += total;
         } else if (quotaType === 'half') {
-          halfQuotaRevenue += client.total;
+          halfQuotaRevenue += total;
         }
       }
 
