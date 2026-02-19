@@ -209,4 +209,58 @@ describe("reportsRouter", () => {
       await expect(caller.reports.maintenance({ startDate, endDate })).rejects.toThrow("You do not have required permission");
     });
   });
+
+  describe("fuel", () => {
+    it("deve retornar relatório de combustível para admin", async () => {
+      const { ctx } = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      const result = await caller.reports.fuel({ startDate, endDate });
+
+      expect(result).toHaveProperty("consumptionByVessel");
+      expect(result).toHaveProperty("avgCostPerLiter");
+      expect(result).toHaveProperty("stockProjection");
+      expect(Array.isArray(result.consumptionByVessel)).toBe(true);
+    });
+
+    it("deve negar acesso para não-admin", async () => {
+      const { ctx } = createNonAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      await expect(caller.reports.fuel({ startDate, endDate })).rejects.toThrow("You do not have required permission");
+    });
+  });
+
+  describe("seasonality", () => {
+    it("deve retornar relatório de sazonalidade para admin", async () => {
+      const { ctx } = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      const result = await caller.reports.seasonality({ startDate, endDate });
+
+      expect(result).toHaveProperty("occupancyByMonth");
+      expect(result).toHaveProperty("revenueByMonth");
+      expect(result).toHaveProperty("peakMonths");
+      expect(result).toHaveProperty("lowMonths");
+    });
+
+    it("deve negar acesso para não-admin", async () => {
+      const { ctx } = createNonAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      await expect(caller.reports.seasonality({ startDate, endDate })).rejects.toThrow("You do not have required permission");
+    });
+  });
 });

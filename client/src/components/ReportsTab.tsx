@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, DollarSign, TrendingUp, AlertCircle, BarChart3, Calendar, Users, Wrench } from "lucide-react";
+import { Loader2, DollarSign, TrendingUp, AlertCircle, BarChart3, Calendar, Users, Wrench, Fuel, Sun, FileDown } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
@@ -38,7 +38,17 @@ export default function ReportsTab() {
     endDate,
   });
 
-  if (loadingFinancial || loadingExecutive || loadingOccupancy || loadingClients || loadingMaintenance) {
+  const { data: fuel, isLoading: loadingFuel } = trpc.reports.fuel.useQuery({
+    startDate,
+    endDate,
+  });
+
+  const { data: seasonality, isLoading: loadingSeasonality } = trpc.reports.seasonality.useQuery({
+    startDate,
+    endDate,
+  });
+
+  if (loadingFinancial || loadingExecutive || loadingOccupancy || loadingClients || loadingMaintenance || loadingFuel || loadingSeasonality) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -120,6 +130,14 @@ export default function ReportsTab() {
           <TabsTrigger value="maintenance">
             <Wrench className="h-4 w-4 mr-2" />
             Manutenção
+          </TabsTrigger>
+          <TabsTrigger value="fuel">
+            <Fuel className="h-4 w-4 mr-2" />
+            Combustível
+          </TabsTrigger>
+          <TabsTrigger value="seasonality">
+            <Sun className="h-4 w-4 mr-2" />
+            Sazonalidade
           </TabsTrigger>
         </TabsList>
 
@@ -640,6 +658,217 @@ export default function ReportsTab() {
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Relatório de Combustível */}
+        <TabsContent value="fuel" className="space-y-4">
+          {/* Métricas de Combustível */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Custo Médio/Litro</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  R$ {fuel?.avgCostPerLiter ? (fuel.avgCostPerLiter / 100).toFixed(2) : "0,00"}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Estoque Atual</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {fuel?.stockProjection.currentStock || 0} L
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Dias até Esgotamento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {fuel?.stockProjection.daysUntilEmpty.toFixed(0) || "0"} dias
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Consumo por Embarcação */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Consumo Total por Embarcação</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={fuel?.consumptionByVessel || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="vesselName" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => `${Number(value).toFixed(0)} L`} />
+                  <Legend />
+                  <Bar dataKey="totalLiters" fill="#0088FE" name="Litros" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Operacional vs Clientes */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Abastecimentos Operacionais vs Clientes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Operacional', value: fuel?.operationalFuel || 0 },
+                      { name: 'Clientes', value: fuel?.clientFuel || 0 },
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {[0, 1].map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => `${Number(value).toFixed(0)} L`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Histórico de Preços */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Histórico de Preços</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={fuel?.priceHistory || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => `R$ ${(Number(value) / 100).toFixed(2)}`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="avgPrice" stroke="#8884d8" name="Preço Médio/L (R$)" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Relatório de Sazonalidade */}
+        <TabsContent value="seasonality" className="space-y-4">
+          {/* Ocupação por Mês */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Ocupação por Mês</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={seasonality?.occupancyByMonth || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="count" fill="#0088FE" name="Reservas" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Receita por Mês */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Receita por Mês</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={seasonality?.revenueByMonth || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => `R$ ${Number(value).toFixed(2)}`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="total" stroke="#00C49F" name="Receita (R$)" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Picos e Baixas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Picos de Demanda (Top 3)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {seasonality?.peakMonths && seasonality.peakMonths.length > 0 ? (
+                    seasonality.peakMonths.map((m: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between p-2 border rounded">
+                        <span>{m.month}</span>
+                        <span className="font-bold text-green-600">{m.count} reservas</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-muted-foreground">Sem dados</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Períodos de Baixa (Bottom 3)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {seasonality?.lowMonths && seasonality.lowMonths.length > 0 ? (
+                    seasonality.lowMonths.map((m: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between p-2 border rounded">
+                        <span>{m.month}</span>
+                        <span className="font-bold text-red-600">{m.count} reservas</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-muted-foreground">Sem dados</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Ocupação por Dia da Semana */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Ocupação por Dia da Semana</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={seasonality?.occupancyByWeekday || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="weekday" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="count" fill="#FFBB28" name="Reservas" />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </TabsContent>

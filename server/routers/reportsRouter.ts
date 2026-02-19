@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { bookings, fuelRecords, maintenances, allowedClients, vessels, subscriptionCharges, clientQuotas } from "../../drizzle/schema";
+import { bookings, fuelRecords, maintenances, allowedClients, vessels, subscriptionCharges, clientQuotas, fuelBudget } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc, sql, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
@@ -778,6 +778,193 @@ export const reportsRouter = router({
         maintenanceHistory,
         estimatedLostRevenue,
         topProviders,
+      };
+    }),
+
+  // Relatório de Combustível
+  fuel: adminProcedure
+    .input(z.object({
+      startDate: z.string(),
+      endDate: z.string(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const start = new Date(input.startDate).getTime();
+      const end = new Date(input.endDate).getTime();
+
+      // 1. Consumo Total por Embarcação
+      const consumptionByVessel = await db.select({
+        vesselName: fuelRecords.vesselName,
+        totalLiters: sql<number>`SUM(${fuelRecords.liters})`.as('totalLiters'),
+      })
+      .from(fuelRecords)
+      .where(
+        and(
+          gte(fuelRecords.createdAt, new Date(start).toISOString()),
+          lte(fuelRecords.createdAt, new Date(end).toISOString())
+        )
+      )
+      .groupBy(fuelRecords.vesselName);
+
+      // 2. Custo Médio por Litro
+      const avgCostPerLiter = await db.select({
+        avg: sql<number>`AVG(${fuelRecords.pricePerLiter})`.as('avg'),
+      })
+      .from(fuelRecords)
+      .where(
+        and(
+          gte(fuelRecords.createdAt, new Date(start).toISOString()),
+          lte(fuelRecords.createdAt, new Date(end).toISOString())
+        )
+      );
+
+      // 3. Eficiência de Combustível (placeholder - precisaria de dados de distância/horas)
+      const fuelEfficiency: any[] = [];
+
+      // 4. Comparação de Consumo entre Embarcações
+      const vesselComparison = consumptionByVessel.map(v => ({
+        vesselName: v.vesselName,
+        totalLiters: v.totalLiters,
+      }));
+
+      // 5. Abastecimentos Operacionais vs Clientes
+      const operationalFuel = await db.select({
+        total: sql<number>`SUM(${fuelRecords.liters})`.as('total'),
+      })
+      .from(fuelRecords)
+      .where(
+        and(
+          gte(fuelRecords.createdAt, new Date(start).toISOString()),
+          lte(fuelRecords.createdAt, new Date(end).toISOString()),
+          eq(fuelRecords.isOperational, 1)
+        )
+      );
+
+      const clientFuel = await db.select({
+        total: sql<number>`SUM(${fuelRecords.liters})`.as('total'),
+      })
+      .from(fuelRecords)
+      .where(
+        and(
+          gte(fuelRecords.createdAt, new Date(start).toISOString()),
+          lte(fuelRecords.createdAt, new Date(end).toISOString()),
+          eq(fuelRecords.isOperational, 0)
+        )
+      );
+
+      // 6. Projeção de Estoque (baseado em consumo médio diário)
+      const totalConsumption = consumptionByVessel.reduce((sum, v) => sum + v.totalLiters, 0);
+      const daysInPeriod = (end - start) / (1000 * 60 * 60 * 24);
+      const dailyAvgConsumption = daysInPeriod > 0 ? totalConsumption / daysInPeriod : 0;
+
+      // Buscar estoque atual do mês corrente
+      const currentMonthYear = new Date().toISOString().slice(0, 7);
+      const currentStock = await db.select()
+        .from(fuelBudget)
+        .where(eq(fuelBudget.monthYear, currentMonthYear))
+        .limit(1);
+
+      const stockLiters = currentStock[0]?.stockLiters || 0;
+      const daysUntilEmpty = dailyAvgConsumption > 0 ? stockLiters / dailyAvgConsumption : 0;
+
+      // 7. Histórico de Preços
+      const priceHistory = await db.execute(sql`
+        SELECT DATE_FORMAT(created_at, '%Y-%m') as month, AVG(price_per_liter) as avgPrice
+        FROM fuel_records
+        WHERE created_at >= ${new Date(start).toISOString()}
+          AND created_at <= ${new Date(end).toISOString()}
+        GROUP BY month
+        ORDER BY month
+      `) as any;
+
+      return {
+        consumptionByVessel,
+        avgCostPerLiter: avgCostPerLiter[0]?.avg || 0,
+        fuelEfficiency,
+        vesselComparison,
+        operationalFuel: operationalFuel[0]?.total || 0,
+        clientFuel: clientFuel[0]?.total || 0,
+        stockProjection: {
+          currentStock: stockLiters,
+          dailyConsumption: Math.round(dailyAvgConsumption * 10) / 10,
+          daysUntilEmpty: Math.round(daysUntilEmpty * 10) / 10,
+        },
+        priceHistory,
+      };
+    }),
+
+  // Relatório de Sazonalidade
+  seasonality: adminProcedure
+    .input(z.object({
+      startDate: z.string(),
+      endDate: z.string(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const start = new Date(input.startDate).getTime();
+      const end = new Date(input.endDate).getTime();
+
+      // 1. Ocupação por Mês
+      const occupancyByMonth = await db.execute(sql`
+        SELECT DATE_FORMAT(FROM_UNIXTIME(booking_date / 1000), '%Y-%m') as month, COUNT(*) as count
+        FROM bookings
+        WHERE booking_date >= ${start}
+          AND booking_date <= ${end}
+          AND status = 'confirmed'
+        GROUP BY month
+        ORDER BY month
+      `) as any;
+
+      // 2. Receita por Mês
+      const revenueByMonth = await db.execute(sql`
+        SELECT DATE_FORMAT(created_at, '%Y-%m') as month, SUM(total_amount) as total
+        FROM fuel_records
+        WHERE created_at >= ${new Date(start).toISOString()}
+          AND created_at <= ${new Date(end).toISOString()}
+          AND payment_status = 'paid'
+        GROUP BY month
+        ORDER BY month
+      `) as any;
+
+      // 3. Picos de Demanda (top 3 meses)
+      const peakMonths = [...occupancyByMonth].sort((a: any, b: any) => b.count - a.count).slice(0, 3);
+
+      // 4. Períodos de Baixa (bottom 3 meses)
+      const lowMonths = [...occupancyByMonth].sort((a: any, b: any) => a.count - b.count).slice(0, 3);
+
+      // 5. Comparação Ano a Ano (placeholder - precisa de mais de 1 ano de dados)
+      const yearOverYear: any[] = [];
+
+      // 6. Previsão de Alta Temporada (baseado em histórico)
+      const highSeasonMonths = peakMonths.map((m: any) => m.month);
+
+      // 7. Taxa de Ocupação por Dia da Semana
+      const occupancyByWeekday = await db.execute(sql`
+        SELECT DAYNAME(FROM_UNIXTIME(booking_date / 1000)) as weekday, COUNT(*) as count
+        FROM bookings
+        WHERE booking_date >= ${start}
+          AND booking_date <= ${end}
+          AND status = 'confirmed'
+        GROUP BY weekday
+        ORDER BY count DESC
+      `) as any;
+
+      // 8. Eventos Especiais (placeholder - precisa de calendário de feriados)
+      const specialEvents: any[] = [];
+
+      return {
+        occupancyByMonth,
+        revenueByMonth,
+        peakMonths,
+        lowMonths,
+        yearOverYear,
+        highSeasonMonths,
+        occupancyByWeekday,
+        specialEvents,
       };
     }),
 });
