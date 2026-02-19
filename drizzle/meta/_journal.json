@@ -281,6 +281,13 @@
       "when": 1771257788693,
       "tag": "0039_hot_ikaris",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1771533128836,
+      "tag": "0040_omniscient_venus",
+      "breakpoints": true
     }
   ]
 }

@@ -516,4 +516,20 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Admin.tsx: Aumentar tamanho dos ícones no mobile (h-6 w-6)
 - [x] Admin.tsx: Manter texto + ícone no desktop
 - [x] Testar no navegador (modo mobile)
-- [ ] Criar checkpoint
+- [x] Criar checkpoint
+
+## 📊 FASE 1: Sistema Saas (Mensalidades)
+====================================================================================
+
+**Objetivo:** Implementar sistema completo de gestão de mensalidades com integração Asaas
+
+**Tarefas:**
+- [x] Criar tabelas no banco de dados (subscriptions + subscription_charges)
+- [x] Criar saasRouter.ts com endpoints CRUD
+- [x] Criar página /admin/saas com interface completa
+- [x] Integrar com Asaas (reutilizar asaasService.ts)
+- [x] Implementar dashboard de inadimplência
+- [x] Criar testes unitários (8/8 passando)
+- [x] Adicionar tab "Saas" no menu Admin
+- [x] Criar checkpoint FASE 1
+
