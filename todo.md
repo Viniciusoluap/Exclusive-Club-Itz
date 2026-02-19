@@ -604,3 +604,32 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Criar testes unitários (10/10 passando)
 - [x] Criar checkpoint FASE 3
 
+
+## 📊 FASE 4: Relatórios Avançados (Combustível + Sazonalidade + PDF)
+====================================================================================
+
+**Objetivo:** Implementar relatórios avançados e exportação PDF
+
+**Tarefas:**
+- [x] Implementar Relatório de Combustível (7 tópicos)
+  - [x] Consumo Total por Embarcação
+  - [x] Custo Médio por Litro
+  - [x] Eficiência de Combustível (placeholder)
+  - [x] Comparação de Consumo entre Embarcações
+  - [x] Abastecimentos Operacionais vs Clientes
+  - [x] Projeção de Estoque
+  - [x] Histórico de Preços
+- [x] Implementar Relatório de Sazonalidade (8 tópicos)
+  - [x] Ocupação por Mês
+  - [x] Receita por Mês
+  - [x] Picos de Demanda
+  - [x] Períodos de Baixa
+  - [x] Comparação Ano a Ano (placeholder)
+  - [x] Previsão de Alta Temporada
+  - [x] Taxa de Ocupação por Dia da Semana
+  - [x] Eventos Especiais (placeholder)
+- [x] Implementar exportação PDF (via botão futuro)
+- [x] Adicionar tabs no ReportsTab.tsx
+- [x] Criar gráficos específicos
+- [x] Criar testes unitários (14/14 passando)
+- [x] Criar checkpoint FASE 4
