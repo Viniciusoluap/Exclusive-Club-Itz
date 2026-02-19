@@ -633,3 +633,17 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Criar gráficos específicos
 - [x] Criar testes unitários (14/14 passando)
 - [x] Criar checkpoint FASE 4
+
+## 📊 FASE 5: Automações (Cron jobs + Webhooks)
+====================================================================================
+
+**Objetivo:** Implementar automações para tarefas recorrentes
+
+**Tarefas:**
+- [x] Implementar cron job para geração automática de mensalidades
+- [x] Implementar cron job para envio de alertas de inadimplência
+- [x] Implementar cron job para envio de relatórios mensais
+- [x] Implementar webhook para sincronização de pagamentos Asaas
+- [x] Criar testes unitários (5/5 passando)
+- [x] Criar documentação (AUTOMATIONS.md)
+- [x] Criar checkpoint FASE 5
