@@ -651,4 +651,4 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 ## 🐛 BUGS REPORTADOS
 ====================================================================================
 
-- [x] Corrigir erro "An unexpected error occurred" na página de Relatórios (faltava import useState)
+- [x] Corrigir erro "An unexpected error occurred" na página de Relatórios (convertido client.total para número - RESOLVIDO!)

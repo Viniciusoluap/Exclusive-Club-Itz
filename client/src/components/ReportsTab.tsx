@@ -371,7 +371,7 @@ export default function ReportsTab() {
                         <div className="text-sm text-muted-foreground">{client.clientEmail}</div>
                       </div>
                       <div className="text-lg font-bold text-green-600">
-                        R$ {client.total.toFixed(2)}
+                        R$ {Number(client.total || 0).toFixed(2)}
                       </div>
                     </div>
                   ))
@@ -550,7 +550,7 @@ export default function ReportsTab() {
                         <div className="text-sm text-muted-foreground">{client.clientEmail}</div>
                       </div>
                       <div className="text-lg font-bold text-green-600">
-                        R$ {client.total.toFixed(2)}
+                        R$ {Number(client.total || 0).toFixed(2)}
                       </div>
                     </div>
                   ))
