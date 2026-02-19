@@ -475,8 +475,22 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Frontend (Admin.tsx): Remover asterisco (*) do campo "Cotas"
 - [x] Frontend (Admin.tsx): Permitir salvar cliente com array vazio de cotas
 - [x] UI: Adicionar badge "SEM COTAS" para clientes com quotas.length === 0
-- [ ] Testar: Criar cliente com cotas, depois remover todas e salvar
-- [ ] Testar: Verificar que histórico (reservas, abastecimentos) é preservado
-- [ ] Testar: Verificar que desativação simples (botão Desativar/Ativar) continua funcionando
+- [x] Testar: Criar cliente com cotas, depois remover todas e salvar
+- [x] Testar: Verificar que histórico (reservas, abastecimentos) é preservado
+- [x] Testar: Verificar que desativação simples (botão Desativar/Ativar) continua funcionando
 - [x] Criar testes unitários
+- [x] Criar checkpoint
+
+## 📱 UX: Tabs do Admin em Grid 2x3 (Mobile)
+
+**Problema:** Barra de tabs (Clientes, Embarcações, Reservas, etc.) tem scroll horizontal no mobile, dificultando visualização de todas as opções
+
+**Solução:** Grid 2x3 no mobile (todas as tabs visíveis sem scroll) + horizontal no desktop
+
+**Tarefas:**
+- [x] Admin.tsx: Remover `overflow-x-auto` e `whitespace-nowrap` das tabs
+- [x] Admin.tsx: Adicionar classes `grid grid-cols-3 gap-2` para mobile (< 768px)
+- [x] Admin.tsx: Manter `flex flex-row` para desktop (≥ 768px)
+- [x] Admin.tsx: Reduzir tamanho de fonte/ícones das tabs no mobile se necessário
+- [ ] Testar no navegador (modo mobile)
 - [ ] Criar checkpoint

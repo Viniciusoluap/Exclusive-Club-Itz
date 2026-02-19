@@ -621,34 +621,34 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="w-full max-w-full overflow-x-auto flex md:grid md:grid-cols-5 md:max-w-3xl gap-2 p-1 flex-nowrap">
-            <TabsTrigger value="clients" className="flex-shrink-0 whitespace-nowrap">
-              <Users className="h-4 w-4 mr-2" />
+          <TabsList className="w-full grid grid-cols-3 md:grid-cols-5 gap-2 p-1 max-w-full md:max-w-3xl">
+            <TabsTrigger value="clients" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
+              <Users className="h-4 w-4 md:mr-2" />
               Clientes
             </TabsTrigger>
-            <TabsTrigger value="vessels" className="flex-shrink-0 whitespace-nowrap">
-              <Ship className="h-4 w-4 mr-2" />
+            <TabsTrigger value="vessels" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
+              <Ship className="h-4 w-4 md:mr-2" />
               Embarcações
             </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex-shrink-0 whitespace-nowrap">Reservas</TabsTrigger>
-            <TabsTrigger value="maintenance" className="flex-shrink-0 whitespace-nowrap">
-              <Settings className="h-4 w-4 mr-2" />
+            <TabsTrigger value="bookings" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5"><Calendar className="h-4 w-4 md:mr-2" />Reservas</TabsTrigger>
+            <TabsTrigger value="maintenance" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
+              <Settings className="h-4 w-4 md:mr-2" />
               Manutenção
             </TabsTrigger>
-            <TabsTrigger value="employees" className="flex-shrink-0 whitespace-nowrap">
-              <UserCog className="h-4 w-4 mr-2" />
+            <TabsTrigger value="employees" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
+              <UserCog className="h-4 w-4 md:mr-2" />
               Funcionários
             </TabsTrigger>
-            <TabsTrigger value="fuel" className="flex-shrink-0 whitespace-nowrap">
-              <Fuel className="h-4 w-4 mr-2" />
+            <TabsTrigger value="fuel" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
+              <Fuel className="h-4 w-4 md:mr-2" />
               Abastecimento
             </TabsTrigger>
-            <TabsTrigger value="inspections" className="flex-shrink-0 whitespace-nowrap">
-              <ClipboardCheck className="h-4 w-4 mr-2" />
+            <TabsTrigger value="inspections" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
+              <ClipboardCheck className="h-4 w-4 md:mr-2" />
               Vistorias
             </TabsTrigger>
-            <TabsTrigger value="reports" className="flex-shrink-0 whitespace-nowrap">
-              <BarChart3 className="h-4 w-4 mr-2" />
+            <TabsTrigger value="reports" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
+              <BarChart3 className="h-4 w-4 md:mr-2" />
               Relatórios
             </TabsTrigger>
           </TabsList>
