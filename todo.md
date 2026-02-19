@@ -533,3 +533,31 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Adicionar tab "Saas" no menu Admin
 - [x] Criar checkpoint FASE 1
 
+
+## 📊 FASE 2: Relatórios Essenciais (Financeiro + Dashboard Executivo)
+====================================================================================
+
+**Objetivo:** Implementar relatórios financeiros e dashboard executivo com métricas estratégicas
+
+**Tarefas:**
+- [x] Criar reportsRouter.ts com endpoints de relatórios
+- [x] Implementar Relatório Financeiro (10 tópicos)
+  - [x] Receita Total por Período
+  - [x] Ticket Médio por Cliente
+  - [x] Receita por Embarcação
+  - [x] Receita por Tipo de Cota
+  - [x] Taxa de Inadimplência
+  - [x] Custo de Manutenção vs Receita
+  - [x] Custo de Combustível vs Receita
+  - [x] Projeção de Receita (30/60/90 dias)
+  - [x] Sazonalidade de Receita
+  - [x] LTV por Cliente
+- [x] Implementar Dashboard Executivo (2 tópicos)
+  - [x] Alertas Críticos
+  - [x] Scorecard Geral (0-100)
+- [x] Refatorar ReportsTab com tabs por categoria
+- [x] Adicionar gráficos (recharts)
+- [x] Adicionar filtros (período, embarcação)
+- [x] Criar testes unitários (4/4 passando)
+- [x] Criar checkpoint FASE 2
+

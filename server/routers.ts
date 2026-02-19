@@ -5,6 +5,7 @@ import { webhookRouter } from "./webhookRouter";
 import { paymentsRouter } from "./paymentsRouter";
 import { backupRouter } from "./routers/backupRouter";
 import { saasRouter } from "./routers/saasRouter";
+import { reportsRouter } from "./routers/reportsRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -59,6 +60,7 @@ export const appRouter = router({
   payments: paymentsRouter,
   backup: backupRouter,
   saas: saasRouter,
+  reports: reportsRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

@@ -26,8 +26,9 @@ import { BarChart3, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, Fue
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import ReportsTab from "@/components/ReportsTab";
 
-function ReportsTab() {
+function OldReportsTab() {
   const { data: stats, isLoading } = trpc.stats.admin.useQuery();
 
   if (isLoading) {
