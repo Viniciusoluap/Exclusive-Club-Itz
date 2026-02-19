@@ -647,3 +647,8 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Criar testes unitários (5/5 passando)
 - [x] Criar documentação (AUTOMATIONS.md)
 - [x] Criar checkpoint FASE 5
+
+## 🐛 BUGS REPORTADOS
+====================================================================================
+
+- [x] Corrigir erro "An unexpected error occurred" na página de Relatórios (faltava import useState)
