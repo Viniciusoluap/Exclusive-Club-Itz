@@ -266,6 +266,31 @@ export const backupHistory = mysqlTable("backup_history", {
 	localFilePath: text("local_file_path"),
 });
 
+export const subscriptions = mysqlTable("subscriptions", {
+	id: int().autoincrement().notNull(),
+	clientId: int("client_id").notNull(),
+	type: mysqlEnum("type", ["monthly", "quota_sale"]).notNull(),
+	value: decimal({ precision: 10, scale: 2 }).notNull(),
+	dueDay: int("due_day").notNull(),
+	startDate: timestamp("start_date", { mode: 'string' }).notNull(),
+	endDate: timestamp("end_date", { mode: 'string' }),
+	status: mysqlEnum("status", ["active", "paused", "cancelled"]).default("active").notNull(),
+	yearlyAdjustment: mysqlEnum("yearly_adjustment", ["manual", "ipca", "igpm"]).default("manual").notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+});
+
+export const subscriptionCharges = mysqlTable("subscription_charges", {
+	id: int().autoincrement().notNull(),
+	subscriptionId: int("subscription_id").notNull(),
+	asaasPaymentId: varchar("asaas_payment_id", { length: 64 }),
+	value: decimal({ precision: 10, scale: 2 }).notNull(),
+	dueDate: timestamp("due_date", { mode: 'string' }).notNull(),
+	paidDate: timestamp("paid_date", { mode: 'string' }),
+	status: mysqlEnum("status", ["pending", "paid", "overdue", "cancelled"]).default("pending").notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+});
+
 export const vessels = mysqlTable("vessels", {
 	id: int().autoincrement().notNull(),
 	name: text().notNull(),
@@ -306,3 +331,7 @@ export type FuelRecordContainer = typeof fuelRecordContainers.$inferSelect;
 export type InsertFuelRecordContainer = typeof fuelRecordContainers.$inferInsert;
 export type BackupHistory = typeof backupHistory.$inferSelect;
 export type InsertBackupHistory = typeof backupHistory.$inferInsert;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+export type SubscriptionCharge = typeof subscriptionCharges.$inferSelect;
+export type InsertSubscriptionCharge = typeof subscriptionCharges.$inferInsert;

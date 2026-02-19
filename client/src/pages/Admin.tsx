@@ -621,7 +621,7 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="w-full grid grid-cols-4 md:grid-cols-5 gap-2 p-1 max-w-full md:max-w-3xl">
+          <TabsList className="w-full grid grid-cols-5 md:grid-cols-5 gap-2 p-1 max-w-full md:max-w-3xl">
             <TabsTrigger value="clients" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
               <Users className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
               <span className="hidden md:inline">Clientes</span>
@@ -653,6 +653,10 @@ export default function Admin() {
             <TabsTrigger value="reports" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
               <BarChart3 className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
               <span className="hidden md:inline">Relatórios</span>
+            </TabsTrigger>
+            <TabsTrigger value="saas" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
+              <DollarSign className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden md:inline">Saas</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1152,6 +1156,24 @@ export default function Admin() {
           {/* Reports Tab */}
           <TabsContent value="reports" className="space-y-4">
             <ReportsTab />
+          </TabsContent>
+
+          {/* Saas Tab */}
+          <TabsContent value="saas" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Saas - Mensalidades</CardTitle>
+                <CardDescription>Acesse a página completa de gestão de mensalidades</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link href="/admin/saas">
+                  <Button className="w-full">
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Acessar Saas
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
