@@ -492,5 +492,28 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Admin.tsx: Adicionar classes `grid grid-cols-3 gap-2` para mobile (< 768px)
 - [x] Admin.tsx: Manter `flex flex-row` para desktop (≥ 768px)
 - [x] Admin.tsx: Reduzir tamanho de fonte/ícones das tabs no mobile se necessário
-- [ ] Testar no navegador (modo mobile)
+- [x] Testar no navegador (modo mobile)
+- [x] Criar checkpoint
+
+## 📱 UX: Tabs do Admin - Grid 4x2 Apenas Ícones (Mobile)
+
+**Problema:** Grid 3x3 ocupa muito espaço vertical no mobile, empurrando conteúdo importante (Vistorias, Cobranças) para baixo
+
+**Solução:** Grid 4x2 com apenas ícones (sem texto) no mobile
+
+**Layout mobile:**
+```
+┌───┬───┬───┬───┐
+│👥 │⛵ │📅│⚙️ │
+├───┼───┼───┼───┤
+│👷│⛽│📋│📊│
+└───┴───┴───┴───┘
+```
+
+**Tarefas:**
+- [x] Admin.tsx: Mudar `grid-cols-3` para `grid-cols-4` no mobile
+- [x] Admin.tsx: Ocultar texto das tabs no mobile (apenas ícones)
+- [x] Admin.tsx: Aumentar tamanho dos ícones no mobile (h-6 w-6)
+- [x] Admin.tsx: Manter texto + ícone no desktop
+- [x] Testar no navegador (modo mobile)
 - [ ] Criar checkpoint
