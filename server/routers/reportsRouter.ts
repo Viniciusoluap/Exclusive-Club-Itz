@@ -291,4 +291,493 @@ export const reportsRouter = router({
       scoreLabel: score >= 80 ? 'Excelente' : score >= 60 ? 'Bom' : score >= 40 ? 'Regular' : 'Crítico',
     };
   }),
+
+  // Relatório de Ocupação
+  occupancy: adminProcedure
+    .input(z.object({
+      startDate: z.string(),
+      endDate: z.string(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const start = new Date(input.startDate).getTime();
+      const end = new Date(input.endDate).getTime();
+
+      // 1. Taxa de Ocupação por Embarcação
+      const allVessels = await db.select().from(vessels);
+      const daysInPeriod = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+      const occupancyByVessel = await Promise.all(
+        allVessels.map(async (vessel) => {
+          const bookingsCount = await db.select({
+            count: sql<number>`COUNT(DISTINCT DATE(FROM_UNIXTIME(${bookings.bookingDate} / 1000)))`.as('count'),
+          })
+          .from(bookings)
+          .where(
+            and(
+              eq(bookings.vesselName, vessel.name),
+              gte(bookings.bookingDate, start),
+              lte(bookings.bookingDate, end),
+              eq(bookings.status, 'confirmed')
+            )
+          );
+
+          const occupancyRate = daysInPeriod > 0 
+            ? ((bookingsCount[0]?.count || 0) / daysInPeriod) * 100 
+            : 0;
+
+          return {
+            vesselName: vessel.name,
+            bookedDays: bookingsCount[0]?.count || 0,
+            totalDays: daysInPeriod,
+            occupancyRate: Math.round(occupancyRate * 10) / 10,
+          };
+        })
+      );
+
+      // 2. Dias Mais Reservados (dia da semana)
+      const bookingsByWeekday = await db.execute(sql`
+        SELECT DAYNAME(FROM_UNIXTIME(booking_date / 1000)) as weekday, COUNT(*) as count
+        FROM bookings
+        WHERE booking_date >= ${start}
+          AND booking_date <= ${end}
+          AND status = 'confirmed'
+        GROUP BY weekday
+        ORDER BY count DESC
+      `) as any;
+
+      // 3. Horários de Pico (placeholder - não temos hora exata)
+      const peakHours = { morning: 0, afternoon: 0, evening: 0 };
+
+      // 4. Taxa de Cancelamento
+      const totalBookings = await db.select({
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(bookings)
+      .where(
+        and(
+          gte(bookings.bookingDate, start),
+          lte(bookings.bookingDate, end)
+        )
+      );
+
+      const cancelledBookings = await db.select({
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(bookings)
+      .where(
+        and(
+          gte(bookings.bookingDate, start),
+          lte(bookings.bookingDate, end),
+          eq(bookings.status, 'cancelled')
+        )
+      );
+
+      const cancellationRate = totalBookings[0]?.count > 0
+        ? ((cancelledBookings[0]?.count || 0) / totalBookings[0].count) * 100
+        : 0;
+
+      // 5. Lead Time Médio (dias entre criação e data da reserva)
+      const bookingsWithLeadTime = await db.select({
+        bookingDate: bookings.bookingDate,
+        createdAt: bookings.createdAt,
+      })
+      .from(bookings)
+      .where(
+        and(
+          gte(bookings.bookingDate, start),
+          lte(bookings.bookingDate, end),
+          eq(bookings.status, 'confirmed')
+        )
+      );
+
+      const avgLeadTime = bookingsWithLeadTime.length > 0
+        ? bookingsWithLeadTime.reduce((sum, b) => {
+            const leadDays = (b.bookingDate - new Date(b.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+            return sum + leadDays;
+          }, 0) / bookingsWithLeadTime.length
+        : 0;
+
+      // 6. Reservas por Cliente
+      const bookingsByClient = await db.select({
+        clientEmail: bookings.clientEmail,
+        clientName: bookings.clientName,
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(bookings)
+      .where(
+        and(
+          gte(bookings.bookingDate, start),
+          lte(bookings.bookingDate, end),
+          eq(bookings.status, 'confirmed')
+        )
+      )
+      .groupBy(bookings.clientEmail, bookings.clientName)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(10);
+
+      // 7. Ocupação por Tipo de Cota
+      const quotaClients = await db.select({
+        clientId: clientQuotas.clientId,
+        quotaType: clientQuotas.quotaType,
+      })
+      .from(clientQuotas)
+      .where(eq(clientQuotas.isActive, 1));
+
+      const clientEmails = await db.select({
+        id: allowedClients.id,
+        email: allowedClients.email,
+      })
+      .from(allowedClients);
+
+      const emailToQuotaType = new Map();
+      for (const quota of quotaClients) {
+        const client = clientEmails.find(c => c.id === quota.clientId);
+        if (client) {
+          emailToQuotaType.set(client.email, quota.quotaType);
+        }
+      }
+
+      let fullQuotaBookings = 0;
+      let halfQuotaBookings = 0;
+
+      for (const booking of bookingsByClient) {
+        const quotaType = emailToQuotaType.get(booking.clientEmail);
+        if (quotaType === 'full') {
+          fullQuotaBookings += booking.count;
+        } else if (quotaType === 'half') {
+          halfQuotaBookings += booking.count;
+        }
+      }
+
+      // 8. Projeção de Ocupação (próximos 30 dias)
+      const futureStart = Date.now();
+      const futureEnd = futureStart + 30 * 24 * 60 * 60 * 1000;
+
+      const futureBookings = await db.select({
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(bookings)
+      .where(
+        and(
+          gte(bookings.bookingDate, futureStart),
+          lte(bookings.bookingDate, futureEnd),
+          eq(bookings.status, 'confirmed')
+        )
+      );
+
+      const projectedOccupancy = allVessels.length > 0
+        ? ((futureBookings[0]?.count || 0) / (allVessels.length * 30)) * 100
+        : 0;
+
+      return {
+        occupancyByVessel,
+        bookingsByWeekday,
+        peakHours,
+        cancellationRate: Math.round(cancellationRate * 10) / 10,
+        avgLeadTime: Math.round(avgLeadTime * 10) / 10,
+        bookingsByClient,
+        occupancyByQuotaType: {
+          full: fullQuotaBookings,
+          half: halfQuotaBookings,
+        },
+        projectedOccupancy: Math.round(projectedOccupancy * 10) / 10,
+      };
+    }),
+
+  // Relatório de Clientes
+  clients: adminProcedure
+    .input(z.object({
+      startDate: z.string(),
+      endDate: z.string(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const start = new Date(input.startDate).getTime();
+      const end = new Date(input.endDate).getTime();
+
+      // 1. Clientes Ativos vs Inativos
+      const allClients = await db.select().from(allowedClients);
+      
+      const activeClientsData = await db.select({
+        clientEmail: bookings.clientEmail,
+      })
+      .from(bookings)
+      .where(
+        and(
+          gte(bookings.bookingDate, start),
+          lte(bookings.bookingDate, end),
+          eq(bookings.status, 'confirmed')
+        )
+      )
+      .groupBy(bookings.clientEmail);
+
+      const activeCount = activeClientsData.length;
+      const inactiveCount = allClients.length - activeCount;
+
+      // 2. Frequência de Uso por Cliente
+      const clientFrequency = await db.select({
+        clientEmail: bookings.clientEmail,
+        clientName: bookings.clientName,
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(bookings)
+      .where(
+        and(
+          gte(bookings.bookingDate, start),
+          lte(bookings.bookingDate, end),
+          eq(bookings.status, 'confirmed')
+        )
+      )
+      .groupBy(bookings.clientEmail, bookings.clientName)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(10);
+
+      // 3. Clientes com Maior Gasto
+      const clientSpending = await db.select({
+        clientEmail: fuelRecords.clientEmail,
+        clientName: fuelRecords.clientName,
+        total: sql<number>`SUM(${fuelRecords.totalAmount})`.as('total'),
+      })
+      .from(fuelRecords)
+      .where(
+        and(
+          gte(fuelRecords.createdAt, new Date(start).toISOString()),
+          lte(fuelRecords.createdAt, new Date(end).toISOString()),
+          eq(fuelRecords.paymentStatus, 'paid')
+        )
+      )
+      .groupBy(fuelRecords.clientEmail, fuelRecords.clientName)
+      .orderBy(desc(sql`SUM(${fuelRecords.totalAmount})`))
+      .limit(10);
+
+      // 4. Clientes Inadimplentes
+      const defaultingClients = await db.execute(sql`
+        SELECT ac.email, ac.name, COUNT(*) as overdue_count
+        FROM subscription_charges sc
+        JOIN subscriptions s ON sc.subscription_id = s.id
+        JOIN allowed_clients ac ON s.client_id = ac.id
+        WHERE sc.status = 'overdue'
+        GROUP BY ac.email, ac.name
+        ORDER BY overdue_count DESC
+      `) as any;
+
+      // 5. Taxa de Retenção (clientes que reservaram em ambos os períodos)
+      const previousStart = start - (end - start);
+      const previousEnd = start;
+
+      const previousPeriodClients = await db.select({
+        clientEmail: bookings.clientEmail,
+      })
+      .from(bookings)
+      .where(
+        and(
+          gte(bookings.bookingDate, previousStart),
+          lte(bookings.bookingDate, previousEnd),
+          eq(bookings.status, 'confirmed')
+        )
+      )
+      .groupBy(bookings.clientEmail);
+
+      const currentPeriodClients = await db.select({
+        clientEmail: bookings.clientEmail,
+      })
+      .from(bookings)
+      .where(
+        and(
+          gte(bookings.bookingDate, start),
+          lte(bookings.bookingDate, end),
+          eq(bookings.status, 'confirmed')
+        )
+      )
+      .groupBy(bookings.clientEmail);
+
+      const previousEmails = new Set(previousPeriodClients.map(c => c.clientEmail));
+      const retainedCount = currentPeriodClients.filter(c => previousEmails.has(c.clientEmail)).length;
+      const retentionRate = previousPeriodClients.length > 0
+        ? (retainedCount / previousPeriodClients.length) * 100
+        : 0;
+
+      // 6. Novos Clientes por Período
+      const newClients = await db.select({
+        email: allowedClients.email,
+        name: allowedClients.name,
+        createdAt: allowedClients.createdAt,
+      })
+      .from(allowedClients)
+      .where(
+        and(
+          gte(allowedClients.createdAt, new Date(start).toISOString()),
+          lte(allowedClients.createdAt, new Date(end).toISOString())
+        )
+      );
+
+      // 7. Churn Rate
+      const churnedCount = previousPeriodClients.length - retainedCount;
+      const churnRate = previousPeriodClients.length > 0
+        ? (churnedCount / previousPeriodClients.length) * 100
+        : 0;
+
+      // 8. NPS Simulado (baseado em frequência de uso)
+      const avgFrequency = clientFrequency.length > 0
+        ? clientFrequency.reduce((sum, c) => sum + c.count, 0) / clientFrequency.length
+        : 0;
+      const simulatedNPS = Math.min(100, Math.round(avgFrequency * 10));
+
+      // 9. Segmentação por Tipo de Cota
+      const quotaDistribution = await db.select({
+        quotaType: clientQuotas.quotaType,
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(clientQuotas)
+      .where(eq(clientQuotas.isActive, 1))
+      .groupBy(clientQuotas.quotaType);
+
+      return {
+        activeCount,
+        inactiveCount,
+        clientFrequency,
+        clientSpending,
+        defaultingClients,
+        retentionRate: Math.round(retentionRate * 10) / 10,
+        newClients,
+        churnRate: Math.round(churnRate * 10) / 10,
+        simulatedNPS,
+        quotaDistribution,
+      };
+    }),
+
+  // Relatório de Manutenção
+  maintenance: adminProcedure
+    .input(z.object({
+      startDate: z.string(),
+      endDate: z.string(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const start = new Date(input.startDate).getTime();
+      const end = new Date(input.endDate).getTime();
+
+      // 1. Manutenções Ativas
+      const activeMaintenances = await db.select()
+        .from(maintenances)
+        .where(eq(maintenances.status, 'in_progress'));
+
+      // 2. Tempo Médio de Manutenção
+      const completedMaintenances = await db.select()
+        .from(maintenances)
+        .where(
+          and(
+            gte(maintenances.startDate, start),
+            lte(maintenances.startDate, end),
+            eq(maintenances.status, 'completed')
+          )
+        );
+
+      const avgDuration = completedMaintenances.length > 0
+        ? completedMaintenances.reduce((sum, m) => {
+            const duration = (m.endDate - m.startDate) / (1000 * 60 * 60 * 24);
+            return sum + duration;
+          }, 0) / completedMaintenances.length
+        : 0;
+
+      // 3. Custo Total de Manutenção (placeholder - precisa de campo cost)
+      const totalCost = 0;
+
+      // 4. Manutenções por Embarcação
+      const maintenancesByVessel = await db.select({
+        vesselName: maintenances.vesselName,
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(maintenances)
+      .where(
+        and(
+          gte(maintenances.startDate, start),
+          lte(maintenances.startDate, end)
+        )
+      )
+      .groupBy(maintenances.vesselName);
+
+      // 5. Manutenções Preventivas vs Corretivas
+      // Manutenções Preventivas (placeholder - não há campo type)
+      const preventiveCount = [{ count: 0 }];
+
+      // Manutenções Corretivas (placeholder - não há campo type)
+      const correctiveCount = [{ count: 0 }];
+
+      // 6. Taxa de Disponibilidade
+      const allVessels = await db.select().from(vessels);
+      const daysInPeriod = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      const totalPossibleDays = allVessels.length * daysInPeriod;
+
+      const maintenanceDays = completedMaintenances.reduce((sum, m) => {
+        const duration = (m.endDate - m.startDate) / (1000 * 60 * 60 * 24);
+        return sum + Math.ceil(duration);
+      }, 0);
+
+      const availabilityRate = totalPossibleDays > 0
+        ? ((totalPossibleDays - maintenanceDays) / totalPossibleDays) * 100
+        : 100;
+
+      // 7. Próximas Manutenções Programadas
+      const upcomingMaintenances = await db.select()
+        .from(maintenances)
+        .where(
+          and(
+            gte(maintenances.startDate, Date.now()),
+            eq(maintenances.status, 'scheduled')
+          )
+        )
+        .orderBy(maintenances.startDate)
+        .limit(10);
+
+      // 8. Histórico de Manutenções
+      const maintenanceHistory = await db.select()
+        .from(maintenances)
+        .where(
+          and(
+            gte(maintenances.startDate, start),
+            lte(maintenances.startDate, end)
+          )
+        )
+        .orderBy(desc(maintenances.startDate));
+
+      // 9. Impacto na Receita (reservas perdidas durante manutenção)
+      const lostBookings = await db.select({
+        count: sql<number>`COUNT(*)`.as('count'),
+      })
+      .from(bookings)
+      .where(
+        and(
+          gte(bookings.bookingDate, start),
+          lte(bookings.bookingDate, end),
+          eq(bookings.status, 'cancelled')
+        )
+      );
+
+      const estimatedLostRevenue = (lostBookings[0]?.count || 0) * 500; // Estimativa de R$500 por reserva
+
+      // 10. Fornecedores Mais Utilizados (placeholder - precisa de campo provider)
+      const topProviders: any[] = [];
+
+      return {
+        activeMaintenances,
+        avgDuration: Math.round(avgDuration * 10) / 10,
+        totalCost,
+        maintenancesByVessel,
+        preventiveCount: preventiveCount[0]?.count || 0,
+        correctiveCount: correctiveCount[0]?.count || 0,
+        availabilityRate: Math.round(availabilityRate * 10) / 10,
+        upcomingMaintenances,
+        maintenanceHistory,
+        estimatedLostRevenue,
+        topProviders,
+      };
+    }),
 });

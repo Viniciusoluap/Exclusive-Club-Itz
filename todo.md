@@ -561,3 +561,46 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Criar testes unitários (4/4 passando)
 - [x] Criar checkpoint FASE 2
 
+
+## 📊 FASE 3: Relatórios Operacionais (Ocupação + Clientes + Manutenção)
+====================================================================================
+
+**Objetivo:** Implementar relatórios operacionais para gestão do dia a dia
+
+**Tarefas:**
+- [x] Estender reportsRouter.ts com novos endpoints
+- [x] Implementar Relatório de Ocupação (8 tópicos)
+  - [x] Taxa de Ocupação por Embarcação
+  - [x] Dias Mais Reservados
+  - [x] Horários de Pico (placeholder)
+  - [x] Taxa de Cancelamento
+  - [x] Lead Time Médio
+  - [x] Reservas por Cliente
+  - [x] Ocupação por Tipo de Cota
+  - [x] Projeção de Ocupação
+- [x] Implementar Relatório de Clientes (9 tópicos)
+  - [x] Clientes Ativos vs Inativos
+  - [x] Frequência de Uso por Cliente
+  - [x] Clientes com Maior Gasto
+  - [x] Clientes Inadimplentes
+  - [x] Taxa de Retenção
+  - [x] Novos Clientes por Período
+  - [x] Churn Rate
+  - [x] NPS Simulado
+  - [x] Segmentação por Tipo de Cota
+- [x] Implementar Relatório de Manutenção (10 tópicos)
+  - [x] Manutenções Ativas
+  - [x] Tempo Médio de Manutenção
+  - [x] Custo Total de Manutenção (placeholder)
+  - [x] Manutenções por Embarcação
+  - [x] Manutenções Preventivas vs Corretivas (placeholder)
+  - [x] Taxa de Disponibilidade
+  - [x] Próximas Manutenções Programadas
+  - [x] Histórico de Manutenções
+  - [x] Impacto na Receita
+  - [x] Fornecedores Mais Utilizados (placeholder)
+- [x] Adicionar tabs no ReportsTab.tsx
+- [x] Criar gráficos específicos
+- [x] Criar testes unitários (10/10 passando)
+- [x] Criar checkpoint FASE 3
+

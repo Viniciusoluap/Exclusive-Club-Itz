@@ -126,4 +126,87 @@ describe("reportsRouter", () => {
       await expect(caller.reports.executive()).rejects.toThrow("You do not have required permission");
     });
   });
+
+  describe("occupancy", () => {
+    it("deve retornar relatório de ocupação para admin", async () => {
+      const { ctx } = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      const result = await caller.reports.occupancy({ startDate, endDate });
+
+      expect(result).toHaveProperty("occupancyByVessel");
+      expect(result).toHaveProperty("cancellationRate");
+      expect(result).toHaveProperty("avgLeadTime");
+      expect(result).toHaveProperty("projectedOccupancy");
+      expect(Array.isArray(result.occupancyByVessel)).toBe(true);
+    });
+
+    it("deve negar acesso para não-admin", async () => {
+      const { ctx } = createNonAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      await expect(caller.reports.occupancy({ startDate, endDate })).rejects.toThrow("You do not have required permission");
+    });
+  });
+
+  describe("clients", () => {
+    it("deve retornar relatório de clientes para admin", async () => {
+      const { ctx } = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      const result = await caller.reports.clients({ startDate, endDate });
+
+      expect(result).toHaveProperty("activeCount");
+      expect(result).toHaveProperty("inactiveCount");
+      expect(result).toHaveProperty("retentionRate");
+      expect(result).toHaveProperty("churnRate");
+      expect(typeof result.activeCount).toBe("number");
+    });
+
+    it("deve negar acesso para não-admin", async () => {
+      const { ctx } = createNonAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      await expect(caller.reports.clients({ startDate, endDate })).rejects.toThrow("You do not have required permission");
+    });
+  });
+
+  describe("maintenance", () => {
+    it("deve retornar relatório de manutenção para admin", async () => {
+      const { ctx } = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      const result = await caller.reports.maintenance({ startDate, endDate });
+
+      expect(result).toHaveProperty("activeMaintenances");
+      expect(result).toHaveProperty("avgDuration");
+      expect(result).toHaveProperty("availabilityRate");
+      expect(Array.isArray(result.activeMaintenances)).toBe(true);
+    });
+
+    it("deve negar acesso para não-admin", async () => {
+      const { ctx } = createNonAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const endDate = new Date().toISOString().split('T')[0];
+
+      await expect(caller.reports.maintenance({ startDate, endDate })).rejects.toThrow("You do not have required permission");
+    });
+  });
 });

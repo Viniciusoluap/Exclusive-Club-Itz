@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, DollarSign, TrendingUp, AlertCircle, BarChart3 } from "lucide-react";
+import { Loader2, DollarSign, TrendingUp, AlertCircle, BarChart3, Calendar, Users, Wrench } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
@@ -23,7 +23,22 @@ export default function ReportsTab() {
 
   const { data: executive, isLoading: loadingExecutive } = trpc.reports.executive.useQuery();
 
-  if (loadingFinancial || loadingExecutive) {
+  const { data: occupancy, isLoading: loadingOccupancy } = trpc.reports.occupancy.useQuery({
+    startDate,
+    endDate,
+  });
+
+  const { data: clients, isLoading: loadingClients } = trpc.reports.clients.useQuery({
+    startDate,
+    endDate,
+  });
+
+  const { data: maintenance, isLoading: loadingMaintenance } = trpc.reports.maintenance.useQuery({
+    startDate,
+    endDate,
+  });
+
+  if (loadingFinancial || loadingExecutive || loadingOccupancy || loadingClients || loadingMaintenance) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -93,6 +108,18 @@ export default function ReportsTab() {
           <TabsTrigger value="financial">
             <DollarSign className="h-4 w-4 mr-2" />
             Relatório Financeiro
+          </TabsTrigger>
+          <TabsTrigger value="occupancy">
+            <Calendar className="h-4 w-4 mr-2" />
+            Ocupação
+          </TabsTrigger>
+          <TabsTrigger value="clients">
+            <Users className="h-4 w-4 mr-2" />
+            Clientes
+          </TabsTrigger>
+          <TabsTrigger value="maintenance">
+            <Wrench className="h-4 w-4 mr-2" />
+            Manutenção
           </TabsTrigger>
         </TabsList>
 
@@ -333,6 +360,283 @@ export default function ReportsTab() {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     Nenhum dado disponível
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Relatório de Ocupação */}
+        <TabsContent value="occupancy" className="space-y-4">
+          {/* Taxa de Ocupação por Embarcação */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Taxa de Ocupação por Embarcação</CardTitle>
+              <CardDescription>Percentual de dias reservados no período</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {occupancy?.occupancyByVessel && occupancy.occupancyByVessel.length > 0 ? (
+                  occupancy.occupancyByVessel.map((vessel, idx) => (
+                    <div key={idx} className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{vessel.vesselName}</span>
+                        <span className="text-muted-foreground">
+                          {vessel.bookedDays}/{vessel.totalDays} dias ({vessel.occupancyRate}%)
+                        </span>
+                      </div>
+                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-primary rounded-full transition-all"
+                          style={{ width: `${vessel.occupancyRate}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhum dado disponível
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Métricas de Ocupação */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Taxa de Cancelamento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {occupancy?.cancellationRate.toFixed(1) || "0"}%
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Lead Time Médio</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {occupancy?.avgLeadTime.toFixed(1) || "0"} dias
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Projeção 30 dias</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {occupancy?.projectedOccupancy.toFixed(1) || "0"}%
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Top 10 Clientes por Reservas */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Top 10 Clientes por Reservas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {occupancy?.bookingsByClient && occupancy.bookingsByClient.length > 0 ? (
+                  occupancy.bookingsByClient.map((client, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <div className="font-semibold">{client.clientName}</div>
+                        <div className="text-sm text-muted-foreground">{client.clientEmail}</div>
+                      </div>
+                      <div className="text-lg font-bold">
+                        {client.count} reservas
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhum dado disponível
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Relatório de Clientes */}
+        <TabsContent value="clients" className="space-y-4">
+          {/* Métricas de Clientes */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {clients?.activeCount || 0}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Clientes Inativos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-gray-600">
+                  {clients?.inactiveCount || 0}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Taxa de Retenção</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {clients?.retentionRate.toFixed(1) || "0"}%
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Churn Rate</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {clients?.churnRate.toFixed(1) || "0"}%
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Top 10 Clientes por Gasto */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Top 10 Clientes por Gasto</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {clients?.clientSpending && clients.clientSpending.length > 0 ? (
+                  clients.clientSpending.map((client, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <div className="font-semibold">{client.clientName}</div>
+                        <div className="text-sm text-muted-foreground">{client.clientEmail}</div>
+                      </div>
+                      <div className="text-lg font-bold text-green-600">
+                        R$ {client.total.toFixed(2)}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhum dado disponível
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Novos Clientes */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Novos Clientes no Período</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-600">
+                {clients?.newClients?.length || 0} novos clientes
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Relatório de Manutenção */}
+        <TabsContent value="maintenance" className="space-y-4">
+          {/* Métricas de Manutenção */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Manutenções Ativas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {maintenance?.activeMaintenances?.length || 0}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Tempo Médio</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {maintenance?.avgDuration.toFixed(1) || "0"} dias
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Taxa de Disponibilidade</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {maintenance?.availabilityRate.toFixed(1) || "0"}%
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Manutenções por Embarcação */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Manutenções por Embarcação</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={maintenance?.maintenancesByVessel || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="vesselName" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="count" fill="#8884d8" name="Manutenções" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Próximas Manutenções */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Próximas Manutenções Programadas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {maintenance?.upcomingMaintenances && maintenance.upcomingMaintenances.length > 0 ? (
+                  maintenance.upcomingMaintenances.map((m, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <div className="font-semibold">{m.vesselName}</div>
+                        <div className="text-sm text-muted-foreground">{m.description}</div>
+                      </div>
+                      <div className="text-sm">
+                        {new Date(m.startDate).toLocaleDateString('pt-BR')}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Nenhuma manutenção programada
                   </div>
                 )}
               </div>
