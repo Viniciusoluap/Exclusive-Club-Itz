@@ -621,35 +621,38 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="w-full grid grid-cols-3 md:grid-cols-5 gap-2 p-1 max-w-full md:max-w-3xl">
-            <TabsTrigger value="clients" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
-              <Users className="h-4 w-4 md:mr-2" />
-              Clientes
+          <TabsList className="w-full grid grid-cols-4 md:grid-cols-5 gap-2 p-1 max-w-full md:max-w-3xl">
+            <TabsTrigger value="clients" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
+              <Users className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden md:inline">Clientes</span>
             </TabsTrigger>
-            <TabsTrigger value="vessels" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
-              <Ship className="h-4 w-4 md:mr-2" />
-              Embarcações
+            <TabsTrigger value="vessels" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
+              <Ship className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden md:inline">Embarcações</span>
             </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5"><Calendar className="h-4 w-4 md:mr-2" />Reservas</TabsTrigger>
-            <TabsTrigger value="maintenance" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
-              <Settings className="h-4 w-4 md:mr-2" />
-              Manutenção
+            <TabsTrigger value="bookings" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
+              <Calendar className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden md:inline">Reservas</span>
             </TabsTrigger>
-            <TabsTrigger value="employees" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
-              <UserCog className="h-4 w-4 md:mr-2" />
-              Funcionários
+            <TabsTrigger value="maintenance" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
+              <Settings className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden md:inline">Manutenção</span>
             </TabsTrigger>
-            <TabsTrigger value="fuel" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
-              <Fuel className="h-4 w-4 md:mr-2" />
-              Abastecimento
+            <TabsTrigger value="employees" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
+              <UserCog className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden md:inline">Funcionários</span>
             </TabsTrigger>
-            <TabsTrigger value="inspections" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
-              <ClipboardCheck className="h-4 w-4 md:mr-2" />
-              Vistorias
+            <TabsTrigger value="fuel" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
+              <Fuel className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden md:inline">Abastecimento</span>
             </TabsTrigger>
-            <TabsTrigger value="reports" className="flex flex-col md:flex-row items-center justify-center text-xs md:text-sm py-2 md:py-1.5">
-              <BarChart3 className="h-4 w-4 md:mr-2" />
-              Relatórios
+            <TabsTrigger value="inspections" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
+              <ClipboardCheck className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden md:inline">Vistorias</span>
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
+              <BarChart3 className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+              <span className="hidden md:inline">Relatórios</span>
             </TabsTrigger>
           </TabsList>
 
