@@ -113,58 +113,37 @@ export default function ReportsTab() {
 
       {/* Tabs por Categoria */}
       <Tabs defaultValue="executive" value={activeReportTab} onValueChange={setActiveReportTab} className="space-y-4">
-        {/* Desktop: Dropdown Select */}
-        <div className="hidden md:block mb-6">
-          <Select value={activeReportTab} onValueChange={setActiveReportTab}>
-            <SelectTrigger className="w-full max-w-xs">
-              <SelectValue placeholder="Selecione um relatório" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="executive">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  Dashboard Executivo
-                </div>
-              </SelectItem>
-              <SelectItem value="financial">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Relatório Financeiro
-                </div>
-              </SelectItem>
-              <SelectItem value="occupancy">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Ocupação
-                </div>
-              </SelectItem>
-              <SelectItem value="clients">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Clientes
-                </div>
-              </SelectItem>
-              <SelectItem value="maintenance">
-                <div className="flex items-center gap-2">
-                  <Wrench className="h-4 w-4" />
-                  Manutenção
-                </div>
-              </SelectItem>
-              <SelectItem value="fuel">
-                <div className="flex items-center gap-2">
-                  <Fuel className="h-4 w-4" />
-                  Combustível
-                </div>
-              </SelectItem>
-              <SelectItem value="seasonality">
-                <div className="flex items-center gap-2">
-                  <Sun className="h-4 w-4" />
-                  Sazonalidade
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Desktop: TabsList com texto + ícone */}
+        <TabsList className="hidden md:flex w-full flex-wrap gap-2 p-2 justify-start mt-6">
+          <TabsTrigger value="executive" className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            Dashboard Executivo
+          </TabsTrigger>
+          <TabsTrigger value="financial" className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Relatório Financeiro
+          </TabsTrigger>
+          <TabsTrigger value="occupancy" className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Ocupação
+          </TabsTrigger>
+          <TabsTrigger value="clients" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Clientes
+          </TabsTrigger>
+          <TabsTrigger value="maintenance" className="flex items-center gap-2">
+            <Wrench className="h-4 w-4" />
+            Manutenção
+          </TabsTrigger>
+          <TabsTrigger value="fuel" className="flex items-center gap-2">
+            <Fuel className="h-4 w-4" />
+            Combustível
+          </TabsTrigger>
+          <TabsTrigger value="seasonality" className="flex items-center gap-2">
+            <Sun className="h-4 w-4" />
+            Sazonalidade
+          </TabsTrigger>
+        </TabsList>
 
         {/* Mobile: Apenas Ícones */}
         <TabsList className="md:hidden w-full flex flex-wrap gap-2 p-2 justify-center">

@@ -623,70 +623,45 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="clients" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* Desktop: Dropdown Select */}
-          <div className="hidden md:block mb-6">
-            <Select value={activeTab} onValueChange={setActiveTab}>
-              <SelectTrigger className="w-full max-w-xs">
-                <SelectValue placeholder="Selecione uma seção" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="clients">
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Clientes
-                  </div>
-                </SelectItem>
-                <SelectItem value="vessels">
-                  <div className="flex items-center gap-2">
-                    <Ship className="h-4 w-4" />
-                    Embarcações
-                  </div>
-                </SelectItem>
-                <SelectItem value="bookings">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Reservas
-                  </div>
-                </SelectItem>
-                <SelectItem value="maintenance">
-                  <div className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    Manutenção
-                  </div>
-                </SelectItem>
-                <SelectItem value="employees">
-                  <div className="flex items-center gap-2">
-                    <UserCog className="h-4 w-4" />
-                    Funcionários
-                  </div>
-                </SelectItem>
-                <SelectItem value="fuel">
-                  <div className="flex items-center gap-2">
-                    <Fuel className="h-4 w-4" />
-                    Abastecimento
-                  </div>
-                </SelectItem>
-                <SelectItem value="inspections">
-                  <div className="flex items-center gap-2">
-                    <ClipboardCheck className="h-4 w-4" />
-                    Vistorias
-                  </div>
-                </SelectItem>
-                <SelectItem value="reports">
-                  <div className="flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4" />
-                    Relatórios
-                  </div>
-                </SelectItem>
-                <SelectItem value="saas">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />
-                    Saas
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Desktop: TabsList com texto + ícone */}
+          <TabsList className="hidden md:flex w-full flex-wrap gap-2 p-2 justify-start">
+            <TabsTrigger value="clients" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Clientes
+            </TabsTrigger>
+            <TabsTrigger value="vessels" className="flex items-center gap-2">
+              <Ship className="h-4 w-4" />
+              Embarcações
+            </TabsTrigger>
+            <TabsTrigger value="bookings" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Reservas
+            </TabsTrigger>
+            <TabsTrigger value="maintenance" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Manutenção
+            </TabsTrigger>
+            <TabsTrigger value="employees" className="flex items-center gap-2">
+              <UserCog className="h-4 w-4" />
+              Funcionários
+            </TabsTrigger>
+            <TabsTrigger value="fuel" className="flex items-center gap-2">
+              <Fuel className="h-4 w-4" />
+              Abastecimento
+            </TabsTrigger>
+            <TabsTrigger value="inspections" className="flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4" />
+              Vistorias
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Relatórios
+            </TabsTrigger>
+            <TabsTrigger value="saas" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              Saas
+            </TabsTrigger>
+          </TabsList>
 
           {/* Mobile: Apenas Ícones */}
           <TabsList className="md:hidden w-full flex flex-wrap gap-2 p-2 justify-center">
