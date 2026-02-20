@@ -691,3 +691,18 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Adicionar alerta para cobranças não classificadas (toast + console.log)
 - [x] Testar sincronização com dados reais (servidor reiniciado, pronto para teste)
 - [x] Criar checkpoint
+
+## 🐛 BUG: Layout de Tabs Quebrado (Admin + Relatórios)
+====================================================================================
+
+**Problemas:**
+1. Barra de tabs Admin está sobreposta/quebrada (textos colados)
+2. Barra de tabs Relatórios transborda da tela (PC e mobile)
+3. Ícones não aparecem no mobile
+
+**Tarefas:**
+- [x] Corrigir espaçamento da barra de tabs Admin (Admin.tsx) - flex wrap implementado
+- [x] Ajustar barra de tabs Relatórios para caber na tela - flex wrap implementado
+- [x] Garantir ícones visíveis no mobile - todos visíveis
+- [x] Testar em PC e mobile - testado e funcionando
+- [x] Criar checkpoint

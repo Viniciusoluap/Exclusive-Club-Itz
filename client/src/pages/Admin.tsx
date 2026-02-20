@@ -622,41 +622,41 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="w-full grid grid-cols-4 md:grid-cols-8 gap-2 p-1 max-w-full md:max-w-full">
-            <TabsTrigger value="clients" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
-              <Users className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+          <TabsList className="w-full flex flex-wrap gap-2 p-2">
+            <TabsTrigger value="clients" className="flex items-center gap-2 px-4 py-2">
+              <Users className="h-4 w-4" />
               <span className="hidden md:inline">Clientes</span>
             </TabsTrigger>
-            <TabsTrigger value="vessels" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
-              <Ship className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+            <TabsTrigger value="vessels" className="flex items-center gap-2 px-4 py-2">
+              <Ship className="h-4 w-4" />
               <span className="hidden md:inline">Embarcações</span>
             </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
-              <Calendar className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+            <TabsTrigger value="bookings" className="flex items-center gap-2 px-4 py-2">
+              <Calendar className="h-4 w-4" />
               <span className="hidden md:inline">Reservas</span>
             </TabsTrigger>
-            <TabsTrigger value="maintenance" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
-              <Settings className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+            <TabsTrigger value="maintenance" className="flex items-center gap-2 px-4 py-2">
+              <Settings className="h-4 w-4" />
               <span className="hidden md:inline">Manutenção</span>
             </TabsTrigger>
-            <TabsTrigger value="employees" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
-              <UserCog className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+            <TabsTrigger value="employees" className="flex items-center gap-2 px-4 py-2">
+              <UserCog className="h-4 w-4" />
               <span className="hidden md:inline">Funcionários</span>
             </TabsTrigger>
-            <TabsTrigger value="fuel" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
-              <Fuel className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+            <TabsTrigger value="fuel" className="flex items-center gap-2 px-4 py-2">
+              <Fuel className="h-4 w-4" />
               <span className="hidden md:inline">Abastecimento</span>
             </TabsTrigger>
-            <TabsTrigger value="inspections" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
-              <ClipboardCheck className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+            <TabsTrigger value="inspections" className="flex items-center gap-2 px-4 py-2">
+              <ClipboardCheck className="h-4 w-4" />
               <span className="hidden md:inline">Vistorias</span>
             </TabsTrigger>
-            <TabsTrigger value="reports" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
-              <BarChart3 className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+            <TabsTrigger value="reports" className="flex items-center gap-2 px-4 py-2">
+              <BarChart3 className="h-4 w-4" />
               <span className="hidden md:inline">Relatórios</span>
             </TabsTrigger>
-            <TabsTrigger value="saas" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
-              <DollarSign className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+            <TabsTrigger value="saas" className="flex items-center gap-2 px-4 py-2">
+              <DollarSign className="h-4 w-4" />
               <span className="hidden md:inline">Saas</span>
             </TabsTrigger>
           </TabsList>
