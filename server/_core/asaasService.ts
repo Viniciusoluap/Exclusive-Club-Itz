@@ -837,6 +837,49 @@ export async function receiveInCash(params: {
 }
 
 /**
+ * Lista todas as cobranças de um cliente no Asaas
+ */
+export async function listCustomerCharges(customerId: string, params?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<AsaasChargeData[]> {
+  const apiKey = await getAsaasApiKey();
+  const apiUrl = await getAsaasApiUrl();
+  
+  try {
+    const queryParams = new URLSearchParams({
+      customer: customerId,
+      limit: String(params?.limit || 100),
+      offset: String(params?.offset || 0),
+    });
+    
+    if (params?.status) {
+      queryParams.append('status', params.status);
+    }
+    
+    const response = await fetchWithRetry(
+      `${apiUrl}/payments?${queryParams.toString()}`,
+      {
+        method: 'GET',
+        headers: { 'access_token': apiKey },
+      }
+    );
+    
+    if (!response.ok) {
+      console.error('[Asaas] Erro ao listar cobranças:', await response.text());
+      return [];
+    }
+    
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error('[Asaas] Erro ao listar cobranças do cliente:', error);
+    return [];
+  }
+}
+
+/**
  * Busca pagamento por ID do Asaas
  */
 export async function getPaymentByAsaasId(asaasPaymentId: string): Promise<{
