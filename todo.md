@@ -668,3 +668,26 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Revisar queries SQL do reportsRouter.ts para garantir cálculos corretos
 - [x] Testar valores no browser e comparar com dados reais
 - [x] Criar checkpoint
+
+## 🔄 Feature: Sincronização Automática de Cobranças Asaas (Mensalidades + Vendas de Cotas)
+====================================================================================
+
+**Objetivo:** Implementar sincronização automática de cobranças do Asaas para popular dashboard de Saas
+
+**Requisitos:**
+1. Reutilizar integração Asaas existente (asaasService.ts)
+2. Reutilizar webhook existente
+3. Buscar cobranças de cada cliente no Asaas
+4. Classificar automaticamente: mensalidade vs venda de cota (via descrição/metadata)
+5. Atualizar tabela subscription_charges
+6. Alertar sobre cobranças que não puderem ser classificadas
+
+**Tarefas:**
+- [x] Analisar asaasService.ts e webhook existentes
+- [x] Criar endpoint para buscar cobranças do Asaas por cliente (listCustomerCharges)
+- [x] Implementar lógica de classificação (mensalidade vs venda)
+- [x] Estender webhook para atualizar status de cobranças
+- [x] Implementar botão "Sincronizar Asaas" na página Saas
+- [x] Adicionar alerta para cobranças não classificadas (toast + console.log)
+- [x] Testar sincronização com dados reais (servidor reiniciado, pronto para teste)
+- [x] Criar checkpoint

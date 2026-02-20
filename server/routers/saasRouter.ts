@@ -3,7 +3,7 @@ import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { subscriptions, subscriptionCharges, allowedClients } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
-import { createPixCharge } from "../_core/asaasService";
+import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus } from "../_core/asaasService";
 import { TRPCError } from "@trpc/server";
 
 export const saasRouter = router({
@@ -208,33 +208,103 @@ export const saasRouter = router({
       return filtered;
     }),
 
-  // Sincronizar com Asaas (atualizar status de cobranças)
+  // Sincronizar com Asaas (buscar cobranças de todos os clientes)
   syncWithAsaas: adminProcedure.mutation(async () => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-    // Buscar cobranças com asaas_payment_id
-    const charges = await db.select()
-      .from(subscriptionCharges)
-      .where(eq(subscriptionCharges.status, "pending"));
+    // Buscar todos os clientes ativos com mensalidades
+    const activeSubscriptions = await db.select({
+      subscription: subscriptions,
+      client: allowedClients,
+    })
+    .from(subscriptions)
+    .leftJoin(allowedClients, eq(subscriptions.clientId, allowedClients.id))
+    .where(eq(subscriptions.status, "active"));
 
     let syncedCount = 0;
     let errorCount = 0;
+    let unclassifiedCount = 0;
+    const unclassifiedCharges: Array<{ description: string; value: number; dueDate: string; clientName: string }> = [];
 
-    for (const charge of charges) {
-      if (!charge.asaasPaymentId) continue;
+    for (const { subscription, client } of activeSubscriptions) {
+      if (!client) continue;
 
       try {
-        // Aqui você implementaria a lógica de consultar status no Asaas
-        // const asaasStatus = await getChargeStatus(charge.asaasPaymentId);
-        // await db.update(subscriptionCharges).set({ status: asaasStatus }).where(eq(subscriptionCharges.id, charge.id));
-        syncedCount++;
+        // Buscar ou criar cliente no Asaas
+        const asaasCustomer = await getOrCreateAsaasCustomer({
+          email: client.email,
+          name: client.name,
+          cpfCnpj: client.cpf,
+          phone: client.phone || undefined,
+        });
+
+        // Buscar todas as cobranças do cliente no Asaas
+        const asaasCharges = await listCustomerCharges(asaasCustomer.id);
+
+        for (const asaasCharge of asaasCharges) {
+          // Classificar cobrança: mensalidade vs venda de cota
+          const description = asaasCharge.description?.toLowerCase() || "";
+          let chargeType: "monthly" | "quota_sale" | null = null;
+
+          if (description.includes("mensalidade") || description.includes("monthly")) {
+            chargeType = "monthly";
+          } else if (description.includes("cota") || description.includes("quota") || description.includes("venda")) {
+            chargeType = "quota_sale";
+          }
+
+          // Se não conseguir classificar, adiciona à lista de não classificadas
+          if (!chargeType) {
+            unclassifiedCount++;
+            unclassifiedCharges.push({
+              description: asaasCharge.description || "Sem descrição",
+              value: asaasCharge.value,
+              dueDate: asaasCharge.dueDate,
+              clientName: client.name,
+            });
+            continue;
+          }
+
+          // Verificar se cobrança já existe no banco
+          const existingCharge = await db.select()
+            .from(subscriptionCharges)
+            .where(eq(subscriptionCharges.asaasPaymentId, asaasCharge.id))
+            .limit(1);
+
+          if (existingCharge.length === 0) {
+            // Criar nova cobrança
+            await db.insert(subscriptionCharges).values({
+              subscriptionId: subscription.id,
+              dueDate: asaasCharge.dueDate,
+              value: asaasCharge.value.toString(),
+              status: mapAsaasStatus(asaasCharge.status) as any,
+              asaasPaymentId: asaasCharge.id,
+              paymentDate: asaasCharge.paymentDate || null,
+            });
+            syncedCount++;
+          } else {
+            // Atualizar status da cobrança existente
+            await db.update(subscriptionCharges)
+              .set({
+                status: mapAsaasStatus(asaasCharge.status) as any,
+                paymentDate: asaasCharge.paymentDate || null,
+              })
+              .where(eq(subscriptionCharges.id, existingCharge[0].id));
+            syncedCount++;
+          }
+        }
       } catch (error) {
         errorCount++;
-        console.error(`Erro ao sincronizar cobrança ${charge.id}:`, error);
+        console.error(`Erro ao sincronizar cliente ${client.name}:`, error);
       }
     }
 
-    return { syncedCount, errorCount, success: true };
+    return {
+      syncedCount,
+      errorCount,
+      unclassifiedCount,
+      unclassifiedCharges: unclassifiedCount > 0 ? unclassifiedCharges : undefined,
+      success: true,
+    };
   }),
 });
