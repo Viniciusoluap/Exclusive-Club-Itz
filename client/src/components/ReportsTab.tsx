@@ -111,33 +111,33 @@ export default function ReportsTab() {
 
       {/* Tabs por Categoria */}
       <Tabs defaultValue="executive" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="executive">
-            <AlertCircle className="h-4 w-4 mr-2" />
+        <TabsList className="w-full flex flex-wrap gap-2 p-2 h-auto">
+          <TabsTrigger value="executive" className="flex items-center gap-2 px-4 py-2">
+            <AlertCircle className="h-4 w-4" />
             Dashboard Executivo
           </TabsTrigger>
-          <TabsTrigger value="financial">
-            <DollarSign className="h-4 w-4 mr-2" />
+          <TabsTrigger value="financial" className="flex items-center gap-2 px-4 py-2">
+            <DollarSign className="h-4 w-4" />
             Relatório Financeiro
           </TabsTrigger>
-          <TabsTrigger value="occupancy">
-            <Calendar className="h-4 w-4 mr-2" />
+          <TabsTrigger value="occupancy" className="flex items-center gap-2 px-4 py-2">
+            <Calendar className="h-4 w-4" />
             Ocupação
           </TabsTrigger>
-          <TabsTrigger value="clients">
-            <Users className="h-4 w-4 mr-2" />
+          <TabsTrigger value="clients" className="flex items-center gap-2 px-4 py-2">
+            <Users className="h-4 w-4" />
             Clientes
           </TabsTrigger>
-          <TabsTrigger value="maintenance">
-            <Wrench className="h-4 w-4 mr-2" />
+          <TabsTrigger value="maintenance" className="flex items-center gap-2 px-4 py-2">
+            <Wrench className="h-4 w-4" />
             Manutenção
           </TabsTrigger>
-          <TabsTrigger value="fuel">
-            <Fuel className="h-4 w-4 mr-2" />
+          <TabsTrigger value="fuel" className="flex items-center gap-2 px-4 py-2">
+            <Fuel className="h-4 w-4" />
             Combustível
           </TabsTrigger>
-          <TabsTrigger value="seasonality">
-            <Sun className="h-4 w-4 mr-2" />
+          <TabsTrigger value="seasonality" className="flex items-center gap-2 px-4 py-2">
+            <Sun className="h-4 w-4" />
             Sazonalidade
           </TabsTrigger>
         </TabsList>
