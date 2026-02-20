@@ -622,7 +622,7 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="w-full grid grid-cols-5 md:grid-cols-5 gap-2 p-1 max-w-full md:max-w-3xl">
+          <TabsList className="w-full grid grid-cols-4 md:grid-cols-8 gap-2 p-1 max-w-full md:max-w-full">
             <TabsTrigger value="clients" className="flex flex-col md:flex-row items-center justify-center py-3 md:py-1.5">
               <Users className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
               <span className="hidden md:inline">Clientes</span>

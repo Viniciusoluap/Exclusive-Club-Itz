@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { formatCurrency } from "@/lib/formatCurrency";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -211,7 +212,7 @@ export default function ReportsTab() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  R$ {financial?.totalRevenue.toFixed(2) || "0,00"}
+                  {formatCurrency(financial?.totalRevenue)}
                 </div>
               </CardContent>
             </Card>
@@ -223,7 +224,7 @@ export default function ReportsTab() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  R$ {financial?.avgTicket.toFixed(2) || "0,00"}
+                  {formatCurrency(financial?.avgTicket)}
                 </div>
               </CardContent>
             </Card>
@@ -265,7 +266,7 @@ export default function ReportsTab() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="vesselName" />
                   <YAxis />
-                  <Tooltip formatter={(value) => `R$ ${Number(value).toFixed(2)}`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Legend />
                   <Bar dataKey="total" fill="#0088FE" name="Receita (R$)" />
                 </BarChart>
@@ -299,7 +300,7 @@ export default function ReportsTab() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `R$ ${Number(value).toFixed(2)}`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
@@ -317,7 +318,7 @@ export default function ReportsTab() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip formatter={(value) => `R$ ${Number(value).toFixed(2)}`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Legend />
                   <Line type="monotone" dataKey="total" stroke="#8884d8" name="Receita (R$)" />
                 </LineChart>
@@ -336,19 +337,19 @@ export default function ReportsTab() {
                 <div className="p-4 border rounded-lg">
                   <div className="text-sm text-muted-foreground mb-1">30 dias</div>
                   <div className="text-2xl font-bold">
-                    R$ {financial?.projections.days30.toFixed(2) || "0,00"}
+                    {formatCurrency(financial?.projections.days30)}
                   </div>
                 </div>
                 <div className="p-4 border rounded-lg">
                   <div className="text-sm text-muted-foreground mb-1">60 dias</div>
                   <div className="text-2xl font-bold">
-                    R$ {financial?.projections.days60.toFixed(2) || "0,00"}
+                    {formatCurrency(financial?.projections.days60)}
                   </div>
                 </div>
                 <div className="p-4 border rounded-lg">
                   <div className="text-sm text-muted-foreground mb-1">90 dias</div>
                   <div className="text-2xl font-bold">
-                    R$ {financial?.projections.days90.toFixed(2) || "0,00"}
+                    {formatCurrency(financial?.projections.days90)}
                   </div>
                 </div>
               </div>
@@ -371,7 +372,7 @@ export default function ReportsTab() {
                         <div className="text-sm text-muted-foreground">{client.clientEmail}</div>
                       </div>
                       <div className="text-lg font-bold text-green-600">
-                        R$ {Number(client.total || 0).toFixed(2)}
+                        {formatCurrency(client.total)}
                       </div>
                     </div>
                   ))
@@ -550,7 +551,7 @@ export default function ReportsTab() {
                         <div className="text-sm text-muted-foreground">{client.clientEmail}</div>
                       </div>
                       <div className="text-lg font-bold text-green-600">
-                        R$ {Number(client.total || 0).toFixed(2)}
+                        {formatCurrency(client.total)}
                       </div>
                     </div>
                   ))
@@ -672,7 +673,7 @@ export default function ReportsTab() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  R$ {fuel?.avgCostPerLiter ? (fuel.avgCostPerLiter / 100).toFixed(2) : "0,00"}
+                  {formatCurrency(fuel?.avgCostPerLiter ? fuel.avgCostPerLiter / 100 : 0)}
                 </div>
               </CardContent>
             </Card>
@@ -802,7 +803,7 @@ export default function ReportsTab() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip formatter={(value) => `R$ ${Number(value).toFixed(2)}`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Legend />
                   <Line type="monotone" dataKey="total" stroke="#00C49F" name="Receita (R$)" />
                 </LineChart>
