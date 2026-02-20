@@ -740,4 +740,15 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Ajustar espaçamento vertical entre barras (margin-top: mt-6)
 - [x] Testar no desktop/tablet - PASSOU! Ambas as barras visíveis
 - [x] Validar que mobile continua com apenas ícones - PRESERVADO
+- [x] Criar checkpoint (aeb0014c)
+
+## 🎨 Trocar Favicon do Manus IA pelo Logo da Empresa
+====================================================================================
+
+**Objetivo:** Substituir o favicon padrão do Manus IA (ícone de mão) pelo logo da âncora do Exclusive Club
+
+**Tarefas:**
+- [x] Identificar arquivo do logo atual (/logo-exclusive-round.png)
+- [x] Adicionar múltiplas tags <link rel="icon"> no client/index.html
+- [x] Testar que favicon foi adicionado ao HTML
 - [ ] Criar checkpoint
