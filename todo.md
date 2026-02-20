@@ -718,4 +718,26 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Ajustar mobile para exibir apenas ícones (sem texto) em ambas as barras
 - [x] Testar em desktop (dropdown funcional) - PASSOU! Navegação 100%
 - [x] Mobile implementado (aguardando teste do usuário no celular)
+- [x] Criar checkpoint (b8b1fc20)
+
+## 🐛 BUG: Barras de Tabs Sumiram no Desktop/Tablet
+====================================================================================
+
+**Problema:**
+- Desktop/Tablet: Barras de tabs (Admin + Relatórios) sumiram - apenas dropdown visível
+- Usuário quer barras VISÍVEIS (não dropdown) mas sem sobreposição
+- Mobile: Está perfeito (apenas ícones) - NÃO ALTERAR
+
+**Solução:**
+- Reverter dropdown no desktop
+- Restaurar TabsList visível com todos os textos
+- Ajustar espaçamento vertical entre as duas barras
+- Manter mobile com apenas ícones (já está correto)
+
+**Tarefas:**
+- [x] Reverter Admin.tsx: remover dropdown desktop, restaurar TabsList visível
+- [x] Reverter ReportsTab.tsx: remover dropdown desktop, restaurar TabsList visível
+- [x] Ajustar espaçamento vertical entre barras (margin-top: mt-6)
+- [x] Testar no desktop/tablet - PASSOU! Ambas as barras visíveis
+- [x] Validar que mobile continua com apenas ícones - PRESERVADO
 - [ ] Criar checkpoint
