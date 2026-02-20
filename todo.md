@@ -652,3 +652,19 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 ====================================================================================
 
 - [x] Corrigir erro "An unexpected error occurred" na página de Relatórios (convertido client.total para número - RESOLVIDO!)
+
+## 🐛 Correções de Layout e Formatação - Relatórios
+====================================================================================
+
+**Problemas reportados:**
+1. Grade de tabs deve ser 2x4 (2 linhas, 4 colunas) no mobile
+2. Formatação monetária deve ser R$ 10.000,00 (padrão brasileiro com ponto para milhar e vírgula para decimal)
+3. Números parecem irreais - validar cálculos SQL
+
+**Tarefas:**
+- [x] Mudar grade de tabs de 4x2 para 2x4 no mobile (Admin.tsx)
+- [x] Criar função de formatação monetária brasileira (formatCurrency)
+- [x] Aplicar formatação em todos os valores monetários do ReportsTab.tsx
+- [x] Revisar queries SQL do reportsRouter.ts para garantir cálculos corretos
+- [x] Testar valores no browser e comparar com dados reais
+- [x] Criar checkpoint

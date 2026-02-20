@@ -1,0 +1,16 @@
+{
+  "query": "\nSELECT \n  (SELECT COUNT(*) FROM fuel_records WHERE payment_status = 'paid') as total_fuel_paid,\n  (SELECT COUNT(*) FROM subscription_charges WHERE status = 'paid') as total_subscriptions_paid,\n  (SELECT SUM(total_amount) FROM fuel_records WHERE payment_status = 'paid') as total_fuel_revenue,\n  (SELECT SUM(value) FROM subscription_charges WHERE status = 'paid') as total_subscription_revenue;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  (SELECT COUNT(*) FROM fuel_records WHERE payment_status = 'paid') as total_fuel_paid,\n  (SELECT COUNT(*) FROM subscription_charges WHERE status = 'paid') as total_subscriptions_paid,\n  (SELECT SUM(total_amount) FROM fuel_records WHERE payment_status = 'paid') as total_fuel_revenue,\n  (SELECT SUM(value) FROM subscription_charges WHERE status = 'paid') as total_subscription_revenue;\n",
+  "rows": [
+    {
+      "total_fuel_paid": "12",
+      "total_subscriptions_paid": "0",
+      "total_fuel_revenue": "142154",
+      "total_subscription_revenue": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_fuel_paid\ttotal_subscriptions_paid\ttotal_fuel_revenue\ttotal_subscription_revenue\n12\t0\t142154\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 389
+}
