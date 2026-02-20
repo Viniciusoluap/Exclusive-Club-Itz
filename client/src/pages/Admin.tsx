@@ -201,6 +201,7 @@ export default function Admin() {
   const [editingVessel, setEditingVessel] = useState<any>(null);
   const [editingVesselId, setEditingVesselId] = useState<number | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("clients");
   const [editingQuotaVesselId, setEditingQuotaVesselId] = useState<number | null>(null);
   
   // Booking Management State
@@ -621,43 +622,100 @@ export default function Admin() {
       )}
 
       <div className="container py-8">
-        <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="w-full flex flex-wrap gap-2 p-2">
-            <TabsTrigger value="clients" className="flex items-center gap-2 px-4 py-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden md:inline">Clientes</span>
+        <Tabs defaultValue="clients" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Desktop: Dropdown Select */}
+          <div className="hidden md:block mb-6">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full max-w-xs">
+                <SelectValue placeholder="Selecione uma seção" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="clients">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Clientes
+                  </div>
+                </SelectItem>
+                <SelectItem value="vessels">
+                  <div className="flex items-center gap-2">
+                    <Ship className="h-4 w-4" />
+                    Embarcações
+                  </div>
+                </SelectItem>
+                <SelectItem value="bookings">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Reservas
+                  </div>
+                </SelectItem>
+                <SelectItem value="maintenance">
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-4 w-4" />
+                    Manutenção
+                  </div>
+                </SelectItem>
+                <SelectItem value="employees">
+                  <div className="flex items-center gap-2">
+                    <UserCog className="h-4 w-4" />
+                    Funcionários
+                  </div>
+                </SelectItem>
+                <SelectItem value="fuel">
+                  <div className="flex items-center gap-2">
+                    <Fuel className="h-4 w-4" />
+                    Abastecimento
+                  </div>
+                </SelectItem>
+                <SelectItem value="inspections">
+                  <div className="flex items-center gap-2">
+                    <ClipboardCheck className="h-4 w-4" />
+                    Vistorias
+                  </div>
+                </SelectItem>
+                <SelectItem value="reports">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Relatórios
+                  </div>
+                </SelectItem>
+                <SelectItem value="saas">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Saas
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Mobile: Apenas Ícones */}
+          <TabsList className="md:hidden w-full flex flex-wrap gap-2 p-2 justify-center">
+            <TabsTrigger value="clients" className="p-3">
+              <Users className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="vessels" className="flex items-center gap-2 px-4 py-2">
-              <Ship className="h-4 w-4" />
-              <span className="hidden md:inline">Embarcações</span>
+            <TabsTrigger value="vessels" className="p-3">
+              <Ship className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex items-center gap-2 px-4 py-2">
-              <Calendar className="h-4 w-4" />
-              <span className="hidden md:inline">Reservas</span>
+            <TabsTrigger value="bookings" className="p-3">
+              <Calendar className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="maintenance" className="flex items-center gap-2 px-4 py-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden md:inline">Manutenção</span>
+            <TabsTrigger value="maintenance" className="p-3">
+              <Settings className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="employees" className="flex items-center gap-2 px-4 py-2">
-              <UserCog className="h-4 w-4" />
-              <span className="hidden md:inline">Funcionários</span>
+            <TabsTrigger value="employees" className="p-3">
+              <UserCog className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="fuel" className="flex items-center gap-2 px-4 py-2">
-              <Fuel className="h-4 w-4" />
-              <span className="hidden md:inline">Abastecimento</span>
+            <TabsTrigger value="fuel" className="p-3">
+              <Fuel className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="inspections" className="flex items-center gap-2 px-4 py-2">
-              <ClipboardCheck className="h-4 w-4" />
-              <span className="hidden md:inline">Vistorias</span>
+            <TabsTrigger value="inspections" className="p-3">
+              <ClipboardCheck className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center gap-2 px-4 py-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden md:inline">Relatórios</span>
+            <TabsTrigger value="reports" className="p-3">
+              <BarChart3 className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="saas" className="flex items-center gap-2 px-4 py-2">
-              <DollarSign className="h-4 w-4" />
-              <span className="hidden md:inline">Saas</span>
+            <TabsTrigger value="saas" className="p-3">
+              <DollarSign className="h-5 w-5" />
             </TabsTrigger>
           </TabsList>
 

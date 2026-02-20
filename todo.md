@@ -706,3 +706,16 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Garantir ícones visíveis no mobile - todos visíveis
 - [x] Testar em PC e mobile - testado e funcionando
 - [x] Criar checkpoint
+
+## 🔄 Feature: Dropdown Vertical (Desktop) + Apenas Ícones (Mobile)
+====================================================================================
+
+**Objetivo:** Corrigir sobreposição de tabs convertendo para dropdown no desktop e apenas ícones no mobile
+
+**Tarefas:**
+- [x] Converter TabsList Admin para Select dropdown no desktop
+- [x] Converter TabsList Relatórios para Select dropdown no desktop
+- [x] Ajustar mobile para exibir apenas ícones (sem texto) em ambas as barras
+- [x] Testar em desktop (dropdown funcional) - PASSOU! Navegação 100%
+- [x] Mobile implementado (aguardando teste do usuário no celular)
+- [ ] Criar checkpoint

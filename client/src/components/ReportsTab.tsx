@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { formatCurrency } from "@/lib/formatCurrency";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 export default function ReportsTab() {
+  const [activeReportTab, setActiveReportTab] = useState("executive");
   const [startDate, setStartDate] = useState(
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
@@ -110,35 +112,82 @@ export default function ReportsTab() {
       </Card>
 
       {/* Tabs por Categoria */}
-      <Tabs defaultValue="executive" className="space-y-4">
-        <TabsList className="w-full flex flex-wrap gap-2 p-2 h-auto">
-          <TabsTrigger value="executive" className="flex items-center gap-2 px-4 py-2">
-            <AlertCircle className="h-4 w-4" />
-            Dashboard Executivo
+      <Tabs defaultValue="executive" value={activeReportTab} onValueChange={setActiveReportTab} className="space-y-4">
+        {/* Desktop: Dropdown Select */}
+        <div className="hidden md:block mb-6">
+          <Select value={activeReportTab} onValueChange={setActiveReportTab}>
+            <SelectTrigger className="w-full max-w-xs">
+              <SelectValue placeholder="Selecione um relatório" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="executive">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  Dashboard Executivo
+                </div>
+              </SelectItem>
+              <SelectItem value="financial">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Relatório Financeiro
+                </div>
+              </SelectItem>
+              <SelectItem value="occupancy">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Ocupação
+                </div>
+              </SelectItem>
+              <SelectItem value="clients">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Clientes
+                </div>
+              </SelectItem>
+              <SelectItem value="maintenance">
+                <div className="flex items-center gap-2">
+                  <Wrench className="h-4 w-4" />
+                  Manutenção
+                </div>
+              </SelectItem>
+              <SelectItem value="fuel">
+                <div className="flex items-center gap-2">
+                  <Fuel className="h-4 w-4" />
+                  Combustível
+                </div>
+              </SelectItem>
+              <SelectItem value="seasonality">
+                <div className="flex items-center gap-2">
+                  <Sun className="h-4 w-4" />
+                  Sazonalidade
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Mobile: Apenas Ícones */}
+        <TabsList className="md:hidden w-full flex flex-wrap gap-2 p-2 justify-center">
+          <TabsTrigger value="executive" className="p-3">
+            <AlertCircle className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="financial" className="flex items-center gap-2 px-4 py-2">
-            <DollarSign className="h-4 w-4" />
-            Relatório Financeiro
+          <TabsTrigger value="financial" className="p-3">
+            <DollarSign className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="occupancy" className="flex items-center gap-2 px-4 py-2">
-            <Calendar className="h-4 w-4" />
-            Ocupação
+          <TabsTrigger value="occupancy" className="p-3">
+            <Calendar className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="clients" className="flex items-center gap-2 px-4 py-2">
-            <Users className="h-4 w-4" />
-            Clientes
+          <TabsTrigger value="clients" className="p-3">
+            <Users className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="maintenance" className="flex items-center gap-2 px-4 py-2">
-            <Wrench className="h-4 w-4" />
-            Manutenção
+          <TabsTrigger value="maintenance" className="p-3">
+            <Wrench className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="fuel" className="flex items-center gap-2 px-4 py-2">
-            <Fuel className="h-4 w-4" />
-            Combustível
+          <TabsTrigger value="fuel" className="p-3">
+            <Fuel className="h-5 w-5" />
           </TabsTrigger>
-          <TabsTrigger value="seasonality" className="flex items-center gap-2 px-4 py-2">
-            <Sun className="h-4 w-4" />
-            Sazonalidade
+          <TabsTrigger value="seasonality" className="p-3">
+            <Sun className="h-5 w-5" />
           </TabsTrigger>
         </TabsList>
 
