@@ -1133,3 +1133,48 @@ Linha 2: Vencidas | Canceladas | (vazio)
 - ✅ Mantém todas as notificações e logs
 - ✅ Preserva histórico e estatísticas
 - ✅ Gera arquivo .zip completo (banco + código-fonte)
+
+## 🎯 FEATURE: Botão "Excluir" para Cobranças Não Classificadas (Layout Grade 3x2)
+====================================================================================
+
+**Contexto:**
+- Sistema está sincronizando cobranças de abastecimento do Asaas
+- Abastecimentos já estão integrados em outros módulos (Estoque/Abastecimento)
+- Essas cobranças aparecem incorretamente em "Cobranças Não Classificadas" do módulo Saas
+- Botões de ação (Mensalidade, Venda de Cota, Ignorar) estão fora do contêiner
+
+**Solução:**
+- [x] Adicionar campo `excludedFromSaas` (boolean) na tabela `asaasCharges`
+- [x] Executar migração do banco de dados (`pnpm db:push`)
+- [x] Criar mutation `excludeFromSaas` no `saasRouter.ts`
+- [x] Atualizar query `listUnclassifiedCharges` para filtrar `excludedFromSaas = false`
+- [x] Reorganizar botões em layout de grade 3x2 (3 colunas × 2 linhas)
+- [x] Adicionar botão "Excluir" (variant destructive) na segunda linha
+- [x] Testar exclusão de cobrança de abastecimento
+- [x] Verificar que cobrança desaparece do Saas mas continua no banco
+- [ ] Criar checkpoint
+
+**Layout Final:**
+```
+┌─────────────────────────────────────────────────────┐
+│ ☐ Cliente Nome                                      │
+│ email@example.com                                   │
+│ Descrição: ...                                      │
+│ Valor: R$ XX,XX                                     │
+│ Vencimento: DD/MM/AAAA                              │
+│ Status: RECEIVED                                    │
+│                                                      │
+│ ┌──────────────┬──────────────┬──────────────┐     │
+│ │ Mensalidade  │ Venda de Cota│   Ignorar    │     │
+│ └──────────────┴──────────────┴──────────────┘     │
+│ ┌──────────────┬──────────────┬──────────────┐     │
+│ │   Excluir    │              │              │     │
+│ └──────────────┴──────────────┴──────────────┘     │
+└─────────────────────────────────────────────────────┘
+```
+
+**Comportamento:**
+- Botão "Excluir" marca `excludedFromSaas = true`
+- Cobrança desaparece da lista de não classificadas
+- Cobrança NÃO é deletada do banco (soft delete apenas para Saas)
+- Outros módulos continuam enxergando a cobrança normalmente

@@ -288,6 +288,13 @@
       "when": 1771533128836,
       "tag": "0040_omniscient_venus",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1771699743383,
+      "tag": "0041_fuzzy_energizer",
+      "breakpoints": true
     }
   ]
 }
