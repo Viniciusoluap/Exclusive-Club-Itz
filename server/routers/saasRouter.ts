@@ -483,4 +483,63 @@ export const saasRouter = router({
         message: "Cobrança marcada como paga com sucesso",
       };
     }),
+
+  // Atualizar cobrança
+  updateCharge: adminProcedure
+    .input(z.object({
+      chargeId: z.number(),
+      value: z.number().optional(),
+      dueDate: z.string().optional(),
+      type: z.enum(["monthly", "quota_sale"]).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Buscar cobrança
+      const charge = await db.select().from(subscriptionCharges).where(eq(subscriptionCharges.id, input.chargeId)).limit(1);
+      if (charge.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Cobrança não encontrada" });
+      }
+
+      // Preparar dados para atualização
+      const updateData: any = {};
+      if (input.value !== undefined) updateData.value = input.value;
+      if (input.dueDate !== undefined) updateData.dueDate = input.dueDate;
+      if (input.type !== undefined) updateData.type = input.type;
+
+      // Atualizar cobrança
+      await db.update(subscriptionCharges)
+        .set(updateData)
+        .where(eq(subscriptionCharges.id, input.chargeId));
+
+      return {
+        success: true,
+        message: "Cobrança atualizada com sucesso",
+      };
+    }),
+
+  // Excluir cobrança (hard delete)
+  deleteCharge: adminProcedure
+    .input(z.object({
+      chargeId: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Buscar cobrança
+      const charge = await db.select().from(subscriptionCharges).where(eq(subscriptionCharges.id, input.chargeId)).limit(1);
+      if (charge.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Cobrança não encontrada" });
+      }
+
+      // Excluir cobrança (hard delete)
+      await db.delete(subscriptionCharges).where(eq(subscriptionCharges.id, input.chargeId));
+
+      return {
+        success: true,
+        message: "Cobrança excluída com sucesso",
+      };
+    }),
 });
