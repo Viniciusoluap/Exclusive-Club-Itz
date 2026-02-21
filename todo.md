@@ -1105,3 +1105,31 @@ Linha 2: Vencidas | Canceladas | (vazio)
 
 **Próximos passos:**
 - [ ] Criar checkpoint
+
+## 🐛 BUG: Erro "spawn /bin/sh ENOENT" ao Executar Backup Manual
+====================================================================================
+
+**Problema:**
+- Ao clicar em "Executar Backup Agora" na interface, aparece erro: "Erro ao executar backup: Falha ao executar backup: spawn /bin/sh ENOENT"
+- Backup agendado (schedule-backup.ts) funciona normalmente
+- Problema ocorre apenas na execução manual via interface web
+
+**Causa Raiz:**
+- Código em `backupRouter.ts` (linha 107) executa `pnpm backup` usando `execAsync()`
+- Ambiente de produção não possui shell `/bin/sh` ou PATH configurado corretamente
+- Dependências de sistema (pnpm, tsx) podem não estar disponíveis no PATH
+
+**Solução Implementada:**
+- [x] Modificar `backupRouter.ts` para executar `runBackup()` diretamente
+- [x] Remover spawn de processo externo (`execAsync('pnpm backup')`)
+- [x] Importar função `runBackup` de `../backup.ts`
+- [x] Testar execução manual via interface
+- [x] Verificar que backup .zip é gerado corretamente
+- [ ] Criar checkpoint
+
+**Impacto:**
+- ✅ Zero impacto em funcionalidades existentes
+- ✅ Compatível com backup agendado (schedule-backup.ts)
+- ✅ Mantém todas as notificações e logs
+- ✅ Preserva histórico e estatísticas
+- ✅ Gera arquivo .zip completo (banco + código-fonte)
