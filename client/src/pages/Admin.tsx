@@ -623,8 +623,8 @@ export default function Admin() {
 
       <div className="container py-8">
         <Tabs defaultValue="clients" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* Desktop: TabsList com texto + ícone */}
-          <TabsList className="hidden md:flex w-full flex-wrap gap-2 p-2 justify-start">
+          {/* Desktop: TabsList com texto + ícone - Grid 5x2 */}
+          <TabsList className="hidden md:grid md:grid-cols-5 w-full gap-2 p-2">
             <TabsTrigger value="clients" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Clientes

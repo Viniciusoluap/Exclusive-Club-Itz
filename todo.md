@@ -770,4 +770,22 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Adicionar padding-top (pt-6) em todos os 9 TabsContent de Admin.tsx
 - [x] Adicionar padding-top (pt-6) em todos os 7 TabsContent de ReportsTab.tsx
 - [x] Testar que não há mais sobreposição em desktop/tablet - PASSOU!
+- [x] Criar checkpoint (daea31d1)
+
+## 🎨 Reorganizar Tabs em Grid 5x2 (5 Colunas × 2 Linhas)
+====================================================================================
+
+**Problema:**
+- Barra Admin: 9 tabs em 1 linha horizontal → texto sobreposto
+- Barra Relatórios: 7 tabs em 1 linha horizontal → texto sobreposto
+
+**Solução:**
+- Converter TabsList para grid Tailwind com `grid grid-cols-5 gap-2`
+- Barra Admin (9 tabs): Linha 1 (5 tabs) + Linha 2 (4 tabs)
+- Barra Relatórios (7 tabs): Linha 1 (5 tabs) + Linha 2 (2 tabs)
+
+**Tarefas:**
+- [x] Modificar TabsList Admin para grid 5x2 (grid-cols-5)
+- [x] Modificar TabsList Relatórios para grid 5x2 (grid-cols-5)
+- [x] Testar e validar que não há mais sobreposição - PASSOU!
 - [ ] Criar checkpoint
