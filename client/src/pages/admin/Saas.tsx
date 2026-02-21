@@ -276,8 +276,8 @@ export default function Saas() {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Filtros de Status */}
-          <div className="flex gap-2 mb-4">
+          {/* Filtros de Status - Grade 3x2 */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
             <Button
               variant={statusFilter === "all" ? "default" : "outline"}
               onClick={() => setStatusFilter("all")}

@@ -966,4 +966,20 @@ Sistema deve sincronizar com Asaas e trazer:
 ### 4. Testes e Entrega
 - [x] Testar todas as funcionalidades integradas
 - [x] Validar que filtros funcionam em conjunto
-- [ ] Criar checkpoint
+- [x] Criar checkpoint
+
+
+## 🎨 UX: Reorganizar Filtros de Status em Grade 3x2
+
+**Objetivo:** Reorganizar botões de filtro de status (Todas, Pendentes, Pagas, Vencidas, Canceladas) em layout de grade 3 colunas × 2 linhas
+
+**Layout desejado:**
+```
+Linha 1: Todas | Pendentes | Pagas
+Linha 2: Vencidas | Canceladas | (vazio)
+```
+
+**Tarefas:**
+- [x] Atualizar CSS dos botões de filtro para grid layout
+- [x] Testar responsividade em mobile
+- [x] Criar checkpoint
