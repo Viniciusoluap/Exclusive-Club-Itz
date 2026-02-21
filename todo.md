@@ -751,4 +751,23 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Identificar arquivo do logo atual (/logo-exclusive-round.png)
 - [x] Adicionar múltiplas tags <link rel="icon"> no client/index.html
 - [x] Testar que favicon foi adicionado ao HTML
+- [x] Criar checkpoint (f0d94bc7)
+
+## 🐛 BUG: Sobreposição das Barras de Tabs no Conteúdo
+====================================================================================
+
+**Problema:**
+- Barra Admin (superior): Sobrepõe o conteúdo "Filtros" e títulos das páginas
+- Barra Relatórios (inferior): Sobrepõe títulos como "Clientes Autorizados", "Todas as Reservas"
+- As tabs ficam "por cima" do texto, tornando difícil a leitura
+
+**Solução:**
+- Adicionar padding-top no conteúdo abaixo da barra Admin
+- Adicionar padding-top no conteúdo abaixo da barra Relatórios
+- Criar "área livre" onde as barras possam ficar sem sobrepor texto
+
+**Tarefas:**
+- [x] Adicionar padding-top (pt-6) em todos os 9 TabsContent de Admin.tsx
+- [x] Adicionar padding-top (pt-6) em todos os 7 TabsContent de ReportsTab.tsx
+- [x] Testar que não há mais sobreposição em desktop/tablet - PASSOU!
 - [ ] Criar checkpoint
