@@ -661,4 +661,188 @@ export const saasRouter = router({
         message: "Cobrança excluída com sucesso",
       };
     }),
+
+  // Listar cobranças não classificadas do Asaas
+  listUnclassifiedCharges: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    // Buscar todos os clientes ativos
+    const activeClients = await db.select().from(allowedClients).where(eq(allowedClients.isActive, 1));
+
+    // Buscar todas as cobranças existentes em outras abas (para excluir da listagem)
+    const fuelCharges = await db.select().from(fuelRecords);
+    const inspectionChargesData = await db.select().from(inspectionCharges);
+    
+    const excludedAsaasIds = new Set<string>();
+    
+    // Adicionar IDs de cobranças de abastecimento
+    fuelCharges.forEach(record => {
+      if (record.asaasChargeId) {
+        excludedAsaasIds.add(record.asaasChargeId);
+      }
+    });
+    
+    // Adicionar IDs de cobranças de vistorias/reparos
+    inspectionChargesData.forEach(charge => {
+      if (charge.asaasChargeId) {
+        excludedAsaasIds.add(charge.asaasChargeId);
+      }
+    });
+
+    // Buscar cobranças já classificadas
+    const classifiedCharges = await db.select().from(subscriptionCharges);
+    const classifiedAsaasIds = new Set(classifiedCharges.map(c => c.asaasPaymentId).filter(Boolean) as string[]);
+
+    const unclassifiedCharges: Array<{
+      asaasChargeId: string;
+      description: string;
+      value: number;
+      dueDate: string;
+      status: string;
+      clientId: number;
+      clientName: string;
+      clientEmail: string;
+      asaasCustomerId: string;
+    }> = [];
+
+    for (const client of activeClients) {
+      try {
+        // Buscar ou criar cliente no Asaas
+        const asaasCustomer = await getOrCreateAsaasCustomer({
+          email: client.email,
+          name: client.name,
+          cpfCnpj: client.cpfCnpj,
+          phone: client.phone || undefined,
+        });
+
+        // Buscar todas as cobranças do cliente no Asaas
+        const asaasCharges = await listCustomerCharges(asaasCustomer.id);
+
+        for (const asaasCharge of asaasCharges) {
+          // EXCLUIR cobranças que já existem em outras abas
+          if (excludedAsaasIds.has(asaasCharge.id)) {
+            continue;
+          }
+
+          // EXCLUIR cobranças já classificadas
+          if (classifiedAsaasIds.has(asaasCharge.id)) {
+            continue;
+          }
+
+          // Classificar cobrança: mensalidade vs venda de cota
+          const description = asaasCharge.description?.toLowerCase() || "";
+          let chargeType: "monthly" | "quota_sale" | null = null;
+
+          if (description.includes("mensalidade") || description.includes("monthly")) {
+            chargeType = "monthly";
+          } else if (description.includes("cota") || description.includes("quota") || description.includes("venda") || description.includes("parcela")) {
+            chargeType = "quota_sale";
+          }
+
+          // Se não conseguir classificar, adiciona à lista de não classificadas
+          if (!chargeType) {
+            unclassifiedCharges.push({
+              asaasChargeId: asaasCharge.id,
+              description: asaasCharge.description || "Sem descrição",
+              value: asaasCharge.value,
+              dueDate: asaasCharge.dueDate,
+              status: asaasCharge.status,
+              clientId: client.id,
+              clientName: client.name,
+              clientEmail: client.email,
+              asaasCustomerId: asaasCustomer.id,
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Erro ao buscar cobranças do cliente ${client.name}:`, error);
+      }
+    }
+
+    return unclassifiedCharges;
+  }),
+
+  // Classificar cobrança manualmente
+  classifyCharge: adminProcedure
+    .input(z.object({
+      asaasChargeId: z.string(),
+      clientId: z.number(),
+      type: z.enum(["monthly", "quota_sale", "ignore"]),
+      value: z.number(),
+      dueDate: z.string(),
+      status: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Se escolheu "ignorar", não faz nada
+      if (input.type === "ignore") {
+        return {
+          success: true,
+          message: "Cobrança marcada para ignorar",
+        };
+      }
+
+      // Verificar se cobrança já existe no banco
+      const existingCharge = await db.select()
+        .from(subscriptionCharges)
+        .where(eq(subscriptionCharges.asaasPaymentId, input.asaasChargeId))
+        .limit(1);
+
+      if (existingCharge.length > 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cobrança já foi classificada" });
+      }
+
+      // Buscar ou criar subscription para este cliente e tipo
+      let subscription = await db.select()
+        .from(subscriptions)
+        .where(and(
+          eq(subscriptions.clientId, input.clientId),
+          eq(subscriptions.type, input.type),
+          eq(subscriptions.status, "active")
+        ))
+        .limit(1);
+
+      // Se não existir subscription, criar uma
+      if (subscription.length === 0) {
+        const [newSub] = await db.insert(subscriptions).values({
+          clientId: input.clientId,
+          type: input.type,
+          value: input.value.toString(),
+          dueDay: new Date(input.dueDate).getDate(),
+          startDate: input.dueDate,
+          status: "active",
+          yearlyAdjustment: "manual",
+        });
+        subscription = [{ id: newSub.insertId }] as any;
+      }
+
+      // Mapear status do Asaas para enum de subscription_charges
+      const mappedStatus = mapAsaasStatus(input.status);
+      let chargeStatus: "pending" | "paid" | "overdue" | "cancelled" = "pending";
+      if (mappedStatus === "received" || mappedStatus === "confirmed") {
+        chargeStatus = "paid";
+      } else if (mappedStatus === "overdue") {
+        chargeStatus = "overdue";
+      } else if (mappedStatus === "cancelled" || mappedStatus === "refunded") {
+        chargeStatus = "cancelled";
+      }
+
+      // Criar nova cobrança
+      await db.insert(subscriptionCharges).values({
+        subscriptionId: subscription[0].id,
+        dueDate: input.dueDate,
+        value: input.value.toString(),
+        status: chargeStatus,
+        asaasPaymentId: input.asaasChargeId,
+        paidDate: null,
+      });
+
+      return {
+        success: true,
+        message: "Cobrança classificada com sucesso",
+      };
+    }),
 });
