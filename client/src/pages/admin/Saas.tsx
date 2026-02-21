@@ -70,16 +70,23 @@ export default function Saas() {
 
   const syncMutation = trpc.saas.syncWithAsaas.useMutation({
     onSuccess: (data) => {
-      if (data.unclassifiedCount && data.unclassifiedCount > 0) {
-        toast.warning(
-          `Sincronizado! ${data.syncedCount} cobranças atualizadas. \n\n⚠️ ${data.unclassifiedCount} cobranças não puderam ser classificadas automaticamente. Verifique as descrições no Asaas.`,
-          { duration: 10000 }
-        );
-        console.log('[Saas] Cobranças não classificadas:', data.unclassifiedCharges);
-      } else {
-        toast.success(`Sincronizado! ${data.syncedCount} cobranças atualizadas.`);
+      const messages: string[] = [];
+      messages.push(`✅ ${data.syncedCount} cobranças sincronizadas`);
+      
+      if (data.excludedCount && data.excludedCount > 0) {
+        messages.push(`⛔ ${data.excludedCount} cobranças excluídas (abastecimento/vistorias)`);
       }
+      
+      if (data.unclassifiedCount && data.unclassifiedCount > 0) {
+        messages.push(`⚠️ ${data.unclassifiedCount} cobranças não classificadas`);
+        console.log('[Saas] Cobranças não classificadas:', data.unclassifiedCharges);
+        toast.warning(messages.join('\n'), { duration: 10000 });
+      } else {
+        toast.success(messages.join('\n'), { duration: 5000 });
+      }
+      
       utils.saas.getInvoiceDashboard.invalidate();
+      utils.saas.list.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
