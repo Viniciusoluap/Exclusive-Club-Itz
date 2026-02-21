@@ -127,6 +127,7 @@ export const saasRouter = router({
       startDate: z.string(),
       endDate: z.string().optional(),
       yearlyAdjustment: z.enum(["manual", "ipca", "igpm"]).optional().default("manual"),
+      installments: z.number().min(1).max(12).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -149,6 +150,37 @@ export const saasRouter = router({
         status: "active",
         yearlyAdjustment: input.yearlyAdjustment,
       });
+
+      // Se for venda de cota parcelada, criar múltiplas cobranças no Asaas
+      if (input.type === "quota_sale" && input.installments && input.installments > 1) {
+        const installmentValue = input.value / input.installments;
+        const asaasCustomer = await getOrCreateAsaasCustomer(client[0]);
+        
+        for (let i = 0; i < input.installments; i++) {
+          // Calcular data de vencimento de cada parcela
+          const dueDate = new Date(input.startDate);
+          dueDate.setMonth(dueDate.getMonth() + i);
+          dueDate.setDate(input.dueDay);
+
+          // Criar cobrança no Asaas
+          const asaasCharge = await createPixCharge({
+            customer: asaasCustomer.id,
+            value: installmentValue,
+            dueDate: dueDate.toISOString().split('T')[0],
+            description: `Venda de Cota - Parcela ${i + 1}/${input.installments}`,
+          });
+
+          // Salvar cobrança no banco local
+          await db.insert(subscriptionCharges).values({
+            subscriptionId: subscription.insertId,
+            asaasChargeId: asaasCharge.id,
+            value: installmentValue.toString(),
+            dueDate: dueDate.toISOString(),
+            status: "pending",
+            type: "quota_sale",
+          });
+        }
+      }
 
       return { id: subscription.insertId, success: true };
     }),
