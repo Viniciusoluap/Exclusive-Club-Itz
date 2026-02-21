@@ -840,4 +840,20 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Identificar componente de Filtros no ReportsTab.tsx (linha 63)
 - [x] Ajustar classes de container/padding (container mx-auto px-4)
 - [x] Testar e validar que card está dentro das margens - PASSOU!
+- [x] Criar checkpoint (780304d3)
+
+## 🎨 Remover Borda Azul da Logo
+====================================================================================
+
+**Problema:**
+- Logo no header tem uma borda azul arredondada indesejada
+
+**Solução:**
+- Identificar componente da logo no Header
+- Remover classes CSS de borda (border, ring, etc.)
+
+**Tarefas:**
+- [x] Identificar componente da logo no MobileMenu.tsx (linha 94)
+- [x] Remover estilo inline de borda (backgroundColor, borderRadius, padding)
+- [x] Testar e validar que borda foi removida - PASSOU!
 - [ ] Criar checkpoint
