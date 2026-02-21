@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, DollarSign, Plus, Pencil, X, RefreshCw, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
+import { ArrowLeft, DollarSign, Plus, Pencil, X, RefreshCw, TrendingUp, TrendingDown, AlertCircle, CheckCircle } from "lucide-react";
 import { useLocation } from "wouter";
+import { formatCurrency } from "@/lib/formatCurrency";
 
 export default function Saas() {
   const [, setLocation] = useLocation();
@@ -149,6 +150,12 @@ export default function Saas() {
     }
   };
 
+  const handleMarkAsPaid = (id: number) => {
+    toast.info("Funcionalidade em desenvolvimento", {
+      description: "Em breve você poderá marcar mensalidades como recebidas diretamente por aqui.",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       {/* Header */}
@@ -187,7 +194,7 @@ export default function Saas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              R$ {dashboard?.totalExpected.toFixed(2) || "0,00"}
+              {formatCurrency(dashboard?.totalExpected || 0)}
             </div>
           </CardContent>
         </Card>
@@ -199,7 +206,7 @@ export default function Saas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              R$ {dashboard?.totalPaid.toFixed(2) || "0,00"}
+              {formatCurrency(dashboard?.totalPaid || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
               {dashboard?.paidCount || 0} cobrança(s)
@@ -214,7 +221,7 @@ export default function Saas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              R$ {dashboard?.totalPending.toFixed(2) || "0,00"}
+              {formatCurrency(dashboard?.totalPending || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
               {dashboard?.pendingCount || 0} cobrança(s)
@@ -229,7 +236,7 @@ export default function Saas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              R$ {dashboard?.totalOverdue.toFixed(2) || "0,00"}
+              {formatCurrency(dashboard?.totalOverdue || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
               {dashboard?.overdueCount || 0} cobrança(s)
@@ -309,7 +316,7 @@ export default function Saas() {
                         <strong>Tipo:</strong> {item.subscription.type === "monthly" ? "Mensalidade" : "Venda de Cota"}
                       </span>
                       <span>
-                        <strong>Valor:</strong> R$ {parseFloat(item.subscription.value).toFixed(2)}
+                        <strong>Valor:</strong> {formatCurrency(parseFloat(item.subscription.value))}
                       </span>
                       <span>
                         <strong>Vencimento:</strong> Dia {item.subscription.dueDay}
@@ -323,6 +330,15 @@ export default function Saas() {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleMarkAsPaid(item.subscription.id)}
+                      disabled={item.subscription.status === "cancelled"}
+                      title="Marcar como recebido"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="icon"
