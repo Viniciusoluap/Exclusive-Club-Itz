@@ -915,3 +915,19 @@ Sistema deve sincronizar com Asaas e trazer:
 - [x] Testar sincronização com dados reais do Asaas
 - [x] Validar que não duplica cobranças de outras abas
 - [x] Criar checkpoint
+
+
+## 🎨 Feature: Melhorias UX Página Saas
+
+**Descrição:** Adicionar botão "Recebido" e padronizar formato monetário brasileiro
+
+**Tarefas:**
+- [x] Adicionar botão "Recebido" nos cards de mensalidades (ao lado de editar/excluir)
+- [x] Criar função de formatação monetária brasileira (R$ 10.000,00)
+- [x] Aplicar formatação em card "Total Esperado"
+- [x] Aplicar formatação em card "Recebido"
+- [x] Aplicar formatação em card "Pendente"
+- [x] Aplicar formatação em card "Vencido"
+- [x] Aplicar formatação em valores das mensalidades (lista)
+- [x] Testar botão "Recebido" com dados reais
+- [x] Criar checkpoint
