@@ -804,4 +804,23 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 **Tarefas:**
 - [x] Modificar TabsList Relatórios para grid-cols-4
 - [x] Testar e validar nova organização - PASSOU!
+- [x] Criar checkpoint (51cfaa22)
+
+## 🎨 Trocar Logo em Todo o Site
+====================================================================================
+
+**Solicitação:**
+- Trocar logo atual (âncora redonda com fundo branco/preto) pela nova logo (âncora azul com fundo branco e texto "Exclusive Club - Compartilhando Sonhos")
+
+**Locais para atualizar:**
+- Header do site público (Home, Embarcações, Galeria, Dashboard, Sobre Nós)
+- Header do Admin (painel administrativo)
+- Favicon (ícone da aba do navegador)
+- Arquivo const.ts (APP_LOGO)
+
+**Tarefas:**
+- [x] Fazer upload da nova logo para o projeto (logo-exclusive-new.jpeg)
+- [x] Atualizar referência no const.ts (APP_LOGO)
+- [x] Atualizar favicon no index.html
+- [x] Testar que nova logo aparece em todas as páginas - PASSOU!
 - [ ] Criar checkpoint
