@@ -113,8 +113,8 @@ export default function ReportsTab() {
 
       {/* Tabs por Categoria */}
       <Tabs defaultValue="executive" value={activeReportTab} onValueChange={setActiveReportTab} className="space-y-4">
-        {/* Desktop: TabsList com texto + ícone - Grid 5x2 */}
-        <TabsList className="hidden md:grid md:grid-cols-5 w-full gap-2 p-2 mt-6">
+        {/* Desktop: TabsList com texto + ícone - Grid 4x2 */}
+        <TabsList className="hidden md:grid md:grid-cols-4 w-full gap-2 p-2 mt-6">
           <TabsTrigger value="executive" className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
             Dashboard Executivo

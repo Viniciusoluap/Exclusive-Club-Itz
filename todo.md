@@ -788,4 +788,20 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Modificar TabsList Admin para grid 5x2 (grid-cols-5)
 - [x] Modificar TabsList Relatórios para grid 5x2 (grid-cols-5)
 - [x] Testar e validar que não há mais sobreposição - PASSOU!
+- [x] Criar checkpoint (a13579f4)
+
+## 🎨 Mudar Barra Relatórios para Grid 4x2
+====================================================================================
+
+**Solicitação:**
+- Mudar apenas a barra de Relatórios (inferior) de 5x2 para 4x2
+- Barra Admin (superior) permanece 5x2
+
+**Nova organização Relatórios (7 tabs):**
+- Linha 1 (4 tabs): Dashboard Executivo | Relatório Financeiro | Ocupação | Clientes
+- Linha 2 (3 tabs): Manutenção | Combustível | Sazonalidade
+
+**Tarefas:**
+- [x] Modificar TabsList Relatórios para grid-cols-4
+- [x] Testar e validar nova organização - PASSOU!
 - [ ] Criar checkpoint
