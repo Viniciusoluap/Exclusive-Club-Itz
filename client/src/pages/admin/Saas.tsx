@@ -36,6 +36,7 @@ export default function Saas() {
     startDate: new Date().toISOString().split('T')[0],
     endDate: "",
     yearlyAdjustment: "manual" as "manual" | "ipca" | "igpm",
+    installments: 1,
   });
 
   const utils = trpc.useUtils();
@@ -158,6 +159,7 @@ export default function Saas() {
       startDate: new Date().toISOString().split('T')[0],
       endDate: "",
       yearlyAdjustment: "manual",
+      installments: 1,
     });
     setEditingId(null);
   };
@@ -176,6 +178,7 @@ export default function Saas() {
       startDate: form.startDate,
       endDate: form.endDate || undefined,
       yearlyAdjustment: form.yearlyAdjustment,
+      installments: form.type === "quota_sale" ? form.installments : undefined,
     };
 
     if (editingId) {
@@ -195,6 +198,7 @@ export default function Saas() {
       startDate: subscription.subscription.startDate.split('T')[0],
       endDate: subscription.subscription.endDate ? subscription.subscription.endDate.split('T')[0] : "",
       yearlyAdjustment: subscription.subscription.yearlyAdjustment,
+      installments: 1,
     });
     setShowDialog(true);
   };
@@ -609,6 +613,40 @@ export default function Saas() {
                 placeholder="0.00"
               />
             </div>
+
+            {/* Campo de Parcelas - Apenas para Venda de Cota */}
+            {form.type === "quota_sale" && (
+              <div>
+                <Label>Número de Parcelas *</Label>
+                <Select
+                  value={form.installments.toString()}
+                  onValueChange={(value) => setForm({ ...form, installments: parseInt(value) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1x (à vista)</SelectItem>
+                    <SelectItem value="2">2x</SelectItem>
+                    <SelectItem value="3">3x</SelectItem>
+                    <SelectItem value="4">4x</SelectItem>
+                    <SelectItem value="5">5x</SelectItem>
+                    <SelectItem value="6">6x</SelectItem>
+                    <SelectItem value="7">7x</SelectItem>
+                    <SelectItem value="8">8x</SelectItem>
+                    <SelectItem value="9">9x</SelectItem>
+                    <SelectItem value="10">10x</SelectItem>
+                    <SelectItem value="11">11x</SelectItem>
+                    <SelectItem value="12">12x</SelectItem>
+                  </SelectContent>
+                </Select>
+                {form.installments > 1 && form.value && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {form.installments}x de {formatCurrency(parseFloat(form.value) / form.installments)}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div>
               <Label>Dia do Vencimento *</Label>

@@ -1034,3 +1034,20 @@ Linha 2: Vencidas | Canceladas | (vazio)
 - [x] Testar filtro de status + mês/ano
 - [x] Testar filtro de busca + mês/ano
 - [x] Criar checkpoint
+
+
+## 💳 Feature: Parcelamento de Venda de Cota
+
+**Descrição:** Adicionar campo "Número de Parcelas" no formulário de Nova Mensalidade quando Tipo = "Venda de Cota", permitindo dividir o valor em múltiplas parcelas mensais.
+
+**Tarefas:**
+- [x] Adicionar estado `installments` no formulário
+- [x] Adicionar campo select "Número de Parcelas" (1x a 12x)
+- [x] Mostrar campo apenas quando tipo = "Venda de Cota"
+- [x] Atualizar mutation `create` no backend para aceitar `installments`
+- [x] Implementar lógica de criação de múltiplas cobranças no Asaas
+- [x] Calcular valor de cada parcela (valor total / número de parcelas)
+- [x] Criar cobranças com vencimentos mensais sequenciais
+- [x] Testar criação de venda parcelada (ex: R$ 10.000 em 10x)
+- [x] Validar que todas as parcelas foram criadas no Asaas
+- [x] Criar checkpoint
