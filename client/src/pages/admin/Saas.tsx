@@ -11,6 +11,206 @@ import { ArrowLeft, DollarSign, Plus, Pencil, X, RefreshCw, TrendingUp, Trending
 import { useLocation } from "wouter";
 import { formatCurrency } from "@/lib/formatCurrency";
 
+// Componente para listar e classificar cobranças não classificadas
+function UnclassifiedChargesSection() {
+  const [selectedCharges, setSelectedCharges] = useState<Set<string>>(new Set());
+  const [bulkClassification, setBulkClassification] = useState<"monthly" | "quota_sale" | "ignore">("monthly");
+  
+  const utils = trpc.useUtils();
+  const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery();
+  
+  const classifyMutation = trpc.saas.classifyCharge.useMutation({
+    onSuccess: () => {
+      toast.success("Cobrança classificada com sucesso!");
+      utils.saas.listUnclassifiedCharges.invalidate();
+      utils.saas.listCharges.invalidate();
+      utils.saas.getFilteredStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const handleClassifySingle = (charge: any, type: "monthly" | "quota_sale" | "ignore") => {
+    classifyMutation.mutate({
+      asaasChargeId: charge.asaasChargeId,
+      clientId: charge.clientId,
+      type,
+      value: charge.value,
+      dueDate: charge.dueDate,
+      status: charge.status,
+    });
+  };
+
+  const handleClassifyBulk = () => {
+    if (selectedCharges.size === 0) {
+      toast.error("Selecione pelo menos uma cobrança");
+      return;
+    }
+
+    const chargesToClassify = unclassified?.filter(c => selectedCharges.has(c.asaasChargeId));
+    if (!chargesToClassify) return;
+
+    chargesToClassify.forEach(charge => {
+      classifyMutation.mutate({
+        asaasChargeId: charge.asaasChargeId,
+        clientId: charge.clientId,
+        type: bulkClassification,
+        value: charge.value,
+        dueDate: charge.dueDate,
+        status: charge.status,
+      });
+    });
+
+    setSelectedCharges(new Set());
+  };
+
+  const toggleSelection = (chargeId: string) => {
+    const newSelection = new Set(selectedCharges);
+    if (newSelection.has(chargeId)) {
+      newSelection.delete(chargeId);
+    } else {
+      newSelection.add(chargeId);
+    }
+    setSelectedCharges(newSelection);
+  };
+
+  const selectAll = () => {
+    if (unclassified) {
+      setSelectedCharges(new Set(unclassified.map(c => c.asaasChargeId)));
+    }
+  };
+
+  const deselectAll = () => {
+    setSelectedCharges(new Set());
+  };
+
+  // Não mostrar se não houver cobranças não classificadas
+  if (!unclassified || unclassified.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="border-yellow-200 bg-yellow-50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-yellow-600" />
+          Cobranças Não Classificadas
+        </CardTitle>
+        <CardDescription>
+          {unclassified.length} cobrança(s) do Asaas aguardando classificação manual
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {/* Ações em Lote */}
+        {selectedCharges.size > 0 && (
+          <div className="mb-4 p-4 bg-white rounded-lg border border-yellow-300">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium">{selectedCharges.size} cobrança(s) selecionada(s)</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={bulkClassification}
+                  onValueChange={(value: "monthly" | "quota_sale" | "ignore") => setBulkClassification(value)}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Mensalidade</SelectItem>
+                    <SelectItem value="quota_sale">Venda de Cota</SelectItem>
+                    <SelectItem value="ignore">Ignorar</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleClassifyBulk} disabled={classifyMutation.isPending}>
+                  Classificar Selecionadas
+                </Button>
+                <Button variant="outline" onClick={deselectAll}>
+                  Desmarcar Todas
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Botões de Seleção */}
+        <div className="mb-4 flex gap-2">
+          <Button variant="outline" size="sm" onClick={selectAll}>
+            Selecionar Todas
+          </Button>
+          <Button variant="outline" size="sm" onClick={deselectAll}>
+            Desmarcar Todas
+          </Button>
+        </div>
+
+        {/* Lista de Cobranças */}
+        <div className="space-y-3">
+          {unclassified.map((charge) => (
+            <div
+              key={charge.asaasChargeId}
+              className="flex flex-col md:flex-row md:items-center md:justify-between p-4 bg-white border rounded-lg gap-4"
+            >
+              <div className="flex items-start gap-3 flex-1">
+                <input
+                  type="checkbox"
+                  checked={selectedCharges.has(charge.asaasChargeId)}
+                  onChange={() => toggleSelection(charge.asaasChargeId)}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <h3 className="font-semibold">{charge.clientName}</h3>
+                  <p className="text-sm text-muted-foreground">{charge.clientEmail}</p>
+                  <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                    <span>
+                      <strong>Descrição:</strong> {charge.description}
+                    </span>
+                    <span>
+                      <strong>Valor:</strong> {formatCurrency(charge.value)}
+                    </span>
+                    <span>
+                      <strong>Vencimento:</strong> {new Date(charge.dueDate).toLocaleDateString('pt-BR')}
+                    </span>
+                    <span>
+                      <strong>Status:</strong> {charge.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleClassifySingle(charge, "monthly")}
+                  disabled={classifyMutation.isPending}
+                >
+                  Mensalidade
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleClassifySingle(charge, "quota_sale")}
+                  disabled={classifyMutation.isPending}
+                >
+                  Venda de Cota
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleClassifySingle(charge, "ignore")}
+                  disabled={classifyMutation.isPending}
+                >
+                  Ignorar
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Saas() {
   const [, setLocation] = useLocation();
   const [showDialog, setShowDialog] = useState(false);
@@ -452,6 +652,9 @@ export default function Saas() {
           )}
         </CardContent>
       </Card>
+
+      {/* Cobranças Não Classificadas */}
+      <UnclassifiedChargesSection />
 
       {/* Lista de Mensalidades */}
       <Card>

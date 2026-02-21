@@ -1051,3 +1051,57 @@ Linha 2: Vencidas | Canceladas | (vazio)
 - [x] Testar criação de venda parcelada (ex: R$ 10.000 em 10x)
 - [x] Validar que todas as parcelas foram criadas no Asaas
 - [x] Criar checkpoint
+
+
+## 🔍 Feature: Classificação Manual de Cobranças Não Classificadas
+
+**Objetivo:** Criar interface para revisar e classificar manualmente as cobranças do Asaas que não foram automaticamente identificadas como Mensalidade ou Venda de Cota.
+
+**Tarefas:**
+- [ ] Criar query `listUnclassifiedCharges` no backend
+- [ ] Criar mutation `classifyCharge` no backend (Mensalidade, Venda de Cota, Ignorar)
+- [ ] Adicionar seção "Cobranças Não Classificadas" no frontend
+- [ ] Exibir lista de cobranças não classificadas (cliente, valor, vencimento, descrição)
+- [ ] Adicionar botões de classificação em cada cobrança
+- [ ] Implementar ação de classificar e importar para o sistema
+- [ ] Testar classificação manual com dados reais
+- [ ] Criar checkpoint
+
+## ✅ Feature: Interface de Classificação Manual de Cobranças Não Classificadas
+====================================================================================
+
+**Contexto:**
+- Após sincronização com Asaas, 92 cobranças não puderam ser classificadas automaticamente
+- Cobranças sem palavras-chave (mensalidade, cota, parcela) precisam de classificação manual
+- Usuário solicitou interface para revisar e classificar cada cobrança uma a uma
+
+**Funcionalidades implementadas:**
+
+**Backend (saasRouter.ts):**
+- [x] Query `listUnclassifiedCharges` - busca cobranças não classificadas do Asaas
+- [x] Mutation `classifyCharge` - classifica cobrança manualmente
+- [x] Lógica de exclusão de cobranças já classificadas
+- [x] Lógica de exclusão de cobranças de outras abas (fuel, inspection)
+- [x] Criação automática de subscription se não existir
+- [x] Mapeamento de status do Asaas para enum local
+
+**Frontend (Saas.tsx):**
+- [x] Componente `UnclassifiedChargesSection` com card amarelo de destaque
+- [x] Contador de cobranças não classificadas (92 cobranças)
+- [x] Botões de seleção em massa (Selecionar Todas / Desmarcar Todas)
+- [x] Checkbox individual para cada cobrança
+- [x] Exibição de informações completas: cliente, email, descrição, valor, vencimento, status
+- [x] 3 botões de classificação por cobrança: Mensalidade, Venda de Cota, Ignorar
+- [x] Classificação em lote com dropdown de tipo
+- [x] Seção só aparece quando há cobranças não classificadas
+- [x] Invalidação automática de queries após classificação
+
+**Testes realizados:**
+- [x] Sincronização com Asaas (210 sincronizadas, 32 excluídas, 92 não classificadas)
+- [x] Exibição da seção de não classificadas
+- [x] Visualização de todas as informações das cobranças
+- [x] Botões de classificação individual funcionando
+- [x] Botões de seleção em massa funcionando
+
+**Próximos passos:**
+- [ ] Criar checkpoint
