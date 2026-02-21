@@ -46,13 +46,18 @@ export default function Saas() {
     search: searchQuery || undefined,
   });
   const { data: clients } = trpc.allowedClients.list.useQuery();
-  const { data: dashboard } = trpc.saas.getInvoiceDashboard.useQuery();
+  const { data: dashboard } = trpc.saas.getFilteredStats.useQuery({
+    status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled",
+    month: monthFilter || undefined,
+    year: yearFilter || undefined,
+    search: searchQuery || undefined,
+  });
 
   const createMutation = trpc.saas.create.useMutation({
     onSuccess: () => {
       toast.success("Mensalidade criada com sucesso!");
       utils.saas.list.invalidate();
-      utils.saas.getInvoiceDashboard.invalidate();
+      utils.saas.getFilteredStats.invalidate();
       setShowDialog(false);
       resetForm();
     },
@@ -65,7 +70,7 @@ export default function Saas() {
     onSuccess: () => {
       toast.success("Mensalidade atualizada com sucesso!");
       utils.saas.list.invalidate();
-      utils.saas.getInvoiceDashboard.invalidate();
+      utils.saas.getFilteredStats.invalidate();
       setShowDialog(false);
       resetForm();
     },
@@ -78,7 +83,7 @@ export default function Saas() {
     onSuccess: () => {
       toast.success("Mensalidade cancelada com sucesso!");
       utils.saas.list.invalidate();
-      utils.saas.getInvoiceDashboard.invalidate();
+      utils.saas.getFilteredStats.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -89,7 +94,7 @@ export default function Saas() {
     onSuccess: () => {
       toast.success("Cobrança marcada como paga com sucesso!");
       utils.saas.list.invalidate();
-      utils.saas.getInvoiceDashboard.invalidate();
+      utils.saas.getFilteredStats.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -100,7 +105,7 @@ export default function Saas() {
     onSuccess: () => {
       toast.success("Cobrança atualizada com sucesso!");
       utils.saas.listCharges.invalidate();
-      utils.saas.getInvoiceDashboard.invalidate();
+      utils.saas.getFilteredStats.invalidate();
       setShowEditChargeDialog(false);
     },
     onError: (error) => {
@@ -112,7 +117,7 @@ export default function Saas() {
     onSuccess: () => {
       toast.success("Cobrança excluída com sucesso!");
       utils.saas.listCharges.invalidate();
-      utils.saas.getInvoiceDashboard.invalidate();
+      utils.saas.getFilteredStats.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -136,7 +141,7 @@ export default function Saas() {
         toast.success(messages.join('\n'), { duration: 5000 });
       }
       
-      utils.saas.getInvoiceDashboard.invalidate();
+      utils.saas.getFilteredStats.invalidate();
       utils.saas.list.invalidate();
     },
     onError: (error) => {
