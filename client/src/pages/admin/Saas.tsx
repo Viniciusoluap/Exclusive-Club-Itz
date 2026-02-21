@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, DollarSign, Plus, Pencil, X, RefreshCw, TrendingUp, TrendingDown, AlertCircle, CheckCircle, MessageCircle } from "lucide-react";
+import { ArrowLeft, DollarSign, Plus, Pencil, X, RefreshCw, TrendingUp, TrendingDown, AlertCircle, CheckCircle, MessageCircle, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { formatCurrency } from "@/lib/formatCurrency";
 
@@ -15,10 +15,18 @@ export default function Saas() {
   const [, setLocation] = useLocation();
   const [showDialog, setShowDialog] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [showEditChargeDialog, setShowEditChargeDialog] = useState(false);
+  const [editingChargeId, setEditingChargeId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<"pending" | "paid" | "overdue" | "cancelled" | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [monthFilter, setMonthFilter] = useState<string>("");
   const [yearFilter, setYearFilter] = useState<string>("");
+  
+  const [editChargeForm, setEditChargeForm] = useState({
+    value: "",
+    dueDate: "",
+    type: "monthly" as "monthly" | "quota_sale",
+  });
   
   const [form, setForm] = useState({
     clientId: 0,
@@ -81,6 +89,29 @@ export default function Saas() {
     onSuccess: () => {
       toast.success("Cobrança marcada como paga com sucesso!");
       utils.saas.list.invalidate();
+      utils.saas.getInvoiceDashboard.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const updateChargeMutation = trpc.saas.updateCharge.useMutation({
+    onSuccess: () => {
+      toast.success("Cobrança atualizada com sucesso!");
+      utils.saas.listCharges.invalidate();
+      utils.saas.getInvoiceDashboard.invalidate();
+      setShowEditChargeDialog(false);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const deleteChargeMutation = trpc.saas.deleteCharge.useMutation({
+    onSuccess: () => {
+      toast.success("Cobrança excluída com sucesso!");
+      utils.saas.listCharges.invalidate();
       utils.saas.getInvoiceDashboard.invalidate();
     },
     onError: (error) => {
@@ -179,6 +210,30 @@ export default function Saas() {
       paymentDate: new Date().toISOString().split('T')[0],
       notifyCustomer: false,
     });
+  };
+
+  const handleEditCharge = (chargeId: number) => {
+    const charge = charges?.find(c => c.charge.id === chargeId);
+    if (!charge) {
+      toast.error("Cobrança não encontrada");
+      return;
+    }
+
+    setEditingChargeId(chargeId);
+    setEditChargeForm({
+      value: charge.charge.value.toString(),
+      dueDate: charge.charge.dueDate,
+      type: charge.charge.type,
+    });
+    setShowEditChargeDialog(true);
+  };
+
+  const handleDeleteCharge = (chargeId: number) => {
+    if (!confirm("Tem certeza que deseja excluir esta cobrança? Esta ação é permanente e não pode ser desfeita.")) {
+      return;
+    }
+
+    deleteChargeMutation.mutate({ chargeId });
   };
 
   return (
@@ -467,6 +522,22 @@ export default function Saas() {
                         <MessageCircle className="h-4 w-4" />
                       </Button>
                     </a>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleEditCharge(item.charge.id)}
+                      title="Editar cobrança"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleDeleteCharge(item.charge.id)}
+                      title="Excluir cobrança"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -586,6 +657,74 @@ export default function Saas() {
             </Button>
             <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
               {editingId ? "Atualizar" : "Criar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Editar Cobrança */}
+      <Dialog open={showEditChargeDialog} onOpenChange={setShowEditChargeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Cobrança</DialogTitle>
+            <DialogDescription>
+              Edite os detalhes da cobrança abaixo
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Tipo *</Label>
+              <Select
+                value={editChargeForm.type}
+                onValueChange={(value: "monthly" | "quota_sale") => setEditChargeForm({ ...editChargeForm, type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensalidade</SelectItem>
+                  <SelectItem value="quota_sale">Venda de Cota</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Valor (R$) *</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={editChargeForm.value}
+                onChange={(e) => setEditChargeForm({ ...editChargeForm, value: e.target.value })}
+                placeholder="0.00"
+              />
+            </div>
+
+            <div>
+              <Label>Data de Vencimento *</Label>
+              <Input
+                type="date"
+                value={editChargeForm.dueDate}
+                onChange={(e) => setEditChargeForm({ ...editChargeForm, dueDate: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditChargeDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={() => {
+                if (!editingChargeId) return;
+                updateChargeMutation.mutate({
+                  chargeId: editingChargeId,
+                  value: parseFloat(editChargeForm.value),
+                  dueDate: editChargeForm.dueDate,
+                  type: editChargeForm.type,
+                });
+              }}
+              disabled={updateChargeMutation.isPending}
+            >
+              Salvar Alterações
             </Button>
           </DialogFooter>
         </DialogContent>

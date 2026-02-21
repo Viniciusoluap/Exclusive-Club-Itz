@@ -983,3 +983,25 @@ Linha 2: Vencidas | Canceladas | (vazio)
 - [x] Atualizar CSS dos botões de filtro para grid layout
 - [x] Testar responsividade em mobile
 - [x] Criar checkpoint
+
+
+## ✏️ Feature: Botões Editar e Excluir Cobrança
+
+**Objetivo:** Adicionar botões de Editar e Excluir nos cards de cobranças da página Saas
+
+**Botões a implementar:**
+- Editar cobrança (ícone Pencil)
+- Excluir cobrança (ícone Trash2)
+
+**Tarefas:**
+- [x] Adicionar ícones Pencil e Trash2 aos imports
+- [x] Adicionar botões Editar e Excluir nos cards
+- [x] Criar dialog de edição de cobrança
+- [x] Criar mutation updateCharge no backend
+- [x] Criar mutation deleteCharge no backend
+- [x] Implementar confirmação de exclusão (confirm)
+- [x] Conectar botão Editar com dialog
+- [x] Conectar botão Excluir com mutation
+- [x] Testar edição de cobrança
+- [x] Testar exclusão de cobrança
+- [x] Criar checkpoint
