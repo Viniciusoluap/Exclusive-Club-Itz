@@ -823,4 +823,21 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Atualizar referência no const.ts (APP_LOGO)
 - [x] Atualizar favicon no index.html
 - [x] Testar que nova logo aparece em todas as páginas - PASSOU!
+- [x] Criar checkpoint (e21d7c47)
+
+## 🐛 BUG: Card de Filtros Saindo das Margens
+====================================================================================
+
+**Problema:**
+- Card de "Filtros" (Data Início, Data Fim, botões) está ultrapassando as margens laterais do container
+- Não está respeitando o padding/max-width do layout
+
+**Solução:**
+- Ajustar padding/margin do card de Filtros
+- Garantir que fique dentro das margens do container
+
+**Tarefas:**
+- [x] Identificar componente de Filtros no ReportsTab.tsx (linha 63)
+- [x] Ajustar classes de container/padding (container mx-auto px-4)
+- [x] Testar e validar que card está dentro das margens - PASSOU!
 - [ ] Criar checkpoint
