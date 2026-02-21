@@ -695,7 +695,7 @@ export default function Admin() {
           </TabsList>
 
           {/* Clients Tab */}
-          <TabsContent value="clients" className="space-y-4">
+          <TabsContent value="clients" className="space-y-4 pt-6">
             <Card>
               <CardHeader>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -880,7 +880,7 @@ export default function Admin() {
           </TabsContent>
 
           {/* Vessels Tab */}
-          <TabsContent value="vessels" className="space-y-4">
+          <TabsContent value="vessels" className="space-y-4 pt-6">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -950,7 +950,7 @@ export default function Admin() {
           </TabsContent>
 
           {/* Bookings Tab */}
-          <TabsContent value="bookings" className="space-y-4">
+          <TabsContent value="bookings" className="space-y-4 pt-6">
             <Card>
               <CardHeader className="space-y-4">
                 <div className="flex flex-row items-center justify-between">
@@ -1076,7 +1076,7 @@ export default function Admin() {
           </TabsContent>
 
           {/* Maintenance Tab */}
-          <TabsContent value="maintenance" className="space-y-4">
+          <TabsContent value="maintenance" className="space-y-4 pt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Calendário de Manutenção</CardTitle>
@@ -1102,7 +1102,7 @@ export default function Admin() {
           </TabsContent>
 
           {/* Inspections Tab */}
-          <TabsContent value="inspections" className="space-y-4">
+          <TabsContent value="inspections" className="space-y-4 pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
                 <CardHeader>
@@ -1144,7 +1144,7 @@ export default function Admin() {
           </TabsContent>
 
           {/* Fuel Tab */}
-          <TabsContent value="fuel" className="space-y-4">
+          <TabsContent value="fuel" className="space-y-4 pt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Abastecimento</CardTitle>
@@ -1166,7 +1166,7 @@ export default function Admin() {
           </TabsContent>
 
           {/* Employees Tab */}
-          <TabsContent value="employees" className="space-y-4">
+          <TabsContent value="employees" className="space-y-4 pt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Funcionários</CardTitle>
@@ -1188,12 +1188,12 @@ export default function Admin() {
           </TabsContent>
 
           {/* Reports Tab */}
-          <TabsContent value="reports" className="space-y-4">
+          <TabsContent value="reports" className="space-y-4 pt-6">
             <ReportsTab />
           </TabsContent>
 
           {/* Saas Tab */}
-          <TabsContent value="saas" className="space-y-4">
+          <TabsContent value="saas" className="space-y-4 pt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Saas - Mensalidades</CardTitle>

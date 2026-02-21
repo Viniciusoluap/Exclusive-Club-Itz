@@ -171,7 +171,7 @@ export default function ReportsTab() {
         </TabsList>
 
         {/* Dashboard Executivo */}
-        <TabsContent value="executive" className="space-y-4">
+        <TabsContent value="executive" className="space-y-4 pt-6">
           {/* Scorecard */}
           <Card>
             <CardHeader>
@@ -230,7 +230,7 @@ export default function ReportsTab() {
         </TabsContent>
 
         {/* Relatório Financeiro */}
-        <TabsContent value="financial" className="space-y-4">
+        <TabsContent value="financial" className="space-y-4 pt-6">
           {/* Cards de Métricas */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
@@ -415,7 +415,7 @@ export default function ReportsTab() {
         </TabsContent>
 
         {/* Relatório de Ocupação */}
-        <TabsContent value="occupancy" className="space-y-4">
+        <TabsContent value="occupancy" className="space-y-4 pt-6">
           {/* Taxa de Ocupação por Embarcação */}
           <Card>
             <CardHeader>
@@ -516,7 +516,7 @@ export default function ReportsTab() {
         </TabsContent>
 
         {/* Relatório de Clientes */}
-        <TabsContent value="clients" className="space-y-4">
+        <TabsContent value="clients" className="space-y-4 pt-6">
           {/* Métricas de Clientes */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
@@ -606,7 +606,7 @@ export default function ReportsTab() {
         </TabsContent>
 
         {/* Relatório de Manutenção */}
-        <TabsContent value="maintenance" className="space-y-4">
+        <TabsContent value="maintenance" className="space-y-4 pt-6">
           {/* Métricas de Manutenção */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
@@ -692,7 +692,7 @@ export default function ReportsTab() {
         </TabsContent>
 
         {/* Relatório de Combustível */}
-        <TabsContent value="fuel" className="space-y-4">
+        <TabsContent value="fuel" className="space-y-4 pt-6">
           {/* Métricas de Combustível */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
@@ -800,7 +800,7 @@ export default function ReportsTab() {
         </TabsContent>
 
         {/* Relatório de Sazonalidade */}
-        <TabsContent value="seasonality" className="space-y-4">
+        <TabsContent value="seasonality" className="space-y-4 pt-6">
           {/* Ocupação por Mês */}
           <Card>
             <CardHeader>
