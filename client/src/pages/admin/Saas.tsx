@@ -21,10 +21,20 @@ function UnclassifiedChargesSection() {
   
   const classifyMutation = trpc.saas.classifyCharge.useMutation({
     onSuccess: () => {
-      toast.success("Cobrança classificada com sucesso!");
+      toast.success("Cobran\u00e7a classificada com sucesso!");
       utils.saas.listUnclassifiedCharges.invalidate();
       utils.saas.listCharges.invalidate();
       utils.saas.getFilteredStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const excludeMutation = trpc.saas.excludeFromSaas.useMutation({
+    onSuccess: () => {
+      toast.success("Cobran\u00e7a exclu\u00edda do m\u00f3dulo Saas");
+      utils.saas.listUnclassifiedCharges.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -177,7 +187,8 @@ function UnclassifiedChargesSection() {
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2">
+              {/* Bot\u00f5es em grade 3x2 */}
+              <div className="grid grid-cols-3 gap-2 w-full md:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
@@ -202,6 +213,16 @@ function UnclassifiedChargesSection() {
                 >
                   Ignorar
                 </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => excludeMutation.mutate({ asaasChargeId: charge.asaasChargeId })}
+                  disabled={excludeMutation.isPending}
+                  className="col-span-1"
+                >
+                  Excluir
+                </Button>
+                <div className="col-span-2" />
               </div>
             </div>
           ))}

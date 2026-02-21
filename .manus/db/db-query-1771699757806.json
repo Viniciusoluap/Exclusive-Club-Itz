@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `excluded_asaas_charges` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `asaas_charge_id` varchar(255) NOT NULL UNIQUE,\n  `excluded_by` varchar(320) NOT NULL,\n  `excluded_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `reason` text,\n  CONSTRAINT `excluded_asaas_charges_id` PRIMARY KEY(`id`),\n  INDEX `asaas_charge_id` (`asaas_charge_id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute CREATE TABLE IF NOT EXISTS `excluded_asaas_charges` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `asaas_charge_id` varchar(255) NOT NULL UNIQUE,\n  `excluded_by` varchar(320) NOT NULL,\n  `excluded_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  `reason` text,\n  CONSTRAINT `excluded_asaas_charges_id` PRIMARY KEY(`id`),\n  INDEX `asaas_charge_id` (`asaas_charge_id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 546
+}

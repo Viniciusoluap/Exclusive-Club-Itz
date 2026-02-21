@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { subscriptions, subscriptionCharges, allowedClients, fuelRecords, inspectionCharges } from "../../drizzle/schema";
+import { subscriptions, subscriptionCharges, allowedClients, fuelRecords, inspectionCharges, excludedAsaasCharges } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash } from "../_core/asaasService";
 import { TRPCError } from "@trpc/server";
@@ -670,27 +670,34 @@ export const saasRouter = router({
     // Buscar todos os clientes ativos
     const activeClients = await db.select().from(allowedClients).where(eq(allowedClients.isActive, 1));
 
-    // Buscar todas as cobranças existentes em outras abas (para excluir da listagem)
+    // Buscar todas as cobran\u00e7as existentes em outras abas (para excluir da listagem)
     const fuelCharges = await db.select().from(fuelRecords);
     const inspectionChargesData = await db.select().from(inspectionCharges);
     
+    // Buscar cobran\u00e7as exclu\u00eddas manualmente do m\u00f3dulo Saas
+    const manuallyExcluded = await db.select().from(excludedAsaasCharges);
+    
     const excludedAsaasIds = new Set<string>();
     
-    // Adicionar IDs de cobranças de abastecimento
+    // Adicionar IDs de cobran\u00e7as de abastecimento
     fuelCharges.forEach(record => {
       if (record.asaasChargeId) {
         excludedAsaasIds.add(record.asaasChargeId);
       }
     });
     
-    // Adicionar IDs de cobranças de vistorias/reparos
+    // Adicionar IDs de cobran\u00e7as de vistorias/reparos
     inspectionChargesData.forEach(charge => {
       if (charge.asaasChargeId) {
         excludedAsaasIds.add(charge.asaasChargeId);
       }
     });
+      // Adicionar IDs de cobran\u00e7as exclu\u00eddas manualmente
+    manuallyExcluded.forEach(excluded => {
+      excludedAsaasIds.add(excluded.asaasChargeId);
+    });
 
-    // Buscar cobranças já classificadas
+    // Buscar cobran\u00e7as j\u00e1 classificadas
     const classifiedCharges = await db.select().from(subscriptionCharges);
     const classifiedAsaasIds = new Set(classifiedCharges.map(c => c.asaasPaymentId).filter(Boolean) as string[]);
 
@@ -842,7 +849,43 @@ export const saasRouter = router({
 
       return {
         success: true,
-        message: "Cobrança classificada com sucesso",
+        message: "Cobran\u00e7a classificada com sucesso",
+      };
+    }),
+
+  // Excluir cobran\u00e7a do m\u00f3dulo Saas (soft delete)
+  excludeFromSaas: adminProcedure
+    .input(z.object({
+      asaasChargeId: z.string(),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Verificar se j\u00e1 foi exclu\u00edda
+      const existing = await db.select()
+        .from(excludedAsaasCharges)
+        .where(eq(excludedAsaasCharges.asaasChargeId, input.asaasChargeId))
+        .limit(1);
+
+      if (existing.length > 0) {
+        return {
+          success: true,
+          message: "Cobran\u00e7a j\u00e1 foi exclu\u00edda anteriormente",
+        };
+      }
+
+      // Adicionar \u00e0 lista de exclu\u00eddas
+      await db.insert(excludedAsaasCharges).values({
+        asaasChargeId: input.asaasChargeId,
+        excludedBy: ctx.user?.email || "admin",
+        reason: input.reason || "Cobran\u00e7a de abastecimento/vistoria",
+      });
+
+      return {
+        success: true,
+        message: "Cobran\u00e7a exclu\u00edda do m\u00f3dulo Saas",
       };
     }),
 });

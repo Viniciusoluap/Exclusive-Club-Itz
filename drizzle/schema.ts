@@ -306,6 +306,17 @@ export const vessels = mysqlTable("vessels", {
 	extraDocumentUrl: text("extra_document_url"),
 });
 
+export const excludedAsaasCharges = mysqlTable("excluded_asaas_charges", {
+	id: int().autoincrement().notNull(),
+	asaasChargeId: varchar("asaas_charge_id", { length: 255 }).notNull().unique(),
+	excludedBy: varchar("excluded_by", { length: 320 }).notNull(),
+	excludedAt: timestamp("excluded_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	reason: text(),
+},
+(table) => [
+	index("asaas_charge_id").on(table.asaasChargeId),
+]);
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -335,3 +346,5 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
 export type SubscriptionCharge = typeof subscriptionCharges.$inferSelect;
 export type InsertSubscriptionCharge = typeof subscriptionCharges.$inferInsert;
+export type ExcludedAsaasCharge = typeof excludedAsaasCharges.$inferSelect;
+export type InsertExcludedAsaasCharge = typeof excludedAsaasCharges.$inferInsert;
