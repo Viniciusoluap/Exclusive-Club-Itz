@@ -232,6 +232,93 @@ export const saasRouter = router({
     };
   }),
 
+  // Dashboard com filtros aplicados
+  getFilteredStats: adminProcedure
+    .input(z.object({
+      status: z.enum(["pending", "paid", "overdue", "cancelled", "all"]).optional().default("all"),
+      month: z.string().optional(), // "01" a "12"
+      year: z.string().optional(), // "2024", "2025", etc
+      search: z.string().optional(), // Busca por nome ou email
+    }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Buscar todas as cobranças com joins
+      let query = db.select({
+        charge: subscriptionCharges,
+        subscription: subscriptions,
+        client: allowedClients,
+      })
+      .from(subscriptionCharges)
+      .leftJoin(subscriptions, eq(subscriptionCharges.subscriptionId, subscriptions.id))
+      .leftJoin(allowedClients, eq(subscriptions.clientId, allowedClients.id));
+
+      let results = await query;
+
+      // Filtrar por status
+      if (input?.status && input.status !== "all") {
+        results = results.filter(r => r.charge.status === input.status);
+      }
+
+      // Filtrar por mês
+      if (input?.month) {
+        results = results.filter(r => {
+          const dueDate = new Date(r.charge.dueDate);
+          const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+          return month === input.month;
+        });
+      }
+
+      // Filtrar por ano
+      if (input?.year) {
+        results = results.filter(r => {
+          const dueDate = new Date(r.charge.dueDate);
+          const year = String(dueDate.getFullYear());
+          return year === input.year;
+        });
+      }
+
+      // Filtrar por busca (nome ou email)
+      if (input?.search) {
+        const search = input.search.toLowerCase();
+        results = results.filter(r => {
+          const name = r.client?.name?.toLowerCase() || "";
+          const email = r.client?.email?.toLowerCase() || "";
+          return name.includes(search) || email.includes(search);
+        });
+      }
+
+      // Calcular estatísticas
+      const charges = results.map(r => r.charge);
+
+      const totalPending = charges
+        .filter(c => c.status === "pending")
+        .reduce((sum, c) => sum + parseFloat(c.value), 0);
+
+      const totalPaid = charges
+        .filter(c => c.status === "paid")
+        .reduce((sum, c) => sum + parseFloat(c.value), 0);
+
+      const totalOverdue = charges
+        .filter(c => c.status === "overdue")
+        .reduce((sum, c) => sum + parseFloat(c.value), 0);
+
+      const pendingCount = charges.filter(c => c.status === "pending").length;
+      const paidCount = charges.filter(c => c.status === "paid").length;
+      const overdueCount = charges.filter(c => c.status === "overdue").length;
+
+      return {
+        totalPending,
+        totalPaid,
+        totalOverdue,
+        pendingCount,
+        paidCount,
+        overdueCount,
+        totalExpected: totalPending + totalPaid + totalOverdue,
+      };
+    }),
+
   // Listar cobranças de uma mensalidade
   getCharges: adminProcedure
     .input(z.object({

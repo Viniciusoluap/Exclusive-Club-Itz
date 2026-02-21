@@ -1005,3 +1005,32 @@ Linha 2: Vencidas | Canceladas | (vazio)
 - [x] Testar edição de cobrança
 - [x] Testar exclusão de cobrança
 - [x] Criar checkpoint
+
+
+## 🔄 Feature: Sincronizar Filtros com Dashboard
+
+**Descrição:** Os filtros de Mês/Ano devem atualizar os cards de dashboard (Total Esperado, Recebido, Pendente, Vencido) para exibir apenas valores do período filtrado.
+
+**Problema atual:**
+- Filtros aplicados: Lista mostra apenas cobranças do período selecionado
+- Dashboard mostra: TODOS os valores (sem filtro aplicado)
+
+**Solução:**
+- Criar query `getFilteredStats` no backend que calcula estatísticas com base nos filtros
+- Atualizar frontend para usar a nova query com os mesmos parâmetros de filtro
+- Dashboard e lista sempre sincronizados
+
+**Tarefas:**
+- [x] Criar query getFilteredStats no backend (month, year, status, search)
+- [x] Calcular Total Esperado filtrado
+- [x] Calcular Recebido filtrado
+- [x] Calcular Pendente filtrado
+- [x] Calcular Vencido filtrado
+- [x] Atualizar frontend para usar getFilteredStats
+- [x] Passar mesmos filtros (monthFilter, yearFilter, statusFilter, searchQuery)
+- [x] Testar filtro de mês isolado
+- [x] Testar filtro de ano isolado
+- [x] Testar filtro de mês + ano
+- [x] Testar filtro de status + mês/ano
+- [x] Testar filtro de busca + mês/ano
+- [x] Criar checkpoint
