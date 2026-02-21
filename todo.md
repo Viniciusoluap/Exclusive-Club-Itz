@@ -877,3 +877,41 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Remover todas as bordas/molduras azuis
 - [x] Testar em todas as páginas (Home, Admin, Dashboard)
 - [x] Criar checkpoint
+
+
+## 🔄 Feature: Sincronização Completa Saas ↔ Asaas
+====================================================================================
+
+**Problema:**
+- Campo Saas mostra R$ 0,00 em todos os cards
+- Botão "Sincronizar Asaas" não está funcionando
+- Não está puxando histórico e cobranças futuras do Asaas
+
+**Requisito:**
+Sistema deve sincronizar com Asaas e trazer:
+- ✅ Mensalidades recorrentes (todos os status: pago, pendente, vencido, futuro)
+- ✅ Vendas de cotas (à vista ou parceladas)
+- ❌ EXCLUIR: Cobranças de abastecimento (já na aba Abastecimento)
+- ❌ EXCLUIR: Cobranças de danos de vistoria (já na aba Vistorias)
+- ❌ EXCLUIR: Cobranças de reparos/manutenção (já na aba Manutenção)
+
+**Comportamento esperado:**
+1. Clicar "Sincronizar Asaas" → buscar todas as cobranças de cada cliente
+2. Filtrar apenas mensalidades e vendas de cotas
+3. Exibir estatísticas:
+   - Total Esperado (soma de todas)
+   - Recebido (pagas)
+   - Pendente (aguardando pagamento)
+   - Vencido (atrasadas)
+4. Listar cobranças detalhadas por cliente
+
+**Tarefas:**
+- [x] Analisar código atual (SaasTab.tsx, saasRouter.ts, asaasService.ts)
+- [x] Analisar schema do banco (subscription_charges)
+- [x] Implementar função listCustomerCharges no asaasService.ts (já existia)
+- [x] Implementar lógica de filtragem (excluir abastecimento/vistorias/manutenção)
+- [x] Atualizar mutation syncWithAsaas no saasRouter.ts
+- [x] Atualizar frontend Saas.tsx para exibir dados sincronizados
+- [x] Testar sincronização com dados reais do Asaas
+- [x] Validar que não duplica cobranças de outras abas
+- [x] Criar checkpoint

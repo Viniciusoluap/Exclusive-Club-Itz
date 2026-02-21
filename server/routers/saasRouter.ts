@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { subscriptions, subscriptionCharges, allowedClients } from "../../drizzle/schema";
+import { subscriptions, subscriptionCharges, allowedClients, fuelRecords, inspectionCharges } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus } from "../_core/asaasService";
 import { TRPCError } from "@trpc/server";
@@ -213,29 +213,42 @@ export const saasRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-    // Buscar todos os clientes ativos com mensalidades
-    const activeSubscriptions = await db.select({
-      subscription: subscriptions,
-      client: allowedClients,
-    })
-    .from(subscriptions)
-    .leftJoin(allowedClients, eq(subscriptions.clientId, allowedClients.id))
-    .where(eq(subscriptions.status, "active"));
+    // Buscar todos os clientes ativos
+    const activeClients = await db.select().from(allowedClients).where(eq(allowedClients.isActive, 1));
+
+    // Buscar todas as cobranças existentes em outras abas (para excluir da sincronização)
+    const fuelCharges = await db.select().from(fuelRecords);
+    const inspectionChargesData = await db.select().from(inspectionCharges);
+    
+    const excludedAsaasIds = new Set<string>();
+    
+    // Adicionar IDs de cobranças de abastecimento
+    fuelCharges.forEach(record => {
+      if (record.asaasChargeId) {
+        excludedAsaasIds.add(record.asaasChargeId);
+      }
+    });
+    
+    // Adicionar IDs de cobranças de vistorias/reparos
+    inspectionChargesData.forEach(charge => {
+      if (charge.asaasChargeId) {
+        excludedAsaasIds.add(charge.asaasChargeId);
+      }
+    });
 
     let syncedCount = 0;
     let errorCount = 0;
+    let excludedCount = 0;
     let unclassifiedCount = 0;
     const unclassifiedCharges: Array<{ description: string; value: number; dueDate: string; clientName: string }> = [];
 
-    for (const { subscription, client } of activeSubscriptions) {
-      if (!client) continue;
-
+    for (const client of activeClients) {
       try {
         // Buscar ou criar cliente no Asaas
         const asaasCustomer = await getOrCreateAsaasCustomer({
           email: client.email,
           name: client.name,
-          cpfCnpj: client.cpf,
+          cpfCnpj: client.cpfCnpj,
           phone: client.phone || undefined,
         });
 
@@ -243,13 +256,19 @@ export const saasRouter = router({
         const asaasCharges = await listCustomerCharges(asaasCustomer.id);
 
         for (const asaasCharge of asaasCharges) {
+          // EXCLUIR cobranças que já existem em outras abas (abastecimento, vistorias)
+          if (excludedAsaasIds.has(asaasCharge.id)) {
+            excludedCount++;
+            continue;
+          }
+
           // Classificar cobrança: mensalidade vs venda de cota
           const description = asaasCharge.description?.toLowerCase() || "";
           let chargeType: "monthly" | "quota_sale" | null = null;
 
           if (description.includes("mensalidade") || description.includes("monthly")) {
             chargeType = "monthly";
-          } else if (description.includes("cota") || description.includes("quota") || description.includes("venda")) {
+          } else if (description.includes("cota") || description.includes("quota") || description.includes("venda") || description.includes("parcela")) {
             chargeType = "quota_sale";
           }
 
@@ -272,22 +291,67 @@ export const saasRouter = router({
             .limit(1);
 
           if (existingCharge.length === 0) {
+            // Buscar ou criar subscription para este cliente e tipo
+            let subscription = await db.select()
+              .from(subscriptions)
+              .where(and(
+                eq(subscriptions.clientId, client.id),
+                eq(subscriptions.type, chargeType),
+                eq(subscriptions.status, "active")
+              ))
+              .limit(1);
+
+            // Se não existir subscription, criar uma
+            if (subscription.length === 0) {
+              const [newSub] = await db.insert(subscriptions).values({
+                clientId: client.id,
+                type: chargeType,
+                value: asaasCharge.value.toString(),
+                dueDay: new Date(asaasCharge.dueDate).getDate(),
+                startDate: asaasCharge.dueDate,
+                status: "active",
+                yearlyAdjustment: "manual",
+              });
+              subscription = [{ id: newSub.insertId }] as any;
+            }
+
             // Criar nova cobrança
+            const mappedStatus = mapAsaasStatus(asaasCharge.status);
+            // Converter status do Asaas para enum de subscription_charges
+            let chargeStatus: "pending" | "paid" | "overdue" | "cancelled" = "pending";
+            if (mappedStatus === "received" || mappedStatus === "confirmed") {
+              chargeStatus = "paid";
+            } else if (mappedStatus === "overdue") {
+              chargeStatus = "overdue";
+            } else if (mappedStatus === "cancelled" || mappedStatus === "refunded") {
+              chargeStatus = "cancelled";
+            }
+
             await db.insert(subscriptionCharges).values({
-              subscriptionId: subscription.id,
+              subscriptionId: subscription[0].id,
               dueDate: asaasCharge.dueDate,
               value: asaasCharge.value.toString(),
-              status: mapAsaasStatus(asaasCharge.status) as any,
+              status: chargeStatus,
               asaasPaymentId: asaasCharge.id,
-              paymentDate: asaasCharge.paymentDate || null,
+              paidDate: asaasCharge.paymentDate || null,
             });
             syncedCount++;
           } else {
             // Atualizar status da cobrança existente
+            const mappedStatus = mapAsaasStatus(asaasCharge.status);
+            let chargeStatus: "pending" | "paid" | "overdue" | "cancelled" = "pending";
+            if (mappedStatus === "received" || mappedStatus === "confirmed") {
+              chargeStatus = "paid";
+            } else if (mappedStatus === "overdue") {
+              chargeStatus = "overdue";
+            } else if (mappedStatus === "cancelled" || mappedStatus === "refunded") {
+              chargeStatus = "cancelled";
+            }
+
             await db.update(subscriptionCharges)
               .set({
-                status: mapAsaasStatus(asaasCharge.status) as any,
-                paymentDate: asaasCharge.paymentDate || null,
+                status: chargeStatus,
+                paidDate: asaasCharge.paymentDate || null,
               })
               .where(eq(subscriptionCharges.id, existingCharge[0].id));
             syncedCount++;
@@ -302,6 +366,7 @@ export const saasRouter = router({
     return {
       syncedCount,
       errorCount,
+      excludedCount,
       unclassifiedCount,
       unclassifiedCharges: unclassifiedCount > 0 ? unclassifiedCharges : undefined,
       success: true,
