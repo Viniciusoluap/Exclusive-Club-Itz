@@ -3,10 +3,70 @@ import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { subscriptions, subscriptionCharges, allowedClients, fuelRecords, inspectionCharges } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
-import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus } from "../_core/asaasService";
+import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash } from "../_core/asaasService";
 import { TRPCError } from "@trpc/server";
 
 export const saasRouter = router({
+  // Listar cobranças individuais com filtros
+  listCharges: adminProcedure
+    .input(z.object({
+      status: z.enum(["pending", "paid", "overdue", "cancelled", "all"]).optional().default("all"),
+      month: z.string().optional(), // "01" a "12"
+      year: z.string().optional(), // "2024", "2025", etc
+      search: z.string().optional(), // Busca por nome ou email
+    }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      let query = db.select({
+        charge: subscriptionCharges,
+        subscription: subscriptions,
+        client: allowedClients,
+      })
+      .from(subscriptionCharges)
+      .leftJoin(subscriptions, eq(subscriptionCharges.subscriptionId, subscriptions.id))
+      .leftJoin(allowedClients, eq(subscriptions.clientId, allowedClients.id))
+      .orderBy(desc(subscriptionCharges.dueDate));
+
+      let results = await query;
+
+      // Filtrar por status
+      if (input?.status && input.status !== "all") {
+        results = results.filter(r => r.charge.status === input.status);
+      }
+
+      // Filtrar por mês
+      if (input?.month) {
+        results = results.filter(r => {
+          const dueDate = new Date(r.charge.dueDate);
+          const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+          return month === input.month;
+        });
+      }
+
+      // Filtrar por ano
+      if (input?.year) {
+        results = results.filter(r => {
+          const dueDate = new Date(r.charge.dueDate);
+          const year = String(dueDate.getFullYear());
+          return year === input.year;
+        });
+      }
+
+      // Filtrar por busca (nome ou email)
+      if (input?.search) {
+        const search = input.search.toLowerCase();
+        results = results.filter(r => {
+          const name = r.client?.name?.toLowerCase() || "";
+          const email = r.client?.email?.toLowerCase() || "";
+          return name.includes(search) || email.includes(search);
+        });
+      }
+
+      return results;
+    }),
+
   // Listar todas as mensalidades
   list: adminProcedure
     .input(z.object({
@@ -372,4 +432,55 @@ export const saasRouter = router({
       success: true,
     };
   }),
+
+  // Marcar cobrança como paga
+  markChargeAsPaid: adminProcedure
+    .input(z.object({
+      subscriptionId: z.number(),
+      chargeId: z.number().optional(), // ID da cobrança específica (subscription_charges)
+      asaasPaymentId: z.string().optional(), // ID do pagamento no Asaas
+      paymentDate: z.string().optional(), // Data do pagamento (YYYY-MM-DD)
+      notifyCustomer: z.boolean().optional().default(false),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Buscar subscription
+      const subscription = await db.select().from(subscriptions).where(eq(subscriptions.id, input.subscriptionId)).limit(1);
+      if (subscription.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Mensalidade não encontrada" });
+      }
+
+      // Se asaasPaymentId foi fornecido, marcar como pago no Asaas
+      if (input.asaasPaymentId) {
+        const result = await receiveInCash({
+          asaasPaymentId: input.asaasPaymentId,
+          paymentDate: input.paymentDate,
+          notifyCustomer: input.notifyCustomer,
+        });
+
+        if (!result.success) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: result.error || "Erro ao marcar como pago no Asaas",
+          });
+        }
+      }
+
+      // Atualizar status no banco local
+      if (input.chargeId) {
+        await db.update(subscriptionCharges)
+          .set({
+            status: "paid",
+            paidDate: input.paymentDate || new Date().toISOString().split('T')[0],
+          })
+          .where(eq(subscriptionCharges.id, input.chargeId));
+      }
+
+      return {
+        success: true,
+        message: "Cobrança marcada como paga com sucesso",
+      };
+    }),
 });

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, DollarSign, Plus, Pencil, X, RefreshCw, TrendingUp, TrendingDown, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, DollarSign, Plus, Pencil, X, RefreshCw, TrendingUp, TrendingDown, AlertCircle, CheckCircle, MessageCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import { formatCurrency } from "@/lib/formatCurrency";
 
@@ -15,7 +15,10 @@ export default function Saas() {
   const [, setLocation] = useLocation();
   const [showDialog, setShowDialog] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"active" | "paused" | "cancelled" | "all">("active");
+  const [statusFilter, setStatusFilter] = useState<"pending" | "paid" | "overdue" | "cancelled" | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [monthFilter, setMonthFilter] = useState<string>("");
+  const [yearFilter, setYearFilter] = useState<string>("");
   
   const [form, setForm] = useState({
     clientId: 0,
@@ -28,7 +31,12 @@ export default function Saas() {
   });
 
   const utils = trpc.useUtils();
-  const { data: subscriptions, isLoading } = trpc.saas.list.useQuery({ status: statusFilter });
+  const { data: charges, isLoading } = trpc.saas.listCharges.useQuery({
+    status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled",
+    month: monthFilter || undefined,
+    year: yearFilter || undefined,
+    search: searchQuery || undefined,
+  });
   const { data: clients } = trpc.allowedClients.list.useQuery();
   const { data: dashboard } = trpc.saas.getInvoiceDashboard.useQuery();
 
@@ -61,6 +69,17 @@ export default function Saas() {
   const cancelMutation = trpc.saas.cancel.useMutation({
     onSuccess: () => {
       toast.success("Mensalidade cancelada com sucesso!");
+      utils.saas.list.invalidate();
+      utils.saas.getInvoiceDashboard.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const markAsPaidMutation = trpc.saas.markChargeAsPaid.useMutation({
+    onSuccess: () => {
+      toast.success("Cobrança marcada como paga com sucesso!");
       utils.saas.list.invalidate();
       utils.saas.getInvoiceDashboard.invalidate();
     },
@@ -150,9 +169,15 @@ export default function Saas() {
     }
   };
 
-  const handleMarkAsPaid = (id: number) => {
-    toast.info("Funcionalidade em desenvolvimento", {
-      description: "Em breve você poderá marcar mensalidades como recebidas diretamente por aqui.",
+  const handleMarkAsPaid = (subscriptionId: number) => {
+    if (!confirm("Tem certeza que deseja marcar esta mensalidade como paga?")) {
+      return;
+    }
+
+    markAsPaidMutation.mutate({
+      subscriptionId,
+      paymentDate: new Date().toISOString().split('T')[0],
+      notifyCustomer: false,
     });
   };
 
@@ -251,7 +276,8 @@ export default function Saas() {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2">
+          {/* Filtros de Status */}
+          <div className="flex gap-2 mb-4">
             <Button
               variant={statusFilter === "all" ? "default" : "outline"}
               onClick={() => setStatusFilter("all")}
@@ -259,16 +285,22 @@ export default function Saas() {
               Todas
             </Button>
             <Button
-              variant={statusFilter === "active" ? "default" : "outline"}
-              onClick={() => setStatusFilter("active")}
+              variant={statusFilter === "pending" ? "default" : "outline"}
+              onClick={() => setStatusFilter("pending")}
             >
-              Ativas
+              Pendentes
             </Button>
             <Button
-              variant={statusFilter === "paused" ? "default" : "outline"}
-              onClick={() => setStatusFilter("paused")}
+              variant={statusFilter === "paid" ? "default" : "outline"}
+              onClick={() => setStatusFilter("paid")}
             >
-              Pausadas
+              Pagas
+            </Button>
+            <Button
+              variant={statusFilter === "overdue" ? "default" : "outline"}
+              onClick={() => setStatusFilter("overdue")}
+            >
+              Vencidas
             </Button>
             <Button
               variant={statusFilter === "cancelled" ? "default" : "outline"}
@@ -277,84 +309,164 @@ export default function Saas() {
               Canceladas
             </Button>
           </div>
+
+          {/* Filtro de Busca e Período */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Busca por Cliente */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Buscar Cliente</label>
+              <input
+                type="text"
+                placeholder="Nome ou email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md"
+              />
+            </div>
+
+            {/* Filtro por Mês */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Mês</label>
+              <select
+                value={monthFilter}
+                onChange={(e) => {
+                  console.log('Month changed to:', e.target.value);
+                  setMonthFilter(e.target.value);
+                }}
+                className="w-full px-3 py-2 border rounded-md"
+              >
+                <option value="">Todos os meses</option>
+                <option value="01">Janeiro</option>
+                <option value="02">Fevereiro</option>
+                <option value="03">Março</option>
+                <option value="04">Abril</option>
+                <option value="05">Maio</option>
+                <option value="06">Junho</option>
+                <option value="07">Julho</option>
+                <option value="08">Agosto</option>
+                <option value="09">Setembro</option>
+                <option value="10">Outubro</option>
+                <option value="11">Novembro</option>
+                <option value="12">Dezembro</option>
+              </select>
+            </div>
+
+            {/* Filtro por Ano */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Ano</label>
+              <select
+                value={yearFilter}
+                onChange={(e) => {
+                  console.log('Year changed to:', e.target.value);
+                  setYearFilter(e.target.value);
+                }}
+                className="w-full px-3 py-2 border rounded-md"
+              >
+                <option value="">Todos os anos</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Botão Limpar Filtros */}
+          {(searchQuery || monthFilter || yearFilter) && (
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery("");
+                  setMonthFilter("");
+                  setYearFilter("");
+                }}
+              >
+                Limpar Filtros
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Lista de Mensalidades */}
       <Card>
         <CardHeader>
-          <CardTitle>Mensalidades Cadastradas</CardTitle>
+          <CardTitle>Cobranças</CardTitle>
           <CardDescription>
-            {subscriptions?.length || 0} mensalidade(s) encontrada(s)
+            {charges?.length || 0} cobrança(s) encontrada(s)
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p className="text-center text-muted-foreground">Carregando...</p>
-          ) : subscriptions && subscriptions.length > 0 ? (
+          ) : charges && charges.length > 0 ? (
             <div className="space-y-4">
-              {subscriptions.map((item) => (
+              {charges.map((item) => (
                 <div
-                  key={item.subscription.id}
+                  key={item.charge.id}
                   className="flex flex-col md:flex-row md:items-center md:justify-between p-4 border rounded-lg gap-4"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">{item.client?.name || "Cliente não encontrado"}</h3>
                       <span className={`text-xs px-2 py-1 rounded-full ${
-                        item.subscription.status === "active" ? "bg-green-100 text-green-700" :
-                        item.subscription.status === "paused" ? "bg-yellow-100 text-yellow-700" :
-                        "bg-red-100 text-red-700"
+                        item.charge.status === "paid" ? "bg-green-100 text-green-700" :
+                        item.charge.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                        item.charge.status === "overdue" ? "bg-red-100 text-red-700" :
+                        "bg-gray-100 text-gray-700"
                       }`}>
-                        {item.subscription.status === "active" ? "Ativa" :
-                         item.subscription.status === "paused" ? "Pausada" : "Cancelada"}
+                        {item.charge.status === "paid" ? "Paga" :
+                         item.charge.status === "pending" ? "Pendente" :
+                         item.charge.status === "overdue" ? "Vencida" : "Cancelada"}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground">{item.client?.email}</p>
                     <div className="flex flex-wrap gap-4 mt-2 text-sm">
                       <span>
-                        <strong>Tipo:</strong> {item.subscription.type === "monthly" ? "Mensalidade" : "Venda de Cota"}
+                        <strong>Tipo:</strong> {item.subscription?.type === "monthly" ? "Mensalidade" : "Venda de Cota"}
                       </span>
                       <span>
-                        <strong>Valor:</strong> {formatCurrency(parseFloat(item.subscription.value))}
+                        <strong>Valor:</strong> {formatCurrency(parseFloat(item.charge.value))}
                       </span>
                       <span>
-                        <strong>Vencimento:</strong> Dia {item.subscription.dueDay}
+                        <strong>Vencimento:</strong> {new Date(item.charge.dueDate).toLocaleDateString('pt-BR')}
                       </span>
+                      {item.charge.paidDate && (
+                        <span>
+                          <strong>Pago em:</strong> {new Date(item.charge.paidDate).toLocaleDateString('pt-BR')}
+                        </span>
+                      )}
                       <span>
                         <strong>Reajuste:</strong> {
-                          item.subscription.yearlyAdjustment === "manual" ? "Manual" :
+                          item.subscription?.yearlyAdjustment === "manual" ? "Manual" :
                           item.subscription.yearlyAdjustment === "ipca" ? "IPCA" : "IGP-M"
                         }
                       </span>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleMarkAsPaid(item.subscription.id)}
-                      disabled={item.subscription.status === "cancelled"}
-                      title="Marcar como recebido"
+                    {item.charge.status !== "paid" && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleMarkAsPaid(item.subscription?.id || 0)}
+                        disabled={item.charge.status === "cancelled"}
+                        title="Marcar como recebido"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <a
+                      href={`https://wa.me/${item.client?.phone?.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Falar no WhatsApp"
                     >
-                      <CheckCircle className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleEdit(item)}
-                      disabled={item.subscription.status === "cancelled"}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleCancel(item.subscription.id)}
-                      disabled={item.subscription.status === "cancelled"}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                      <Button variant="outline" size="icon">
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                    </a>
                   </div>
                 </div>
               ))}

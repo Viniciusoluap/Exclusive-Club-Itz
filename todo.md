@@ -931,3 +931,39 @@ Sistema deve sincronizar com Asaas e trazer:
 - [x] Aplicar formatação em valores das mensalidades (lista)
 - [x] Testar botão "Recebido" com dados reais
 - [x] Criar checkpoint
+
+
+## 🚀 Feature: Funcionalidades Avançadas Página Saas
+
+**Descrição:** Implementar botão Recebido funcional, filtro de busca por cliente e filtro por mês/ano
+
+**Tarefas:**
+
+### 1. Botão "Recebido" Funcional
+- [x] Criar endpoint no backend para marcar cobrança como paga no Asaas
+- [x] Atualizar status da cobrança no banco local (subscription_charges)
+- [x] Conectar botão frontend com mutation tRPC
+- [x] Adicionar confirmação antes de marcar como pago
+- [x] Atualizar dashboard após marcar como pago
+- [ ] Testar com cobrança real do Asaas
+
+### 2. Filtro de Busca por Cliente
+- [x] Adicionar campo de input de busca no frontend
+- [x] Implementar filtro server-side por nome/email
+- [x] Adicionar placeholder
+- [x] Testar busca com diferentes termos
+
+### 3. Filtro por Mês e Ano
+- [x] Adicionar selects de Mês e Ano no frontend
+- [x] Implementar lógica de filtro por período (backend)
+- [x] Filtrar mensalidades e vendas de cotas
+- [x] Criar query listCharges para listar cobranças individuais
+- [x] Adaptar frontend para exibir cobranças em vez de subscriptions
+- [x] Adicionar botão "Limpar filtros"
+- [x] Corrigir selects para usar value controlado
+- [ ] Testar com diferentes períodos
+
+### 4. Testes e Entrega
+- [x] Testar todas as funcionalidades integradas
+- [x] Validar que filtros funcionam em conjunto
+- [ ] Criar checkpoint
