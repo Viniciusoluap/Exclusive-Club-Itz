@@ -856,4 +856,24 @@ Frontend enviava timestamps em horário LOCAL (GMT-3) usando `new Date(string + 
 - [x] Identificar componente da logo no MobileMenu.tsx (linha 94)
 - [x] Remover estilo inline de borda (backgroundColor, borderRadius, padding)
 - [x] Testar e validar que borda foi removida - PASSOU!
-- [ ] Criar checkpoint
+- [x] Criar checkpoint (bbbd4053)
+
+## 🐛 BUG: Borda Azul Ainda Aparece na Logo (Admin)
+====================================================================================
+
+**Problema:**
+- Borda azul ainda aparece na logo da página Admin
+- Precisa remover em TODOS os componentes do site
+
+**Solução:**
+- Identificar TODOS os componentes que exibem a logo
+- Remover bordas/molduras azuis (CSS classes, estilos inline, etc.)
+
+**Tarefas:**
+- [x] Verificar Admin.tsx
+- [x] Verificar DashboardLayout.tsx
+- [x] Verificar EmployeeDashboardLayout.tsx
+- [x] Verificar Header.tsx (se existir)
+- [x] Remover todas as bordas/molduras azuis
+- [x] Testar em todas as páginas (Home, Admin, Dashboard)
+- [x] Criar checkpoint

@@ -267,7 +267,7 @@ export default function Reservas() {
           <div className="flex items-center justify-between h-16">
             <Link href="/">
               <a className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10" style={{width: '70px', height: '65px', backgroundColor: '#1aacea', borderRadius: '8px', padding: '4px'}} />
+                <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10" style={{width: '70px', height: '65px'}} />
                 <span className="text-lg font-bold text-primary">Exclusive Club</span>
               </a>
             </Link>
