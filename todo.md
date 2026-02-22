@@ -1317,4 +1317,25 @@ Linha 2: Vencidas | Canceladas | (vazio)
 - [x] Adicionar dropdown de embarcações no frontend
 - [x] Atualizar queries para filtrar por embarcação (via client_quotas)
 - [x] Testar todos os filtros combinados
+- [x] Criar checkpoint
+
+## 🐛 BUG CRÍTICO: Edição de Tipo de Cobrança Afeta Todas as Cobranças
+=======================================================================
+
+**Problema:** Ao editar o tipo (Mensalidade ↔ Venda de Cota) de UMA cobrança específica, o sistema está alterando o tipo de TODAS as cobranças da mesma subscription.
+
+**Causa:** Mutation `updateCharge` está atualizando `subscriptions.type` (compartilhado por todas as cobranças) em vez de atualizar apenas o registro individual em `subscription_charges`.
+
+**Solução:**
+- Verificar se campo `type` existe em `subscription_charges`
+- Se não existir, adicionar campo via migração
+- Atualizar mutation `updateCharge` para modificar apenas `subscription_charges.type`
+- Atualizar query `listCharges` para ler tipo de `subscription_charges.type` (fallback para `subscriptions.type`)
+
+**Tarefas:**
+- [x] Analisar estrutura atual de subscription_charges
+- [x] Verificar se campo type existe em subscription_charges
+- [x] Atualizar mutation updateCharge para modificar apenas registro individual
+- [x] Atualizar query listCharges para priorizar subscription_charges.type
+- [x] Testar edição individual de tipo
 - [ ] Criar checkpoint

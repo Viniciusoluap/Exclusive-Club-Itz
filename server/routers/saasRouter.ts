@@ -38,9 +38,12 @@ export const saasRouter = router({
         results = results.filter(r => r.charge.status === input.status);
       }
 
-      // Filtrar por tipo
+      // Filtrar por tipo (prioriza subscription_charges.type, fallback para subscriptions.type)
       if (input?.type) {
-        results = results.filter(r => r.subscription?.type === input.type);
+        results = results.filter(r => {
+          const chargeType = r.charge.type || r.subscription?.type;
+          return chargeType === input.type;
+        });
       }
 
       // Filtrar por embarcação (clientes que possuem cotas na embarcação)
@@ -312,9 +315,12 @@ export const saasRouter = router({
         results = results.filter(r => r.charge.status === input.status);
       }
 
-      // Filtrar por tipo
+      // Filtrar por tipo (prioriza subscription_charges.type, fallback para subscriptions.type)
       if (input?.type) {
-        results = results.filter(r => r.subscription?.type === input.type);
+        results = results.filter(r => {
+          const chargeType = r.charge.type || r.subscription?.type;
+          return chargeType === input.type;
+        });
       }
 
       // Filtrar por embarcação (clientes que possuem cotas na embarcação)
@@ -676,25 +682,18 @@ export const saasRouter = router({
       const chargeUpdateData: any = {};
       if (input.value !== undefined) chargeUpdateData.value = input.value;
       if (input.dueDate !== undefined) chargeUpdateData.dueDate = input.dueDate;
+      if (input.type !== undefined) chargeUpdateData.type = input.type; // Atualizar tipo INDIVIDUAL da cobrança
 
       console.log('[updateCharge] Dados para atualização da cobrança:', JSON.stringify(chargeUpdateData, null, 2));
 
-      // Atualizar cobrança (valor e data de vencimento)
+      // Atualizar cobrança (valor, data de vencimento E tipo)
       if (Object.keys(chargeUpdateData).length > 0) {
         await db.update(subscriptionCharges)
           .set(chargeUpdateData)
           .where(eq(subscriptionCharges.id, input.chargeId));
       }
 
-      // Atualizar tipo da subscription (se fornecido)
-      if (input.type !== undefined) {
-        console.log('[updateCharge] Atualizando tipo da subscription para:', input.type);
-        await db.update(subscriptions)
-          .set({ type: input.type })
-          .where(eq(subscriptions.id, subscription.id));
-      }
-
-      console.log('[updateCharge] Cobrança e subscription atualizadas com sucesso!');
+      console.log('[updateCharge] Cobrança atualizada com sucesso!');
 
       return {
         success: true,
