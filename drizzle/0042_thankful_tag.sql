@@ -1,0 +1,1 @@
+ALTER TABLE `subscription_charges` ADD `type` enum('monthly','quota_sale');

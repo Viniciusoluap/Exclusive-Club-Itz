@@ -764,7 +764,7 @@ export default function Saas() {
                     <p className="text-sm text-muted-foreground">{item.client?.email}</p>
                     <div className="flex flex-wrap gap-4 mt-2 text-sm">
                       <span>
-                        <strong>Tipo:</strong> {item.subscription?.type === "monthly" ? "Mensalidade" : "Venda de Cota"}
+                        <strong>Tipo:</strong> {(item.charge.type || item.subscription?.type) === "monthly" ? "Mensalidade" : "Venda de Cota"}
                       </span>
                       <span>
                         <strong>Valor:</strong> {formatCurrency(parseFloat(item.charge.value))}

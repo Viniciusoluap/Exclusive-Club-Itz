@@ -288,6 +288,7 @@ export const subscriptionCharges = mysqlTable("subscription_charges", {
 	dueDate: timestamp("due_date", { mode: 'string' }).notNull(),
 	paidDate: timestamp("paid_date", { mode: 'string' }),
 	status: mysqlEnum("status", ["pending", "paid", "overdue", "cancelled"]).default("pending").notNull(),
+	type: mysqlEnum("type", ["monthly", "quota_sale"]), // Tipo individual da cobrança (pode ser diferente da subscription)
 	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 
