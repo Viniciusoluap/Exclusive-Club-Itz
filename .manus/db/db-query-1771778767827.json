@@ -1,0 +1,94 @@
+{
+  "query": "\nSELECT DISTINCT ac.id, ac.name, ac.email, \n  (SELECT COUNT(*) FROM subscriptions WHERE client_id = ac.id) as total_subscriptions,\n  (SELECT COUNT(*) FROM subscription_charges sc \n   INNER JOIN subscriptions s ON sc.subscription_id = s.id \n   WHERE s.client_id = ac.id) as total_charges\nFROM allowed_clients ac\nWHERE ac.is_active = 1\nORDER BY ac.name;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT DISTINCT ac.id, ac.name, ac.email, \n  (SELECT COUNT(*) FROM subscriptions WHERE client_id = ac.id) as total_subscriptions,\n  (SELECT COUNT(*) FROM subscription_charges sc \n   INNER JOIN subscriptions s ON sc.subscription_id = s.id \n   WHERE s.client_id = ac.id) as total_charges\nFROM allowed_clients ac\nWHERE ac.is_active = 1\nORDER BY ac.name;\n",
+  "rows": [
+    {
+      "id": "60002",
+      "name": "Diogo de Lemos Brito",
+      "email": "diogobritolemos@gmail.com",
+      "total_subscriptions": "2",
+      "total_charges": "33"
+    },
+    {
+      "id": "60006",
+      "name": "Erisvaldo Alves da Silva",
+      "email": "via.vips@hotmail.com",
+      "total_subscriptions": "2",
+      "total_charges": "14"
+    },
+    {
+      "id": "60008",
+      "name": "Filippe Augusto Velloso Barbosa Murta",
+      "email": "filippeamurta@gmail.com",
+      "total_subscriptions": "2",
+      "total_charges": "22"
+    },
+    {
+      "id": "60009",
+      "name": "Francisco Claudio Araujo da Silva",
+      "email": "Franciscoclaudio293@gmail.com",
+      "total_subscriptions": "1",
+      "total_charges": "13"
+    },
+    {
+      "id": "60011",
+      "name": "Laecio Sousa Silva",
+      "email": "laecio.silversat@gmail.com",
+      "total_subscriptions": "2",
+      "total_charges": "18"
+    },
+    {
+      "id": "1830001",
+      "name": "Laercio Oliveira",
+      "email": "lsccsilva@outlook.com",
+      "total_subscriptions": "2",
+      "total_charges": "18"
+    },
+    {
+      "id": "60012",
+      "name": "Luciano Gabriel",
+      "email": "gabnercorporation@gmail.com",
+      "total_subscriptions": "2",
+      "total_charges": "17"
+    },
+    {
+      "id": "60014",
+      "name": "Mateus Rehbein",
+      "email": "Teteu_rehbein@icloud.com",
+      "total_subscriptions": "1",
+      "total_charges": "26"
+    },
+    {
+      "id": "60013",
+      "name": "Mhamed Feiz Hussein Yassin",
+      "email": "Mhamedfeiz@hotmail.com",
+      "total_subscriptions": "2",
+      "total_charges": "29"
+    },
+    {
+      "id": "60015",
+      "name": "Ronaldo Bianchini",
+      "email": "rbq1992@gmail.com",
+      "total_subscriptions": "2",
+      "total_charges": "13"
+    },
+    {
+      "id": "1890001",
+      "name": "Stenio Teixeira",
+      "email": "Stenioteixeirats1@gmail.com",
+      "total_subscriptions": "1",
+      "total_charges": "22"
+    },
+    {
+      "id": "1860001",
+      "name": "Vinicius Freitas",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "total_subscriptions": "0",
+      "total_charges": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\ttotal_subscriptions\ttotal_charges\n60002\tDiogo de Lemos Brito\tdiogobritolemos@gmail.com\t2\t33\n60006\tErisvaldo Alves da Silva\tvia.vips@hotmail.com\t2\t14\n60008\tFilippe Augusto Velloso Barbosa Murta\tfilippeamurta@gmail.com\t2\t22\n60009\tFrancisco Claudio Araujo da Silva\tFranciscoclaudio293@gmail.com\t1\t13\n60011\tLaecio Sousa Silva\tlaecio.silversat@gmail.com\t2\t18\n1830001\tLaercio Oliveira\tlsccsilva@outlook.com\t2\t18\n60012\tLuciano Gabriel\tgabnercorporation@gmail.com\t2\t17\n60014\tMateus Rehbein\tTeteu_rehbein@icloud.com\t1\t26\n60013\tMhamed Feiz Hussein Yassin\tMhamedfeiz@hotmail.com\t2\t29\n60015\tRonaldo Bianchini\trbq1992@gmail.com\t2\t13\n1890001\tStenio Teixeira\tStenioteixeirats1@gmail.com\t1\t22\n1860001\tVinicius Freitas\tv6h2sw5vmn@privaterelay.appleid.com\t0\t0\n",
+  "stderr": "",
+  "execution_time_ms": 351
+}

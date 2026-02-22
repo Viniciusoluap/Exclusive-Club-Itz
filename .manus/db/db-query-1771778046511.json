@@ -1,0 +1,70 @@
+{
+  "query": "SELECT id, name, email FROM allowed_clients WHERE is_active = 1 ORDER BY name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, name, email FROM allowed_clients WHERE is_active = 1 ORDER BY name;",
+  "rows": [
+    {
+      "id": "60002",
+      "name": "Diogo de Lemos Brito",
+      "email": "diogobritolemos@gmail.com"
+    },
+    {
+      "id": "60006",
+      "name": "Erisvaldo Alves da Silva",
+      "email": "via.vips@hotmail.com"
+    },
+    {
+      "id": "60008",
+      "name": "Filippe Augusto Velloso Barbosa Murta",
+      "email": "filippeamurta@gmail.com"
+    },
+    {
+      "id": "60009",
+      "name": "Francisco Claudio Araujo da Silva",
+      "email": "Franciscoclaudio293@gmail.com"
+    },
+    {
+      "id": "60011",
+      "name": "Laecio Sousa Silva",
+      "email": "laecio.silversat@gmail.com"
+    },
+    {
+      "id": "1830001",
+      "name": "Laercio Oliveira",
+      "email": "lsccsilva@outlook.com"
+    },
+    {
+      "id": "60012",
+      "name": "Luciano Gabriel",
+      "email": "gabnercorporation@gmail.com"
+    },
+    {
+      "id": "60014",
+      "name": "Mateus Rehbein",
+      "email": "Teteu_rehbein@icloud.com"
+    },
+    {
+      "id": "60013",
+      "name": "Mhamed Feiz Hussein Yassin",
+      "email": "Mhamedfeiz@hotmail.com"
+    },
+    {
+      "id": "60015",
+      "name": "Ronaldo Bianchini",
+      "email": "rbq1992@gmail.com"
+    },
+    {
+      "id": "1890001",
+      "name": "Stenio Teixeira",
+      "email": "Stenioteixeirats1@gmail.com"
+    },
+    {
+      "id": "1860001",
+      "name": "Vinicius Freitas",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\n60002\tDiogo de Lemos Brito\tdiogobritolemos@gmail.com\n60006\tErisvaldo Alves da Silva\tvia.vips@hotmail.com\n60008\tFilippe Augusto Velloso Barbosa Murta\tfilippeamurta@gmail.com\n60009\tFrancisco Claudio Araujo da Silva\tFranciscoclaudio293@gmail.com\n60011\tLaecio Sousa Silva\tlaecio.silversat@gmail.com\n1830001\tLaercio Oliveira\tlsccsilva@outlook.com\n60012\tLuciano Gabriel\tgabnercorporation@gmail.com\n60014\tMateus Rehbein\tTeteu_rehbein@icloud.com\n60013\tMhamed Feiz Hussein Yassin\tMhamedfeiz@hotmail.com\n60015\tRonaldo Bianchini\trbq1992@gmail.com\n1890001\tStenio Teixeira\tStenioteixeirats1@gmail.com\n1860001\tVinicius Freitas\tv6h2sw5vmn@privaterelay.appleid.com\n",
+  "stderr": "",
+  "execution_time_ms": 365
+}
