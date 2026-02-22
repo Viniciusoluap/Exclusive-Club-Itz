@@ -1,0 +1,150 @@
+{
+  "query": "SELECT * FROM excluded_asaas_charges LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT * FROM excluded_asaas_charges LIMIT 20;",
+  "rows": [
+    {
+      "id": "1",
+      "asaas_charge_id": "pay_oae3746h9syxgdvl",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-21 18:53:56",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30001",
+      "asaas_charge_id": "pay_m96y66px25lhqvf5",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:34:02",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30002",
+      "asaas_charge_id": "pay_w9w13bl2t1rh2sxx",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:35:26",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30003",
+      "asaas_charge_id": "pay_cld3hxcl5g3batpn",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:35:28",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30004",
+      "asaas_charge_id": "pay_z4t4emthfcxi66lo",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:35:30",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30005",
+      "asaas_charge_id": "pay_e5ug28m6t167urks",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:35:33",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30006",
+      "asaas_charge_id": "pay_c2wpxsjbozuc143y",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:05",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30007",
+      "asaas_charge_id": "pay_q8m9jjl848i0rshp",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:10",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30008",
+      "asaas_charge_id": "pay_tqka3qqvzwnjhqg5",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:12",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30009",
+      "asaas_charge_id": "pay_1la4gxrm5oq5x08r",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:13",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30010",
+      "asaas_charge_id": "pay_mzvd7nue4s5e6vgm",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:15",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30011",
+      "asaas_charge_id": "pay_fpmwujqifzmgakvk",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:18",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30012",
+      "asaas_charge_id": "pay_xs8e0petzrkxqiwy",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:19",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30013",
+      "asaas_charge_id": "pay_oseh56bld0jkls64",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:22",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30014",
+      "asaas_charge_id": "pay_t0xppnfakigq0ipd",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:24",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30015",
+      "asaas_charge_id": "pay_xj4f6uxhd24lbvo7",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:26",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30016",
+      "asaas_charge_id": "pay_ke9uepg03z1158kx",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:28",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30017",
+      "asaas_charge_id": "pay_4xwx9k41yuw5k1zs",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:36:30",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30018",
+      "asaas_charge_id": "pay_vzbhouelj3txqnc9",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:37:16",
+      "reason": "Cobrança de abastecimento/vistoria"
+    },
+    {
+      "id": "30019",
+      "asaas_charge_id": "pay_ot968ejnx60otlnt",
+      "excluded_by": "v6h2sw5vmn@privaterelay.appleid.com",
+      "excluded_at": "2026-02-22 01:37:18",
+      "reason": "Cobrança de abastecimento/vistoria"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tasaas_charge_id\texcluded_by\texcluded_at\treason\n1\tpay_oae3746h9syxgdvl\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-21 18:53:56\tCobrança de abastecimento/vistoria\n30001\tpay_m96y66px25lhqvf5\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:34:02\tCobrança de abastecimento/vistoria\n30002\tpay_w9w13bl2t1rh2sxx\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:35:26\tCobrança de abastecimento/vistoria\n30003\tpay_cld3hxcl5g3batpn\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:35:28\tCobrança de abastecimento/vistoria\n30004\tpay_z4t4emthfcxi66lo\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:35:30\tCobrança de abastecimento/vistoria\n30005\tpay_e5ug28m6t167urks\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:35:33\tCobrança de abastecimento/vistoria\n30006\tpay_c2wpxsjbozuc143y\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:05\tCobrança de abastecimento/vistoria\n30007\tpay_q8m9jjl848i0rshp\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:10\tCobrança de abastecimento/vistoria\n30008\tpay_tqka3qqvzwnjhqg5\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:12\tCobrança de abastecimento/vistoria\n30009\tpay_1la4gxrm5oq5x08r\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:13\tCobrança de abastecimento/vistoria\n30010\tpay_mzvd7nue4s5e6vgm\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:15\tCobrança de abastecimento/vistoria\n30011\tpay_fpmwujqifzmgakvk\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:18\tCobrança de abastecimento/vistoria\n30012\tpay_xs8e0petzrkxqiwy\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:19\tCobrança de abastecimento/vistoria\n30013\tpay_oseh56bld0jkls64\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:22\tCobrança de abastecimento/vistoria\n30014\tpay_t0xppnfakigq0ipd\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:24\tCobrança de abastecimento/vistoria\n30015\tpay_xj4f6uxhd24lbvo7\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:26\tCobrança de abastecimento/vistoria\n30016\tpay_ke9uepg03z1158kx\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:28\tCobrança de abastecimento/vistoria\n30017\tpay_4xwx9k41yuw5k1zs\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:36:30\tCobrança de abastecimento/vistoria\n30018\tpay_vzbhouelj3txqnc9\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:37:16\tCobrança de abastecimento/vistoria\n30019\tpay_ot968ejnx60otlnt\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:37:18\tCobrança de abastecimento/vistoria\n",
+  "stderr": "",
+  "execution_time_ms": 345
+}

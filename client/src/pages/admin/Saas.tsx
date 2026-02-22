@@ -17,7 +17,11 @@ function UnclassifiedChargesSection() {
   const [bulkClassification, setBulkClassification] = useState<"monthly" | "quota_sale" | "ignore">("monthly");
   
   const utils = trpc.useUtils();
-  const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery();
+  // Carregar cobranças não classificadas automaticamente ao montar componente
+  const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery(undefined, {
+    refetchOnMount: true, // Sempre buscar ao montar
+    refetchOnWindowFocus: false, // Não buscar ao focar janela
+  });
   
   const classifyMutation = trpc.saas.classifyCharge.useMutation({
     onSuccess: () => {

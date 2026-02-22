@@ -1178,3 +1178,34 @@ Linha 2: Vencidas | Canceladas | (vazio)
 - Cobrança desaparece da lista de não classificadas
 - Cobrança NÃO é deletada do banco (soft delete apenas para Saas)
 - Outros módulos continuam enxergando a cobrança normalmente
+
+## 🐛 BUG CRÍTICO: Cobranças Não Classificadas Sumiram Após Atualizar Página
+===============================================================
+
+**Problema:**
+- Usuário estava excluindo cobranças de abastecimento/vistorias
+- Deixou apenas mensalidades/cotas para classificar depois
+- Ao atualizar a página, TODAS as cobranças não classificadas sumiram
+- Seção amarela "Cobranças Não Classificadas" desapareceu completamente
+
+**Investigação:**
+- [ ] Verificar dados na tabela `excluded_asaas_charges` (quantos registros foram inseridos)
+- [ ] Verificar query `listUnclassifiedCharges` no backend
+- [ ] Verificar se filtro de exclusão está funcionando corretamente
+- [ ] Verificar se há problema de cache no frontend
+- [ ] Verificar logs do servidor para erros
+
+**Possíveis Causas:**
+1. Mutation `excludeFromSaas` está marcando TODAS as cobranças como excluídas (bug no backend)
+2. Query `listUnclassifiedCharges` está filtrando incorretamente
+3. Problema de sincronização/cache no frontend
+4. Erro silencioso no backend que não foi capturado
+
+**Tarefas:**
+- [x] Diagnosticar causa raiz (cobranças não são carregadas automaticamente)
+- [x] Implementar sincronização automática ao carregar página
+- [x] Executar listUnclassifiedCharges no useEffect inicial
+- [x] Manter botão "Sincronizar Asaas" para atualização manual
+- [x] Testar que cobranças aparecem ao abrir página
+- [x] Testar que filtro de exclusão continua funcionando
+- [ ] Criar checkpoint

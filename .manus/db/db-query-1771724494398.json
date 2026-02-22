@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COUNT(*) as total_excluded FROM excluded_asaas_charges;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT COUNT(*) as total_excluded FROM excluded_asaas_charges;",
+  "rows": [
+    {
+      "total_excluded": "29"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_excluded\n29\n",
+  "stderr": "",
+  "execution_time_ms": 349
+}
