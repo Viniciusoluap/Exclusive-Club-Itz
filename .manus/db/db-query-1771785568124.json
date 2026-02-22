@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, name, email, cpf_cnpj, created_at FROM allowed_clients WHERE is_active = 1 ORDER BY id DESC LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, name, email, cpf_cnpj, created_at FROM allowed_clients WHERE is_active = 1 ORDER BY id DESC LIMIT 5;",
+  "rows": [
+    {
+      "id": "1890001",
+      "name": "Stenio Teixeira",
+      "email": "Stenioteixeirats1@gmail.com",
+      "cpf_cnpj": "02563281296",
+      "created_at": "2025-12-20 17:06:40"
+    },
+    {
+      "id": "1860001",
+      "name": "Vinicius Freitas",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "cpf_cnpj": "98860011353",
+      "created_at": "2025-12-16 02:14:29"
+    },
+    {
+      "id": "1830001",
+      "name": "Laercio Oliveira",
+      "email": "lsccsilva@outlook.com",
+      "cpf_cnpj": "00507654340",
+      "created_at": "2025-12-15 19:57:45"
+    },
+    {
+      "id": "60015",
+      "name": "Ronaldo Bianchini",
+      "email": "rbq1992@gmail.com",
+      "cpf_cnpj": "03657138137",
+      "created_at": "2025-11-23 15:30:46"
+    },
+    {
+      "id": "60014",
+      "name": "Mateus Rehbein",
+      "email": "Teteu_rehbein@icloud.com",
+      "cpf_cnpj": "01867187302",
+      "created_at": "2025-11-23 15:30:46"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tcpf_cnpj\tcreated_at\n1890001\tStenio Teixeira\tStenioteixeirats1@gmail.com\t02563281296\t2025-12-20 17:06:40\n1860001\tVinicius Freitas\tv6h2sw5vmn@privaterelay.appleid.com\t98860011353\t2025-12-16 02:14:29\n1830001\tLaercio Oliveira\tlsccsilva@outlook.com\t00507654340\t2025-12-15 19:57:45\n60015\tRonaldo Bianchini\trbq1992@gmail.com\t03657138137\t2025-11-23 15:30:46\n60014\tMateus Rehbein\tTeteu_rehbein@icloud.com\t01867187302\t2025-11-23 15:30:46\n",
+  "stderr": "",
+  "execution_time_ms": 355
+}

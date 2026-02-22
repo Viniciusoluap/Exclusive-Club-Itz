@@ -1,0 +1,13 @@
+{
+  "query": "SELECT COUNT(*) as total FROM allowed_clients WHERE is_active = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT COUNT(*) as total FROM allowed_clients WHERE is_active = 1;",
+  "rows": [
+    {
+      "total": "12"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\n12\n",
+  "stderr": "",
+  "execution_time_ms": 364
+}

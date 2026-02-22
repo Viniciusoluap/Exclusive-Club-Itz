@@ -434,7 +434,7 @@ export const saasRouter = router({
 
     // Buscar TODOS os clientes do Asaas (não apenas os locais)
     const { listAllAsaasCustomers } = await import("../_core/asaasService");
-    const asaasCustomers = await listAllAsaasCustomers({ limit: 100 });
+    const asaasCustomers = await listAllAsaasCustomers({ limit: 1000 }); // Aumentar limite para garantir que todos os clientes sejam importados
 
     // Buscar todos os clientes locais para fazer match
     const localClients = await db.select().from(allowedClients).where(eq(allowedClients.isActive, 1));
@@ -464,8 +464,12 @@ export const saasRouter = router({
     let excludedCount = 0;
     let unclassifiedCount = 0;
 
+    console.log(`[syncWithAsaas] Total de clientes Asaas: ${asaasCustomers.length}`);
+    console.log(`[syncWithAsaas] Total de clientes locais: ${localClients.length}`);
+
     // Iterar sobre TODOS os clientes do Asaas
-    for (const asaasCustomer of asaasCustomers.data) {
+    for (const asaasCustomer of asaasCustomers) {
+      console.log(`[syncWithAsaas] Processando cliente: ${asaasCustomer.name} (${asaasCustomer.email || 'sem email'})`);
       try {
         // Tentar fazer match com cliente local (por email ou CPF/CNPJ)
         let localClient = localClients.find(c => 
@@ -473,8 +477,32 @@ export const saasRouter = router({
           (asaasCustomer.cpfCnpj && c.cpfCnpj === asaasCustomer.cpfCnpj)
         );
 
+        // Se não encontrar cliente local, criar automaticamente
+        if (!localClient) {
+          const [newClient] = await db.insert(allowedClients).values({
+            name: asaasCustomer.name,
+            email: asaasCustomer.email || null,
+            cpfCnpj: asaasCustomer.cpfCnpj || null,
+            phone: asaasCustomer.phone || asaasCustomer.mobilePhone || null,
+            isActive: 1,
+          });
+          
+          // Buscar cliente recém-criado
+          const createdClient = await db.select()
+            .from(allowedClients)
+            .where(eq(allowedClients.id, newClient.insertId))
+            .limit(1);
+          
+          if (createdClient.length > 0) {
+            localClient = createdClient[0];
+            // Adicionar à lista local para evitar duplicações
+            localClients.push(localClient);
+          }
+        }
+
         // Buscar todas as cobranças deste cliente Asaas
         const asaasCharges = await listCustomerCharges(asaasCustomer.id);
+        console.log(`[syncWithAsaas] Cliente ${asaasCustomer.name}: ${asaasCharges.length} cobranças encontradas`);
 
         for (const asaasCharge of asaasCharges) {
           // EXCLUIR cobranças que já existem em outras abas (abastecimento, vistorias)
@@ -521,29 +549,9 @@ export const saasRouter = router({
             continue;
           }
 
-          // Se não temos cliente local, salvar como não classificada
+          // Cliente local sempre existe agora (criado automaticamente acima se necessário)
           if (!localClient) {
-            const existingUnclassified = await db.select()
-              .from(unclassifiedCharges)
-              .where(eq(unclassifiedCharges.asaasPaymentId, asaasCharge.id))
-              .limit(1);
-
-            if (existingUnclassified.length === 0) {
-              await db.insert(unclassifiedCharges).values({
-                asaasPaymentId: asaasCharge.id,
-                asaasCustomerId: asaasCustomer.id,
-                asaasCustomerName: asaasCustomer.name,
-                asaasCustomerEmail: asaasCustomer.email || null,
-                asaasCustomerCpfCnpj: asaasCustomer.cpfCnpj || null,
-                description: asaasCharge.description || null,
-                value: asaasCharge.value.toString(),
-                dueDate: asaasCharge.dueDate,
-                paidDate: asaasCharge.paymentDate || null,
-                status: mapAsaasStatus(asaasCharge.status) as any,
-                classified: 0,
-              });
-              unclassifiedCount++;
-            }
+            console.error(`[syncWithAsaas] Cliente local não encontrado após criação automática: ${asaasCustomer.name}`);
             continue;
           }
 
