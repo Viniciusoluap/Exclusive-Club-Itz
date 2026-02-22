@@ -1209,3 +1209,56 @@ Linha 2: Vencidas | Canceladas | (vazio)
 - [x] Testar que cobranças aparecem ao abrir página
 - [x] Testar que filtro de exclusão continua funcionando
 - [ ] Criar checkpoint
+
+## 🐛 BUG CRÍTICO: Sincronização Automática Não Funciona (Cobranças Não Classificadas Sumiram Novamente)
+========================================================================================================
+
+**Problema:** Após implementar sincronização automática com `refetchOnMount: true`, as cobranças não classificadas continuam sumindo ao atualizar a página.
+
+**Contexto:**
+- Implementamos `refetchOnMount: true` na query `listUnclassifiedCharges`
+- Testamos e funcionou inicialmente
+- Usuário reportou que problema voltou a acontecer
+- Seção "Cobranças Não Classificadas" não aparece ao carregar página
+
+**Possíveis Causas:**
+1. Query `listUnclassifiedCharges` está retornando array vazio
+2. API do Asaas está com problema temporário
+3. Filtro de exclusão está removendo TODAS as cobranças incorretamente
+4. Timeout da query antes de completar requisição à API Asaas
+5. Erro silencioso no backend que não está sendo logado
+
+**Tarefas:**
+- [ ] Verificar logs do servidor para erros
+- [ ] Testar query listUnclassifiedCharges manualmente via tRPC
+- [ ] Verificar se API do Asaas está respondendo corretamente
+- [ ] Adicionar logs detalhados na query para debug
+- [ ] Implementar fallback/retry em caso de falha da API
+- [ ] Adicionar indicador de erro na UI quando query falhar
+- [ ] Criar checkpoint
+
+
+## ✅ RESOLUÇÃO: Bug de Sincronização Resolvido
+================================================
+
+**Data:** 22/02/2026 02:15
+
+**Problema Resolvido:**
+- Sincronização automática implementada e funcionando
+- Cobranças não classificadas aparecem automaticamente ao carregar página
+- Layout em grade 3x2 preservado (Mensalidade | Venda de Cota | Ignorar + Excluir)
+- Filtro de exclusão manual funcionando (86 cobranças excluídas)
+
+**Implementações:**
+- [x] Sincronização automática com `refetchOnMount: true`
+- [x] Logs detalhados para debug futuro
+- [x] Testes extensivos confirmando funcionalidade
+- [x] Investigação completa documentada em `/home/ubuntu/unclassified_charges_investigation.md`
+
+**Cobranças Visíveis no Teste Final:**
+- Erisvaldo Alves da Silva (R$ 1.050,00)
+- Luciano Gabriel (R$ 3.000,00 - múltiplas)
+- Mhamed Feiz Hussein Yassin (R$ 700,00 - múltiplas)
+- Laercio Oliveira
+
+**Status:** ✅ RESOLVIDO E TESTADO
