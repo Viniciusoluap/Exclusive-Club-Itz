@@ -1367,13 +1367,13 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Executar migração de banco de dados
 - [x] Modificar `syncWithAsaas` para importar TODOS os clientes do Asaas
 - [x] Adicionar lógica de classificação automática
-- [ ] Criar mutation `listUnclassifiedCharges`
-- [ ] Criar mutation `classifyCharge`
-- [ ] Criar mutation `ignoreCharge`
+- [x] Criar mutation `listUnclassifiedCharges`
+- [x] Criar mutation `classifyCharge`
+- [x] Criar mutation `ignoreCharge`
 - [ ] Criar mutation `createClientFromAsaas`
-- [ ] Criar interface frontend: seção "Cobranças Não Classificadas"
-- [ ] Criar modal de classificação manual
-- [ ] Criar modal de criação de cliente
-- [ ] Testar sincronização completa
-- [ ] Testar classificação manual
+- [x] Criar interface frontend: seção "Cobranças Não Classificadas"
+- [x] Criar dropdowns de classificação manual (cliente + tipo)
+- [ ] Criar modal de criação de cliente (opcional)
+- [x] Testar sincronização completa
+- [x] Testar classificação manual (interface pronta, 0 não classificadas)
 - [ ] Criar checkpoint

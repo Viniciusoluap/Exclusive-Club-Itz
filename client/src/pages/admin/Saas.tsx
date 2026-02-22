@@ -13,19 +13,16 @@ import { formatCurrency } from "@/lib/formatCurrency";
 
 // Componente para listar e classificar cobranças não classificadas
 function UnclassifiedChargesSection() {
-  const [selectedCharges, setSelectedCharges] = useState<Set<string>>(new Set());
-  const [bulkClassification, setBulkClassification] = useState<"monthly" | "quota_sale" | "ignore">("monthly");
+  const [selectedClient, setSelectedClient] = useState<Record<number, number>>({});
+  const [selectedType, setSelectedType] = useState<Record<number, "monthly" | "quota_sale">>({});
   
   const utils = trpc.useUtils();
-  // Carregar cobranças não classificadas automaticamente ao montar componente
-  const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery(undefined, {
-    refetchOnMount: true, // Sempre buscar ao montar
-    refetchOnWindowFocus: false, // Não buscar ao focar janela
-  });
+  const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery();
+  const { data: clients } = trpc.saas.list.useQuery();
   
-  const classifyMutation = trpc.saas.classifyCharge.useMutation({
+  const classifyMutation = trpc.saas.classifyUnclassifiedCharge.useMutation({
     onSuccess: () => {
-      toast.success("Cobran\u00e7a classificada com sucesso!");
+      toast.success("Cobrança classificada com sucesso!");
       utils.saas.listUnclassifiedCharges.invalidate();
       utils.saas.listCharges.invalidate();
       utils.saas.getFilteredStats.invalidate();
@@ -35,9 +32,9 @@ function UnclassifiedChargesSection() {
     },
   });
 
-  const excludeMutation = trpc.saas.excludeFromSaas.useMutation({
+  const ignoreMutation = trpc.saas.ignoreUnclassifiedCharge.useMutation({
     onSuccess: () => {
-      toast.success("Cobran\u00e7a exclu\u00edda do m\u00f3dulo Saas");
+      toast.success("Cobrança ignorada com sucesso!");
       utils.saas.listUnclassifiedCharges.invalidate();
     },
     onError: (error) => {
@@ -45,58 +42,24 @@ function UnclassifiedChargesSection() {
     },
   });
 
-  const handleClassifySingle = (charge: any, type: "monthly" | "quota_sale" | "ignore") => {
-    classifyMutation.mutate({
-      asaasChargeId: charge.asaasChargeId,
-      clientId: charge.clientId,
-      type,
-      value: charge.value,
-      dueDate: charge.dueDate,
-      status: charge.status,
-    });
-  };
+  const handleClassify = (unclassifiedChargeId: number) => {
+    const clientId = selectedClient[unclassifiedChargeId];
+    const type = selectedType[unclassifiedChargeId];
 
-  const handleClassifyBulk = () => {
-    if (selectedCharges.size === 0) {
-      toast.error("Selecione pelo menos uma cobrança");
+    if (!clientId || !type) {
+      toast.error("Selecione cliente e tipo antes de classificar");
       return;
     }
 
-    const chargesToClassify = unclassified?.filter(c => selectedCharges.has(c.asaasChargeId));
-    if (!chargesToClassify) return;
-
-    chargesToClassify.forEach(charge => {
-      classifyMutation.mutate({
-        asaasChargeId: charge.asaasChargeId,
-        clientId: charge.clientId,
-        type: bulkClassification,
-        value: charge.value,
-        dueDate: charge.dueDate,
-        status: charge.status,
-      });
+    classifyMutation.mutate({
+      unclassifiedChargeId,
+      clientId,
+      type,
     });
-
-    setSelectedCharges(new Set());
   };
 
-  const toggleSelection = (chargeId: string) => {
-    const newSelection = new Set(selectedCharges);
-    if (newSelection.has(chargeId)) {
-      newSelection.delete(chargeId);
-    } else {
-      newSelection.add(chargeId);
-    }
-    setSelectedCharges(newSelection);
-  };
-
-  const selectAll = () => {
-    if (unclassified) {
-      setSelectedCharges(new Set(unclassified.map(c => c.asaasChargeId)));
-    }
-  };
-
-  const deselectAll = () => {
-    setSelectedCharges(new Set());
+  const handleIgnore = (unclassifiedChargeId: number) => {
+    ignoreMutation.mutate({ unclassifiedChargeId });
   };
 
   // Não mostrar se não houver cobranças não classificadas
@@ -116,117 +79,83 @@ function UnclassifiedChargesSection() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Ações em Lote */}
-        {selectedCharges.size > 0 && (
-          <div className="mb-4 p-4 bg-white rounded-lg border border-yellow-300">
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
-              <div className="flex-1">
-                <p className="text-sm font-medium">{selectedCharges.size} cobrança(s) selecionada(s)</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={bulkClassification}
-                  onValueChange={(value: "monthly" | "quota_sale" | "ignore") => setBulkClassification(value)}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">Mensalidade</SelectItem>
-                    <SelectItem value="quota_sale">Venda de Cota</SelectItem>
-                    <SelectItem value="ignore">Ignorar</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button onClick={handleClassifyBulk} disabled={classifyMutation.isPending}>
-                  Classificar Selecionadas
-                </Button>
-                <Button variant="outline" onClick={deselectAll}>
-                  Desmarcar Todas
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Botões de Seleção */}
-        <div className="mb-4 flex gap-2">
-          <Button variant="outline" size="sm" onClick={selectAll}>
-            Selecionar Todas
-          </Button>
-          <Button variant="outline" size="sm" onClick={deselectAll}>
-            Desmarcar Todas
-          </Button>
-        </div>
-
-        {/* Lista de Cobranças */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {unclassified.map((charge) => (
             <div
-              key={charge.asaasChargeId}
-              className="flex flex-col md:flex-row md:items-center md:justify-between p-4 bg-white border rounded-lg gap-4"
+              key={charge.id}
+              className="p-4 bg-white border rounded-lg space-y-3"
             >
-              <div className="flex items-start gap-3 flex-1">
-                <input
-                  type="checkbox"
-                  checked={selectedCharges.has(charge.asaasChargeId)}
-                  onChange={() => toggleSelection(charge.asaasChargeId)}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <h3 className="font-semibold">{charge.clientName}</h3>
-                  <p className="text-sm text-muted-foreground">{charge.clientEmail}</p>
-                  <div className="flex flex-wrap gap-4 mt-2 text-sm">
-                    <span>
-                      <strong>Descrição:</strong> {charge.description}
-                    </span>
-                    <span>
-                      <strong>Valor:</strong> {formatCurrency(charge.value)}
-                    </span>
-                    <span>
-                      <strong>Vencimento:</strong> {new Date(charge.dueDate).toLocaleDateString('pt-BR')}
-                    </span>
-                    <span>
-                      <strong>Status:</strong> {charge.status}
-                    </span>
-                  </div>
+              {/* Informações da Cobrança */}
+              <div>
+                <h3 className="font-semibold">{charge.asaasCustomerName}</h3>
+                <p className="text-sm text-muted-foreground">{charge.asaasCustomerEmail || charge.asaasCustomerCpfCnpj}</p>
+                <div className="flex flex-wrap gap-4 mt-2 text-sm">
+                  <span>
+                    <strong>Descrição:</strong> {charge.description || "Sem descrição"}
+                  </span>
+                  <span>
+                    <strong>Valor:</strong> {formatCurrency(parseFloat(charge.value))}
+                  </span>
+                  <span>
+                    <strong>Vencimento:</strong> {new Date(charge.dueDate).toLocaleDateString('pt-BR')}
+                  </span>
+                  <span>
+                    <strong>Status:</strong> {charge.status}
+                  </span>
                 </div>
               </div>
-              {/* Bot\u00f5es em grade 3x2 */}
-              <div className="grid grid-cols-3 gap-2 w-full md:w-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleClassifySingle(charge, "monthly")}
-                  disabled={classifyMutation.isPending}
-                >
-                  Mensalidade
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleClassifySingle(charge, "quota_sale")}
-                  disabled={classifyMutation.isPending}
-                >
-                  Venda de Cota
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleClassifySingle(charge, "ignore")}
-                  disabled={classifyMutation.isPending}
-                >
-                  Ignorar
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => excludeMutation.mutate({ asaasChargeId: charge.asaasChargeId })}
-                  disabled={excludeMutation.isPending}
-                  className="col-span-1"
-                >
-                  Excluir
-                </Button>
-                <div className="col-span-2" />
+
+              {/* Dropdowns de Classificação */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <Label>Cliente</Label>
+                  <Select
+                    value={selectedClient[charge.id]?.toString() || ""}
+                    onValueChange={(value) => setSelectedClient({ ...selectedClient, [charge.id]: parseInt(value) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients?.map((client) => (
+                        <SelectItem key={client.id} value={client.id.toString()}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Tipo</Label>
+                  <Select
+                    value={selectedType[charge.id] || ""}
+                    onValueChange={(value: "monthly" | "quota_sale") => setSelectedType({ ...selectedType, [charge.id]: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Mensalidade</SelectItem>
+                      <SelectItem value="quota_sale">Venda de Cota</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end gap-2">
+                  <Button
+                    onClick={() => handleClassify(charge.id)}
+                    disabled={classifyMutation.isPending}
+                    className="flex-1"
+                  >
+                    Classificar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleIgnore(charge.id)}
+                    disabled={ignoreMutation.isPending}
+                  >
+                    Ignorar
+                  </Button>
+                </div>
               </div>
             </div>
           ))}

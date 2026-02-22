@@ -1015,7 +1015,116 @@ export const saasRouter = router({
 
       return {
         success: true,
-        message: "Cobran\u00e7a exclu\u00edda do m\u00f3dulo Saas",
+        message: "Cobrança excluída do módulo Saas",
+      };
+    }),
+
+  // Listar cobranças não classificadas
+  listUnclassifiedCharges: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+    const charges = await db.select()
+      .from(unclassifiedCharges)
+      .where(eq(unclassifiedCharges.classified, 0))
+      .orderBy(desc(unclassifiedCharges.createdAt));
+
+    return charges;
+  }),
+
+  // Classificar cobrança não classificada
+  classifyUnclassifiedCharge: adminProcedure
+    .input(z.object({
+      unclassifiedChargeId: z.number(),
+      clientId: z.number(),
+      type: z.enum(["monthly", "quota_sale"]),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Buscar cobrança não classificada
+      const [unclassified] = await db.select()
+        .from(unclassifiedCharges)
+        .where(eq(unclassifiedCharges.id, input.unclassifiedChargeId))
+        .limit(1);
+
+      if (!unclassified) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Cobrança não encontrada" });
+      }
+
+      // Buscar ou criar subscription
+      let subscription = await db.select()
+        .from(subscriptions)
+        .where(and(
+          eq(subscriptions.clientId, input.clientId),
+          eq(subscriptions.type, input.type),
+          eq(subscriptions.status, "active")
+        ))
+        .limit(1);
+
+      if (subscription.length === 0) {
+        const [newSub] = await db.insert(subscriptions).values({
+          clientId: input.clientId,
+          type: input.type,
+          value: unclassified.value,
+          dueDay: new Date(unclassified.dueDate).getDate(),
+          startDate: unclassified.dueDate,
+          status: "active",
+          yearlyAdjustment: "manual",
+        });
+        subscription = [{ id: newSub.insertId }] as any;
+      }
+
+      // Criar cobrança em subscription_charges
+      const [newCharge] = await db.insert(subscriptionCharges).values({
+        subscriptionId: subscription[0].id,
+        dueDate: unclassified.dueDate,
+        value: unclassified.value,
+        status: unclassified.status,
+        asaasPaymentId: unclassified.asaasPaymentId,
+        paidDate: unclassified.paidDate,
+        type: input.type,
+      });
+
+      // Marcar como classificada
+      await db.update(unclassifiedCharges)
+        .set({
+          classified: 1,
+          classifiedAt: new Date(),
+          classifiedBy: ctx.user?.id || null,
+          linkedClientId: input.clientId,
+          linkedSubscriptionId: subscription[0].id,
+          linkedChargeId: newCharge.insertId,
+        })
+        .where(eq(unclassifiedCharges.id, input.unclassifiedChargeId));
+
+      return {
+        success: true,
+        message: "Cobrança classificada com sucesso",
+      };
+    }),
+
+  // Ignorar cobrança não classificada permanentemente
+  ignoreUnclassifiedCharge: adminProcedure
+    .input(z.object({
+      unclassifiedChargeId: z.number(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      await db.update(unclassifiedCharges)
+        .set({
+          classified: 1, // Marcar como "processada" para não aparecer mais
+          classifiedAt: new Date(),
+          classifiedBy: ctx.user?.id || null,
+        })
+        .where(eq(unclassifiedCharges.id, input.unclassifiedChargeId));
+
+      return {
+        success: true,
+        message: "Cobrança ignorada com sucesso",
       };
     }),
 });
