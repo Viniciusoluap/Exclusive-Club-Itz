@@ -243,6 +243,8 @@ export default function Saas() {
   const [showEditChargeDialog, setShowEditChargeDialog] = useState(false);
   const [editingChargeId, setEditingChargeId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<"pending" | "paid" | "overdue" | "cancelled" | "all">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "monthly" | "quota_sale">("all");
+  const [boatFilter, setBoatFilter] = useState<string>(""); // Filtro por embarcação
   const [searchQuery, setSearchQuery] = useState("");
   const [monthFilter, setMonthFilter] = useState<string>("");
   const [yearFilter, setYearFilter] = useState<string>("");
@@ -267,13 +269,18 @@ export default function Saas() {
   const utils = trpc.useUtils();
   const { data: charges, isLoading } = trpc.saas.listCharges.useQuery({
     status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled",
+    type: typeFilter === "all" ? undefined : typeFilter,
+    boatId: boatFilter ? parseInt(boatFilter) : undefined,
     month: monthFilter || undefined,
     year: yearFilter || undefined,
     search: searchQuery || undefined,
   });
   const { data: clients } = trpc.allowedClients.list.useQuery();
+  const { data: boats } = trpc.vessels.list.useQuery(); // Buscar lista de embarcações
   const { data: dashboard } = trpc.saas.getFilteredStats.useQuery({
     status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled",
+    type: typeFilter === "all" ? undefined : typeFilter,
+    boatId: boatFilter ? parseInt(boatFilter) : undefined,
     month: monthFilter || undefined,
     year: yearFilter || undefined,
     search: searchQuery || undefined,
@@ -569,8 +576,9 @@ export default function Saas() {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Filtros de Status - Grade 3x2 */}
+          {/* Filtros de Status e Tipo - Grade 3x3 */}
           <div className="grid grid-cols-3 gap-2 mb-4">
+            {/* Linha 1: Status principais */}
             <Button
               variant={statusFilter === "all" ? "default" : "outline"}
               onClick={() => setStatusFilter("all")}
@@ -589,6 +597,8 @@ export default function Saas() {
             >
               Pagas
             </Button>
+            
+            {/* Linha 2: Status secundários + Mensalidades */}
             <Button
               variant={statusFilter === "overdue" ? "default" : "outline"}
               onClick={() => setStatusFilter("overdue")}
@@ -601,10 +611,26 @@ export default function Saas() {
             >
               Canceladas
             </Button>
+            <Button
+              variant={typeFilter === "monthly" ? "default" : "outline"}
+              onClick={() => setTypeFilter(typeFilter === "monthly" ? "all" : "monthly")}
+            >
+              Mensalidades
+            </Button>
+            
+            {/* Linha 3: Vendas de Cotas + vazios */}
+            <Button
+              variant={typeFilter === "quota_sale" ? "default" : "outline"}
+              onClick={() => setTypeFilter(typeFilter === "quota_sale" ? "all" : "quota_sale")}
+            >
+              Vendas de Cotas
+            </Button>
+            <div />
+            <div />
           </div>
 
-          {/* Filtro de Busca e Período */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Filtro de Busca, Período e Embarcação */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Busca por Cliente */}
             <div>
               <label className="text-sm font-medium mb-2 block">Buscar Cliente</label>
@@ -615,6 +641,23 @@ export default function Saas() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-3 py-2 border rounded-md"
               />
+            </div>
+
+            {/* Filtro por Embarcação */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Embarcação</label>
+              <select
+                value={boatFilter}
+                onChange={(e) => setBoatFilter(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md"
+              >
+                <option value="">Todas as embarcações</option>
+                {boats?.map((boat) => (
+                  <option key={boat.id} value={boat.id.toString()}>
+                    {boat.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Filtro por Mês */}
@@ -665,12 +708,13 @@ export default function Saas() {
           </div>
 
           {/* Botão Limpar Filtros */}
-          {(searchQuery || monthFilter || yearFilter) && (
+          {(searchQuery || boatFilter || monthFilter || yearFilter) && (
             <div className="mt-4">
               <Button
                 variant="outline"
                 onClick={() => {
                   setSearchQuery("");
+                  setBoatFilter("");
                   setMonthFilter("");
                   setYearFilter("");
                 }}
