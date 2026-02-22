@@ -4,6 +4,34 @@ import { getDb } from "../db";
 import { subscriptions, subscriptionCharges, allowedClients, clientQuotas, fuelRecords, inspectionCharges, excludedAsaasCharges, unclassifiedCharges } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash } from "../_core/asaasService";
+
+// Mapear status do Asaas para enum de unclassified_charges
+function mapAsaasStatusToUnclassified(asaasStatus: string): 'pending' | 'paid' | 'overdue' | 'cancelled' {
+  switch (asaasStatus) {
+    case 'PENDING':
+    case 'AWAITING_PAYMENT':
+    case 'AWAITING_RISK_ANALYSIS':
+      return 'pending';
+    case 'CONFIRMED':
+    case 'RECEIVED':
+    case 'RECEIVED_IN_CASH':
+    case 'DUNNING_RECEIVED':
+      return 'paid';
+    case 'OVERDUE':
+    case 'DUNNING_REQUESTED':
+      return 'overdue';
+    case 'REFUNDED':
+    case 'REFUND_REQUESTED':
+    case 'CHARGEBACK_REQUESTED':
+    case 'CHARGEBACK_DISPUTE':
+    case 'AWAITING_CHARGEBACK_REVERSAL':
+    case 'DELETED':
+    case 'CANCELLED':
+      return 'cancelled';
+    default:
+      return 'pending';
+  }
+}
 import { TRPCError } from "@trpc/server";
 
 export const saasRouter = router({
@@ -485,6 +513,12 @@ export const saasRouter = router({
             cpfCnpj: asaasCustomer.cpfCnpj || null,
             phone: asaasCustomer.phone || asaasCustomer.mobilePhone || null,
             isActive: 1,
+          }).onDuplicateKeyUpdate({
+            set: {
+              name: asaasCustomer.name,
+              cpfCnpj: asaasCustomer.cpfCnpj || null,
+              phone: asaasCustomer.phone || asaasCustomer.mobilePhone || null,
+            }
           });
           
           // Buscar cliente recém-criado
@@ -541,7 +575,7 @@ export const saasRouter = router({
                 value: asaasCharge.value.toString(),
                 dueDate: asaasCharge.dueDate,
                 paidDate: asaasCharge.paymentDate || null,
-                status: mapAsaasStatus(asaasCharge.status) as any,
+                status: mapAsaasStatusToUnclassified(asaasCharge.status),
                 classified: 0,
               });
               unclassifiedCount++;
@@ -1032,12 +1066,54 @@ export const saasRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-    const charges = await db.select()
+    // Buscar todas as cobranças não classificadas
+    const allCharges = await db.select()
       .from(unclassifiedCharges)
       .where(eq(unclassifiedCharges.classified, 0))
       .orderBy(desc(unclassifiedCharges.createdAt));
 
-    return charges;
+    // Buscar IDs já vinculados a outras abas
+    const fuelCharges = await db.select().from(fuelRecords);
+    const inspectionChargesData = await db.select().from(inspectionCharges);
+    const manuallyExcluded = await db.select().from(excludedAsaasCharges);
+    
+    const excludedAsaasIds = new Set<string>();
+    
+    fuelCharges.forEach(record => {
+      if (record.asaasChargeId) excludedAsaasIds.add(record.asaasChargeId);
+    });
+    
+    inspectionChargesData.forEach(charge => {
+      if (charge.asaasChargeId) excludedAsaasIds.add(charge.asaasChargeId);
+    });
+    
+    manuallyExcluded.forEach(excluded => {
+      excludedAsaasIds.add(excluded.asaasChargeId);
+    });
+
+    // Palavras-chave para identificar abastecimentos
+    const fuelKeywords = ['lt x', 'litros', 'abastecimento', 'combustível', 'gasolina'];
+    
+    // Palavras-chave para identificar vistorias/reparos
+    const inspectionKeywords = ['reforma', 'vistoria', 'reparo', 'conserto', 'manutenção', 'piso de eva'];
+
+    // Filtrar cobranças
+    const filteredCharges = allCharges.filter(charge => {
+      // Excluir se já vinculado a outra aba
+      if (excludedAsaasIds.has(charge.asaasPaymentId)) return false;
+      
+      const desc = (charge.description || '').toLowerCase();
+      
+      // Excluir se for abastecimento
+      if (fuelKeywords.some(keyword => desc.includes(keyword))) return false;
+      
+      // Excluir se for vistoria/reparo
+      if (inspectionKeywords.some(keyword => desc.includes(keyword))) return false;
+      
+      return true;
+    });
+
+    return filteredCharges;
   }),
 
   // Classificar cobrança não classificada
