@@ -18,7 +18,7 @@ function UnclassifiedChargesSection() {
   
   const utils = trpc.useUtils();
   const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery();
-  const { data: clients } = trpc.saas.list.useQuery();
+  const { data: clients } = trpc.allowedClients.list.useQuery();
   
   const classifyMutation = trpc.saas.classifyUnclassifiedCharge.useMutation({
     onSuccess: () => {
