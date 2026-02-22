@@ -1288,3 +1288,33 @@ Linha 2: Vencidas | Canceladas | (vazio)
 - [x] Implementar correção
 - [x] Testar edição de tipo de cobrança
 - [ ] Criar checkpoint
+
+## 🎨 Feature: Filtros Adicionais na Página Saas
+=======================================================
+
+**Requisito 1:** Reorganizar filtros de status em grade 3x3 (3 colunas × 3 linhas)
+
+**Layout atual (2 linhas):**
+- Linha 1: Todas | Pendentes | Pagas
+- Linha 2: Vencidas | Canceladas
+
+**Novo layout (grade 3x3):**
+- Linha 1: Todas | Pendentes | Pagas
+- Linha 2: Vencidas | Canceladas | Mensalidades
+- Linha 3: Vendas de Cotas | (vazio) | (vazio)
+
+**Requisito 2:** Adicionar filtro por embarcação (dropdown/select)
+
+**Tarefas:**
+- [x] Analisar código atual de filtros em Saas.tsx
+- [x] Adicionar estado para filtro de tipo (typeFilter: 'all' | 'monthly' | 'quota_sale')
+- [x] Reorganizar botões de status em grid 3x3
+- [x] Adicionar botões "Mensalidades" e "Vendas de Cotas"
+- [x] Atualizar query listCharges para aceitar filtro de tipo
+- [x] Atualizar query getFilteredStats para aceitar filtro de tipo
+- [x] Adicionar estado para filtro de embarcação (boatFilter: number | null)
+- [x] Criar query para listar embarcações disponíveis (trpc.vessels.list)
+- [x] Adicionar dropdown de embarcações no frontend
+- [x] Atualizar queries para filtrar por embarcação (via client_quotas)
+- [x] Testar todos os filtros combinados
+- [ ] Criar checkpoint

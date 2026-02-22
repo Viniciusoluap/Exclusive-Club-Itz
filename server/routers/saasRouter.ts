@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { subscriptions, subscriptionCharges, allowedClients, fuelRecords, inspectionCharges, excludedAsaasCharges } from "../../drizzle/schema";
+import { subscriptions, subscriptionCharges, allowedClients, clientQuotas, fuelRecords, inspectionCharges, excludedAsaasCharges } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash } from "../_core/asaasService";
 import { TRPCError } from "@trpc/server";
@@ -11,6 +11,8 @@ export const saasRouter = router({
   listCharges: adminProcedure
     .input(z.object({
       status: z.enum(["pending", "paid", "overdue", "cancelled", "all"]).optional().default("all"),
+      type: z.enum(["monthly", "quota_sale"]).optional(), // Filtro por tipo
+      boatId: z.number().optional(), // Filtro por embarcação
       month: z.string().optional(), // "01" a "12"
       year: z.string().optional(), // "2024", "2025", etc
       search: z.string().optional(), // Busca por nome ou email
@@ -34,6 +36,21 @@ export const saasRouter = router({
       // Filtrar por status
       if (input?.status && input.status !== "all") {
         results = results.filter(r => r.charge.status === input.status);
+      }
+
+      // Filtrar por tipo
+      if (input?.type) {
+        results = results.filter(r => r.subscription?.type === input.type);
+      }
+
+      // Filtrar por embarcação (clientes que possuem cotas na embarcação)
+      if (input?.boatId) {
+        const clientsWithBoat = await db.select({ clientId: clientQuotas.clientId })
+          .from(clientQuotas)
+          .where(eq(clientQuotas.vesselId, input.boatId));
+        
+        const clientIds = clientsWithBoat.map(c => c.clientId);
+        results = results.filter(r => r.subscription?.clientId && clientIds.includes(r.subscription.clientId));
       }
 
       // Filtrar por mês
@@ -268,6 +285,8 @@ export const saasRouter = router({
   getFilteredStats: adminProcedure
     .input(z.object({
       status: z.enum(["pending", "paid", "overdue", "cancelled", "all"]).optional().default("all"),
+      type: z.enum(["monthly", "quota_sale"]).optional(), // Filtro por tipo
+      boatId: z.number().optional(), // Filtro por embarcação
       month: z.string().optional(), // "01" a "12"
       year: z.string().optional(), // "2024", "2025", etc
       search: z.string().optional(), // Busca por nome ou email
@@ -291,6 +310,21 @@ export const saasRouter = router({
       // Filtrar por status
       if (input?.status && input.status !== "all") {
         results = results.filter(r => r.charge.status === input.status);
+      }
+
+      // Filtrar por tipo
+      if (input?.type) {
+        results = results.filter(r => r.subscription?.type === input.type);
+      }
+
+      // Filtrar por embarcação (clientes que possuem cotas na embarcação)
+      if (input?.boatId) {
+        const clientsWithBoat = await db.select({ clientId: clientQuotas.clientId })
+          .from(clientQuotas)
+          .where(eq(clientQuotas.vesselId, input.boatId));
+        
+        const clientIds = clientsWithBoat.map(c => c.clientId);
+        results = results.filter(r => r.subscription?.clientId && clientIds.includes(r.subscription.clientId));
       }
 
       // Filtrar por mês
