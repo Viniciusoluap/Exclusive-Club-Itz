@@ -1,0 +1,131 @@
+{
+  "query": "SHOW FULL COLUMNS FROM subscriptions;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SHOW FULL COLUMNS FROM subscriptions;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int(11)",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "client_id",
+      "Type": "int(11)",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "type",
+      "Type": "enum('monthly','quota_sale')",
+      "Collation": "utf8mb4_unicode_ci",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "value",
+      "Type": "decimal(10,2)",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "due_day",
+      "Type": "int(11)",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "start_date",
+      "Type": "timestamp",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "end_date",
+      "Type": "timestamp",
+      "Collation": "NULL",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "status",
+      "Type": "enum('active','paused','cancelled')",
+      "Collation": "utf8mb4_unicode_ci",
+      "Null": "NO",
+      "Key": "",
+      "Default": "active",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "yearly_adjustment",
+      "Type": "enum('manual','ipca','igpm')",
+      "Collation": "utf8mb4_unicode_ci",
+      "Null": "NO",
+      "Key": "",
+      "Default": "manual",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "created_at",
+      "Type": "timestamp",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "updated_at",
+      "Type": "timestamp",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tCollation\tNull\tKey\tDefault\tExtra\tPrivileges\tComment\nid\tint(11)\tNULL\tNO\tPRI\tNULL\tauto_increment\tselect,insert,update,references\t\nclient_id\tint(11)\tNULL\tNO\t\tNULL\t\tselect,insert,update,references\t\ntype\tenum('monthly','quota_sale')\tutf8mb4_unicode_ci\tNO\t\tNULL\t\tselect,insert,update,references\t\nvalue\tdecimal(10,2)\tNULL\tNO\t\tNULL\t\tselect,insert,update,references\t\ndue_day\tint(11)\tNULL\tNO\t\tNULL\t\tselect,insert,update,references\t\nstart_date\ttimestamp\tNULL\tNO\t\tNULL\t\tselect,insert,update,references\t\nend_date\ttimestamp\tNULL\tYES\t\tNULL\t\tselect,insert,update,references\t\nstatus\tenum('active','paused','cancelled')\tutf8mb4_unicode_ci\tNO\t\tactive\t\tselect,insert,update,references\t\nyearly_adjustment\tenum('manual','ipca','igpm')\tutf8mb4_unicode_ci\tNO\t\tmanual\t\tselect,insert,update,references\t\ncreated_at\ttimestamp\tNULL\tNO\t\tCURRENT_TIMESTAMP\t\tselect,insert,update,references\t\nupdated_at\ttimestamp\tNULL\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\tselect,insert,update,references\t\n",
+  "stderr": "",
+  "execution_time_ms": 347
+}

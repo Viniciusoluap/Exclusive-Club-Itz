@@ -1,0 +1,91 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "allowed_clients"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "asaas_customers"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "asaas_payments"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "backup_history"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "bookings"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "client_quotas"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "due_date_change_requests"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "employees"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "excluded_asaas_charges"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "fuel_budget"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "fuel_purchases"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "fuel_record_containers"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "fuel_records"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "gallon_stock"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "inspection_charges"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "inspections"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "maintenances"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "payment_audit_logs"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "payment_reconciliations"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "reviews"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "subscription_charges"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "subscriptions"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "system_settings"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "users"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "vessels"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES": "webhook_logs"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_4SVaP8MpsE4tem3Hhe5WES\n__drizzle_migrations\nallowed_clients\nasaas_customers\nasaas_payments\nbackup_history\nbookings\nclient_quotas\ndue_date_change_requests\nemployees\nexcluded_asaas_charges\nfuel_budget\nfuel_purchases\nfuel_record_containers\nfuel_records\ngallon_stock\ninspection_charges\ninspections\nmaintenances\npayment_audit_logs\npayment_reconciliations\nreviews\nsubscription_charges\nsubscriptions\nsystem_settings\nusers\nvessels\nwebhook_logs\n",
+  "stderr": "",
+  "execution_time_ms": 345
+}

@@ -328,10 +328,14 @@ export default function Saas() {
   });
 
   const updateChargeMutation = trpc.saas.updateCharge.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Cobrança atualizada com sucesso!");
-      utils.saas.listCharges.invalidate();
-      utils.saas.getFilteredStats.invalidate();
+      // Invalidar TODAS as queries relacionadas
+      await utils.saas.list.invalidate();
+      await utils.saas.listCharges.invalidate();
+      await utils.saas.getFilteredStats.invalidate();
+      // Forçar refetch imediato
+      await utils.saas.listCharges.refetch();
       setShowEditChargeDialog(false);
     },
     onError: (error) => {
@@ -342,7 +346,7 @@ export default function Saas() {
   const deleteChargeMutation = trpc.saas.deleteCharge.useMutation({
     onSuccess: () => {
       toast.success("Cobrança excluída com sucesso!");
-      utils.saas.listCharges.invalidate();
+      utils.saas.list.invalidate();
       utils.saas.getFilteredStats.invalidate();
     },
     onError: (error) => {

@@ -1262,3 +1262,29 @@ Linha 2: Vencidas | Canceladas | (vazio)
 - Laercio Oliveira
 
 **Status:** ✅ RESOLVIDO E TESTADO
+
+
+## 🐛 BUG: Edição de Tipo de Cobrança Não Está Salvando
+=======================================================
+
+**Problema:** Ao editar uma cobrança de "Venda de Cota" para "Mensalidade" no modal "Editar Cobrança", as alterações não são salvas no sistema.
+
+**Contexto:**
+- Usuário clica no botão de editar (ícone de lápis) em uma cobrança
+- Modal "Editar Cobrança" abre com campos: Tipo, Valor, Data de Vencimento
+- Usuário altera Tipo de "Venda de Cota" para "Mensalidade"
+- Clica em "Salvar Alterações"
+- Modal fecha, mas cobrança continua aparecendo como "Venda de Cota"
+- Mesmo após atualizar a página, alteração não é persistida
+
+**Cobranças Afetadas:**
+- Stenio Teixeira (R$ 475,00) - tentativa de alterar de "Venda de Cota" para "Mensalidade"
+
+**Tarefas:**
+- [x] Investigar mutation de edição no backend (saasRouter.ts)
+- [x] Verificar se mutation está atualizando tabela correta
+- [x] Verificar invalidation de cache no frontend
+- [x] Testar mutation manualmente via banco de dados
+- [x] Implementar correção
+- [x] Testar edição de tipo de cobrança
+- [ ] Criar checkpoint

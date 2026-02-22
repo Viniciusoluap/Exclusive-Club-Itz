@@ -1,0 +1,98 @@
+{
+  "query": "SHOW FULL COLUMNS FROM subscription_charges;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SHOW FULL COLUMNS FROM subscription_charges;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int(11)",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "subscription_id",
+      "Type": "int(11)",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "asaas_payment_id",
+      "Type": "varchar(64)",
+      "Collation": "utf8mb4_unicode_ci",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "value",
+      "Type": "decimal(10,2)",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "due_date",
+      "Type": "timestamp",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "paid_date",
+      "Type": "timestamp",
+      "Collation": "NULL",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "status",
+      "Type": "enum('pending','paid','overdue','cancelled')",
+      "Collation": "utf8mb4_unicode_ci",
+      "Null": "NO",
+      "Key": "",
+      "Default": "pending",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    },
+    {
+      "Field": "created_at",
+      "Type": "timestamp",
+      "Collation": "NULL",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "",
+      "Privileges": "select,insert,update,references",
+      "Comment": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tCollation\tNull\tKey\tDefault\tExtra\tPrivileges\tComment\nid\tint(11)\tNULL\tNO\tPRI\tNULL\tauto_increment\tselect,insert,update,references\t\nsubscription_id\tint(11)\tNULL\tNO\t\tNULL\t\tselect,insert,update,references\t\nasaas_payment_id\tvarchar(64)\tutf8mb4_unicode_ci\tYES\t\tNULL\t\tselect,insert,update,references\t\nvalue\tdecimal(10,2)\tNULL\tNO\t\tNULL\t\tselect,insert,update,references\t\ndue_date\ttimestamp\tNULL\tNO\t\tNULL\t\tselect,insert,update,references\t\npaid_date\ttimestamp\tNULL\tYES\t\tNULL\t\tselect,insert,update,references\t\nstatus\tenum('pending','paid','overdue','cancelled')\tutf8mb4_unicode_ci\tNO\t\tpending\t\tselect,insert,update,references\t\ncreated_at\ttimestamp\tNULL\tNO\t\tCURRENT_TIMESTAMP\t\tselect,insert,update,references\t\n",
+  "stderr": "",
+  "execution_time_ms": 347
+}
