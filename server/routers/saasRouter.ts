@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { subscriptions, subscriptionCharges, allowedClients, clientQuotas, fuelRecords, inspectionCharges, excludedAsaasCharges } from "../../drizzle/schema";
+import { subscriptions, subscriptionCharges, allowedClients, clientQuotas, fuelRecords, inspectionCharges, excludedAsaasCharges, unclassifiedCharges } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash } from "../_core/asaasService";
 import { TRPCError } from "@trpc/server";
@@ -432,8 +432,12 @@ export const saasRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-    // Buscar todos os clientes ativos
-    const activeClients = await db.select().from(allowedClients).where(eq(allowedClients.isActive, 1));
+    // Buscar TODOS os clientes do Asaas (não apenas os locais)
+    const { listAllAsaasCustomers } = await import("../_core/asaasService");
+    const asaasCustomers = await listAllAsaasCustomers({ limit: 100 });
+
+    // Buscar todos os clientes locais para fazer match
+    const localClients = await db.select().from(allowedClients).where(eq(allowedClients.isActive, 1));
 
     // Buscar todas as cobranças existentes em outras abas (para excluir da sincronização)
     const fuelCharges = await db.select().from(fuelRecords);
@@ -459,19 +463,17 @@ export const saasRouter = router({
     let errorCount = 0;
     let excludedCount = 0;
     let unclassifiedCount = 0;
-    const unclassifiedCharges: Array<{ description: string; value: number; dueDate: string; clientName: string }> = [];
 
-    for (const client of activeClients) {
+    // Iterar sobre TODOS os clientes do Asaas
+    for (const asaasCustomer of asaasCustomers.data) {
       try {
-        // Buscar ou criar cliente no Asaas
-        const asaasCustomer = await getOrCreateAsaasCustomer({
-          email: client.email,
-          name: client.name,
-          cpfCnpj: client.cpfCnpj,
-          phone: client.phone || undefined,
-        });
+        // Tentar fazer match com cliente local (por email ou CPF/CNPJ)
+        let localClient = localClients.find(c => 
+          (asaasCustomer.email && c.email === asaasCustomer.email) ||
+          (asaasCustomer.cpfCnpj && c.cpfCnpj === asaasCustomer.cpfCnpj)
+        );
 
-        // Buscar todas as cobranças do cliente no Asaas
+        // Buscar todas as cobranças deste cliente Asaas
         const asaasCharges = await listCustomerCharges(asaasCustomer.id);
 
         for (const asaasCharge of asaasCharges) {
@@ -491,15 +493,57 @@ export const saasRouter = router({
             chargeType = "quota_sale";
           }
 
-          // Se não conseguir classificar, adiciona à lista de não classificadas
+          // Se não conseguir classificar, salvar em unclassified_charges
           if (!chargeType) {
-            unclassifiedCount++;
-            unclassifiedCharges.push({
-              description: asaasCharge.description || "Sem descrição",
-              value: asaasCharge.value,
-              dueDate: asaasCharge.dueDate,
-              clientName: client.name,
-            });
+            // Verificar se já existe em unclassified_charges
+            const existingUnclassified = await db.select()
+              .from(unclassifiedCharges)
+              .where(eq(unclassifiedCharges.asaasPaymentId, asaasCharge.id))
+              .limit(1);
+
+            if (existingUnclassified.length === 0) {
+              // Criar nova cobrança não classificada
+              await db.insert(unclassifiedCharges).values({
+                asaasPaymentId: asaasCharge.id,
+                asaasCustomerId: asaasCustomer.id,
+                asaasCustomerName: asaasCustomer.name,
+                asaasCustomerEmail: asaasCustomer.email || null,
+                asaasCustomerCpfCnpj: asaasCustomer.cpfCnpj || null,
+                description: asaasCharge.description || null,
+                value: asaasCharge.value.toString(),
+                dueDate: asaasCharge.dueDate,
+                paidDate: asaasCharge.paymentDate || null,
+                status: mapAsaasStatus(asaasCharge.status) as any,
+                classified: 0,
+              });
+              unclassifiedCount++;
+            }
+            continue;
+          }
+
+          // Se não temos cliente local, salvar como não classificada
+          if (!localClient) {
+            const existingUnclassified = await db.select()
+              .from(unclassifiedCharges)
+              .where(eq(unclassifiedCharges.asaasPaymentId, asaasCharge.id))
+              .limit(1);
+
+            if (existingUnclassified.length === 0) {
+              await db.insert(unclassifiedCharges).values({
+                asaasPaymentId: asaasCharge.id,
+                asaasCustomerId: asaasCustomer.id,
+                asaasCustomerName: asaasCustomer.name,
+                asaasCustomerEmail: asaasCustomer.email || null,
+                asaasCustomerCpfCnpj: asaasCustomer.cpfCnpj || null,
+                description: asaasCharge.description || null,
+                value: asaasCharge.value.toString(),
+                dueDate: asaasCharge.dueDate,
+                paidDate: asaasCharge.paymentDate || null,
+                status: mapAsaasStatus(asaasCharge.status) as any,
+                classified: 0,
+              });
+              unclassifiedCount++;
+            }
             continue;
           }
 
@@ -514,7 +558,7 @@ export const saasRouter = router({
             let subscription = await db.select()
               .from(subscriptions)
               .where(and(
-                eq(subscriptions.clientId, client.id),
+                eq(subscriptions.clientId, localClient.id),
                 eq(subscriptions.type, chargeType),
                 eq(subscriptions.status, "active")
               ))
@@ -523,7 +567,7 @@ export const saasRouter = router({
             // Se não existir subscription, criar uma
             if (subscription.length === 0) {
               const [newSub] = await db.insert(subscriptions).values({
-                clientId: client.id,
+                clientId: localClient.id,
                 type: chargeType,
                 value: asaasCharge.value.toString(),
                 dueDay: new Date(asaasCharge.dueDate).getDate(),
@@ -578,7 +622,7 @@ export const saasRouter = router({
         }
       } catch (error) {
         errorCount++;
-        console.error(`Erro ao sincronizar cliente ${client.name}:`, error);
+        console.error(`Erro ao sincronizar cliente ${asaasCustomer.name}:`, error);
       }
     }
 

@@ -1338,4 +1338,42 @@ Linha 2: Vencidas | Canceladas | (vazio)
 - [x] Atualizar mutation updateCharge para modificar apenas registro individual
 - [x] Atualizar query listCharges para priorizar subscription_charges.type
 - [x] Testar edição individual de tipo
+- [x] Criar checkpoint
+
+## 🔍 Investigação: Clientes Faltantes na Sincronização Saas
+
+**Problema Reportado:**
+Clientes que existem no banco de dados local e no Asaas não aparecem na página Saas após sincronização.
+
+**Objetivo:**
+Identificar clientes faltantes, quantificar discrepância e diagnosticar causa raiz antes de propor correção.
+
+**Tarefas:**
+- [ ] Consultar total de clientes no banco de dados local (tabela clients)
+- [ ] Consultar total de clientes no Asaas via API
+- [ ] Consultar total de clientes com cobranças na página Saas
+- [ ] Identificar clientes específicos que estão faltando
+- [ ] Analisar lógica de sincronização (saasRouter.ts - syncAsaas)
+- [ ] Verificar se problema está na importação ou na exibição
+- [ ] Apresentar relatório completo ao usuário
+- [ ] Aguardar autorização para correção
+
+## 🔄 Feature: Sincronização Bidirecional + Classificação Manual de Cobranças
+
+**Objetivo:** Garantir que NENHUM pagamento seja perdido, permitindo classificação manual de cobranças não vinculadas
+
+**Tarefas:**
+- [x] Criar tabela `unclassified_charges` no schema
+- [x] Executar migração de banco de dados
+- [x] Modificar `syncWithAsaas` para importar TODOS os clientes do Asaas
+- [x] Adicionar lógica de classificação automática
+- [ ] Criar mutation `listUnclassifiedCharges`
+- [ ] Criar mutation `classifyCharge`
+- [ ] Criar mutation `ignoreCharge`
+- [ ] Criar mutation `createClientFromAsaas`
+- [ ] Criar interface frontend: seção "Cobranças Não Classificadas"
+- [ ] Criar modal de classificação manual
+- [ ] Criar modal de criação de cliente
+- [ ] Testar sincronização completa
+- [ ] Testar classificação manual
 - [ ] Criar checkpoint

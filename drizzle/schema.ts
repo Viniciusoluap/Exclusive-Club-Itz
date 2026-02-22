@@ -318,6 +318,31 @@ export const excludedAsaasCharges = mysqlTable("excluded_asaas_charges", {
 	index("asaas_charge_id").on(table.asaasChargeId),
 ]);
 
+export const unclassifiedCharges = mysqlTable("unclassified_charges", {
+	id: int().autoincrement().notNull(),
+	asaasPaymentId: varchar("asaas_payment_id", { length: 255 }).notNull().unique(),
+	asaasCustomerId: varchar("asaas_customer_id", { length: 255 }).notNull(),
+	asaasCustomerName: varchar("asaas_customer_name", { length: 255 }),
+	asaasCustomerEmail: varchar("asaas_customer_email", { length: 320 }),
+	asaasCustomerCpfCnpj: varchar("asaas_customer_cpf_cnpj", { length: 20 }),
+	description: text(),
+	value: decimal({ precision: 10, scale: 2 }).notNull(),
+	dueDate: timestamp("due_date", { mode: 'string' }).notNull(),
+	paidDate: timestamp("paid_date", { mode: 'string' }),
+	status: mysqlEnum(['pending','paid','overdue','cancelled']).default('pending').notNull(),
+	classified: tinyint().default(0).notNull(),
+	classifiedAt: timestamp("classified_at", { mode: 'string' }),
+	classifiedBy: int("classified_by"),
+	linkedClientId: int("linked_client_id"),
+	linkedSubscriptionId: int("linked_subscription_id"),
+	linkedChargeId: int("linked_charge_id"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("asaas_payment_id").on(table.asaasPaymentId),
+	index("classified").on(table.classified),
+]);
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -349,3 +374,5 @@ export type SubscriptionCharge = typeof subscriptionCharges.$inferSelect;
 export type InsertSubscriptionCharge = typeof subscriptionCharges.$inferInsert;
 export type ExcludedAsaasCharge = typeof excludedAsaasCharges.$inferSelect;
 export type InsertExcludedAsaasCharge = typeof excludedAsaasCharges.$inferInsert;
+export type UnclassifiedCharge = typeof unclassifiedCharges.$inferSelect;
+export type InsertUnclassifiedCharge = typeof unclassifiedCharges.$inferInsert;

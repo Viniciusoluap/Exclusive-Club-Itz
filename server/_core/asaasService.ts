@@ -914,3 +914,40 @@ export async function getPaymentByAsaasId(asaasPaymentId: string): Promise<{
     return null;
   }
 }
+
+/**
+ * Lista todos os clientes do Asaas
+ */
+export async function listAllAsaasCustomers(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<AsaasCustomerData[]> {
+  const apiKey = await getAsaasApiKey();
+  const apiUrl = await getAsaasApiUrl();
+  
+  try {
+    const queryParams = new URLSearchParams({
+      limit: String(params?.limit || 100),
+      offset: String(params?.offset || 0),
+    });
+    
+    const response = await fetchWithRetry(
+      `${apiUrl}/customers?${queryParams.toString()}`,
+      {
+        method: 'GET',
+        headers: { 'access_token': apiKey },
+      }
+    );
+    
+    if (!response.ok) {
+      console.error('[Asaas] Erro ao listar clientes:', await response.text());
+      return [];
+    }
+    
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error('[Asaas] Erro ao listar clientes:', error);
+    return [];
+  }
+}
