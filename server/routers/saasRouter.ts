@@ -615,22 +615,52 @@ export const saasRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      // Buscar cobrança
-      const charge = await db.select().from(subscriptionCharges).where(eq(subscriptionCharges.id, input.chargeId)).limit(1);
-      if (charge.length === 0) {
+      console.log('[updateCharge] Input recebido:', JSON.stringify(input, null, 2));
+
+      // Buscar cobrança com subscription
+      const chargeData = await db.select({
+        charge: subscriptionCharges,
+        subscription: subscriptions,
+      })
+      .from(subscriptionCharges)
+      .leftJoin(subscriptions, eq(subscriptionCharges.subscriptionId, subscriptions.id))
+      .where(eq(subscriptionCharges.id, input.chargeId))
+      .limit(1);
+      
+      console.log('[updateCharge] Cobrança encontrada:', chargeData.length > 0 ? 'SIM' : 'NÃO');
+      
+      if (chargeData.length === 0) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Cobrança não encontrada" });
       }
 
-      // Preparar dados para atualização
-      const updateData: any = {};
-      if (input.value !== undefined) updateData.value = input.value;
-      if (input.dueDate !== undefined) updateData.dueDate = input.dueDate;
-      if (input.type !== undefined) updateData.type = input.type;
+      const { charge, subscription } = chargeData[0];
+      if (!subscription) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Subscription não encontrada" });
+      }
 
-      // Atualizar cobrança
-      await db.update(subscriptionCharges)
-        .set(updateData)
-        .where(eq(subscriptionCharges.id, input.chargeId));
+      // Preparar dados para atualização da cobrança
+      const chargeUpdateData: any = {};
+      if (input.value !== undefined) chargeUpdateData.value = input.value;
+      if (input.dueDate !== undefined) chargeUpdateData.dueDate = input.dueDate;
+
+      console.log('[updateCharge] Dados para atualização da cobrança:', JSON.stringify(chargeUpdateData, null, 2));
+
+      // Atualizar cobrança (valor e data de vencimento)
+      if (Object.keys(chargeUpdateData).length > 0) {
+        await db.update(subscriptionCharges)
+          .set(chargeUpdateData)
+          .where(eq(subscriptionCharges.id, input.chargeId));
+      }
+
+      // Atualizar tipo da subscription (se fornecido)
+      if (input.type !== undefined) {
+        console.log('[updateCharge] Atualizando tipo da subscription para:', input.type);
+        await db.update(subscriptions)
+          .set({ type: input.type })
+          .where(eq(subscriptions.id, subscription.id));
+      }
+
+      console.log('[updateCharge] Cobrança e subscription atualizadas com sucesso!');
 
       return {
         success: true,
