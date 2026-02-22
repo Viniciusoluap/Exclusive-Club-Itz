@@ -1376,4 +1376,24 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] Criar modal de criação de cliente (opcional)
 - [x] Testar sincronização completa
 - [x] Testar classificação manual (interface pronta, 0 não classificadas)
+- [x] Criar checkpoint
+
+## 🐛 BUG CRÍTICO: Sincronização não importa cobranças de clientes não locais
+
+**Problema:** Sincronização deveria importar cobranças de TODOS os 34 clientes do Asaas, mas está importando apenas dos 12 clientes locais.
+
+**Requisito original:**
+- Importar cobranças de clientes que existem no Asaas mas não em `allowed_clients`
+- Salvar essas cobranças em `unclassified_charges` para classificação manual
+- Exemplo: Clínica Dr Stenio (CNPJ) deveria aparecer como não classificada para vincular ao Stenio (CPF)
+
+**Tarefas:**
+- [x] Analisar código de `syncWithAsaas` linha por linha
+- [x] Identificar causa: clientes Asaas sem match local não são criados em allowed_clients
+- [x] Modificar syncWithAsaas para criar clientes automaticamente
+- [x] Corrigir erro de iteração (asaasCustomers.data → asaasCustomers)
+- [x] Testar sincronização sem erros (SUCESSO - sem erro de iteração)
+- [ ] Investigar por que API Asaas não retorna clientes faltantes (Kaio, Rodrigo, etc.)
+- [ ] Testar sincronização completa (TODOS os 34 clientes)
+- [ ] Validar que TODOS os clientes aparecem na página Saas
 - [ ] Criar checkpoint
