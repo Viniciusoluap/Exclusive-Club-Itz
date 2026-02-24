@@ -6,6 +6,7 @@ import archiver from 'archiver';
 import { getDb } from './db';
 import { backupHistory } from '../drizzle/schema';
 import { sendBackupFailureNotification } from './backupNotification';
+import { exportDatabaseToSQL } from './databaseBackup';
 import { eq } from 'drizzle-orm';
 
 
@@ -20,44 +21,21 @@ if (!fs.existsSync(BACKUP_DIR)) {
 }
 
 /**
- * Exporta o banco de dados para arquivo SQL
+ * Exporta banco de dados usando Node.js puro (sem mysqldump)
  */
 async function exportDatabase(): Promise<string> {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const dbBackupPath = path.join(BACKUP_DIR, `database-${timestamp}.sql`);
-
-  console.log('📦 Exportando banco de dados...');
-
-  // Extrai informações da DATABASE_URL
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) {
-    throw new Error('DATABASE_URL não configurada');
-  }
-
-  // Parse da URL do banco (formato: mysql://user:pass@host:port/database?params)
-  const urlMatch = dbUrl.match(/mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/([^?]+)/);
-  if (!urlMatch) {
-    throw new Error('Formato de DATABASE_URL inválido');
-  }
-
-  const [, user, password, host, port, database] = urlMatch;
+  const dbBackupPath = path.join(BACKUP_DIR, 'database.sql');
   
-  // Remove qualquer query parameter do nome do banco
-  const dbName = database.split('?')[0];
-
-  // Executa mysqldump
-  const dumpCommand = `mysqldump -h ${host} -P ${port} -u ${user} -p'${password}' ${dbName} > ${dbBackupPath}`;
+  console.log('💾 Exportando banco de dados...');
   
   try {
-    await execAsync(dumpCommand);
-    console.log('✅ Banco de dados exportado com sucesso');
+    await exportDatabaseToSQL(dbBackupPath);
     return dbBackupPath;
   } catch (error) {
     console.error('❌ Erro ao exportar banco de dados:', error);
     throw error;
   }
 }
-
 /**
  * Cria arquivo ZIP com backup completo
  */
