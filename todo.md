@@ -1414,3 +1414,19 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Limpar arquivo local após upload bem-sucedido
 - [x] Testar upload e download completo
 - [x] Criar checkpoint
+
+## 🔧 Correção: Página de Backups - Botões e Fuso Horário
+===========================================================
+
+**Problemas reportados:**
+1. Botões de ação (Baixar, Restaurar, Excluir) faltando em backups recentes
+2. Horários exibidos em UTC ao invés de GMT-3 (Brasil)
+3. Validar download do arquivo .zip
+
+**Tarefas:**
+- [x] Identificar bug de renderização de botões no histórico
+- [x] Corrigir para exibir botões em TODOS os backups
+- [x] Implementar conversão de timezone UTC → GMT-3
+- [x] Testar correções no navegador
+- [x] Validar download do .zip
+- [x] Criar checkpoint

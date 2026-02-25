@@ -112,6 +112,26 @@ export default function AdminBackups() {
     return minutes > 0 ? `${minutes}m ${secs}s` : `${secs}s`;
   };
 
+  // Converte timestamp UTC para GMT-3 (Brasil)
+  const formatLocalDateTime = (utcTimestamp: string) => {
+    const date = new Date(utcTimestamp);
+    return date.toLocaleString('pt-BR', { 
+      timeZone: 'America/Sao_Paulo',
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
+
+  // Calcula tempo relativo com timezone correto
+  const formatRelativeTime = (utcTimestamp: string) => {
+    const date = new Date(utcTimestamp);
+    return formatDistanceToNow(date, { addSuffix: true, locale: ptBR });
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'success':
@@ -249,10 +269,10 @@ export default function AdminBackups() {
                 <div>
                   <div className="text-sm text-gray-600 mb-1">Data/Hora</div>
                   <div className="font-medium">
-                    {new Date(stats.lastBackup.startedAt).toLocaleString('pt-BR')}
+                    {formatLocalDateTime(stats.lastBackup.startedAt)}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {formatDistanceToNow(new Date(stats.lastBackup.startedAt), { addSuffix: true, locale: ptBR })}
+                    {formatRelativeTime(stats.lastBackup.startedAt)}
                   </div>
                 </div>
                 {stats.lastBackup.fileName && (
@@ -318,10 +338,10 @@ export default function AdminBackups() {
                         <div className="flex items-center gap-3 mb-2">
                           {getStatusBadge(backup.status)}
                           <span className="text-sm text-gray-600">
-                            {new Date(backup.startedAt).toLocaleString('pt-BR')}
+                            {formatLocalDateTime(backup.startedAt)}
                           </span>
                           <span className="text-xs text-gray-400">
-                            {formatDistanceToNow(new Date(backup.startedAt), { addSuffix: true, locale: ptBR })}
+                            {formatRelativeTime(backup.startedAt)}
                           </span>
                         </div>
                         
@@ -353,25 +373,41 @@ export default function AdminBackups() {
                         )}
                       </div>
 
-                      {backup.status === 'success' && backup.localFilePath && (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => window.open(`/api/backup/download/${backup.id}`, '_blank')}
-                            title="Baixar backup"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleRestore(backup.id)}
-                            title="Restaurar backup"
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                          </Button>
+                      <div className="flex gap-2">
+                        {/* Botões para backups com sucesso */}
+                        {backup.status === 'success' && (backup.s3Url || backup.localFilePath) && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => window.open(`/api/backup/download/${backup.id}`, '_blank')}
+                              title="Baixar backup"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleRestore(backup.id)}
+                              title="Restaurar backup"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDelete(backup.id)}
+                              title="Excluir backup"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                        
+                        {/* Botão Excluir para backups com falha */}
+                        {backup.status === 'failed' && (
                           <Button
                             size="sm"
                             variant="ghost"
@@ -381,8 +417,8 @@ export default function AdminBackups() {
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
