@@ -1397,3 +1397,20 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] Testar sincronização completa (TODOS os 34 clientes)
 - [ ] Validar que TODOS os clientes aparecem na página Saas
 - [ ] Criar checkpoint
+
+## 🔧 Implementação: Upload Automático de Backups para S3
+===============================================================
+
+**Problema:** Backups locais são perdidos quando servidor hiberna/reinicia
+
+**Solução:** Upload automático para S3 após criação do backup
+
+**Tarefas:**
+- [x] Adicionar campo s3_url na tabela backup_history (migration)
+- [x] Criar função uploadBackupToS3 usando storagePut
+- [x] Modificar backup.ts para fazer upload após criar .zip
+- [x] Salvar URL do S3 no banco
+- [x] Modificar downloadBackupRoute para redirecionar para S3
+- [x] Limpar arquivo local após upload bem-sucedido
+- [x] Testar upload e download completo
+- [x] Criar checkpoint

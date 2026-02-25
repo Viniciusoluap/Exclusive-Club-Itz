@@ -7,6 +7,7 @@ import { getDb } from './db';
 import { backupHistory } from '../drizzle/schema';
 import { sendBackupFailureNotification } from './backupNotification';
 import { exportDatabaseToSQL } from './databaseBackup';
+import { storagePut } from './storage';
 import { eq } from 'drizzle-orm';
 
 
@@ -166,9 +167,18 @@ export async function runBackup(): Promise<void> {
     // 3. Remove arquivo SQL temporário
     cleanupTempFiles(dbBackupPath);
 
-    // 4. Backup salvo localmente
+    // 4. Upload para S3
+    console.log('☁️  Fazendo upload para S3...');
+    const s3Key = `backups/${path.basename(zipPath)}`;
+    const zipBuffer = fs.readFileSync(zipPath);
+    const { url: s3Url } = await storagePut(s3Key, zipBuffer, 'application/zip');
+    console.log(`✅ Upload concluído: ${s3Url}`);
 
-    // 5. Limpa backups antigos
+    // 5. Limpa arquivo local (economizar espaço)
+    fs.unlinkSync(zipPath);
+    console.log(`🗑️  Arquivo local removido: ${zipPath}`);
+
+    // 6. Limpa backups antigos
     await cleanupOldBackups();
 
     // Calcula duração
@@ -181,10 +191,11 @@ export async function runBackup(): Promise<void> {
         .set({
           completedAt: endTime.toISOString(),
           status: 'success',
-          fileName,
+          fileName: path.basename(zipPath),
           fileSizeBytes,
           durationSeconds,
-          localFilePath: zipPath,
+          localFilePath: null, // Arquivo local foi removido
+          s3Url, // URL permanente no S3
         })
         .where(eq(backupHistory.id, backupId));
       console.log(`✅ Backup atualizado no banco`);

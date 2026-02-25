@@ -1,0 +1,1 @@
+ALTER TABLE `backup_history` ADD `s3_url` text;
