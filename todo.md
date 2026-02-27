@@ -1433,4 +1433,4 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Devolver litros ao Galão 3 (estoque) - corrigido via SQL + containers órfãos removidos
 - [x] Corrigir bug no código de exclusão (reverter estoque automaticamente) - fuelRecords.delete agora deleta containers filhos + atualiza gallon_stock
 - [x] Testar correções - 4 testes passando
-- [ ] Criar checkpoint
+- [x] Criar checkpoint

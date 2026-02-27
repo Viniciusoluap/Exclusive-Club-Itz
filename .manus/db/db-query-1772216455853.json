@@ -1,0 +1,142 @@
+{
+  "query": "\n-- Todas as compras por galão\nSELECT gallon_number, liters_purchased, ROUND(liters_purchased/100, 2) as liters_L, amount_paid, purchased_at, notes\nFROM fuel_purchases\nORDER BY gallon_number, purchased_at;\n\n-- Todos os abastecimentos ativos por galão (fuel_records sem containers)\nSELECT fr.id, fr.gallon_number, fr.liters, ROUND(fr.liters/100, 2) as liters_L, fr.client_name, fr.payment_status, fr.created_at\nFROM fuel_records fr\nWHERE NOT EXISTS (SELECT 1 FROM fuel_record_containers frc WHERE frc.fuel_record_id = fr.id)\nORDER BY fr.gallon_number, fr.created_at;\n\n-- Todos os containers ativos\nSELECT frc.fuel_record_id, frc.gallon_number, frc.liters_used, ROUND(frc.liters_used/100, 2) as liters_L\nFROM fuel_record_containers frc\nORDER BY frc.gallon_number;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Todas as compras por galão\nSELECT gallon_number, liters_purchased, ROUND(liters_purchased/100, 2) as liters_L, amount_paid, purchased_at, notes\nFROM fuel_purchases\nORDER BY gallon_number, purchased_at;\n\n-- Todos os abastecimentos ativos por galão (fuel_records sem containers)\nSELECT fr.id, fr.gallon_number, fr.liters, ROUND(fr.liters/100, 2) as liters_L, fr.client_name, fr.payment_status, fr.created_at\nFROM fuel_records fr\nWHERE NOT EXISTS (SELECT 1 FROM fuel_record_containers frc WHERE frc.fuel_record_id = fr.id)\nORDER BY fr.gallon_number, fr.created_at;\n\n-- Todos os containers ativos\nSELECT frc.fuel_record_id, frc.gallon_number, frc.liters_used, ROUND(frc.liters_used/100, 2) as liters_L\nFROM fuel_record_containers frc\nORDER BY frc.gallon_number;\n",
+  "rows": [
+    {
+      "gallon_number": "1",
+      "liters_purchased": "4769",
+      "liters_L": "47.69",
+      "amount_paid": "30000",
+      "purchased_at": "2025-12-21 22:38:35",
+      "notes": "NULL"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "liters_L": "50.00",
+      "amount_paid": "31400",
+      "purchased_at": "2025-12-23 18:31:55",
+      "notes": "NULL"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "liters_L": "50.00",
+      "amount_paid": "31450",
+      "purchased_at": "2025-12-23 18:32:05",
+      "notes": "NULL"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "liters_L": "50.00",
+      "amount_paid": "31450",
+      "purchased_at": "2026-01-09 18:58:36",
+      "notes": "NULL"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "liters_L": "50.00",
+      "amount_paid": "31450",
+      "purchased_at": "2026-01-22 20:55:36",
+      "notes": "NULL"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "liters_L": "50.00",
+      "amount_paid": "31450",
+      "purchased_at": "2026-02-12 10:49:44",
+      "notes": "NULL"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "liters_L": "50.00",
+      "amount_paid": "31450",
+      "purchased_at": "2026-02-18 17:01:00",
+      "notes": "NULL"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "10000",
+      "liters_L": "100.00",
+      "amount_paid": "65000",
+      "purchased_at": "2026-02-27 18:06:11",
+      "notes": "Teste de compra"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5050",
+      "liters_L": "50.50",
+      "amount_paid": "32825",
+      "purchased_at": "2026-02-27 18:06:11",
+      "notes": "Teste com decimais"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "7500",
+      "liters_L": "75.00",
+      "amount_paid": "48750",
+      "purchased_at": "2026-02-27 18:06:12",
+      "notes": "Compra para teste de listagem"
+    },
+    {
+      "gallon_number": "2",
+      "liters_purchased": "5000",
+      "liters_L": "50.00",
+      "amount_paid": "31450",
+      "purchased_at": "2025-12-29 23:25:43",
+      "notes": "NULL"
+    },
+    {
+      "gallon_number": "2",
+      "liters_purchased": "5000",
+      "liters_L": "50.00",
+      "amount_paid": "31435",
+      "purchased_at": "2026-02-08 16:01:54",
+      "notes": "NULL"
+    },
+    {
+      "gallon_number": "3",
+      "liters_purchased": "5000",
+      "liters_L": "50.00",
+      "amount_paid": "31450",
+      "purchased_at": "2026-02-15 17:02:46",
+      "notes": "NULL"
+    }
+  ],
+  "messages": [
+    "id\tgallon_number\tliters\tliters_L\tclient_name\tpayment_status\tcreated_at",
+    "780001\t1\t3564\t35.64\tEDILSON DA CONCEIÇÃO COSTA\toverdue\t2025-12-21 22:41:11",
+    "780002\t1\t2900\t29.00\tERISVALDO ALVES SILVA\tpaid\t2025-12-21 22:41:46",
+    "780003\t1\t1500\t15.00\tLaécio Silversat\tpaid\t2025-12-21 22:42:08",
+    "780004\t1\t3706\t37.06\tLaercio Oliveira\tpaid\t2025-12-21 22:43:04",
+    "1140001\t1\t2022\t20.22\tStenio Teixeiras\tpaid\t2025-12-24 18:37:31",
+    "1620001\t1\t1859\t18.59\tExclusive Club (Operacional)\tpending\t2026-02-08 18:20:54",
+    "1320002\t2\t1244\t12.44\tDiogo Brito\tpaid\t2025-12-29 23:33:56",
+    "1650001\t2\t3047\t30.47\tExclusive Club (Operacional)\tpending\t2026-02-10 14:41:40",
+    "fuel_record_id\tgallon_number\tliters_used\tliters_L",
+    "1740001\t1\t799\t7.99",
+    "1830002\t1\t1912\t19.12",
+    "1410001\t1\t1077\t10.77",
+    "1830001\t1\t1635\t16.35",
+    "1470001\t1\t1987\t19.87",
+    "1500001\t1\t1264\t12.64",
+    "1530001\t1\t1749\t17.49",
+    "1560001\t1\t3141\t31.41",
+    "1800001\t1\t712\t7.12",
+    "1710001\t1\t1215\t12.15",
+    "1710002\t1\t2986\t29.86",
+    "1680001\t2\t1345\t13.45",
+    "1740001\t2\t608\t6.08",
+    "1350001\t2\t780\t7.80",
+    "1440001\t2\t2650\t26.50",
+    "1380001\t2\t326\t3.26",
+    "1770001\t3\t3737\t37.37"
+  ],
+  "stdout": "gallon_number\tliters_purchased\tliters_L\tamount_paid\tpurchased_at\tnotes\n1\t4769\t47.69\t30000\t2025-12-21 22:38:35\tNULL\n1\t5000\t50.00\t31400\t2025-12-23 18:31:55\tNULL\n1\t5000\t50.00\t31450\t2025-12-23 18:32:05\tNULL\n1\t5000\t50.00\t31450\t2026-01-09 18:58:36\tNULL\n1\t5000\t50.00\t31450\t2026-01-22 20:55:36\tNULL\n1\t5000\t50.00\t31450\t2026-02-12 10:49:44\tNULL\n1\t5000\t50.00\t31450\t2026-02-18 17:01:00\tNULL\n1\t10000\t100.00\t65000\t2026-02-27 18:06:11\tTeste de compra\n1\t5050\t50.50\t32825\t2026-02-27 18:06:11\tTeste com decimais\n1\t7500\t75.00\t48750\t2026-02-27 18:06:12\tCompra para teste de listagem\n2\t5000\t50.00\t31450\t2025-12-29 23:25:43\tNULL\n2\t5000\t50.00\t31435\t2026-02-08 16:01:54\tNULL\n3\t5000\t50.00\t31450\t2026-02-15 17:02:46\tNULL\nid\tgallon_number\tliters\tliters_L\tclient_name\tpayment_status\tcreated_at\n780001\t1\t3564\t35.64\tEDILSON DA CONCEIÇÃO COSTA\toverdue\t2025-12-21 22:41:11\n780002\t1\t2900\t29.00\tERISVALDO ALVES SILVA\tpaid\t2025-12-21 22:41:46\n780003\t1\t1500\t15.00\tLaécio Silversat\tpaid\t2025-12-21 22:42:08\n780004\t1\t3706\t37.06\tLaercio Oliveira\tpaid\t2025-12-21 22:43:04\n1140001\t1\t2022\t20.22\tStenio Teixeiras\tpaid\t2025-12-24 18:37:31\n1620001\t1\t1859\t18.59\tExclusive Club (Operacional)\tpending\t2026-02-08 18:20:54\n1320002\t2\t1244\t12.44\tDiogo Brito\tpaid\t2025-12-29 23:33:56\n1650001\t2\t3047\t30.47\tExclusive Club (Operacional)\tpending\t2026-02-10 14:41:40\nfuel_record_id\tgallon_number\tliters_used\tliters_L\n1740001\t1\t799\t7.99\n1830002\t1\t1912\t19.12\n1410001\t1\t1077\t10.77\n1830001\t1\t1635\t16.35\n1470001\t1\t1987\t19.87\n1500001\t1\t1264\t12.64\n1530001\t1\t1749\t17.49\n1560001\t1\t3141\t31.41\n1800001\t1\t712\t7.12\n1710001\t1\t1215\t12.15\n1710002\t1\t2986\t29.86\n1680001\t2\t1345\t13.45\n1740001\t2\t608\t6.08\n1350001\t2\t780\t7.80\n1440001\t2\t2650\t26.50\n1380001\t2\t326\t3.26\n1770001\t3\t3737\t37.37\n",
+  "stderr": "",
+  "execution_time_ms": 1949
+}

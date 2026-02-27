@@ -1,0 +1,80 @@
+{
+  "query": "\n-- Remover compras de teste inseridas pelos testes automatizados\nDELETE FROM fuel_purchases WHERE notes IN ('Teste de compra', 'Teste com decimais', 'Compra para teste de listagem', 'Compra para teste de exclusão', 'Primeira compra', 'Segunda compra');\n\n-- Verificar o que sobrou\nSELECT gallon_number, liters_purchased, ROUND(liters_purchased/100,2) as L, notes, purchased_at\nFROM fuel_purchases\nORDER BY gallon_number, purchased_at;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Remover compras de teste inseridas pelos testes automatizados\nDELETE FROM fuel_purchases WHERE notes IN ('Teste de compra', 'Teste com decimais', 'Compra para teste de listagem', 'Compra para teste de exclusão', 'Primeira compra', 'Segunda compra');\n\n-- Verificar o que sobrou\nSELECT gallon_number, liters_purchased, ROUND(liters_purchased/100,2) as L, notes, purchased_at\nFROM fuel_purchases\nORDER BY gallon_number, purchased_at;\n",
+  "rows": [
+    {
+      "gallon_number": "1",
+      "liters_purchased": "4769",
+      "L": "47.69",
+      "notes": "NULL",
+      "purchased_at": "2025-12-21 22:38:35"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "L": "50.00",
+      "notes": "NULL",
+      "purchased_at": "2025-12-23 18:31:55"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "L": "50.00",
+      "notes": "NULL",
+      "purchased_at": "2025-12-23 18:32:05"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "L": "50.00",
+      "notes": "NULL",
+      "purchased_at": "2026-01-09 18:58:36"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "L": "50.00",
+      "notes": "NULL",
+      "purchased_at": "2026-01-22 20:55:36"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "L": "50.00",
+      "notes": "NULL",
+      "purchased_at": "2026-02-12 10:49:44"
+    },
+    {
+      "gallon_number": "1",
+      "liters_purchased": "5000",
+      "L": "50.00",
+      "notes": "NULL",
+      "purchased_at": "2026-02-18 17:01:00"
+    },
+    {
+      "gallon_number": "2",
+      "liters_purchased": "5000",
+      "L": "50.00",
+      "notes": "NULL",
+      "purchased_at": "2025-12-29 23:25:43"
+    },
+    {
+      "gallon_number": "2",
+      "liters_purchased": "5000",
+      "L": "50.00",
+      "notes": "NULL",
+      "purchased_at": "2026-02-08 16:01:54"
+    },
+    {
+      "gallon_number": "3",
+      "liters_purchased": "5000",
+      "L": "50.00",
+      "notes": "NULL",
+      "purchased_at": "2026-02-15 17:02:46"
+    }
+  ],
+  "messages": [],
+  "stdout": "gallon_number\tliters_purchased\tL\tnotes\tpurchased_at\n1\t4769\t47.69\tNULL\t2025-12-21 22:38:35\n1\t5000\t50.00\tNULL\t2025-12-23 18:31:55\n1\t5000\t50.00\tNULL\t2025-12-23 18:32:05\n1\t5000\t50.00\tNULL\t2026-01-09 18:58:36\n1\t5000\t50.00\tNULL\t2026-01-22 20:55:36\n1\t5000\t50.00\tNULL\t2026-02-12 10:49:44\n1\t5000\t50.00\tNULL\t2026-02-18 17:01:00\n2\t5000\t50.00\tNULL\t2025-12-29 23:25:43\n2\t5000\t50.00\tNULL\t2026-02-08 16:01:54\n3\t5000\t50.00\tNULL\t2026-02-15 17:02:46\n",
+  "stderr": "",
+  "execution_time_ms": 429
+}
