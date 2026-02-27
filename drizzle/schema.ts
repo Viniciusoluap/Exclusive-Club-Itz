@@ -264,7 +264,7 @@ export const backupHistory = mysqlTable("backup_history", {
 	driveFileId: text("drive_file_id"),
 	driveFileUrl: text("drive_file_url"),
 	localFilePath: text("local_file_path"),
-	s3Url: text("s3_url"),
+	s3Url: text("s3_url"), // URL do backup no S3
 });
 
 export const subscriptions = mysqlTable("subscriptions", {
