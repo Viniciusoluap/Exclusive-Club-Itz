@@ -1,0 +1,33 @@
+{
+  "query": "\n-- Estoque atual por galão\nSELECT id, gallon_number, stock_liters, last_price_per_liter\nFROM gallon_stock\nORDER BY gallon_number;\n\n-- Abastecimentos recentes (últimos 10 dias) com colunas corretas\nSELECT id, vessel_name, client_name, client_email, liters, liters_calculated, total_amount, gallon_number, asaas_charge_id, payment_status, created_at\nFROM fuel_records\nWHERE created_at >= DATE_SUB(NOW(), INTERVAL 10 DAY)\nORDER BY created_at DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Estoque atual por galão\nSELECT id, gallon_number, stock_liters, last_price_per_liter\nFROM gallon_stock\nORDER BY gallon_number;\n\n-- Abastecimentos recentes (últimos 10 dias) com colunas corretas\nSELECT id, vessel_name, client_name, client_email, liters, liters_calculated, total_amount, gallon_number, asaas_charge_id, payment_status, created_at\nFROM fuel_records\nWHERE created_at >= DATE_SUB(NOW(), INTERVAL 10 DAY)\nORDER BY created_at DESC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "id": "1",
+      "gallon_number": "1",
+      "stock_liters": "27473",
+      "last_price_per_liter": "629"
+    },
+    {
+      "id": "2",
+      "gallon_number": "2",
+      "stock_liters": "-4921",
+      "last_price_per_liter": "629"
+    },
+    {
+      "id": "3",
+      "gallon_number": "3",
+      "stock_liters": "0",
+      "last_price_per_liter": "629"
+    }
+  ],
+  "messages": [
+    "id\tvessel_name\tclient_name\tclient_email\tliters\tliters_calculated\ttotal_amount\tgallon_number\tasaas_charge_id\tpayment_status\tcreated_at",
+    "1830002\tJETSKI SEADOO GTI SE 130HP\tLaercio Oliveira\tlsccsilva@outlook.com\t1912\tNULL\t13026\t1\tpay_9x2cjirwcbg63pkz\tpending\t2026-02-25 19:01:19",
+    "1830001\tFocker 215 150HP\tVinicius Freitas\tv6h2sw5vmn@privaterelay.appleid.com\t1635\tNULL\t11284\t1\tpay_vgl1lkimscye1tum\tpending\t2026-02-25 18:46:14",
+    "1800001\tFocker 215 150HP\tLaécio Silversat\tlaecio.silversat@gmail.com\t712\tNULL\t5478\t1\tpay_h0bq47ovagee66qv\tpending\t2026-02-21 13:57:08"
+  ],
+  "stdout": "id\tgallon_number\tstock_liters\tlast_price_per_liter\n1\t1\t27473\t629\n2\t2\t-4921\t629\n3\t3\t0\t629\nid\tvessel_name\tclient_name\tclient_email\tliters\tliters_calculated\ttotal_amount\tgallon_number\tasaas_charge_id\tpayment_status\tcreated_at\n1830002\tJETSKI SEADOO GTI SE 130HP\tLaercio Oliveira\tlsccsilva@outlook.com\t1912\tNULL\t13026\t1\tpay_9x2cjirwcbg63pkz\tpending\t2026-02-25 19:01:19\n1830001\tFocker 215 150HP\tVinicius Freitas\tv6h2sw5vmn@privaterelay.appleid.com\t1635\tNULL\t11284\t1\tpay_vgl1lkimscye1tum\tpending\t2026-02-25 18:46:14\n1800001\tFocker 215 150HP\tLaécio Silversat\tlaecio.silversat@gmail.com\t712\tNULL\t5478\t1\tpay_h0bq47ovagee66qv\tpending\t2026-02-21 13:57:08\n",
+  "stderr": "",
+  "execution_time_ms": 430
+}

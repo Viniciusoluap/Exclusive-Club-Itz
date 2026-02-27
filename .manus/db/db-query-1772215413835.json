@@ -1,0 +1,9 @@
+{
+  "query": "\n-- Corrigir Galão 1: 34769 - 34636 = 133 centésimos (1,33 L)\nUPDATE gallon_stock SET stock_liters = 133 WHERE gallon_number = 1;\n\n-- Corrigir Galão 2: 10000 - 9392 = 608 centésimos (6,08 L)\nUPDATE gallon_stock SET stock_liters = 608 WHERE gallon_number = 2;\n\n-- Corrigir Galão 3: 5000 - 3737 = 1263 centésimos (12,63 L)\nUPDATE gallon_stock SET stock_liters = 1263 WHERE gallon_number = 3;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Corrigir Galão 1: 34769 - 34636 = 133 centésimos (1,33 L)\nUPDATE gallon_stock SET stock_liters = 133 WHERE gallon_number = 1;\n\n-- Corrigir Galão 2: 10000 - 9392 = 608 centésimos (6,08 L)\nUPDATE gallon_stock SET stock_liters = 608 WHERE gallon_number = 2;\n\n-- Corrigir Galão 3: 5000 - 3737 = 1263 centésimos (12,63 L)\nUPDATE gallon_stock SET stock_liters = 1263 WHERE gallon_number = 3;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 527
+}

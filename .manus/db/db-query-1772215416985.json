@@ -1,0 +1,25 @@
+{
+  "query": "SELECT gallon_number, stock_liters, ROUND(stock_liters / 100, 2) as liters_display FROM gallon_stock ORDER BY gallon_number;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT gallon_number, stock_liters, ROUND(stock_liters / 100, 2) as liters_display FROM gallon_stock ORDER BY gallon_number;",
+  "rows": [
+    {
+      "gallon_number": "1",
+      "stock_liters": "133",
+      "liters_display": "1.33"
+    },
+    {
+      "gallon_number": "2",
+      "stock_liters": "608",
+      "liters_display": "6.08"
+    },
+    {
+      "gallon_number": "3",
+      "stock_liters": "1263",
+      "liters_display": "12.63"
+    }
+  ],
+  "messages": [],
+  "stdout": "gallon_number\tstock_liters\tliters_display\n1\t133\t1.33\n2\t608\t6.08\n3\t1263\t12.63\n",
+  "stderr": "",
+  "execution_time_ms": 360
+}

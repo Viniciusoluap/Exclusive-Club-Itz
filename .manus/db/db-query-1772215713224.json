@@ -1,0 +1,32 @@
+{
+  "query": "\n-- Verificar fuel_record_containers para galão 3\nSELECT frc.id, frc.fuel_record_id, frc.gallon_number, frc.liters_used, ROUND(frc.liters_used/100, 2) as liters_L\nFROM fuel_record_containers frc\nWHERE frc.gallon_number = 3\nORDER BY frc.id;\n\n-- Verificar se existem containers órfãos (sem fuel_record pai)\nSELECT frc.id, frc.fuel_record_id, frc.gallon_number, frc.liters_used\nFROM fuel_record_containers frc\nLEFT JOIN fuel_records fr ON frc.fuel_record_id = fr.id\nWHERE fr.id IS NULL;\n\n-- Total de abastecimentos por galão considerando containers\nSELECT \n  gallon_number,\n  SUM(liters_used) as total_liters,\n  ROUND(SUM(liters_used)/100, 2) as total_L,\n  COUNT(*) as qtd\nFROM fuel_record_containers\nGROUP BY gallon_number;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificar fuel_record_containers para galão 3\nSELECT frc.id, frc.fuel_record_id, frc.gallon_number, frc.liters_used, ROUND(frc.liters_used/100, 2) as liters_L\nFROM fuel_record_containers frc\nWHERE frc.gallon_number = 3\nORDER BY frc.id;\n\n-- Verificar se existem containers órfãos (sem fuel_record pai)\nSELECT frc.id, frc.fuel_record_id, frc.gallon_number, frc.liters_used\nFROM fuel_record_containers frc\nLEFT JOIN fuel_records fr ON frc.fuel_record_id = fr.id\nWHERE fr.id IS NULL;\n\n-- Total de abastecimentos por galão considerando containers\nSELECT \n  gallon_number,\n  SUM(liters_used) as total_liters,\n  ROUND(SUM(liters_used)/100, 2) as total_L,\n  COUNT(*) as qtd\nFROM fuel_record_containers\nGROUP BY gallon_number;\n",
+  "rows": [
+    {
+      "id": "360001",
+      "fuel_record_id": "1770001",
+      "gallon_number": "3",
+      "liters_used": "3737",
+      "liters_L": "37.37"
+    },
+    {
+      "id": "450001",
+      "fuel_record_id": "1860001",
+      "gallon_number": "3",
+      "liters_used": "1263",
+      "liters_L": "12.63"
+    }
+  ],
+  "messages": [
+    "id\tfuel_record_id\tgallon_number\tliters_used",
+    "450001\t1860001\t3\t1263",
+    "450002\t1860002\t1\t741",
+    "gallon_number\ttotal_liters\ttotal_L\tqtd",
+    "2\t5709\t57.09\t5",
+    "1\t19218\t192.18\t12",
+    "3\t5000\t50.00\t2"
+  ],
+  "stdout": "id\tfuel_record_id\tgallon_number\tliters_used\tliters_L\n360001\t1770001\t3\t3737\t37.37\n450001\t1860001\t3\t1263\t12.63\nid\tfuel_record_id\tgallon_number\tliters_used\n450001\t1860001\t3\t1263\n450002\t1860002\t1\t741\ngallon_number\ttotal_liters\ttotal_L\tqtd\n2\t5709\t57.09\t5\n1\t19218\t192.18\t12\n3\t5000\t50.00\t2\n",
+  "stderr": "",
+  "execution_time_ms": 456
+}

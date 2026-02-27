@@ -1,0 +1,8 @@
+{
+  "query": "\n-- Estoque atual por galão\nSELECT id, gallon_number, total_liters, used_liters, (total_liters - used_liters) as available_liters, price_per_liter, created_at\nFROM gallon_stock\nORDER BY gallon_number;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Estoque atual por galão\nSELECT id, gallon_number, total_liters, used_liters, (total_liters - used_liters) as available_liters, price_per_liter, created_at\nFROM gallon_stock\nORDER BY gallon_number;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 3: Unknown column 'total_liters' in 'field list'"
+  ]
+}

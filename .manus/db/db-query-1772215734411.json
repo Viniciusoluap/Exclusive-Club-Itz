@@ -1,0 +1,28 @@
+{
+  "query": "\nSELECT g.gallon_number,\n  ROUND(COALESCE(p.total_purchased, 0) / 100, 2) as comprado_L,\n  ROUND(COALESCE(r.total_refueled, 0) / 100, 2) as usado_L,\n  ROUND((COALESCE(p.total_purchased, 0) - COALESCE(r.total_refueled, 0)) / 100, 2) as estoque_L\nFROM gallon_stock g\nLEFT JOIN (SELECT gallon_number, SUM(liters_purchased) as total_purchased FROM fuel_purchases GROUP BY gallon_number) p ON g.gallon_number = p.gallon_number\nLEFT JOIN (SELECT gallon_number, SUM(liters_used) as total_refueled FROM (SELECT fr.gallon_number, fr.liters as liters_used FROM fuel_records fr WHERE NOT EXISTS (SELECT 1 FROM fuel_record_containers frc WHERE frc.fuel_record_id = fr.id) UNION ALL SELECT frc.gallon_number, frc.liters_used FROM fuel_record_containers frc) combined GROUP BY gallon_number) r ON g.gallon_number = r.gallon_number\nORDER BY g.gallon_number;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT g.gallon_number,\n  ROUND(COALESCE(p.total_purchased, 0) / 100, 2) as comprado_L,\n  ROUND(COALESCE(r.total_refueled, 0) / 100, 2) as usado_L,\n  ROUND((COALESCE(p.total_purchased, 0) - COALESCE(r.total_refueled, 0)) / 100, 2) as estoque_L\nFROM gallon_stock g\nLEFT JOIN (SELECT gallon_number, SUM(liters_purchased) as total_purchased FROM fuel_purchases GROUP BY gallon_number) p ON g.gallon_number = p.gallon_number\nLEFT JOIN (SELECT gallon_number, SUM(liters_used) as total_refueled FROM (SELECT fr.gallon_number, fr.liters as liters_used FROM fuel_records fr WHERE NOT EXISTS (SELECT 1 FROM fuel_record_containers frc WHERE frc.fuel_record_id = fr.id) UNION ALL SELECT frc.gallon_number, frc.liters_used FROM fuel_record_containers frc) combined GROUP BY gallon_number) r ON g.gallon_number = r.gallon_number\nORDER BY g.gallon_number;\n",
+  "rows": [
+    {
+      "gallon_number": "1",
+      "comprado_L": "573.19",
+      "usado_L": "340.28",
+      "estoque_L": "232.91"
+    },
+    {
+      "gallon_number": "2",
+      "comprado_L": "100.00",
+      "usado_L": "100.00",
+      "estoque_L": "0.00"
+    },
+    {
+      "gallon_number": "3",
+      "comprado_L": "50.00",
+      "usado_L": "37.37",
+      "estoque_L": "12.63"
+    }
+  ],
+  "messages": [],
+  "stdout": "gallon_number\tcomprado_L\tusado_L\testoque_L\n1\t573.19\t340.28\t232.91\n2\t100.00\t100.00\t0.00\n3\t50.00\t37.37\t12.63\n",
+  "stderr": "",
+  "execution_time_ms": 373
+}

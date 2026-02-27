@@ -2233,14 +2233,13 @@ Nenhuma reserva foi afetada.
         try {
           const { sql } = await import('drizzle-orm');
           
-          // 1. Buscar informações do abastecimento e da reserva associada
+          // 1. Buscar informações do abastecimento (incluindo gallon_number para devolver ao estoque correto)
           const recordResult = await db.execute(sql`
             SELECT 
               fr.liters,
-              fr.booking_id,
-              b.booking_date
+              fr.gallon_number,
+              fr.booking_id
             FROM fuel_records fr
-            INNER JOIN bookings b ON fr.booking_id = b.id
             WHERE fr.id = ${input.id}
           `) as any;
           const record = (Array.isArray(recordResult[0]) ? recordResult[0][0] : recordResult[0]);
@@ -2249,22 +2248,28 @@ Nenhuma reserva foi afetada.
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Abastecimento não encontrado' });
           }
           
-          // 2. Calcular monthYear a partir da data da reserva (timestamp em milissegundos)
-          const bookingDate = new Date(Number(record.booking_date));
-          const monthYear = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}`;
-          
-          // 3. Devolver litros ao estoque (adicionar de volta)
+          // 2. Devolver litros ao estoque do galão correto (gallon_stock)
           const litersToReturn = record.liters; // Já está em centésimos
+          const gallonNumber = record.gallon_number;
           
-          await db.execute(sql`
-            UPDATE fuel_budget 
+          const updateResult = await db.execute(sql`
+            UPDATE gallon_stock 
             SET stock_liters = stock_liters + ${litersToReturn}
-            WHERE month_year = ${monthYear}
-          `);
+            WHERE gallon_number = ${gallonNumber}
+          `) as any;
           
-          console.log(`[fuelRecords.delete] Devolvendo ${litersToReturn / 100}L ao estoque do mês ${monthYear}`);
+          const affectedRows = Array.isArray(updateResult) ? (updateResult[0] as any)?.affectedRows : (updateResult as any)?.affectedRows;
           
-          // 3. Excluir o registro
+          if (!affectedRows || affectedRows === 0) {
+            console.warn(`[fuelRecords.delete] AVISO: gallon_stock não encontrado para galão ${gallonNumber}. Litros não devolvidos.`);
+          } else {
+            console.log(`[fuelRecords.delete] ✅ Devolvendo ${litersToReturn / 100}L ao estoque do Galão ${gallonNumber}`);
+          }
+          
+          // 3. Excluir containers filhos primeiro (evitar containers órfãos que inflam o consumo)
+          await db.execute(sql`DELETE FROM fuel_record_containers WHERE fuel_record_id = ${input.id}`);
+          
+          // 4. Excluir o registro principal
           await db.execute(sql`DELETE FROM fuel_records WHERE id = ${input.id}`);
           
           return { success: true };

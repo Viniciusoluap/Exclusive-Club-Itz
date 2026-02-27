@@ -1,0 +1,28 @@
+{
+  "query": "\nSELECT \n  g.gallon_number,\n  COALESCE(p.total_purchased, 0) / 100 as comprado_L,\n  COALESCE(r.total_refueled, 0) / 100 as usado_L,\n  (COALESCE(p.total_purchased, 0) - COALESCE(r.total_refueled, 0)) / 100 as estoque_L\nFROM gallon_stock g\nLEFT JOIN (\n  SELECT gallon_number, SUM(liters_purchased) as total_purchased\n  FROM fuel_purchases\n  GROUP BY gallon_number\n) p ON g.gallon_number = p.gallon_number\nLEFT JOIN (\n  SELECT gallon_number, SUM(liters_used) as total_refueled FROM (\n    SELECT fr.gallon_number, fr.liters as liters_used\n    FROM fuel_records fr\n    WHERE NOT EXISTS (\n      SELECT 1 FROM fuel_record_containers frc WHERE frc.fuel_record_id = fr.id\n    )\n    UNION ALL\n    SELECT frc.gallon_number, frc.liters_used\n    FROM fuel_record_containers frc\n  ) combined\n  GROUP BY gallon_number\n) r ON g.gallon_number = r.gallon_number\nORDER BY g.gallon_number;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  g.gallon_number,\n  COALESCE(p.total_purchased, 0) / 100 as comprado_L,\n  COALESCE(r.total_refueled, 0) / 100 as usado_L,\n  (COALESCE(p.total_purchased, 0) - COALESCE(r.total_refueled, 0)) / 100 as estoque_L\nFROM gallon_stock g\nLEFT JOIN (\n  SELECT gallon_number, SUM(liters_purchased) as total_purchased\n  FROM fuel_purchases\n  GROUP BY gallon_number\n) p ON g.gallon_number = p.gallon_number\nLEFT JOIN (\n  SELECT gallon_number, SUM(liters_used) as total_refueled FROM (\n    SELECT fr.gallon_number, fr.liters as liters_used\n    FROM fuel_records fr\n    WHERE NOT EXISTS (\n      SELECT 1 FROM fuel_record_containers frc WHERE frc.fuel_record_id = fr.id\n    )\n    UNION ALL\n    SELECT frc.gallon_number, frc.liters_used\n    FROM fuel_record_containers frc\n  ) combined\n  GROUP BY gallon_number\n) r ON g.gallon_number = r.gallon_number\nORDER BY g.gallon_number;\n",
+  "rows": [
+    {
+      "gallon_number": "1",
+      "comprado_L": "573.1900",
+      "usado_L": "340.2800",
+      "estoque_L": "232.9100"
+    },
+    {
+      "gallon_number": "2",
+      "comprado_L": "100.0000",
+      "usado_L": "100.0000",
+      "estoque_L": "0.0000"
+    },
+    {
+      "gallon_number": "3",
+      "comprado_L": "50.0000",
+      "usado_L": "37.3700",
+      "estoque_L": "12.6300"
+    }
+  ],
+  "messages": [],
+  "stdout": "gallon_number\tcomprado_L\tusado_L\testoque_L\n1\t573.1900\t340.2800\t232.9100\n2\t100.0000\t100.0000\t0.0000\n3\t50.0000\t37.3700\t12.6300\n",
+  "stderr": "",
+  "execution_time_ms": 484
+}

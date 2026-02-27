@@ -1,0 +1,28 @@
+{
+  "query": "\n-- Cálculo dinâmico que o getGallonStock usa\nSELECT \n  g.gallon_number,\n  COALESCE(p.total_purchased, 0) as total_purchased,\n  COALESCE(r.total_refueled, 0) as total_refueled,\n  (COALESCE(p.total_purchased, 0) - COALESCE(r.total_refueled, 0)) / 100 as stock_liters_dynamic\nFROM gallon_stock g\nLEFT JOIN (\n  SELECT gallon_number, SUM(liters_purchased) as total_purchased\n  FROM fuel_purchases\n  GROUP BY gallon_number\n) p ON g.gallon_number = p.gallon_number\nLEFT JOIN (\n  SELECT gallon_number, SUM(liters_used) as total_refueled FROM (\n    SELECT fr.gallon_number, fr.liters as liters_used\n    FROM fuel_records fr\n    WHERE NOT EXISTS (\n      SELECT 1 FROM fuel_record_containers frc WHERE frc.fuel_record_id = fr.id\n    )\n    UNION ALL\n    SELECT frc.gallon_number, frc.liters_used\n    FROM fuel_record_containers frc\n  ) combined\n  GROUP BY gallon_number\n) r ON g.gallon_number = r.gallon_number\nORDER BY g.gallon_number;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Cálculo dinâmico que o getGallonStock usa\nSELECT \n  g.gallon_number,\n  COALESCE(p.total_purchased, 0) as total_purchased,\n  COALESCE(r.total_refueled, 0) as total_refueled,\n  (COALESCE(p.total_purchased, 0) - COALESCE(r.total_refueled, 0)) / 100 as stock_liters_dynamic\nFROM gallon_stock g\nLEFT JOIN (\n  SELECT gallon_number, SUM(liters_purchased) as total_purchased\n  FROM fuel_purchases\n  GROUP BY gallon_number\n) p ON g.gallon_number = p.gallon_number\nLEFT JOIN (\n  SELECT gallon_number, SUM(liters_used) as total_refueled FROM (\n    SELECT fr.gallon_number, fr.liters as liters_used\n    FROM fuel_records fr\n    WHERE NOT EXISTS (\n      SELECT 1 FROM fuel_record_containers frc WHERE frc.fuel_record_id = fr.id\n    )\n    UNION ALL\n    SELECT frc.gallon_number, frc.liters_used\n    FROM fuel_record_containers frc\n  ) combined\n  GROUP BY gallon_number\n) r ON g.gallon_number = r.gallon_number\nORDER BY g.gallon_number;\n",
+  "rows": [
+    {
+      "gallon_number": "1",
+      "total_purchased": "57319",
+      "total_refueled": "34769",
+      "stock_liters_dynamic": "225.5000"
+    },
+    {
+      "gallon_number": "2",
+      "total_purchased": "10000",
+      "total_refueled": "10000",
+      "stock_liters_dynamic": "0.0000"
+    },
+    {
+      "gallon_number": "3",
+      "total_purchased": "5000",
+      "total_refueled": "5000",
+      "stock_liters_dynamic": "0.0000"
+    }
+  ],
+  "messages": [],
+  "stdout": "gallon_number\ttotal_purchased\ttotal_refueled\tstock_liters_dynamic\n1\t57319\t34769\t225.5000\n2\t10000\t10000\t0.0000\n3\t5000\t5000\t0.0000\n",
+  "stderr": "",
+  "execution_time_ms": 428
+}

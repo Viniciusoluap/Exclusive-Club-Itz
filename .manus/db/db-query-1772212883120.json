@@ -1,0 +1,22 @@
+{
+  "query": "SHOW TABLES LIKE '%fuel%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SHOW TABLES LIKE '%fuel%';",
+  "rows": [
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)": "fuel_budget"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)": "fuel_purchases"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)": "fuel_record_containers"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)": "fuel_records"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)\nfuel_budget\nfuel_purchases\nfuel_record_containers\nfuel_records\n",
+  "stderr": "",
+  "execution_time_ms": 397
+}

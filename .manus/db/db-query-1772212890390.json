@@ -1,0 +1,28 @@
+{
+  "query": "SHOW TABLES LIKE '%fuel%'; SHOW TABLES LIKE '%stock%'; SHOW TABLES LIKE '%tank%'; SHOW TABLES LIKE '%galao%'; SHOW TABLES LIKE '%galon%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SHOW TABLES LIKE '%fuel%'; SHOW TABLES LIKE '%stock%'; SHOW TABLES LIKE '%tank%'; SHOW TABLES LIKE '%galao%'; SHOW TABLES LIKE '%galon%';",
+  "rows": [
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)": "fuel_budget"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)": "fuel_purchases"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)": "fuel_record_containers"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)": "fuel_records"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)": "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%stock%)"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)": "gallon_stock"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_4SVaP8MpsE4tem3Hhe5WES (%fuel%)\nfuel_budget\nfuel_purchases\nfuel_record_containers\nfuel_records\nTables_in_4SVaP8MpsE4tem3Hhe5WES (%stock%)\ngallon_stock\n",
+  "stderr": "",
+  "execution_time_ms": 545
+}

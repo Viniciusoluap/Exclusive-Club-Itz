@@ -1,0 +1,16 @@
+{
+  "query": "\n-- Detalhes das compras do Galão 1\nSELECT id, month_year, liters_purchased, ROUND(liters_purchased/100, 2) as liters_display, amount_paid, purchased_at, notes\nFROM fuel_purchases\nWHERE gallon_number = 1\nORDER BY purchased_at;\n\n-- Detalhes dos abastecimentos ativos do Galão 1\nSELECT id, client_name, boat_name, liters, ROUND(liters/100, 2) as liters_display, payment_status, asaas_payment_id, created_at\nFROM fuel_records\nWHERE gallon_number = 1 AND payment_status != 'cancelled'\nORDER BY created_at;\n\n-- Verificar se há registros cancelados do Galão 1 (abastecimentos excluídos)\nSELECT id, client_name, boat_name, liters, ROUND(liters/100, 2) as liters_display, payment_status, asaas_payment_id, created_at\nFROM fuel_records\nWHERE gallon_number = 1 AND payment_status = 'cancelled'\nORDER BY created_at;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Detalhes das compras do Galão 1\nSELECT id, month_year, liters_purchased, ROUND(liters_purchased/100, 2) as liters_display, amount_paid, purchased_at, notes\nFROM fuel_purchases\nWHERE gallon_number = 1\nORDER BY purchased_at;\n\n-- Detalhes dos abastecimentos ativos do Galão 1\nSELECT id, client_name, boat_name, liters, ROUND(liters/100, 2) as liters_display, payment_status, asaas_payment_id, created_at\nFROM fuel_records\nWHERE gallon_number = 1 AND payment_status != 'cancelled'\nORDER BY created_at;\n\n-- Verificar se há registros cancelados do Galão 1 (abastecimentos excluídos)\nSELECT id, client_name, boat_name, liters, ROUND(liters/100, 2) as liters_display, payment_status, asaas_payment_id, created_at\nFROM fuel_records\nWHERE gallon_number = 1 AND payment_status = 'cancelled'\nORDER BY created_at;\n",
+  "returncode": 1,
+  "logs": [
+    "id\tmonth_year\tliters_purchased\tliters_display\tamount_paid\tpurchased_at\tnotes",
+    "90001\t2025-12\t4769\t47.69\t30000\t2025-12-21 22:38:35\tNULL",
+    "150001\t2025-12\t5000\t50.00\t31400\t2025-12-23 18:31:55\tNULL",
+    "150002\t2025-12\t5000\t50.00\t31450\t2025-12-23 18:32:05\tNULL",
+    "750001\t2026-01\t5000\t50.00\t31450\t2026-01-09 18:58:36\tNULL",
+    "870001\t2026-01\t5000\t50.00\t31450\t2026-01-22 20:55:36\tNULL",
+    "930001\t2026-02\t5000\t50.00\t31450\t2026-02-12 10:49:44\tNULL",
+    "1020001\t2026-02\t5000\t50.00\t31450\t2026-02-18 17:01:00\tNULL",
+    "ERROR 1054 (42S22) at line 9: Unknown column 'boat_name' in 'field list'"
+  ]
+}

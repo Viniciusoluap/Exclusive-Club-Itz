@@ -1,0 +1,8 @@
+{
+  "query": "\n-- Abastecimentos ativos do Galão 1\nSELECT id, client_name, liters, ROUND(liters/100, 2) as liters_display, payment_status, asaas_payment_id, created_at\nFROM fuel_records\nWHERE gallon_number = 1 AND payment_status != 'cancelled'\nORDER BY created_at;\n\n-- Abastecimentos cancelados do Galão 1\nSELECT id, client_name, liters, ROUND(liters/100, 2) as liters_display, payment_status, asaas_payment_id, created_at\nFROM fuel_records\nWHERE gallon_number = 1 AND payment_status = 'cancelled'\nORDER BY created_at;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Abastecimentos ativos do Galão 1\nSELECT id, client_name, liters, ROUND(liters/100, 2) as liters_display, payment_status, asaas_payment_id, created_at\nFROM fuel_records\nWHERE gallon_number = 1 AND payment_status != 'cancelled'\nORDER BY created_at;\n\n-- Abastecimentos cancelados do Galão 1\nSELECT id, client_name, liters, ROUND(liters/100, 2) as liters_display, payment_status, asaas_payment_id, created_at\nFROM fuel_records\nWHERE gallon_number = 1 AND payment_status = 'cancelled'\nORDER BY created_at;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 3: Unknown column 'asaas_payment_id' in 'field list'"
+  ]
+}

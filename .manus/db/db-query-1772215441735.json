@@ -1,0 +1,146 @@
+{
+  "query": "\n-- Abastecimentos ativos do Galão 1\nSELECT id, client_name, liters, ROUND(liters/100, 2) as liters_display, payment_status, created_at\nFROM fuel_records\nWHERE gallon_number = 1\nORDER BY created_at;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Abastecimentos ativos do Galão 1\nSELECT id, client_name, liters, ROUND(liters/100, 2) as liters_display, payment_status, created_at\nFROM fuel_records\nWHERE gallon_number = 1\nORDER BY created_at;\n",
+  "rows": [
+    {
+      "id": "780001",
+      "client_name": "EDILSON DA CONCEIÇÃO COSTA",
+      "liters": "3564",
+      "liters_display": "35.64",
+      "payment_status": "overdue",
+      "created_at": "2025-12-21 22:41:11"
+    },
+    {
+      "id": "780002",
+      "client_name": "ERISVALDO ALVES SILVA",
+      "liters": "2900",
+      "liters_display": "29.00",
+      "payment_status": "paid",
+      "created_at": "2025-12-21 22:41:46"
+    },
+    {
+      "id": "780003",
+      "client_name": "Laécio Silversat",
+      "liters": "1500",
+      "liters_display": "15.00",
+      "payment_status": "paid",
+      "created_at": "2025-12-21 22:42:08"
+    },
+    {
+      "id": "780004",
+      "client_name": "Laercio Oliveira",
+      "liters": "3706",
+      "liters_display": "37.06",
+      "payment_status": "paid",
+      "created_at": "2025-12-21 22:43:04"
+    },
+    {
+      "id": "1140001",
+      "client_name": "Stenio Teixeiras",
+      "liters": "2022",
+      "liters_display": "20.22",
+      "payment_status": "paid",
+      "created_at": "2025-12-24 18:37:31"
+    },
+    {
+      "id": "1410001",
+      "client_name": "lsccsilva",
+      "liters": "1077",
+      "liters_display": "10.77",
+      "payment_status": "paid",
+      "created_at": "2026-01-07 16:55:42"
+    },
+    {
+      "id": "1470001",
+      "client_name": "Laécio Silversat",
+      "liters": "1987",
+      "liters_display": "19.87",
+      "payment_status": "paid",
+      "created_at": "2026-01-14 18:12:01"
+    },
+    {
+      "id": "1500001",
+      "client_name": "Diogo Brito",
+      "liters": "1264",
+      "liters_display": "12.64",
+      "payment_status": "paid",
+      "created_at": "2026-01-15 20:45:13"
+    },
+    {
+      "id": "1530001",
+      "client_name": "lsccsilva",
+      "liters": "1749",
+      "liters_display": "17.49",
+      "payment_status": "paid",
+      "created_at": "2026-01-16 15:47:41"
+    },
+    {
+      "id": "1560001",
+      "client_name": "Diogo Brito",
+      "liters": "3141",
+      "liters_display": "31.41",
+      "payment_status": "paid",
+      "created_at": "2026-01-22 21:07:06"
+    },
+    {
+      "id": "1620001",
+      "client_name": "Exclusive Club (Operacional)",
+      "liters": "1859",
+      "liters_display": "18.59",
+      "payment_status": "pending",
+      "created_at": "2026-02-08 18:20:54"
+    },
+    {
+      "id": "1710001",
+      "client_name": "Laercio Oliveira",
+      "liters": "1215",
+      "liters_display": "12.15",
+      "payment_status": "pending",
+      "created_at": "2026-02-13 19:10:19"
+    },
+    {
+      "id": "1710002",
+      "client_name": "Diogo de Lemos Brito",
+      "liters": "2986",
+      "liters_display": "29.86",
+      "payment_status": "paid",
+      "created_at": "2026-02-13 19:18:11"
+    },
+    {
+      "id": "1740001",
+      "client_name": "Exclusive Club (Operacional)",
+      "liters": "1407",
+      "liters_display": "14.07",
+      "payment_status": "pending",
+      "created_at": "2026-02-15 18:01:41"
+    },
+    {
+      "id": "1800001",
+      "client_name": "Laécio Silversat",
+      "liters": "712",
+      "liters_display": "7.12",
+      "payment_status": "pending",
+      "created_at": "2026-02-21 13:57:08"
+    },
+    {
+      "id": "1830001",
+      "client_name": "Vinicius Freitas",
+      "liters": "1635",
+      "liters_display": "16.35",
+      "payment_status": "pending",
+      "created_at": "2026-02-25 18:46:14"
+    },
+    {
+      "id": "1830002",
+      "client_name": "Laercio Oliveira",
+      "liters": "1912",
+      "liters_display": "19.12",
+      "payment_status": "pending",
+      "created_at": "2026-02-25 19:01:19"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tliters\tliters_display\tpayment_status\tcreated_at\n780001\tEDILSON DA CONCEIÇÃO COSTA\t3564\t35.64\toverdue\t2025-12-21 22:41:11\n780002\tERISVALDO ALVES SILVA\t2900\t29.00\tpaid\t2025-12-21 22:41:46\n780003\tLaécio Silversat\t1500\t15.00\tpaid\t2025-12-21 22:42:08\n780004\tLaercio Oliveira\t3706\t37.06\tpaid\t2025-12-21 22:43:04\n1140001\tStenio Teixeiras\t2022\t20.22\tpaid\t2025-12-24 18:37:31\n1410001\tlsccsilva\t1077\t10.77\tpaid\t2026-01-07 16:55:42\n1470001\tLaécio Silversat\t1987\t19.87\tpaid\t2026-01-14 18:12:01\n1500001\tDiogo Brito\t1264\t12.64\tpaid\t2026-01-15 20:45:13\n1530001\tlsccsilva\t1749\t17.49\tpaid\t2026-01-16 15:47:41\n1560001\tDiogo Brito\t3141\t31.41\tpaid\t2026-01-22 21:07:06\n1620001\tExclusive Club (Operacional)\t1859\t18.59\tpending\t2026-02-08 18:20:54\n1710001\tLaercio Oliveira\t1215\t12.15\tpending\t2026-02-13 19:10:19\n1710002\tDiogo de Lemos Brito\t2986\t29.86\tpaid\t2026-02-13 19:18:11\n1740001\tExclusive Club (Operacional)\t1407\t14.07\tpending\t2026-02-15 18:01:41\n1800001\tLaécio Silversat\t712\t7.12\tpending\t2026-02-21 13:57:08\n1830001\tVinicius Freitas\t1635\t16.35\tpending\t2026-02-25 18:46:14\n1830002\tLaercio Oliveira\t1912\t19.12\tpending\t2026-02-25 19:01:19\n",
+  "stderr": "",
+  "execution_time_ms": 375
+}

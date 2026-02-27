@@ -1,0 +1,12 @@
+{
+  "query": "\n-- Estoque atual por galão\nSELECT id, gallon_number, stock_liters, last_price_per_liter\nFROM gallon_stock\nORDER BY gallon_number;\n\n-- Abastecimentos recentes da Focker 215 (últimos 10 dias)\nSELECT fr.id, fr.vessel_id, fr.client_id, fr.liters, fr.total_cost, fr.gallon_number, fr.asaas_payment_id, fr.created_at\nFROM fuel_records fr\nWHERE fr.created_at >= DATE_SUB(NOW(), INTERVAL 10 DAY)\nORDER BY fr.created_at DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Estoque atual por galão\nSELECT id, gallon_number, stock_liters, last_price_per_liter\nFROM gallon_stock\nORDER BY gallon_number;\n\n-- Abastecimentos recentes da Focker 215 (últimos 10 dias)\nSELECT fr.id, fr.vessel_id, fr.client_id, fr.liters, fr.total_cost, fr.gallon_number, fr.asaas_payment_id, fr.created_at\nFROM fuel_records fr\nWHERE fr.created_at >= DATE_SUB(NOW(), INTERVAL 10 DAY)\nORDER BY fr.created_at DESC\nLIMIT 20;\n",
+  "returncode": 1,
+  "logs": [
+    "id\tgallon_number\tstock_liters\tlast_price_per_liter",
+    "1\t1\t27473\t629",
+    "2\t2\t-4921\t629",
+    "3\t3\t0\t629",
+    "ERROR 1054 (42S22) at line 8: Unknown column 'fr.client_id' in 'field list'"
+  ]
+}
