@@ -1418,3 +1418,19 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Corrigir timezone GMT-3 definitivamente
 - [x] Testar todas as correções (SUCESSO TOTAL!)
 - [x] Criar checkpoint único
+
+
+## 🔴 Bug Crítico: Estoque de Combustível Furado (Abastecimentos Excluídos)
+
+**Problema:** Exclusão de 2 abastecimentos errados (Focker 215 150HP - Vinicius Freitas) cancelou cobranças no Asaas mas NÃO devolveu litros ao estoque.
+- Abastecimento 1: 12,63 L ou 7,41 L (Galão 1)
+- Abastecimento 2: 7,41 L ou 12,63 L (Galão 3)
+- Total a devolver: 20,04 L
+
+**Tarefas:**
+- [x] Investigar banco de dados para identificar litros por galão
+- [x] Devolver litros ao Galão 1 (estoque) - corrigido via SQL
+- [x] Devolver litros ao Galão 3 (estoque) - corrigido via SQL + containers órfãos removidos
+- [x] Corrigir bug no código de exclusão (reverter estoque automaticamente) - fuelRecords.delete agora deleta containers filhos + atualiza gallon_stock
+- [x] Testar correções - 4 testes passando
+- [ ] Criar checkpoint
