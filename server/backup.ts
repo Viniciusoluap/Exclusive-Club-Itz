@@ -7,8 +7,8 @@ import { getDb } from './db';
 import { backupHistory } from '../drizzle/schema';
 import { sendBackupFailureNotification } from './backupNotification';
 import { exportDatabaseToSQL } from './databaseBackup';
-import { storagePut } from './storage';
 import { eq } from 'drizzle-orm';
+import { storagePut } from './storage';
 
 
 const execAsync = promisify(exec);
@@ -169,14 +169,16 @@ export async function runBackup(): Promise<void> {
 
     // 4. Upload para S3
     console.log('☁️  Fazendo upload para S3...');
-    const s3Key = `backups/${path.basename(zipPath)}`;
-    const zipBuffer = fs.readFileSync(zipPath);
-    const { url: s3Url } = await storagePut(s3Key, zipBuffer, 'application/zip');
-    console.log(`✅ Upload concluído: ${s3Url}`);
+    const s3Key = `backups/${fileName}`;
+    const fileBuffer = fs.readFileSync(zipPath);
+    const { url: s3Url } = await storagePut(s3Key, fileBuffer, 'application/zip');
+    console.log(`✅ Upload S3 concluído: ${s3Url}`);
 
-    // 5. Limpa arquivo local (economizar espaço)
-    fs.unlinkSync(zipPath);
-    console.log(`🗑️  Arquivo local removido: ${zipPath}`);
+    // 5. Remove arquivo local após upload S3
+    if (fs.existsSync(zipPath)) {
+      fs.unlinkSync(zipPath);
+      console.log('✅ Arquivo local removido (mantido apenas no S3)');
+    }
 
     // 6. Limpa backups antigos
     await cleanupOldBackups();
@@ -191,11 +193,11 @@ export async function runBackup(): Promise<void> {
         .set({
           completedAt: endTime.toISOString(),
           status: 'success',
-          fileName: path.basename(zipPath),
+          fileName,
           fileSizeBytes,
           durationSeconds,
+          s3Url, // Salva URL do S3
           localFilePath: null, // Arquivo local foi removido
-          s3Url, // URL permanente no S3
         })
         .where(eq(backupHistory.id, backupId));
       console.log(`✅ Backup atualizado no banco`);

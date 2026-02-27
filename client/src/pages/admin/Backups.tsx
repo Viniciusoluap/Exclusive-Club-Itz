@@ -112,26 +112,6 @@ export default function AdminBackups() {
     return minutes > 0 ? `${minutes}m ${secs}s` : `${secs}s`;
   };
 
-  // Converte timestamp UTC para GMT-3 (Brasil)
-  const formatLocalDateTime = (utcTimestamp: string) => {
-    const date = new Date(utcTimestamp);
-    return date.toLocaleString('pt-BR', { 
-      timeZone: 'America/Sao_Paulo',
-      day: '2-digit',
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
-  // Calcula tempo relativo com timezone correto
-  const formatRelativeTime = (utcTimestamp: string) => {
-    const date = new Date(utcTimestamp);
-    return formatDistanceToNow(date, { addSuffix: true, locale: ptBR });
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'success':
@@ -269,10 +249,10 @@ export default function AdminBackups() {
                 <div>
                   <div className="text-sm text-gray-600 mb-1">Data/Hora</div>
                   <div className="font-medium">
-                    {formatLocalDateTime(stats.lastBackup.startedAt)}
+                    {new Date(stats.lastBackup.startedAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {formatRelativeTime(stats.lastBackup.startedAt)}
+                    {formatDistanceToNow(new Date(stats.lastBackup.startedAt), { addSuffix: true, locale: ptBR })}
                   </div>
                 </div>
                 {stats.lastBackup.fileName && (
@@ -338,10 +318,10 @@ export default function AdminBackups() {
                         <div className="flex items-center gap-3 mb-2">
                           {getStatusBadge(backup.status)}
                           <span className="text-sm text-gray-600">
-                            {formatLocalDateTime(backup.startedAt)}
+                            {new Date(backup.startedAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                           </span>
                           <span className="text-xs text-gray-400">
-                            {formatRelativeTime(backup.startedAt)}
+                            {formatDistanceToNow(new Date(backup.startedAt), { addSuffix: true, locale: ptBR })}
                           </span>
                         </div>
                         
@@ -394,20 +374,11 @@ export default function AdminBackups() {
                             >
                               <RotateCcw className="w-4 h-4" />
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDelete(backup.id)}
-                              title="Excluir backup"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
                           </>
                         )}
                         
-                        {/* Botão Excluir para backups com falha */}
-                        {backup.status === 'failed' && (
+                        {/* Botão Excluir para TODOS os backups (exceto em execução) */}
+                        {backup.status !== 'running' && (
                           <Button
                             size="sm"
                             variant="ghost"

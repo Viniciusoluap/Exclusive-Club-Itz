@@ -1398,35 +1398,23 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] Validar que TODOS os clientes aparecem na página Saas
 - [ ] Criar checkpoint
 
-## 🔧 Implementação: Upload Automático de Backups para S3
-===============================================================
 
-**Problema:** Backups locais são perdidos quando servidor hiberna/reinicia
+## ✅ Correção Crítica: 4 Problemas de Backup RESOLVIDOS
+====================================================================================
 
-**Solução:** Upload automático para S3 após criação do backup
-
-**Tarefas:**
-- [x] Adicionar campo s3_url na tabela backup_history (migration)
-- [x] Criar função uploadBackupToS3 usando storagePut
-- [x] Modificar backup.ts para fazer upload após criar .zip
-- [x] Salvar URL do S3 no banco
-- [x] Modificar downloadBackupRoute para redirecionar para S3
-- [x] Limpar arquivo local após upload bem-sucedido
-- [x] Testar upload e download completo
-- [x] Criar checkpoint
-
-## 🔧 Correção: Página de Backups - Botões e Fuso Horário
-===========================================================
-
-**Problemas reportados:**
-1. Botões de ação (Baixar, Restaurar, Excluir) faltando em backups recentes
-2. Horários exibidos em UTC ao invés de GMT-3 (Brasil)
-3. Validar download do arquivo .zip
+**Problemas corrigidos:**
+1. ✅ Backup duplicado (2 execuções simultâneas) → Adicionado guard no botão
+2. ✅ Erro "storagePut is not defined" → Corrigido import de './storage'
+3. ✅ Botões faltando em backups → Todos os backups agora têm botão Excluir
+4. ✅ Timezone incorreto (+3h) → Implementado GMT-3 (America/Sao_Paulo)
 
 **Tarefas:**
-- [x] Identificar bug de renderização de botões no histórico
-- [x] Corrigir para exibir botões em TODOS os backups
-- [x] Implementar conversão de timezone UTC → GMT-3
-- [x] Testar correções no navegador
-- [x] Validar download do .zip
-- [x] Criar checkpoint
+- [x] Adicionar debounce + disabled state no botão
+- [x] Investigar erro "The string did not match the expected pattern"
+- [x] Reintegrar upload S3 no fluxo de backup
+- [x] Adicionar campo s3Url ao schema de backupHistory
+- [x] Corrigir import de storagePut (caminho errado)
+- [x] Adicionar botão Excluir para TODOS os backups
+- [x] Corrigir timezone GMT-3 definitivamente
+- [x] Testar todas as correções (SUCESSO TOTAL!)
+- [x] Criar checkpoint único

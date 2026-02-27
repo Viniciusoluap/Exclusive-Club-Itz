@@ -35,33 +35,27 @@ export async function downloadBackupRoute(req: Request, res: Response) {
 
     const backupData = backup[0];
 
-    // Prioriza URL do S3 (permanente)
-    if (backupData.s3Url) {
-      console.log(`Redirecionando para S3: ${backupData.s3Url}`);
-      return res.redirect(backupData.s3Url);
+    // Verifica se o arquivo existe
+    if (!backupData.localFilePath || !fs.existsSync(backupData.localFilePath)) {
+      return res.status(404).json({ error: 'Arquivo de backup não encontrado no servidor' });
     }
 
-    // Fallback: arquivo local (se ainda existir)
-    if (backupData.localFilePath && fs.existsSync(backupData.localFilePath)) {
-      const fileName = backupData.fileName || path.basename(backupData.localFilePath);
-      res.setHeader('Content-Type', 'application/zip');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Length', backupData.fileSizeBytes?.toString() || '0');
+    // Define headers para download
+    const fileName = backupData.fileName || path.basename(backupData.localFilePath);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', backupData.fileSizeBytes?.toString() || '0');
 
-      const fileStream = fs.createReadStream(backupData.localFilePath);
-      fileStream.pipe(res);
+    // Envia o arquivo
+    const fileStream = fs.createReadStream(backupData.localFilePath);
+    fileStream.pipe(res);
 
-      fileStream.on('error', (error) => {
-        console.error('Erro ao enviar arquivo:', error);
-        if (!res.headersSent) {
-          res.status(500).json({ error: 'Erro ao enviar arquivo' });
-        }
-      });
-      return;
-    }
-
-    // Nenhuma fonte disponível
-    return res.status(404).json({ error: 'Arquivo de backup não encontrado no servidor' });
+    fileStream.on('error', (error) => {
+      console.error('Erro ao enviar arquivo:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Erro ao enviar arquivo' });
+      }
+    });
 
   } catch (error) {
     console.error('Erro no download de backup:', error);
