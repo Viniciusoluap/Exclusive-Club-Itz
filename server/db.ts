@@ -613,11 +613,13 @@ export async function calculateMonthFinalBalance(monthYear: string): Promise<num
   const budgetData = (Array.isArray(budgetResult[0]) ? budgetResult[0][0] : budgetResult[0]);
   const budget = Number(budgetData?.total || 0);
   
-  // 3. Calcular gasto (soma dos abastecimentos)
+  // 3. Calcular gasto (soma dos abastecimentos NAO operacionais)
+  // IMPORTANTE: excluir operacionais para ser consistente com o que a tela exibe
   const spentResult = await db.execute(sql`
     SELECT COALESCE(SUM(total_amount), 0) as total
     FROM fuel_records
     WHERE DATE_FORMAT(created_at, '%Y-%m') = ${monthYear}
+      AND (is_operational = 0 OR is_operational IS NULL)
   `) as any;
   
   const spentData = (Array.isArray(spentResult[0]) ? spentResult[0][0] : spentResult[0]);
