@@ -1,0 +1,2 @@
+ALTER TABLE `subscription_charges` MODIFY COLUMN `type` enum('monthly','quota_sale','fuel','repair','other');--> statement-breakpoint
+ALTER TABLE `subscriptions` MODIFY COLUMN `type` enum('monthly','quota_sale','fuel','repair','other') NOT NULL;

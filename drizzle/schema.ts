@@ -270,7 +270,7 @@ export const backupHistory = mysqlTable("backup_history", {
 export const subscriptions = mysqlTable("subscriptions", {
 	id: int().autoincrement().notNull(),
 	clientId: int("client_id").notNull(),
-	type: mysqlEnum("type", ["monthly", "quota_sale"]).notNull(),
+	type: mysqlEnum("type", ["monthly", "quota_sale", "fuel", "repair", "other"]).notNull(),
 	value: decimal({ precision: 10, scale: 2 }).notNull(),
 	dueDay: int("due_day").notNull(),
 	startDate: timestamp("start_date", { mode: 'string' }).notNull(),
@@ -289,7 +289,7 @@ export const subscriptionCharges = mysqlTable("subscription_charges", {
 	dueDate: timestamp("due_date", { mode: 'string' }).notNull(),
 	paidDate: timestamp("paid_date", { mode: 'string' }),
 	status: mysqlEnum("status", ["pending", "paid", "overdue", "cancelled"]).default("pending").notNull(),
-	type: mysqlEnum("type", ["monthly", "quota_sale"]), // Tipo individual da cobrança (pode ser diferente da subscription)
+	type: mysqlEnum("type", ["monthly", "quota_sale", "fuel", "repair", "other"]), // Tipo individual da cobrança (pode ser diferente da subscription)
 	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 });
 

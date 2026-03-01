@@ -1,0 +1,9 @@
+{
+  "query": "\nALTER TABLE subscriptions MODIFY COLUMN type ENUM('monthly', 'quota_sale', 'fuel', 'repair', 'other') NOT NULL;\nALTER TABLE subscription_charges MODIFY COLUMN type ENUM('monthly', 'quota_sale', 'fuel', 'repair', 'other');\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nALTER TABLE subscriptions MODIFY COLUMN type ENUM('monthly', 'quota_sale', 'fuel', 'repair', 'other') NOT NULL;\nALTER TABLE subscription_charges MODIFY COLUMN type ENUM('monthly', 'quota_sale', 'fuel', 'repair', 'other');\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 712
+}
