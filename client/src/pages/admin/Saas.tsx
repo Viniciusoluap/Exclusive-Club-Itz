@@ -14,7 +14,7 @@ import { formatCurrency } from "@/lib/formatCurrency";
 // Componente para listar e classificar cobranças não classificadas
 function UnclassifiedChargesSection() {
   const [selectedClient, setSelectedClient] = useState<Record<number, number>>({});
-  const [selectedType, setSelectedType] = useState<Record<number, "monthly" | "quota_sale">>({});
+  const [selectedType, setSelectedType] = useState<Record<number, "monthly" | "quota_sale" | "fuel" | "repair" | "other">>({});
   
   const utils = trpc.useUtils();
   const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery();
@@ -129,7 +129,7 @@ function UnclassifiedChargesSection() {
                   <Label>Tipo</Label>
                   <Select
                     value={selectedType[charge.id] || ""}
-                    onValueChange={(value: "monthly" | "quota_sale") => setSelectedType({ ...selectedType, [charge.id]: value })}
+                    onValueChange={(value: "monthly" | "quota_sale" | "fuel" | "repair" | "other") => setSelectedType({ ...selectedType, [charge.id]: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione tipo" />
@@ -137,6 +137,9 @@ function UnclassifiedChargesSection() {
                     <SelectContent>
                       <SelectItem value="monthly">Mensalidade</SelectItem>
                       <SelectItem value="quota_sale">Venda de Cota</SelectItem>
+                      <SelectItem value="fuel">Abastecimento</SelectItem>
+                      <SelectItem value="repair">Reparos</SelectItem>
+                      <SelectItem value="other">Outros</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -172,7 +175,7 @@ export default function Saas() {
   const [showEditChargeDialog, setShowEditChargeDialog] = useState(false);
   const [editingChargeId, setEditingChargeId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<"pending" | "paid" | "overdue" | "cancelled" | "all">("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "monthly" | "quota_sale">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "monthly" | "quota_sale" | "fuel" | "repair" | "other">("all");
   const [boatFilter, setBoatFilter] = useState<string>(""); // Filtro por embarcação
   const [searchQuery, setSearchQuery] = useState("");
   const [monthFilter, setMonthFilter] = useState<string>("");
@@ -509,53 +512,63 @@ export default function Saas() {
           <div className="grid grid-cols-3 gap-2 mb-4">
             {/* Linha 1: Status principais */}
             <Button
-              variant={statusFilter === "all" ? "default" : "outline"}
-              onClick={() => setStatusFilter("all")}
+              variant={statusFilter === "all" && typeFilter === "all" ? "default" : "outline"}
+              onClick={() => { setStatusFilter("all"); setTypeFilter("all"); }}
             >
               Todas
             </Button>
             <Button
               variant={statusFilter === "pending" ? "default" : "outline"}
-              onClick={() => setStatusFilter("pending")}
+              onClick={() => { setStatusFilter(statusFilter === "pending" ? "all" : "pending"); setTypeFilter("all"); }}
             >
               Pendentes
             </Button>
             <Button
               variant={statusFilter === "paid" ? "default" : "outline"}
-              onClick={() => setStatusFilter("paid")}
+              onClick={() => { setStatusFilter(statusFilter === "paid" ? "all" : "paid"); setTypeFilter("all"); }}
             >
               Pagas
             </Button>
             
-            {/* Linha 2: Status secundários + Mensalidades */}
+            {/* Linha 2: Vencidas + Outros + Mensalidades */}
             <Button
               variant={statusFilter === "overdue" ? "default" : "outline"}
-              onClick={() => setStatusFilter("overdue")}
+              onClick={() => { setStatusFilter(statusFilter === "overdue" ? "all" : "overdue"); setTypeFilter("all"); }}
             >
               Vencidas
             </Button>
             <Button
-              variant={statusFilter === "cancelled" ? "default" : "outline"}
-              onClick={() => setStatusFilter("cancelled")}
+              variant={typeFilter === "other" ? "default" : "outline"}
+              onClick={() => { setTypeFilter(typeFilter === "other" ? "all" : "other"); setStatusFilter("all"); }}
             >
-              Canceladas
+              Outros
             </Button>
             <Button
               variant={typeFilter === "monthly" ? "default" : "outline"}
-              onClick={() => setTypeFilter(typeFilter === "monthly" ? "all" : "monthly")}
+              onClick={() => { setTypeFilter(typeFilter === "monthly" ? "all" : "monthly"); setStatusFilter("all"); }}
             >
               Mensalidades
             </Button>
             
-            {/* Linha 3: Vendas de Cotas + vazios */}
+            {/* Linha 3: Vendas de Cotas + Abastecimento + Reparos */}
             <Button
               variant={typeFilter === "quota_sale" ? "default" : "outline"}
-              onClick={() => setTypeFilter(typeFilter === "quota_sale" ? "all" : "quota_sale")}
+              onClick={() => { setTypeFilter(typeFilter === "quota_sale" ? "all" : "quota_sale"); setStatusFilter("all"); }}
             >
               Vendas de Cotas
             </Button>
-            <div />
-            <div />
+            <Button
+              variant={typeFilter === "fuel" ? "default" : "outline"}
+              onClick={() => { setTypeFilter(typeFilter === "fuel" ? "all" : "fuel"); setStatusFilter("all"); }}
+            >
+              Abastecimento
+            </Button>
+            <Button
+              variant={typeFilter === "repair" ? "default" : "outline"}
+              onClick={() => { setTypeFilter(typeFilter === "repair" ? "all" : "repair"); setStatusFilter("all"); }}
+            >
+              Reparos
+            </Button>
           </div>
 
           {/* Filtro de Busca, Período e Embarcação */}
@@ -637,7 +650,7 @@ export default function Saas() {
           </div>
 
           {/* Botão Limpar Filtros */}
-          {(searchQuery || boatFilter || monthFilter || yearFilter) && (
+          {(searchQuery || boatFilter || monthFilter || yearFilter || statusFilter !== "all" || typeFilter !== "all") && (
             <div className="mt-4">
               <Button
                 variant="outline"
@@ -646,6 +659,8 @@ export default function Saas() {
                   setBoatFilter("");
                   setMonthFilter("");
                   setYearFilter("");
+                  setStatusFilter("all");
+                  setTypeFilter("all");
                 }}
               >
                 Limpar Filtros

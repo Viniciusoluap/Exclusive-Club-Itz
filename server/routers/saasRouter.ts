@@ -39,7 +39,7 @@ export const saasRouter = router({
   listCharges: adminProcedure
     .input(z.object({
       status: z.enum(["pending", "paid", "overdue", "cancelled", "all"]).optional().default("all"),
-      type: z.enum(["monthly", "quota_sale"]).optional(), // Filtro por tipo
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(), // Filtro por tipo
       boatId: z.number().optional(), // Filtro por embarcação
       month: z.string().optional(), // "01" a "12"
       year: z.string().optional(), // "2024", "2025", etc
@@ -169,7 +169,7 @@ export const saasRouter = router({
   create: adminProcedure
     .input(z.object({
       clientId: z.number(),
-      type: z.enum(["monthly", "quota_sale"]),
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(),
       value: z.number().positive(),
       dueDay: z.number().min(1).max(31),
       startDate: z.string(),
@@ -316,7 +316,7 @@ export const saasRouter = router({
   getFilteredStats: adminProcedure
     .input(z.object({
       status: z.enum(["pending", "paid", "overdue", "cancelled", "all"]).optional().default("all"),
-      type: z.enum(["monthly", "quota_sale"]).optional(), // Filtro por tipo
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(), // Filtro por tipo
       boatId: z.number().optional(), // Filtro por embarcação
       month: z.string().optional(), // "01" a "12"
       year: z.string().optional(), // "2024", "2025", etc
@@ -735,7 +735,7 @@ export const saasRouter = router({
       chargeId: z.number(),
       value: z.number().optional(),
       dueDate: z.string().optional(),
-      type: z.enum(["monthly", "quota_sale"]).optional(),
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -947,7 +947,7 @@ export const saasRouter = router({
     .input(z.object({
       asaasChargeId: z.string(),
       clientId: z.number(),
-      type: z.enum(["monthly", "quota_sale", "ignore"]),
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other", "ignore"]),
       value: z.number(),
       dueDate: z.string(),
       status: z.string(),
@@ -1121,7 +1121,7 @@ export const saasRouter = router({
     .input(z.object({
       unclassifiedChargeId: z.number(),
       clientId: z.number(),
-      type: z.enum(["monthly", "quota_sale"]),
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
