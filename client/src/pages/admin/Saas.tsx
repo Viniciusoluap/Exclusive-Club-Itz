@@ -13,8 +13,8 @@ import { formatCurrency } from "@/lib/formatCurrency";
 
 // Componente para listar e classificar cobranças não classificadas
 function UnclassifiedChargesSection() {
-  const [selectedClient, setSelectedClient] = useState<Record<number, number>>({});
-  const [selectedType, setSelectedType] = useState<Record<number, "monthly" | "quota_sale" | "fuel" | "repair" | "other">>({});
+  const [selectedClient, setSelectedClient] = useState<Record<string, number>>({});
+  const [selectedType, setSelectedType] = useState<Record<string, "monthly" | "quota_sale" | "fuel" | "repair" | "other">>({});
   
   const utils = trpc.useUtils();
   const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery();
@@ -82,19 +82,19 @@ function UnclassifiedChargesSection() {
         <div className="space-y-4">
           {unclassified.map((charge) => (
             <div
-              key={charge.id}
+              key={charge.asaasChargeId}
               className="p-4 bg-white border rounded-lg space-y-3"
             >
               {/* Informações da Cobrança */}
               <div>
-                <h3 className="font-semibold">{charge.asaasCustomerName}</h3>
-                <p className="text-sm text-muted-foreground">{charge.asaasCustomerEmail || charge.asaasCustomerCpfCnpj}</p>
+                <h3 className="font-semibold">{charge.clientName || charge.asaasCustomerId}</h3>
+                <p className="text-sm text-muted-foreground">{charge.clientEmail}</p>
                 <div className="flex flex-wrap gap-4 mt-2 text-sm">
                   <span>
                     <strong>Descrição:</strong> {charge.description || "Sem descrição"}
                   </span>
                   <span>
-                    <strong>Valor:</strong> {formatCurrency(parseFloat(charge.value))}
+                    <strong>Valor:</strong> {formatCurrency(typeof charge.value === 'string' ? parseFloat(charge.value) : charge.value)}
                   </span>
                   <span>
                     <strong>Vencimento:</strong> {new Date(charge.dueDate).toLocaleDateString('pt-BR')}
@@ -110,8 +110,8 @@ function UnclassifiedChargesSection() {
                 <div>
                   <Label>Cliente</Label>
                   <Select
-                    value={selectedClient[charge.id]?.toString() || ""}
-                    onValueChange={(value) => setSelectedClient({ ...selectedClient, [charge.id]: parseInt(value) })}
+                    value={selectedClient[charge.asaasChargeId]?.toString() || ""}
+                    onValueChange={(value) => setSelectedClient({ ...selectedClient, [charge.asaasChargeId]: parseInt(value) })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione cliente" />
@@ -128,8 +128,8 @@ function UnclassifiedChargesSection() {
                 <div>
                   <Label>Tipo</Label>
                   <Select
-                    value={selectedType[charge.id] || ""}
-                    onValueChange={(value: "monthly" | "quota_sale" | "fuel" | "repair" | "other") => setSelectedType({ ...selectedType, [charge.id]: value })}
+                    value={selectedType[charge.asaasChargeId] || ""}
+                    onValueChange={(value: "monthly" | "quota_sale" | "fuel" | "repair" | "other") => setSelectedType({ ...selectedType, [charge.asaasChargeId]: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione tipo" />
@@ -145,7 +145,7 @@ function UnclassifiedChargesSection() {
                 </div>
                 <div className="flex items-end gap-2">
                   <Button
-                    onClick={() => handleClassify(charge.id)}
+                    onClick={() => handleClassify(charge.asaasChargeId as any)}
                     disabled={classifyMutation.isPending}
                     className="flex-1"
                   >
@@ -153,7 +153,7 @@ function UnclassifiedChargesSection() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => handleIgnore(charge.id)}
+                    onClick={() => handleIgnore(charge.asaasChargeId as any)}
                     disabled={ignoreMutation.isPending}
                   >
                     Ignorar
@@ -400,7 +400,7 @@ export default function Saas() {
     setEditChargeForm({
       value: charge.charge.value.toString(),
       dueDate: charge.charge.dueDate,
-      type: charge.charge.type,
+      type: (charge.charge.type ?? "monthly") as "monthly" | "quota_sale",
     });
     setShowEditChargeDialog(true);
   };
@@ -724,7 +724,7 @@ export default function Saas() {
                       <span>
                         <strong>Reajuste:</strong> {
                           item.subscription?.yearlyAdjustment === "manual" ? "Manual" :
-                          item.subscription.yearlyAdjustment === "ipca" ? "IPCA" : "IGP-M"
+                          item.subscription?.yearlyAdjustment === "ipca" ? "IPCA" : "IGP-M"
                         }
                       </span>
                     </div>

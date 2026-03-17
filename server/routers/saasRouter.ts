@@ -188,9 +188,9 @@ export const saasRouter = router({
       }
 
       // Criar mensalidade
-      const [subscription] = await db.insert(subscriptions).values({
+      const insertResult = await db.insert(subscriptions).values({
         clientId: input.clientId,
-        type: input.type,
+        type: input.type ?? "monthly",
         value: input.value.toString(),
         dueDay: input.dueDay,
         startDate: input.startDate,
@@ -198,39 +198,81 @@ export const saasRouter = router({
         status: "active",
         yearlyAdjustment: input.yearlyAdjustment,
       });
+      const subscriptionId = insertResult[0].insertId;
 
-      // Se for venda de cota parcelada, criar múltiplas cobranças no Asaas
+      // Calcular data de vencimento da primeira cobrança
+      const firstDueDate = new Date(input.startDate);
+      firstDueDate.setDate(input.dueDay);
+      // Se o dia de vencimento já passou no mês de início, avançar para o próximo mês
+      const startDateObj = new Date(input.startDate);
+      if (firstDueDate < startDateObj) {
+        firstDueDate.setMonth(firstDueDate.getMonth() + 1);
+      }
+      const dueDateStr = firstDueDate.toISOString().split('T')[0];
+
+      // Criar cobrança no Asaas para qualquer tipo
+      const asaasCustomer = await getOrCreateAsaasCustomer({
+        email: client[0].email,
+        name: client[0].name,
+        cpfCnpj: client[0].cpfCnpj ?? undefined,
+        phone: client[0].phone ?? undefined,
+      });
+
       if (input.type === "quota_sale" && input.installments && input.installments > 1) {
+        // Venda de cota parcelada: criar múltiplas cobranças no Asaas
         const installmentValue = input.value / input.installments;
-        const asaasCustomer = await getOrCreateAsaasCustomer(client[0]);
         
         for (let i = 0; i < input.installments; i++) {
-          // Calcular data de vencimento de cada parcela
           const dueDate = new Date(input.startDate);
           dueDate.setMonth(dueDate.getMonth() + i);
           dueDate.setDate(input.dueDay);
 
-          // Criar cobrança no Asaas
           const asaasCharge = await createPixCharge({
-            customer: asaasCustomer.id,
+            customerId: asaasCustomer.id,
             value: installmentValue,
             dueDate: dueDate.toISOString().split('T')[0],
             description: `Venda de Cota - Parcela ${i + 1}/${input.installments}`,
           });
 
-          // Salvar cobrança no banco local
           await db.insert(subscriptionCharges).values({
-            subscriptionId: subscription.insertId,
-            asaasChargeId: asaasCharge.id,
+            subscriptionId,
+            asaasPaymentId: asaasCharge.id,
             value: installmentValue.toString(),
-            dueDate: dueDate.toISOString(),
+            dueDate: dueDate.toISOString().split('T')[0],
             status: "pending",
             type: "quota_sale",
           });
         }
+      } else {
+        // Mensalidade, abastecimento, reparo ou outro: criar primeira cobrança no Asaas
+        const typeLabel: Record<string, string> = {
+          monthly: "Mensalidade",
+          quota_sale: "Venda de Cota",
+          fuel: "Abastecimento",
+          repair: "Reparo",
+          other: "Outros",
+        };
+        const chargeType = input.type ?? "monthly";
+        const description = `${typeLabel[chargeType] ?? chargeType} - ${client[0].name}`;
+
+        const asaasCharge = await createPixCharge({
+          customerId: asaasCustomer.id,
+          value: input.value,
+          dueDate: dueDateStr,
+          description,
+        });
+
+        await db.insert(subscriptionCharges).values({
+          subscriptionId,
+          asaasPaymentId: asaasCharge.id,
+          value: input.value.toString(),
+          dueDate: dueDateStr,
+          status: "pending",
+          type: chargeType,
+        });
       }
 
-      return { id: subscription.insertId, success: true };
+      return { id: subscriptionId, success: true };
     }),
 
   // Atualizar mensalidade
@@ -507,19 +549,20 @@ export const saasRouter = router({
 
         // Se não encontrar cliente local, criar automaticamente
         if (!localClient) {
-          const [newClient] = await db.insert(allowedClients).values({
+          const insertNewClient = await db.insert(allowedClients).values({
             name: asaasCustomer.name,
-            email: asaasCustomer.email || null,
-            cpfCnpj: asaasCustomer.cpfCnpj || null,
-            phone: asaasCustomer.phone || asaasCustomer.mobilePhone || null,
+            email: asaasCustomer.email ?? undefined,
+            cpfCnpj: asaasCustomer.cpfCnpj ?? undefined,
+            phone: asaasCustomer.phone ?? undefined,
             isActive: 1,
           }).onDuplicateKeyUpdate({
             set: {
               name: asaasCustomer.name,
-              cpfCnpj: asaasCustomer.cpfCnpj || null,
-              phone: asaasCustomer.phone || asaasCustomer.mobilePhone || null,
+              cpfCnpj: asaasCustomer.cpfCnpj ?? undefined,
+              phone: asaasCustomer.phone ?? undefined,
             }
           });
+          const newClient = { insertId: insertNewClient[0].insertId };
           
           // Buscar cliente recém-criado
           const createdClient = await db.select()
@@ -878,8 +921,8 @@ export const saasRouter = router({
         const asaasCustomer = await getOrCreateAsaasCustomer({
           email: client.email,
           name: client.name,
-          cpfCnpj: client.cpfCnpj,
-          phone: client.phone || undefined,
+          cpfCnpj: client.cpfCnpj ?? undefined,
+          phone: client.phone ?? undefined,
         });
 
         // Buscar todas as cobranças do cliente no Asaas
@@ -1061,61 +1104,6 @@ export const saasRouter = router({
       };
     }),
 
-  // Listar cobranças não classificadas
-  listUnclassifiedCharges: adminProcedure.query(async () => {
-    const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
-
-    // Buscar todas as cobranças não classificadas
-    const allCharges = await db.select()
-      .from(unclassifiedCharges)
-      .where(eq(unclassifiedCharges.classified, 0))
-      .orderBy(desc(unclassifiedCharges.createdAt));
-
-    // Buscar IDs já vinculados a outras abas
-    const fuelCharges = await db.select().from(fuelRecords);
-    const inspectionChargesData = await db.select().from(inspectionCharges);
-    const manuallyExcluded = await db.select().from(excludedAsaasCharges);
-    
-    const excludedAsaasIds = new Set<string>();
-    
-    fuelCharges.forEach(record => {
-      if (record.asaasChargeId) excludedAsaasIds.add(record.asaasChargeId);
-    });
-    
-    inspectionChargesData.forEach(charge => {
-      if (charge.asaasChargeId) excludedAsaasIds.add(charge.asaasChargeId);
-    });
-    
-    manuallyExcluded.forEach(excluded => {
-      excludedAsaasIds.add(excluded.asaasChargeId);
-    });
-
-    // Palavras-chave para identificar abastecimentos
-    const fuelKeywords = ['lt x', 'litros', 'abastecimento', 'combustível', 'gasolina'];
-    
-    // Palavras-chave para identificar vistorias/reparos
-    const inspectionKeywords = ['reforma', 'vistoria', 'reparo', 'conserto', 'manutenção', 'piso de eva'];
-
-    // Filtrar cobranças
-    const filteredCharges = allCharges.filter(charge => {
-      // Excluir se já vinculado a outra aba
-      if (excludedAsaasIds.has(charge.asaasPaymentId)) return false;
-      
-      const desc = (charge.description || '').toLowerCase();
-      
-      // Excluir se for abastecimento
-      if (fuelKeywords.some(keyword => desc.includes(keyword))) return false;
-      
-      // Excluir se for vistoria/reparo
-      if (inspectionKeywords.some(keyword => desc.includes(keyword))) return false;
-      
-      return true;
-    });
-
-    return filteredCharges;
-  }),
-
   // Classificar cobrança não classificada
   classifyUnclassifiedCharge: adminProcedure
     .input(z.object({
@@ -1148,7 +1136,7 @@ export const saasRouter = router({
         .limit(1);
 
       if (subscription.length === 0) {
-        const [newSub] = await db.insert(subscriptions).values({
+        const newSubResult = await db.insert(subscriptions).values({
           clientId: input.clientId,
           type: input.type,
           value: unclassified.value,
@@ -1157,11 +1145,11 @@ export const saasRouter = router({
           status: "active",
           yearlyAdjustment: "manual",
         });
-        subscription = [{ id: newSub.insertId }] as any;
+        subscription = [{ id: newSubResult[0].insertId }] as any;
       }
 
       // Criar cobrança em subscription_charges
-      const [newCharge] = await db.insert(subscriptionCharges).values({
+      const newChargeResult = await db.insert(subscriptionCharges).values({
         subscriptionId: subscription[0].id,
         dueDate: unclassified.dueDate,
         value: unclassified.value,
@@ -1170,16 +1158,17 @@ export const saasRouter = router({
         paidDate: unclassified.paidDate,
         type: input.type,
       });
+      const newChargeId = newChargeResult[0].insertId;
 
       // Marcar como classificada
       await db.update(unclassifiedCharges)
         .set({
           classified: 1,
-          classifiedAt: new Date(),
-          classifiedBy: ctx.user?.id || null,
+          classifiedAt: new Date().toISOString().replace('T', ' ').split('.')[0],
+          classifiedBy: ctx.user?.id ?? null,
           linkedClientId: input.clientId,
           linkedSubscriptionId: subscription[0].id,
-          linkedChargeId: newCharge.insertId,
+          linkedChargeId: newChargeId,
         })
         .where(eq(unclassifiedCharges.id, input.unclassifiedChargeId));
 
@@ -1201,8 +1190,8 @@ export const saasRouter = router({
       await db.update(unclassifiedCharges)
         .set({
           classified: 1, // Marcar como "processada" para não aparecer mais
-          classifiedAt: new Date(),
-          classifiedBy: ctx.user?.id || null,
+          classifiedAt: new Date().toISOString().replace('T', ' ').split('.')[0],
+          classifiedBy: ctx.user?.id ?? null,
         })
         .where(eq(unclassifiedCharges.id, input.unclassifiedChargeId));
 

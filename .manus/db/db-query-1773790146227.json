@@ -1,0 +1,32 @@
+{
+  "query": "\nSELECT s.id, s.client_id, s.type, s.value, s.due_day, s.start_date, s.status, s.created_at,\n       COUNT(sc.id) as charges_count\nFROM subscriptions s\nLEFT JOIN subscription_charges sc ON sc.subscription_id = s.id\nWHERE s.created_at >= '2026-03-17 00:00:00'\nGROUP BY s.id\nORDER BY s.created_at DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT s.id, s.client_id, s.type, s.value, s.due_day, s.start_date, s.status, s.created_at,\n       COUNT(sc.id) as charges_count\nFROM subscriptions s\nLEFT JOIN subscription_charges sc ON sc.subscription_id = s.id\nWHERE s.created_at >= '2026-03-17 00:00:00'\nGROUP BY s.id\nORDER BY s.created_at DESC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "id": "180002",
+      "client_id": "2850001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_day": "15",
+      "start_date": "2026-03-17 00:00:00",
+      "status": "active",
+      "created_at": "2026-03-17 20:50:31",
+      "charges_count": "0"
+    },
+    {
+      "id": "180001",
+      "client_id": "2850001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_day": "15",
+      "start_date": "2026-03-17 00:00:00",
+      "status": "active",
+      "created_at": "2026-03-17 20:49:47",
+      "charges_count": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_id\ttype\tvalue\tdue_day\tstart_date\tstatus\tcreated_at\tcharges_count\n180002\t2850001\tmonthly\t700.00\t15\t2026-03-17 00:00:00\tactive\t2026-03-17 20:50:31\t0\n180001\t2850001\tmonthly\t700.00\t15\t2026-03-17 00:00:00\tactive\t2026-03-17 20:49:47\t0\n",
+  "stderr": "",
+  "execution_time_ms": 367
+}
