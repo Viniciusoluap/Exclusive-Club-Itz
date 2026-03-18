@@ -1478,3 +1478,23 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
    - [x] Todas registradas no banco e no Asaas
    - [x] Cobrança de março com data de vencimento 15/03 (Asaas usa 18/03 por ser passado)
 
+
+## 🔧 Trocar "Data de Início" por "Mês de Início" no formulário de Nova Mensalidade
+====================================================================================
+
+**Lógica:**
+- Campo "Data de Início" → "Mês de Início" (seletor mês/ano)
+- Backend recebe `startMonth` (YYYY-MM) em vez de `startDate`
+- Regra da 1ª cobrança:
+  * Mês atual + dia já passou → 1ª cobrança com data de HOJE, próximas seguem o dia escolhido
+  * Mês atual + dia ainda não chegou → 1ª cobrança com dia escolhido no mês atual
+  * Mês futuro → 1ª cobrança com dia escolhido no mês futuro
+- Todas as cobranças vão do mês de início até dezembro do ano vigente
+
+**Tarefas:**
+- [x] Atualizar backend: trocar `startDate` por `startMonth` (YYYY-MM) no input do `create`
+- [x] Atualizar backend: implementar lógica de data da 1ª cobrança com as 3 regras
+- [x] Atualizar frontend: trocar date picker por seletor de mês/ano (`<input type="month">`)
+- [ ] Testar criação de mensalidade com mês atual (dia passado) e mês futuro
+- [ ] Criar checkpoint
+

@@ -187,12 +187,15 @@ export default function Saas() {
     type: "monthly" as "monthly" | "quota_sale",
   });
   
+  // Gerar mês atual no formato YYYY-MM
+  const currentMonth = new Date().toISOString().slice(0, 7);
+
   const [form, setForm] = useState({
     clientId: 0,
     type: "monthly" as "monthly" | "quota_sale",
     value: "",
     dueDay: "10",
-    startDate: new Date().toISOString().split('T')[0],
+    startMonth: currentMonth,
     endDate: "",
     yearlyAdjustment: "manual" as "manual" | "ipca" | "igpm",
     installments: 1,
@@ -324,7 +327,7 @@ export default function Saas() {
       type: "monthly",
       value: "",
       dueDay: "10",
-      startDate: new Date().toISOString().split('T')[0],
+      startMonth: new Date().toISOString().slice(0, 7),
       endDate: "",
       yearlyAdjustment: "manual",
       installments: 1,
@@ -343,7 +346,7 @@ export default function Saas() {
       type: form.type,
       value: parseFloat(form.value),
       dueDay: parseInt(form.dueDay),
-      startDate: form.startDate,
+      startMonth: form.startMonth,
       endDate: form.endDate || undefined,
       yearlyAdjustment: form.yearlyAdjustment,
       installments: form.type === "quota_sale" ? form.installments : undefined,
@@ -358,12 +361,16 @@ export default function Saas() {
 
   const handleEdit = (subscription: any) => {
     setEditingId(subscription.subscription.id);
+    // Derivar startMonth do startDate existente (YYYY-MM-DD -> YYYY-MM)
+    const startMonthVal = subscription.subscription.startDate
+      ? subscription.subscription.startDate.split('T')[0].slice(0, 7)
+      : new Date().toISOString().slice(0, 7);
     setForm({
       clientId: subscription.subscription.clientId,
       type: subscription.subscription.type,
       value: subscription.subscription.value,
       dueDay: subscription.subscription.dueDay.toString(),
-      startDate: subscription.subscription.startDate.split('T')[0],
+      startMonth: startMonthVal,
       endDate: subscription.subscription.endDate ? subscription.subscription.endDate.split('T')[0] : "",
       yearlyAdjustment: subscription.subscription.yearlyAdjustment,
       installments: 1,
@@ -904,11 +911,11 @@ export default function Saas() {
             </div>
 
             <div>
-              <Label>Data de Início *</Label>
+              <Label>Mês de Início *</Label>
               <Input
-                type="date"
-                value={form.startDate}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                type="month"
+                value={form.startMonth}
+                onChange={(e) => setForm({ ...form, startMonth: e.target.value })}
               />
             </div>
 

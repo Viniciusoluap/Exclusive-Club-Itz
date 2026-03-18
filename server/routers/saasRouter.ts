@@ -172,7 +172,7 @@ export const saasRouter = router({
       type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(),
       value: z.number().positive(),
       dueDay: z.number().min(1).max(31),
-      startDate: z.string(),
+      startMonth: z.string(), // formato YYYY-MM
       endDate: z.string().optional(),
       yearlyAdjustment: z.enum(["manual", "ipca", "igpm"]).optional().default("manual"),
       installments: z.number().min(1).max(36).optional(),
@@ -187,13 +187,42 @@ export const saasRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Cliente não encontrado" });
       }
 
+      // Derivar startDate do startMonth (primeiro dia do mês)
+      const [startYear, startMonthNum] = input.startMonth.split('-').map(Number);
+      const startDate = `${input.startMonth}-01`;
+
+      // Lógica universal da data da 1ª cobrança:
+      // - Mês atual + dia já passou → data de hoje
+      // - Mês atual + dia ainda não chegou → dia escolhido no mês atual
+      // - Mês futuro → dia escolhido no mês futuro
+      const today = new Date();
+      const todayYear = today.getFullYear();
+      const todayMonth = today.getMonth() + 1; // 1-indexed
+      const todayDay = today.getDate();
+
+      function getFirstChargeDueDate(year: number, month: number, dueDay: number): { asaasDate: string; localDate: string } {
+        const isCurrentMonth = year === todayYear && month === todayMonth;
+        const dayAlreadyPassed = isCurrentMonth && dueDay < todayDay;
+
+        if (dayAlreadyPassed) {
+          // Usar data de hoje para o Asaas, mas registrar o dia correto no banco
+          const asaasDate = today.toISOString().split('T')[0];
+          const localDate = `${String(year)}-${String(month).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
+          return { asaasDate, localDate };
+        } else {
+          // Usar o dia escolhido normalmente
+          const date = `${String(year)}-${String(month).padStart(2, '0')}-${String(dueDay).padStart(2, '0')}`;
+          return { asaasDate: date, localDate: date };
+        }
+      }
+
       // Criar mensalidade
       const insertResult = await db.insert(subscriptions).values({
         clientId: input.clientId,
         type: input.type ?? "monthly",
         value: input.value.toString(),
         dueDay: input.dueDay,
-        startDate: input.startDate,
+        startDate: startDate,
         endDate: input.endDate || null,
         status: "active",
         yearlyAdjustment: input.yearlyAdjustment,
@@ -218,70 +247,106 @@ export const saasRouter = router({
       };
 
       if (chargeType === "quota_sale" && input.installments && input.installments > 1) {
-        // Venda de cota parcelada: criar múltiplas cobranças no Asaas
+        // Venda de cota parcelada: criar N parcelas a partir do mês de início
         const installmentValue = Math.round((input.value / input.installments) * 100) / 100;
-        
+
         for (let i = 0; i < input.installments; i++) {
-          const dueDate = new Date(input.startDate);
-          dueDate.setMonth(dueDate.getMonth() + i);
-          dueDate.setDate(input.dueDay);
+          // Mês desta parcela (1-indexed)
+          let parcelMonth = startMonthNum + i;
+          let parcelYear = startYear;
+          while (parcelMonth > 12) {
+            parcelMonth -= 12;
+            parcelYear += 1;
+          }
 
-          const asaasCharge = await createPixCharge({
-            customerId: asaasCustomer.id,
-            value: installmentValue,
-            dueDate: dueDate.toISOString().split('T')[0],
-            description: `Venda de Cota - Parcela ${i + 1}/${input.installments} - ${client[0].name}`,
-          });
-
-          await db.insert(subscriptionCharges).values({
-            subscriptionId,
-            asaasPaymentId: asaasCharge.id,
-            value: installmentValue.toString(),
-            dueDate: dueDate.toISOString().split('T')[0],
-            status: "pending",
-            type: "quota_sale",
-          });
+          if (i === 0) {
+            // 1ª parcela: aplicar regra de data
+            const { asaasDate, localDate } = getFirstChargeDueDate(parcelYear, parcelMonth, input.dueDay);
+            const asaasCharge = await createPixCharge({
+              customerId: asaasCustomer.id,
+              value: installmentValue,
+              dueDate: asaasDate,
+              description: `Venda de Cota - Parcela 1/${input.installments} - ${client[0].name}`,
+            });
+            await db.insert(subscriptionCharges).values({
+              subscriptionId,
+              asaasPaymentId: asaasCharge.id,
+              value: installmentValue.toString(),
+              dueDate: localDate,
+              status: "pending",
+              type: "quota_sale",
+            });
+          } else {
+            // Demais parcelas: sempre usar o dia escolhido
+            const dueDateStr = `${String(parcelYear)}-${String(parcelMonth).padStart(2, '0')}-${String(input.dueDay).padStart(2, '0')}`;
+            const asaasCharge = await createPixCharge({
+              customerId: asaasCustomer.id,
+              value: installmentValue,
+              dueDate: dueDateStr,
+              description: `Venda de Cota - Parcela ${i + 1}/${input.installments} - ${client[0].name}`,
+            });
+            await db.insert(subscriptionCharges).values({
+              subscriptionId,
+              asaasPaymentId: asaasCharge.id,
+              value: installmentValue.toString(),
+              dueDate: dueDateStr,
+              status: "pending",
+              type: "quota_sale",
+            });
+          }
         }
       } else if (chargeType === "monthly") {
         // Mensalidade: criar cobranças do mês de início até dezembro do ano vigente
-        const startDateObj = new Date(input.startDate);
-        const startYear = startDateObj.getFullYear();
-        const startMonth = startDateObj.getMonth(); // 0-indexed
-        const endMonth = 11; // dezembro (0-indexed)
+        const endMonth = 12; // dezembro (1-indexed)
 
-        for (let month = startMonth; month <= endMonth; month++) {
-          const dueDate = new Date(startYear, month, input.dueDay);
-          const dueDateStr = dueDate.toISOString().split('T')[0];
-          const description = `Mensalidade ${String(month + 1).padStart(2, '0')}/${startYear} - ${client[0].name}`;
-
-          const asaasCharge = await createPixCharge({
-            customerId: asaasCustomer.id,
-            value: input.value,
-            dueDate: dueDateStr,
-            description,
-          });
-
-          await db.insert(subscriptionCharges).values({
-            subscriptionId,
-            asaasPaymentId: asaasCharge.id,
-            value: input.value.toString(),
-            dueDate: dueDateStr,
-            status: "pending",
-            type: "monthly",
-          });
+        for (let month = startMonthNum; month <= endMonth; month++) {
+          if (month === startMonthNum) {
+            // 1ª cobrança: aplicar regra de data
+            const { asaasDate, localDate } = getFirstChargeDueDate(startYear, month, input.dueDay);
+            const description = `Mensalidade ${String(month).padStart(2, '0')}/${startYear} - ${client[0].name}`;
+            const asaasCharge = await createPixCharge({
+              customerId: asaasCustomer.id,
+              value: input.value,
+              dueDate: asaasDate,
+              description,
+            });
+            await db.insert(subscriptionCharges).values({
+              subscriptionId,
+              asaasPaymentId: asaasCharge.id,
+              value: input.value.toString(),
+              dueDate: localDate,
+              status: "pending",
+              type: "monthly",
+            });
+          } else {
+            // Demais meses: sempre usar o dia escolhido
+            const dueDateStr = `${String(startYear)}-${String(month).padStart(2, '0')}-${String(input.dueDay).padStart(2, '0')}`;
+            const description = `Mensalidade ${String(month).padStart(2, '0')}/${startYear} - ${client[0].name}`;
+            const asaasCharge = await createPixCharge({
+              customerId: asaasCustomer.id,
+              value: input.value,
+              dueDate: dueDateStr,
+              description,
+            });
+            await db.insert(subscriptionCharges).values({
+              subscriptionId,
+              asaasPaymentId: asaasCharge.id,
+              value: input.value.toString(),
+              dueDate: dueDateStr,
+              status: "pending",
+              type: "monthly",
+            });
+          }
         }
       } else {
-        // Abastecimento, reparo ou outro: criar cobrança única
-        // A data de vencimento é sempre no mês de início, no dia configurado
-        const startDateObj = new Date(input.startDate);
-        const dueDate = new Date(startDateObj.getFullYear(), startDateObj.getMonth(), input.dueDay);
-        const dueDateStr = dueDate.toISOString().split('T')[0];
+        // Abastecimento, reparo ou outro: cobrança única com regra de data
+        const { asaasDate, localDate } = getFirstChargeDueDate(startYear, startMonthNum, input.dueDay);
         const description = `${typeLabel[chargeType] ?? chargeType} - ${client[0].name}`;
 
         const asaasCharge = await createPixCharge({
           customerId: asaasCustomer.id,
           value: input.value,
-          dueDate: dueDateStr,
+          dueDate: asaasDate,
           description,
         });
 
@@ -289,7 +354,7 @@ export const saasRouter = router({
           subscriptionId,
           asaasPaymentId: asaasCharge.id,
           value: input.value.toString(),
-          dueDate: dueDateStr,
+          dueDate: localDate,
           status: "pending",
           type: chargeType,
         });
