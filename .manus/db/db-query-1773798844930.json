@@ -1,0 +1,100 @@
+{
+  "query": "SELECT id, subscription_id, type, value, due_date, status, asaas_payment_id FROM subscription_charges WHERE subscription_id = 210001 ORDER BY due_date;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, subscription_id, type, value, due_date, status, asaas_payment_id FROM subscription_charges WHERE subscription_id = 210001 ORDER BY due_date;",
+  "rows": [
+    {
+      "id": "360001",
+      "subscription_id": "210001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_r7betvi4wuixdbla"
+    },
+    {
+      "id": "360002",
+      "subscription_id": "210001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_l6ug251jenobezsy"
+    },
+    {
+      "id": "360003",
+      "subscription_id": "210001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_date": "2026-05-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_p2yquhtv73frdhrz"
+    },
+    {
+      "id": "360004",
+      "subscription_id": "210001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_date": "2026-06-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_9hcwvqko02sq3b95"
+    },
+    {
+      "id": "360005",
+      "subscription_id": "210001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_date": "2026-07-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_jgaawlc89y7cvw9o"
+    },
+    {
+      "id": "360006",
+      "subscription_id": "210001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_date": "2026-08-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_n746fe0sb7znr977"
+    },
+    {
+      "id": "360007",
+      "subscription_id": "210001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_date": "2026-09-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_pgvd17clrnvq51fi"
+    },
+    {
+      "id": "360008",
+      "subscription_id": "210001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_date": "2026-10-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_zwessdimh96mvhvn"
+    },
+    {
+      "id": "360009",
+      "subscription_id": "210001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_date": "2026-11-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_h5yeec2hqjltsp3c"
+    },
+    {
+      "id": "360010",
+      "subscription_id": "210001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_date": "2026-12-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_b2h5qwf6u6ufg4z6"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsubscription_id\ttype\tvalue\tdue_date\tstatus\tasaas_payment_id\n360001\t210001\tmonthly\t700.00\t2026-03-15 00:00:00\tpending\tpay_r7betvi4wuixdbla\n360002\t210001\tmonthly\t700.00\t2026-04-15 00:00:00\tpending\tpay_l6ug251jenobezsy\n360003\t210001\tmonthly\t700.00\t2026-05-15 00:00:00\tpending\tpay_p2yquhtv73frdhrz\n360004\t210001\tmonthly\t700.00\t2026-06-15 00:00:00\tpending\tpay_9hcwvqko02sq3b95\n360005\t210001\tmonthly\t700.00\t2026-07-15 00:00:00\tpending\tpay_jgaawlc89y7cvw9o\n360006\t210001\tmonthly\t700.00\t2026-08-15 00:00:00\tpending\tpay_n746fe0sb7znr977\n360007\t210001\tmonthly\t700.00\t2026-09-15 00:00:00\tpending\tpay_pgvd17clrnvq51fi\n360008\t210001\tmonthly\t700.00\t2026-10-15 00:00:00\tpending\tpay_zwessdimh96mvhvn\n360009\t210001\tmonthly\t700.00\t2026-11-15 00:00:00\tpending\tpay_h5yeec2hqjltsp3c\n360010\t210001\tmonthly\t700.00\t2026-12-15 00:00:00\tpending\tpay_b2h5qwf6u6ufg4z6\n",
+  "stderr": "",
+  "execution_time_ms": 357
+}

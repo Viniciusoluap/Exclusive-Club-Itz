@@ -1,0 +1,15 @@
+{
+  "query": "SELECT MAX(id), MIN(id), COUNT(*) FROM subscription_charges;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT MAX(id), MIN(id), COUNT(*) FROM subscription_charges;",
+  "rows": [
+    {
+      "MAX(id)": "300004",
+      "MIN(id)": "1",
+      "COUNT(*)": "429"
+    }
+  ],
+  "messages": [],
+  "stdout": "MAX(id)\tMIN(id)\tCOUNT(*)\n300004\t1\t429\n",
+  "stderr": "",
+  "execution_time_ms": 367
+}

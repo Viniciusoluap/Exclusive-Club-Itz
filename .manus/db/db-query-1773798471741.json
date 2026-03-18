@@ -1,0 +1,110 @@
+{
+  "query": "SELECT s.id, s.client_id, s.type, s.value, s.due_day, s.start_date, s.created_at, ac.name FROM subscriptions s JOIN allowed_clients ac ON s.client_id = ac.id ORDER BY s.created_at DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT s.id, s.client_id, s.type, s.value, s.due_day, s.start_date, s.created_at, ac.name FROM subscriptions s JOIN allowed_clients ac ON s.client_id = ac.id ORDER BY s.created_at DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "210001",
+      "client_id": "2850001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_day": "15",
+      "start_date": "2026-03-18 00:00:00",
+      "created_at": "2026-03-18 00:55:47",
+      "name": "LUCAS SANTOS MIRANDA"
+    },
+    {
+      "id": "150001",
+      "client_id": "60013",
+      "type": "repair",
+      "value": "468.57",
+      "due_day": "2",
+      "start_date": "2026-03-02 00:00:00",
+      "created_at": "2026-03-02 14:46:04",
+      "name": "Mhamed Feiz Hussein Yassin"
+    },
+    {
+      "id": "120001",
+      "client_id": "60012",
+      "type": "other",
+      "value": "40.00",
+      "due_day": "24",
+      "start_date": "2026-02-24 00:00:00",
+      "created_at": "2026-03-01 12:40:10",
+      "name": "Luciano Gabriel"
+    },
+    {
+      "id": "90009",
+      "client_id": "1740002",
+      "type": "monthly",
+      "value": "327.00",
+      "due_day": "14",
+      "start_date": "2025-12-15 00:00:00",
+      "created_at": "2026-02-22 22:01:20",
+      "name": "MARIA ANDREZZA FRANCO DE CARVALHO"
+    },
+    {
+      "id": "90008",
+      "client_id": "60005",
+      "type": "monthly",
+      "value": "325.00",
+      "due_day": "14",
+      "start_date": "2026-12-15 00:00:00",
+      "created_at": "2026-02-22 22:01:11",
+      "name": "ERINALDO ALVES SILVA"
+    },
+    {
+      "id": "90007",
+      "client_id": "60010",
+      "type": "monthly",
+      "value": "325.00",
+      "due_day": "14",
+      "start_date": "2026-12-15 00:00:00",
+      "created_at": "2026-02-22 22:01:04",
+      "name": "KAIO RICHARD GOMES DE ARAUJO"
+    },
+    {
+      "id": "90006",
+      "client_id": "60001",
+      "type": "monthly",
+      "value": "777.00",
+      "due_day": "14",
+      "start_date": "2025-12-15 00:00:00",
+      "created_at": "2026-02-22 22:00:55",
+      "name": "DIOGO DOS REIS BERTO"
+    },
+    {
+      "id": "90005",
+      "client_id": "90005",
+      "type": "monthly",
+      "value": "652.00",
+      "due_day": "19",
+      "start_date": "2025-12-20 00:00:00",
+      "created_at": "2026-02-22 22:00:50",
+      "name": "RODRIGO SANTANA SILVA"
+    },
+    {
+      "id": "90004",
+      "client_id": "2670005",
+      "type": "monthly",
+      "value": "902.00",
+      "due_day": "14",
+      "start_date": "2025-10-15 00:00:00",
+      "created_at": "2026-02-22 22:00:38",
+      "name": "ERNANI OLIVEIRA ALVES"
+    },
+    {
+      "id": "90003",
+      "client_id": "1740003",
+      "type": "quota_sale",
+      "value": "1100.00",
+      "due_day": "14",
+      "start_date": "2025-06-15 00:00:00",
+      "created_at": "2026-02-22 21:59:50",
+      "name": "MARCUS CESAR COTRIM VAZ JUNIOR"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_id\ttype\tvalue\tdue_day\tstart_date\tcreated_at\tname\n210001\t2850001\tmonthly\t700.00\t15\t2026-03-18 00:00:00\t2026-03-18 00:55:47\tLUCAS SANTOS MIRANDA\n150001\t60013\trepair\t468.57\t2\t2026-03-02 00:00:00\t2026-03-02 14:46:04\tMhamed Feiz Hussein Yassin\n120001\t60012\tother\t40.00\t24\t2026-02-24 00:00:00\t2026-03-01 12:40:10\tLuciano Gabriel\n90009\t1740002\tmonthly\t327.00\t14\t2025-12-15 00:00:00\t2026-02-22 22:01:20\tMARIA ANDREZZA FRANCO DE CARVALHO\n90008\t60005\tmonthly\t325.00\t14\t2026-12-15 00:00:00\t2026-02-22 22:01:11\tERINALDO ALVES SILVA\n90007\t60010\tmonthly\t325.00\t14\t2026-12-15 00:00:00\t2026-02-22 22:01:04\tKAIO RICHARD GOMES DE ARAUJO\n90006\t60001\tmonthly\t777.00\t14\t2025-12-15 00:00:00\t2026-02-22 22:00:55\tDIOGO DOS REIS BERTO\n90005\t90005\tmonthly\t652.00\t19\t2025-12-20 00:00:00\t2026-02-22 22:00:50\tRODRIGO SANTANA SILVA\n90004\t2670005\tmonthly\t902.00\t14\t2025-10-15 00:00:00\t2026-02-22 22:00:38\tERNANI OLIVEIRA ALVES\n90003\t1740003\tquota_sale\t1100.00\t14\t2025-06-15 00:00:00\t2026-02-22 21:59:50\tMARCUS CESAR COTRIM VAZ JUNIOR\n",
+  "stderr": "",
+  "execution_time_ms": 364
+}

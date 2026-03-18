@@ -1,0 +1,160 @@
+{
+  "query": "SELECT sc.id, sc.subscription_id, sc.type, sc.value, sc.due_date, sc.status, sc.asaas_payment_id, sc.created_at FROM subscription_charges sc WHERE sc.due_date >= '2026-04-01' AND sc.due_date < '2026-05-01' ORDER BY sc.created_at DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT sc.id, sc.subscription_id, sc.type, sc.value, sc.due_date, sc.status, sc.asaas_payment_id, sc.created_at FROM subscription_charges sc WHERE sc.due_date >= '2026-04-01' AND sc.due_date < '2026-05-01' ORDER BY sc.created_at DESC LIMIT 20;",
+  "rows": [
+    {
+      "id": "150113",
+      "subscription_id": "90008",
+      "type": "NULL",
+      "value": "325.00",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_k6wajzznk5mdyl16",
+      "created_at": "2026-02-22 22:01:12"
+    },
+    {
+      "id": "150095",
+      "subscription_id": "90007",
+      "type": "NULL",
+      "value": "325.00",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_ycuuvuffdqytb3dm",
+      "created_at": "2026-02-22 22:01:05"
+    },
+    {
+      "id": "150027",
+      "subscription_id": "90002",
+      "type": "NULL",
+      "value": "2721.84",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_hmsribiz8dhrbuc5",
+      "created_at": "2026-02-22 21:59:49"
+    },
+    {
+      "id": "150009",
+      "subscription_id": "90001",
+      "type": "NULL",
+      "value": "325.00",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_xvvhx03ry09b3iqs",
+      "created_at": "2026-02-22 21:59:41"
+    },
+    {
+      "id": "180",
+      "subscription_id": "8",
+      "type": "NULL",
+      "value": "475.00",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_vhz34ri0t0jhdgmw",
+      "created_at": "2026-02-21 14:33:51"
+    },
+    {
+      "id": "117",
+      "subscription_id": "12",
+      "type": "quota_sale",
+      "value": "1384.80",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_rw4g82877oy8z3ql",
+      "created_at": "2026-02-21 14:24:23"
+    },
+    {
+      "id": "94",
+      "subscription_id": "10",
+      "type": "NULL",
+      "value": "475.00",
+      "due_date": "2026-04-30 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_qlnroqc8367lzwjy",
+      "created_at": "2026-02-21 14:24:09"
+    },
+    {
+      "id": "83",
+      "subscription_id": "11",
+      "type": "NULL",
+      "value": "920.00",
+      "due_date": "2026-04-10 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_1hszq0sxn8x2thcd",
+      "created_at": "2026-02-21 14:24:07"
+    },
+    {
+      "id": "78",
+      "subscription_id": "7",
+      "type": "NULL",
+      "value": "900.00",
+      "due_date": "2026-04-20 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_5wymy7gaku2qxmzx",
+      "created_at": "2026-02-21 14:23:53"
+    },
+    {
+      "id": "68",
+      "subscription_id": "6",
+      "type": "NULL",
+      "value": "325.00",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_1eq9hs6w3l05pres",
+      "created_at": "2026-02-21 14:23:45"
+    },
+    {
+      "id": "58",
+      "subscription_id": "5",
+      "type": "NULL",
+      "value": "475.00",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_8o1ky6jh15b2a1nb",
+      "created_at": "2026-02-21 14:23:39"
+    },
+    {
+      "id": "45",
+      "subscription_id": "4",
+      "type": "NULL",
+      "value": "475.00",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_ayj9eacruiykm2cm",
+      "created_at": "2026-02-21 14:23:31"
+    },
+    {
+      "id": "31",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "900.00",
+      "due_date": "2026-04-10 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_kz7xai6czy70v7ql",
+      "created_at": "2026-02-21 14:23:24"
+    },
+    {
+      "id": "20",
+      "subscription_id": "2",
+      "type": "NULL",
+      "value": "475.00",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "asaas_payment_id": "pay_wsgb6swcv9rlqevc",
+      "created_at": "2026-02-21 14:23:16"
+    },
+    {
+      "id": "9",
+      "subscription_id": "1",
+      "type": "NULL",
+      "value": "800.00",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "paid",
+      "asaas_payment_id": "pay_b0k4dh74hfoxmfuq",
+      "created_at": "2026-02-21 14:23:10"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsubscription_id\ttype\tvalue\tdue_date\tstatus\tasaas_payment_id\tcreated_at\n150113\t90008\tNULL\t325.00\t2026-04-15 00:00:00\tpending\tpay_k6wajzznk5mdyl16\t2026-02-22 22:01:12\n150095\t90007\tNULL\t325.00\t2026-04-15 00:00:00\tpending\tpay_ycuuvuffdqytb3dm\t2026-02-22 22:01:05\n150027\t90002\tNULL\t2721.84\t2026-04-15 00:00:00\tpending\tpay_hmsribiz8dhrbuc5\t2026-02-22 21:59:49\n150009\t90001\tNULL\t325.00\t2026-04-15 00:00:00\tpending\tpay_xvvhx03ry09b3iqs\t2026-02-22 21:59:41\n180\t8\tNULL\t475.00\t2026-04-15 00:00:00\tpending\tpay_vhz34ri0t0jhdgmw\t2026-02-21 14:33:51\n117\t12\tquota_sale\t1384.80\t2026-04-15 00:00:00\tpending\tpay_rw4g82877oy8z3ql\t2026-02-21 14:24:23\n94\t10\tNULL\t475.00\t2026-04-30 00:00:00\tpending\tpay_qlnroqc8367lzwjy\t2026-02-21 14:24:09\n83\t11\tNULL\t920.00\t2026-04-10 00:00:00\tpending\tpay_1hszq0sxn8x2thcd\t2026-02-21 14:24:07\n78\t7\tNULL\t900.00\t2026-04-20 00:00:00\tpending\tpay_5wymy7gaku2qxmzx\t2026-02-21 14:23:53\n68\t6\tNULL\t325.00\t2026-04-15 00:00:00\tpending\tpay_1eq9hs6w3l05pres\t2026-02-21 14:23:45\n58\t5\tNULL\t475.00\t2026-04-15 00:00:00\tpending\tpay_8o1ky6jh15b2a1nb\t2026-02-21 14:23:39\n45\t4\tNULL\t475.00\t2026-04-15 00:00:00\tpending\tpay_ayj9eacruiykm2cm\t2026-02-21 14:23:31\n31\t3\tNULL\t900.00\t2026-04-10 00:00:00\tpending\tpay_kz7xai6czy70v7ql\t2026-02-21 14:23:24\n20\t2\tNULL\t475.00\t2026-04-15 00:00:00\tpending\tpay_wsgb6swcv9rlqevc\t2026-02-21 14:23:16\n9\t1\tNULL\t800.00\t2026-04-15 00:00:00\tpaid\tpay_b0k4dh74hfoxmfuq\t2026-02-21 14:23:10\n",
+  "stderr": "",
+  "execution_time_ms": 352
+}

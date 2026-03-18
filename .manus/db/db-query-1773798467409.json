@@ -1,0 +1,20 @@
+{
+  "query": "SELECT s.id, s.client_id, s.type, s.value, s.due_day, s.start_date, ac.name, ac.email FROM subscriptions s JOIN allowed_clients ac ON s.client_id = ac.id WHERE s.id = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT s.id, s.client_id, s.type, s.value, s.due_day, s.start_date, ac.name, ac.email FROM subscriptions s JOIN allowed_clients ac ON s.client_id = ac.id WHERE s.id = 1;",
+  "rows": [
+    {
+      "id": "1",
+      "client_id": "60002",
+      "type": "monthly",
+      "value": "800.00",
+      "due_day": "14",
+      "start_date": "2026-12-15 00:00:00",
+      "name": "Diogo de Lemos Brito",
+      "email": "diogobritolemos@gmail.com"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_id\ttype\tvalue\tdue_day\tstart_date\tname\temail\n1\t60002\tmonthly\t800.00\t14\t2026-12-15 00:00:00\tDiogo de Lemos Brito\tdiogobritolemos@gmail.com\n",
+  "stderr": "",
+  "execution_time_ms": 363
+}

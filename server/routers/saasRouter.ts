@@ -3,7 +3,7 @@ import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { subscriptions, subscriptionCharges, allowedClients, clientQuotas, fuelRecords, inspectionCharges, excludedAsaasCharges, unclassifiedCharges } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
-import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash } from "../_core/asaasService";
+import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash, cancelCharge } from "../_core/asaasService";
 
 // Mapear status do Asaas para enum de unclassified_charges
 function mapAsaasStatusToUnclassified(asaasStatus: string): 'pending' | 'paid' | 'overdue' | 'cancelled' {
@@ -175,7 +175,7 @@ export const saasRouter = router({
       startDate: z.string(),
       endDate: z.string().optional(),
       yearlyAdjustment: z.enum(["manual", "ipca", "igpm"]).optional().default("manual"),
-      installments: z.number().min(1).max(12).optional(),
+      installments: z.number().min(1).max(36).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -200,17 +200,7 @@ export const saasRouter = router({
       });
       const subscriptionId = insertResult[0].insertId;
 
-      // Calcular data de vencimento da primeira cobrança
-      const firstDueDate = new Date(input.startDate);
-      firstDueDate.setDate(input.dueDay);
-      // Se o dia de vencimento já passou no mês de início, avançar para o próximo mês
-      const startDateObj = new Date(input.startDate);
-      if (firstDueDate < startDateObj) {
-        firstDueDate.setMonth(firstDueDate.getMonth() + 1);
-      }
-      const dueDateStr = firstDueDate.toISOString().split('T')[0];
-
-      // Criar cobrança no Asaas para qualquer tipo
+      // Criar cliente no Asaas
       const asaasCustomer = await getOrCreateAsaasCustomer({
         email: client[0].email,
         name: client[0].name,
@@ -218,9 +208,18 @@ export const saasRouter = router({
         phone: client[0].phone ?? undefined,
       });
 
-      if (input.type === "quota_sale" && input.installments && input.installments > 1) {
+      const chargeType = input.type ?? "monthly";
+      const typeLabel: Record<string, string> = {
+        monthly: "Mensalidade",
+        quota_sale: "Venda de Cota",
+        fuel: "Abastecimento",
+        repair: "Reparo",
+        other: "Outros",
+      };
+
+      if (chargeType === "quota_sale" && input.installments && input.installments > 1) {
         // Venda de cota parcelada: criar múltiplas cobranças no Asaas
-        const installmentValue = input.value / input.installments;
+        const installmentValue = Math.round((input.value / input.installments) * 100) / 100;
         
         for (let i = 0; i < input.installments; i++) {
           const dueDate = new Date(input.startDate);
@@ -231,7 +230,7 @@ export const saasRouter = router({
             customerId: asaasCustomer.id,
             value: installmentValue,
             dueDate: dueDate.toISOString().split('T')[0],
-            description: `Venda de Cota - Parcela ${i + 1}/${input.installments}`,
+            description: `Venda de Cota - Parcela ${i + 1}/${input.installments} - ${client[0].name}`,
           });
 
           await db.insert(subscriptionCharges).values({
@@ -243,16 +242,40 @@ export const saasRouter = router({
             type: "quota_sale",
           });
         }
+      } else if (chargeType === "monthly") {
+        // Mensalidade: criar cobranças do mês de início até dezembro do ano vigente
+        const startDateObj = new Date(input.startDate);
+        const startYear = startDateObj.getFullYear();
+        const startMonth = startDateObj.getMonth(); // 0-indexed
+        const endMonth = 11; // dezembro (0-indexed)
+
+        for (let month = startMonth; month <= endMonth; month++) {
+          const dueDate = new Date(startYear, month, input.dueDay);
+          const dueDateStr = dueDate.toISOString().split('T')[0];
+          const description = `Mensalidade ${String(month + 1).padStart(2, '0')}/${startYear} - ${client[0].name}`;
+
+          const asaasCharge = await createPixCharge({
+            customerId: asaasCustomer.id,
+            value: input.value,
+            dueDate: dueDateStr,
+            description,
+          });
+
+          await db.insert(subscriptionCharges).values({
+            subscriptionId,
+            asaasPaymentId: asaasCharge.id,
+            value: input.value.toString(),
+            dueDate: dueDateStr,
+            status: "pending",
+            type: "monthly",
+          });
+        }
       } else {
-        // Mensalidade, abastecimento, reparo ou outro: criar primeira cobrança no Asaas
-        const typeLabel: Record<string, string> = {
-          monthly: "Mensalidade",
-          quota_sale: "Venda de Cota",
-          fuel: "Abastecimento",
-          repair: "Reparo",
-          other: "Outros",
-        };
-        const chargeType = input.type ?? "monthly";
+        // Abastecimento, reparo ou outro: criar cobrança única
+        // A data de vencimento é sempre no mês de início, no dia configurado
+        const startDateObj = new Date(input.startDate);
+        const dueDate = new Date(startDateObj.getFullYear(), startDateObj.getMonth(), input.dueDay);
+        const dueDateStr = dueDate.toISOString().split('T')[0];
         const description = `${typeLabel[chargeType] ?? chargeType} - ${client[0].name}`;
 
         const asaasCharge = await createPixCharge({
@@ -845,7 +868,18 @@ export const saasRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Cobrança não encontrada" });
       }
 
-      // Excluir cobrança (hard delete)
+      // Tentar cancelar no Asaas (não bloquear se falhar)
+      const asaasPaymentId = charge[0].asaasPaymentId;
+      if (asaasPaymentId) {
+        try {
+          await cancelCharge(asaasPaymentId);
+          console.log(`[deleteCharge] Cobrança ${asaasPaymentId} cancelada no Asaas`);
+        } catch (error) {
+          console.warn(`[deleteCharge] Falha ao cancelar cobrança ${asaasPaymentId} no Asaas (continuando deleção local):`, error);
+        }
+      }
+
+      // Excluir cobrança localmente (hard delete)
       await db.delete(subscriptionCharges).where(eq(subscriptionCharges.id, input.chargeId));
 
       return {

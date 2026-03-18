@@ -1,0 +1,19 @@
+{
+  "query": "SELECT s.id as sub_id, s.client_id, s.type, s.value, s.due_day, s.start_date, ac.name FROM subscriptions s JOIN allowed_clients ac ON s.client_id = ac.id WHERE s.id = 210001; SELECT sc.id, sc.subscription_id, sc.due_date, sc.value, sc.status, sc.asaas_payment_id FROM subscription_charges sc WHERE sc.subscription_id = 210001;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT s.id as sub_id, s.client_id, s.type, s.value, s.due_day, s.start_date, ac.name FROM subscriptions s JOIN allowed_clients ac ON s.client_id = ac.id WHERE s.id = 210001; SELECT sc.id, sc.subscription_id, sc.due_date, sc.value, sc.status, sc.asaas_payment_id FROM subscription_charges sc WHERE sc.subscription_id = 210001;",
+  "rows": [
+    {
+      "sub_id": "210001",
+      "client_id": "2850001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_day": "15",
+      "start_date": "2026-03-18 00:00:00",
+      "name": "LUCAS SANTOS MIRANDA"
+    }
+  ],
+  "messages": [],
+  "stdout": "sub_id\tclient_id\ttype\tvalue\tdue_day\tstart_date\tname\n210001\t2850001\tmonthly\t700.00\t15\t2026-03-18 00:00:00\tLUCAS SANTOS MIRANDA\n",
+  "stderr": "",
+  "execution_time_ms": 411
+}

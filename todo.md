@@ -1434,3 +1434,47 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Corrigir bug no código de exclusão (reverter estoque automaticamente) - fuelRecords.delete agora deleta containers filhos + atualiza gallon_stock
 - [x] Testar correções - 4 testes passando
 - [x] Criar checkpoint
+
+## 🐛 BUG: Lógica de Geração de Cobranças de Mensalidade
+====================================================================================
+
+**Problemas identificados:**
+1. Cobrança criada para abril (15/04/2026) quando início foi 18/03/2026 — deveria criar a partir de março
+2. Apenas 1 cobrança criada — deveria gerar todas as cobranças do mês de início até dezembro do ano vigente
+3. Erro ao deletar cobrança: "Cobrança não encontrada" quando asaasChargeId não existe no Asaas
+
+**Tarefas:**
+- [ ] Analisar lógica de geração de cobranças no saasRouter (create subscription)
+- [ ] Corrigir: gerar cobranças do mês de início até dezembro do ano vigente
+- [ ] Corrigir: respeitar mês de início (não pular para o próximo mês)
+- [ ] Corrigir: tratar graciosamente deleção quando asaasChargeId não existe no Asaas
+- [ ] Limpar registro errado de Lucas Santos Miranda (vencimento 15/04/2026)
+- [ ] Criar checkpoint
+
+## ✅ Correções de Mensalidades (18/03/2026)
+====================================================================================
+
+### Problemas corrigidos:
+
+1. **Data da 1ª cobrança errada** (avançava para próximo mês quando dia de vencimento já passou)
+   - [x] Removida condição que avançava para próximo mês
+   - [x] Primeira cobrança sempre gerada no mês de início da assinatura
+
+2. **Apenas 1 cobrança criada** (deveria gerar todas até dezembro)
+   - [x] Implementado loop de cobranças do mês de início até dezembro do ano vigente
+   - [x] Cada cobrança criada no Asaas + registrada no banco local
+   - [x] Descrição inclui mês/ano: "Mensalidade 03/2026 - NOME DO CLIENTE"
+
+3. **Erro ao deletar cobrança** ("Cobrança não encontrada")
+   - [x] Adicionado try/catch ao redor do cancelamento no Asaas
+   - [x] Deleção local não é bloqueada se Asaas falhar
+   - [x] Import de `cancelCharge` adicionado ao saasRouter
+
+4. **Limite de parcelas** (estava 12x, deveria ser 36x)
+   - [x] Corrigido z.number().max(12) para z.number().max(36) no schema de validação
+
+5. **Cobranças de Lucas Santos Miranda** (subscription criada sem cobranças)
+   - [x] Geradas 10 cobranças (março a dezembro 2026) via script
+   - [x] Todas registradas no banco e no Asaas
+   - [x] Cobrança de março com data de vencimento 15/03 (Asaas usa 18/03 por ser passado)
+

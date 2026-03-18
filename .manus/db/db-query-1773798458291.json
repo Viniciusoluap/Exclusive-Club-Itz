@@ -1,0 +1,9 @@
+{
+  "query": "SELECT sc.id, sc.subscription_id, sc.type, sc.value, sc.due_date, sc.status, sc.asaas_payment_id, ac.name FROM subscription_charges sc JOIN subscriptions s ON sc.subscription_id = s.id JOIN allowed_clients ac ON s.client_id = ac.id WHERE ac.name LIKE '%Lucas%' ORDER BY sc.due_date DESC LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT sc.id, sc.subscription_id, sc.type, sc.value, sc.due_date, sc.status, sc.asaas_payment_id, ac.name FROM subscription_charges sc JOIN subscriptions s ON sc.subscription_id = s.id JOIN allowed_clients ac ON s.client_id = ac.id WHERE ac.name LIKE '%Lucas%' ORDER BY sc.due_date DESC LIMIT 20;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 372
+}
