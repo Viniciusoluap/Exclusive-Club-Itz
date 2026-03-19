@@ -193,7 +193,7 @@ export default function Saas() {
   const [editChargeForm, setEditChargeForm] = useState({
     value: "",
     dueDate: "",
-    type: "monthly" as "monthly" | "quota_sale",
+    type: "monthly" as "monthly" | "quota_sale" | "fuel" | "repair" | "other",
   });
   
   // Gerar mês atual no formato YYYY-MM
@@ -416,7 +416,7 @@ export default function Saas() {
     setEditChargeForm({
       value: charge.charge.value.toString(),
       dueDate: charge.charge.dueDate,
-      type: (charge.charge.type ?? "monthly") as "monthly" | "quota_sale",
+      type: (charge.charge.type ?? "monthly") as "monthly" | "quota_sale" | "fuel" | "repair" | "other",
     });
     setShowEditChargeDialog(true);
   };
@@ -989,7 +989,7 @@ export default function Saas() {
               <Label>Tipo *</Label>
               <Select
                 value={editChargeForm.type}
-                onValueChange={(value: "monthly" | "quota_sale") => setEditChargeForm({ ...editChargeForm, type: value })}
+                onValueChange={(value: "monthly" | "quota_sale" | "fuel" | "repair" | "other") => setEditChargeForm({ ...editChargeForm, type: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -997,6 +997,9 @@ export default function Saas() {
                 <SelectContent>
                   <SelectItem value="monthly">Mensalidade</SelectItem>
                   <SelectItem value="quota_sale">Venda de Cota</SelectItem>
+                  <SelectItem value="fuel">Abastecimento</SelectItem>
+                  <SelectItem value="repair">Reparos</SelectItem>
+                  <SelectItem value="other">Outros</SelectItem>
                 </SelectContent>
               </Select>
             </div>
