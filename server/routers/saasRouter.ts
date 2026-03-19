@@ -39,7 +39,8 @@ export const saasRouter = router({
   listCharges: adminProcedure
     .input(z.object({
       status: z.enum(["pending", "paid", "overdue", "cancelled", "all"]).optional().default("all"),
-      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(), // Filtro por tipo
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(), // Filtro por tipo (legado)
+      types: z.array(z.enum(["monthly", "quota_sale", "fuel", "repair", "other"])).optional(), // Filtro por múltiplos tipos
       boatId: z.number().optional(), // Filtro por embarcação
       month: z.string().optional(), // "01" a "12"
       year: z.string().optional(), // "2024", "2025", etc
@@ -66,11 +67,12 @@ export const saasRouter = router({
         results = results.filter(r => r.charge.status === input.status);
       }
 
-      // Filtrar por tipo (prioriza subscription_charges.type, fallback para subscriptions.type)
-      if (input?.type) {
+      // Filtrar por tipo (suporta array de tipos ou tipo único)
+      const activeTypes = input?.types && input.types.length > 0 ? input.types : (input?.type ? [input.type] : null);
+      if (activeTypes) {
         results = results.filter(r => {
           const chargeType = r.charge.type || r.subscription?.type;
-          return chargeType === input.type;
+          return chargeType && activeTypes.includes(chargeType as any);
         });
       }
 
@@ -446,7 +448,8 @@ export const saasRouter = router({
   getFilteredStats: adminProcedure
     .input(z.object({
       status: z.enum(["pending", "paid", "overdue", "cancelled", "all"]).optional().default("all"),
-      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(), // Filtro por tipo
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(), // Filtro por tipo (legado)
+      types: z.array(z.enum(["monthly", "quota_sale", "fuel", "repair", "other"])).optional(), // Filtro por múltiplos tipos
       boatId: z.number().optional(), // Filtro por embarcação
       month: z.string().optional(), // "01" a "12"
       year: z.string().optional(), // "2024", "2025", etc
@@ -473,11 +476,12 @@ export const saasRouter = router({
         results = results.filter(r => r.charge.status === input.status);
       }
 
-      // Filtrar por tipo (prioriza subscription_charges.type, fallback para subscriptions.type)
-      if (input?.type) {
+      // Filtrar por tipo (suporta array de tipos ou tipo único)
+      const activeTypesStats = input?.types && input.types.length > 0 ? input.types : (input?.type ? [input.type] : null);
+      if (activeTypesStats) {
         results = results.filter(r => {
           const chargeType = r.charge.type || r.subscription?.type;
-          return chargeType === input.type;
+          return chargeType && activeTypesStats.includes(chargeType as any);
         });
       }
 

@@ -176,7 +176,15 @@ export default function Saas() {
   const [showEditChargeDialog, setShowEditChargeDialog] = useState(false);
   const [editingChargeId, setEditingChargeId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<"pending" | "paid" | "overdue" | "cancelled" | "all">("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "monthly" | "quota_sale" | "fuel" | "repair" | "other">("all");
+  const [typeFilters, setTypeFilters] = useState<Array<"monthly" | "quota_sale" | "fuel" | "repair" | "other">>([]); // Filtro B: seleção múltipla
+  // Mantém typeFilter para compatibilidade com código legado
+  const typeFilter = typeFilters.length === 1 ? typeFilters[0] : "all";
+
+  const toggleTypeFilter = (type: "monthly" | "quota_sale" | "fuel" | "repair" | "other") => {
+    setTypeFilters(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
   const [boatFilter, setBoatFilter] = useState<string>(""); // Filtro por embarcação
   const [searchQuery, setSearchQuery] = useState("");
   const [monthFilter, setMonthFilter] = useState<string>("");
@@ -205,7 +213,7 @@ export default function Saas() {
   const utils = trpc.useUtils();
   const { data: charges, isLoading } = trpc.saas.listCharges.useQuery({
     status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled",
-    type: typeFilter === "all" ? undefined : typeFilter,
+    types: typeFilters.length > 0 ? typeFilters : undefined,
     boatId: boatFilter ? parseInt(boatFilter) : undefined,
     month: monthFilter || undefined,
     year: yearFilter || undefined,
@@ -215,7 +223,7 @@ export default function Saas() {
   const { data: boats } = trpc.vessels.list.useQuery(); // Buscar lista de embarcações
   const { data: dashboard } = trpc.saas.getFilteredStats.useQuery({
     status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled",
-    type: typeFilter === "all" ? undefined : typeFilter,
+    types: typeFilters.length > 0 ? typeFilters : undefined,
     boatId: boatFilter ? parseInt(boatFilter) : undefined,
     month: monthFilter || undefined,
     year: yearFilter || undefined,
@@ -516,67 +524,74 @@ export default function Saas() {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Filtros de Status e Tipo - Grade 3x3 */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            {/* Linha 1: Status principais */}
-            <Button
-              variant={statusFilter === "all" && typeFilter === "all" ? "default" : "outline"}
-              onClick={() => { setStatusFilter("all"); setTypeFilter("all"); }}
-            >
-              Todas
-            </Button>
-            <Button
-              variant={statusFilter === "pending" ? "default" : "outline"}
-              onClick={() => { setStatusFilter(statusFilter === "pending" ? "all" : "pending"); setTypeFilter("all"); }}
-            >
-              Pendentes
-            </Button>
-            <Button
-              variant={statusFilter === "paid" ? "default" : "outline"}
-              onClick={() => { setStatusFilter(statusFilter === "paid" ? "all" : "paid"); setTypeFilter("all"); }}
-            >
-              Pagas
-            </Button>
-            
-            {/* Linha 2: Vencidas + Outros + Mensalidades */}
-            <Button
-              variant={statusFilter === "overdue" ? "default" : "outline"}
-              onClick={() => { setStatusFilter(statusFilter === "overdue" ? "all" : "overdue"); setTypeFilter("all"); }}
-            >
-              Vencidas
-            </Button>
-            <Button
-              variant={typeFilter === "other" ? "default" : "outline"}
-              onClick={() => { setTypeFilter(typeFilter === "other" ? "all" : "other"); setStatusFilter("all"); }}
-            >
-              Outros
-            </Button>
-            <Button
-              variant={typeFilter === "monthly" ? "default" : "outline"}
-              onClick={() => { setTypeFilter(typeFilter === "monthly" ? "all" : "monthly"); setStatusFilter("all"); }}
-            >
-              Mensalidades
-            </Button>
-            
-            {/* Linha 3: Vendas de Cotas + Abastecimento + Reparos */}
-            <Button
-              variant={typeFilter === "quota_sale" ? "default" : "outline"}
-              onClick={() => { setTypeFilter(typeFilter === "quota_sale" ? "all" : "quota_sale"); setStatusFilter("all"); }}
-            >
-              Vendas de Cotas
-            </Button>
-            <Button
-              variant={typeFilter === "fuel" ? "default" : "outline"}
-              onClick={() => { setTypeFilter(typeFilter === "fuel" ? "all" : "fuel"); setStatusFilter("all"); }}
-            >
-              Abastecimento
-            </Button>
-            <Button
-              variant={typeFilter === "repair" ? "default" : "outline"}
-              onClick={() => { setTypeFilter(typeFilter === "repair" ? "all" : "repair"); setStatusFilter("all"); }}
-            >
-              Reparos
-            </Button>
+          {/* Filtro A: Status (seleção única) */}
+          <div className="mb-3">
+            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Status</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={statusFilter === "all" ? "default" : "outline"}
+                onClick={() => setStatusFilter("all")}
+              >
+                Todas
+              </Button>
+              <Button
+                size="sm"
+                variant={statusFilter === "pending" ? "default" : "outline"}
+                onClick={() => setStatusFilter(statusFilter === "pending" ? "all" : "pending")}
+              >
+                Pendentes
+              </Button>
+              <Button
+                size="sm"
+                variant={statusFilter === "paid" ? "default" : "outline"}
+                onClick={() => setStatusFilter(statusFilter === "paid" ? "all" : "paid")}
+              >
+                Pagas
+              </Button>
+              <Button
+                size="sm"
+                variant={statusFilter === "overdue" ? "default" : "outline"}
+                onClick={() => setStatusFilter(statusFilter === "overdue" ? "all" : "overdue")}
+              >
+                Vencidas
+              </Button>
+            </div>
+          </div>
+
+          {/* Filtro B: Tipo (seleção múltipla) */}
+          <div className="mb-4">
+            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
+              Tipo {typeFilters.length > 0 && <span className="text-primary">({typeFilters.length} selecionado{typeFilters.length > 1 ? 's' : ''})</span>}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {([
+                { value: "monthly", label: "Mensalidades" },
+                { value: "quota_sale", label: "Vendas de Cotas" },
+                { value: "fuel", label: "Abastecimento" },
+                { value: "repair", label: "Reparos" },
+                { value: "other", label: "Outros" },
+              ] as const).map(({ value, label }) => (
+                <Button
+                  key={value}
+                  size="sm"
+                  variant={typeFilters.includes(value) ? "default" : "outline"}
+                  onClick={() => toggleTypeFilter(value)}
+                >
+                  {label}
+                </Button>
+              ))}
+              {typeFilters.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setTypeFilters([])}
+                  className="text-muted-foreground"
+                >
+                  Limpar
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Filtro de Busca, Período e Embarcação */}
@@ -668,7 +683,7 @@ export default function Saas() {
                   setMonthFilter("");
                   setYearFilter("");
                   setStatusFilter("all");
-                  setTypeFilter("all");
+                  setTypeFilters([]);
                 }}
               >
                 Limpar Filtros
