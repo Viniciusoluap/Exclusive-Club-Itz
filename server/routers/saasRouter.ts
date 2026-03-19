@@ -3,7 +3,7 @@ import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { subscriptions, subscriptionCharges, allowedClients, clientQuotas, fuelRecords, inspectionCharges, excludedAsaasCharges, unclassifiedCharges } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
-import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash, cancelCharge } from "../_core/asaasService";
+import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash, cancelCharge, listAllAsaasCustomers } from "../_core/asaasService";
 
 // Mapear status do Asaas para enum de unclassified_charges
 function mapAsaasStatusToUnclassified(asaasStatus: string): 'pending' | 'paid' | 'overdue' | 'cancelled' {
@@ -959,48 +959,31 @@ export const saasRouter = router({
 
   // Listar cobranças não classificadas do Asaas
   listUnclassifiedCharges: adminProcedure.query(async () => {
-    console.log('[listUnclassifiedCharges] Iniciando busca de cobranças não classificadas...');
+    console.log('[listUnclassifiedCharges] Iniciando busca COMPLETA de cobranças não classificadas...');
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-    // Buscar todos os clientes ativos
-    const activeClients = await db.select().from(allowedClients).where(eq(allowedClients.isActive, 1));
-
     // Buscar todas as cobranças existentes em outras abas (para excluir da listagem)
-    const fuelCharges = await db.select().from(fuelRecords);
+    const fuelChargesData = await db.select().from(fuelRecords);
     const inspectionChargesData = await db.select().from(inspectionCharges);
     
     // Buscar cobranças excluídas manualmente do módulo Saas
     const manuallyExcluded = await db.select().from(excludedAsaasCharges);
-    console.log('[listUnclassifiedCharges] Cobranças excluídas manualmente:', manuallyExcluded.length);
     
     const excludedAsaasIds = new Set<string>();
-    
-    // Adicionar IDs de cobranças de abastecimento
-    fuelCharges.forEach(record => {
-      if (record.asaasChargeId) {
-        excludedAsaasIds.add(record.asaasChargeId);
-      }
-    });
-    
-    // Adicionar IDs de cobranças de vistorias/reparos
-    inspectionChargesData.forEach(charge => {
-      if (charge.asaasChargeId) {
-        excludedAsaasIds.add(charge.asaasChargeId);
-      }
-    });
-      // Adicionar IDs de cobranças excluídas manualmente
-    manuallyExcluded.forEach(excluded => {
-      excludedAsaasIds.add(excluded.asaasChargeId);
-    });
+    fuelChargesData.forEach(record => { if (record.asaasChargeId) excludedAsaasIds.add(record.asaasChargeId); });
+    inspectionChargesData.forEach(charge => { if (charge.asaasChargeId) excludedAsaasIds.add(charge.asaasChargeId); });
+    manuallyExcluded.forEach(excluded => { excludedAsaasIds.add(excluded.asaasChargeId); });
 
-    // Buscar cobranças já classificadas
+    // Buscar cobranças já classificadas no BPO
     const classifiedCharges = await db.select().from(subscriptionCharges);
     const classifiedAsaasIds = new Set(classifiedCharges.map(c => c.asaasPaymentId).filter(Boolean) as string[]);
-    console.log('[listUnclassifiedCharges] Cobranças já classificadas (subscriptions):', classifiedAsaasIds.size);
-    console.log('[listUnclassifiedCharges] Total de IDs excluídos (fuel + inspection + manual):', excludedAsaasIds.size);
 
-    const unclassifiedCharges: Array<{
+    // Mapa de clientes locais por email para enriquecer dados
+    const localClients = await db.select().from(allowedClients);
+    const localClientByEmail = new Map(localClients.map(c => [c.email.toLowerCase(), c]));
+
+    const result: Array<{
       asaasChargeId: string;
       description: string;
       value: number;
@@ -1012,80 +995,69 @@ export const saasRouter = router({
       asaasCustomerId: string;
     }> = [];
 
-    console.log('[listUnclassifiedCharges] Total de clientes ativos:', activeClients.length);
+    // Buscar TODOS os clientes do Asaas com paginação
+    let offset = 0;
+    const pageSize = 100;
+    let hasMore = true;
+    let totalAsaasCustomers = 0;
     let totalAsaasCharges = 0;
-    let totalExcludedByFilter = 0;
+    let totalExcluded = 0;
     let totalClassified = 0;
-    let totalAutoClassified = 0;
 
-    for (const client of activeClients) {
-      try {
-        // Buscar ou criar cliente no Asaas
-        const asaasCustomer = await getOrCreateAsaasCustomer({
-          email: client.email,
-          name: client.name,
-          cpfCnpj: client.cpfCnpj ?? undefined,
-          phone: client.phone ?? undefined,
-        });
+    while (hasMore) {
+      const asaasCustomers = await listAllAsaasCustomers({ limit: pageSize, offset });
+      if (asaasCustomers.length === 0) { hasMore = false; break; }
+      totalAsaasCustomers += asaasCustomers.length;
+      if (asaasCustomers.length < pageSize) hasMore = false;
+      offset += pageSize;
 
-        // Buscar todas as cobranças do cliente no Asaas
-        const asaasCharges = await listCustomerCharges(asaasCustomer.id);
-        totalAsaasCharges += asaasCharges.length;
+      for (const asaasCustomer of asaasCustomers) {
+        try {
+          // Buscar todas as cobranças do cliente no Asaas (com paginação)
+          let chargeOffset = 0;
+          let chargeHasMore = true;
+          while (chargeHasMore) {
+            const charges = await listCustomerCharges(asaasCustomer.id, { limit: 100, offset: chargeOffset });
+            if (charges.length === 0) { chargeHasMore = false; break; }
+            totalAsaasCharges += charges.length;
+            if (charges.length < 100) chargeHasMore = false;
+            chargeOffset += 100;
 
-        for (const asaasCharge of asaasCharges) {
-          // EXCLUIR cobranças que já existem em outras abas
-          if (excludedAsaasIds.has(asaasCharge.id)) {
-            totalExcludedByFilter++;
-            continue;
+            for (const charge of charges) {
+              // Pular cobranças canceladas/deletadas — não são relevantes para o BPO
+              if (charge.status === 'DELETED' || charge.status === 'CANCELLED') {
+                totalExcluded++;
+                continue;
+              }
+              // Pular cobranças já vinculadas a outros módulos
+              if (excludedAsaasIds.has(charge.id)) { totalExcluded++; continue; }
+              // Pular cobranças já classificadas no BPO
+              if (classifiedAsaasIds.has(charge.id)) { totalClassified++; continue; }
+
+              // Enriquecer com dados do cliente local, se existir
+              const localClient = localClientByEmail.get((asaasCustomer.email || '').toLowerCase());
+
+              result.push({
+                asaasChargeId: charge.id,
+                description: charge.description || 'Sem descrição',
+                value: charge.value,
+                dueDate: charge.dueDate,
+                status: charge.status,
+                clientId: localClient?.id ?? 0,
+                clientName: localClient?.name ?? asaasCustomer.name,
+                clientEmail: localClient?.email ?? asaasCustomer.email ?? '',
+                asaasCustomerId: asaasCustomer.id,
+              });
+            }
           }
-
-          // EXCLUIR cobranças já classificadas
-          if (classifiedAsaasIds.has(asaasCharge.id)) {
-            totalClassified++;
-            continue;
-          }
-
-          // Classificar cobrança: mensalidade vs venda de cota
-          const description = asaasCharge.description?.toLowerCase() || "";
-          let chargeType: "monthly" | "quota_sale" | null = null;
-
-          if (description.includes("mensalidade") || description.includes("monthly")) {
-            chargeType = "monthly";
-          } else if (description.includes("cota") || description.includes("quota") || description.includes("venda") || description.includes("parcela")) {
-            chargeType = "quota_sale";
-          }
-
-          // Se não conseguir classificar, adiciona à lista de não classificadas
-          if (!chargeType) {
-            unclassifiedCharges.push({
-              asaasChargeId: asaasCharge.id,
-              description: asaasCharge.description || "Sem descrição",
-              value: asaasCharge.value,
-              dueDate: asaasCharge.dueDate,
-              status: asaasCharge.status,
-              clientId: client.id,
-              clientName: client.name,
-              clientEmail: client.email,
-              asaasCustomerId: asaasCustomer.id,
-            });
-          } else {
-            totalAutoClassified++;
-          }
+        } catch (error) {
+          console.error(`[listUnclassifiedCharges] Erro ao buscar cobranças do cliente ${asaasCustomer.name}:`, error);
         }
-      } catch (error) {
-        console.error(`Erro ao buscar cobranças do cliente ${client.name}:`, error);
       }
     }
 
-    console.log('[listUnclassifiedCharges] === RESUMO ===');
-    console.log('[listUnclassifiedCharges] Total de cobranças do Asaas:', totalAsaasCharges);
-    console.log('[listUnclassifiedCharges] Excluídas por filtro (fuel/inspection/manual):', totalExcludedByFilter);
-    console.log('[listUnclassifiedCharges] Já classificadas (subscriptions):', totalClassified);
-    console.log('[listUnclassifiedCharges] Auto-classificadas (mensalidade/cota):', totalAutoClassified);
-    console.log('[listUnclassifiedCharges] NÃO CLASSIFICADAS (retorno):', unclassifiedCharges.length);
-    console.log('[listUnclassifiedCharges] === FIM RESUMO ===');
-
-    return unclassifiedCharges;
+    console.log(`[listUnclassifiedCharges] Clientes Asaas: ${totalAsaasCustomers} | Cobranças: ${totalAsaasCharges} | Excluídas: ${totalExcluded} | Classificadas: ${totalClassified} | Não classificadas: ${result.length}`);
+    return result;
   }),
 
   // Classificar cobrança manualmente

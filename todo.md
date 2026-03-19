@@ -1524,3 +1524,9 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 
 - [x] Adicionar Abastecimento, Reparos, Outros no select Tipo do dialog Editar Cobrança
 - [ ] Salvar checkpoint
+
+## 🐛 Bug: Cobranças recebidas não aparecem para classificar
+
+- [x] Investigar filtro do listUnclassifiedCharges que exclui cobranças RECEIVED
+- [x] Corrigir para exibir cobranças pagas não associadas a subscription_charges (busca TODOS os clientes do Asaas com paginação)
+- [ ] Salvar checkpoint
