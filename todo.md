@@ -1536,3 +1536,19 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Remover exclusão de fuel_records e inspection_charges do listUnclassifiedCharges
 - [x] Cobranças vinculadas aparecem com tipo já identificado (ex: "Abastecimento") mas ainda editáveis
 - [ ] Salvar checkpoint
+
+## 🔗 BPO Financeiro: Vincular Pix/pagamento avulso a cobrança existente (Opção 1)
+
+- [ ] Backend: criar procedure `getClientPendingCharges` que retorna cobranças pendentes/vencidas de um cliente
+- [ ] Backend: atualizar `classifyUnclassifiedCharge` para aceitar `linkToChargeId` opcional — se fornecido, atualiza a cobrança existente como paga em vez de criar novo registro
+- [ ] Frontend: no dialog de classificação, adicionar toggle "Vincular a cobrança existente" que ao ativar exibe lista de cobranças pendentes do cliente selecionado
+- [ ] Salvar checkpoint
+
+## ✅ BPO Financeiro: Vinculação de Pix a Cobrança Existente
+
+- [x] Backend: criar `getClientPendingCharges` (lista cobranças pendentes/vencidas do cliente)
+- [x] Backend: criar `classifyCharge` com suporte a `linkToChargeId` (vincula Pix à cobrança original)
+- [x] Ao vincular: marcar cobrança original como paga e registrar asaasPaymentId do Pix
+- [x] Frontend: checkbox "Vincular a cobrança existente (evitar duplicidade)" aparece após selecionar cliente
+- [x] Frontend: select com cobranças pendentes/vencidas do cliente para escolher qual quitar
+- [ ] Salvar checkpoint

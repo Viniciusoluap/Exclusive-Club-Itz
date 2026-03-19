@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { subscriptions, subscriptionCharges, allowedClients, clientQuotas, fuelRecords, inspectionCharges, excludedAsaasCharges, unclassifiedCharges } from "../../drizzle/schema";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, and, or, gte, lte, desc } from "drizzle-orm";
 import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash, cancelCharge, listAllAsaasCustomers } from "../_core/asaasService";
 
 // Mapear status do Asaas para enum de unclassified_charges
@@ -1054,6 +1054,37 @@ export const saasRouter = router({
     return result;
   }),
 
+  // Buscar cobranças pendentes/vencidas de um cliente para vinculação
+  getClientPendingCharges: adminProcedure
+    .input(z.object({
+      clientId: z.number(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const charges = await db.select({
+        id: subscriptionCharges.id,
+        dueDate: subscriptionCharges.dueDate,
+        value: subscriptionCharges.value,
+        status: subscriptionCharges.status,
+        type: subscriptions.type,
+        asaasPaymentId: subscriptionCharges.asaasPaymentId,
+      })
+        .from(subscriptionCharges)
+        .innerJoin(subscriptions, eq(subscriptionCharges.subscriptionId, subscriptions.id))
+        .where(and(
+          eq(subscriptions.clientId, input.clientId),
+          or(
+            eq(subscriptionCharges.status, "pending"),
+            eq(subscriptionCharges.status, "overdue")
+          )
+        ))
+        .orderBy(subscriptionCharges.dueDate);
+
+      return charges;
+    }),
+
   // Classificar cobrança manualmente
   classifyCharge: adminProcedure
     .input(z.object({
@@ -1063,6 +1094,7 @@ export const saasRouter = router({
       value: z.number(),
       dueDate: z.string(),
       status: z.string(),
+      linkToChargeId: z.number().optional(), // Se fornecido, vincula ao invés de criar nova cobrança
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -1086,6 +1118,33 @@ export const saasRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Cobrança já foi classificada" });
       }
 
+      // OPÇÃO 1: Vincular a uma cobrança existente (evita duplicidade)
+      if (input.linkToChargeId) {
+        const targetCharge = await db.select()
+          .from(subscriptionCharges)
+          .where(eq(subscriptionCharges.id, input.linkToChargeId))
+          .limit(1);
+
+        if (targetCharge.length === 0) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Cobrança para vincular não encontrada" });
+        }
+
+        // Atualizar a cobrança existente: marcar como paga e vincular o asaasPaymentId do Pix
+        await db.update(subscriptionCharges)
+          .set({
+            status: "paid",
+            asaasPaymentId: input.asaasChargeId,
+            paidDate: new Date().toISOString().split('T')[0],
+          })
+          .where(eq(subscriptionCharges.id, input.linkToChargeId));
+
+        return {
+          success: true,
+          message: "Pagamento vinculado à cobrança existente e marcado como pago",
+        };
+      }
+
+      // OPÇÃO PADRÃO: Criar nova cobrança classificada
       // Buscar ou criar subscription para este cliente e tipo
       let subscription = await db.select()
         .from(subscriptions)
@@ -1133,7 +1192,7 @@ export const saasRouter = router({
 
       return {
         success: true,
-        message: "Cobran\u00e7a classificada com sucesso",
+        message: "Cobrança classificada com sucesso",
       };
     }),
 
