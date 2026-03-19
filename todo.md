@@ -1519,3 +1519,8 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Filtro B (tipo, seleção múltipla): Outros | Mensalidades | Vendas de Cotas | Abastecimento | Reparos
 - [x] Backend: aceitar array de tipos no listCharges
 - [ ] Salvar checkpoint
+
+## 🔧 Dialog Editar Cobrança: adicionar tipos faltantes
+
+- [x] Adicionar Abastecimento, Reparos, Outros no select Tipo do dialog Editar Cobrança
+- [ ] Salvar checkpoint
