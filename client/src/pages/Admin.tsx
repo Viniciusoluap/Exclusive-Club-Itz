@@ -1196,8 +1196,8 @@ export default function Admin() {
           <TabsContent value="saas" className="space-y-4 pt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Saas - Mensalidades</CardTitle>
-                <CardDescription>Acesse a página completa de gestão de mensalidades</CardDescription>
+                <CardTitle>BPO Financeiro</CardTitle>
+                <CardDescription>Acesse a página completa de gestão de Cobranças</CardDescription>
               </CardHeader>
               <CardContent>
                 <Link href="/admin/saas">
