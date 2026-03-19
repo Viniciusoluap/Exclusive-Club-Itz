@@ -14,7 +14,8 @@ import { formatCurrency } from "@/lib/formatCurrency";
 // Componente para listar e classificar cobranças não classificadas
 function UnclassifiedChargesSection() {
   const [selectedClient, setSelectedClient] = useState<Record<string, number>>({});
-  const [selectedType, setSelectedType] = useState<Record<string, "monthly" | "quota_sale" | "fuel" | "repair" | "other">>({});
+  const [selectedType, setSelectedType] = useState<Record<string, "monthly" | "quota_sale" | "fuel" | "repair" | "other">>({}); 
+  // Nota: as chaves dos dicionários são asaasChargeId (string)
   
   const utils = trpc.useUtils();
   const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery();
@@ -42,9 +43,9 @@ function UnclassifiedChargesSection() {
     },
   });
 
-  const handleClassify = (unclassifiedChargeId: number) => {
-    const clientId = selectedClient[unclassifiedChargeId];
-    const type = selectedType[unclassifiedChargeId];
+  const handleClassify = (asaasChargeId: string) => {
+    const clientId = selectedClient[asaasChargeId];
+    const type = selectedType[asaasChargeId];
 
     if (!clientId || !type) {
       toast.error("Selecione cliente e tipo antes de classificar");
@@ -52,14 +53,14 @@ function UnclassifiedChargesSection() {
     }
 
     classifyMutation.mutate({
-      unclassifiedChargeId,
+      unclassifiedChargeId: asaasChargeId,
       clientId,
       type,
     });
   };
 
-  const handleIgnore = (unclassifiedChargeId: number) => {
-    ignoreMutation.mutate({ unclassifiedChargeId });
+  const handleIgnore = (asaasChargeId: string) => {
+    ignoreMutation.mutate({ unclassifiedChargeId: asaasChargeId });
   };
 
   // Não mostrar se não houver cobranças não classificadas
@@ -145,7 +146,7 @@ function UnclassifiedChargesSection() {
                 </div>
                 <div className="flex items-end gap-2">
                   <Button
-                    onClick={() => handleClassify(charge.asaasChargeId as any)}
+                    onClick={() => handleClassify(charge.asaasChargeId)}
                     disabled={classifyMutation.isPending}
                     className="flex-1"
                   >
@@ -153,7 +154,7 @@ function UnclassifiedChargesSection() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => handleIgnore(charge.asaasChargeId as any)}
+                    onClick={() => handleIgnore(charge.asaasChargeId)}
                     disabled={ignoreMutation.isPending}
                   >
                     Ignorar

@@ -1498,3 +1498,8 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] Testar criação de mensalidade com mês atual (dia passado) e mês futuro
 - [ ] Criar checkpoint
 
+
+## 🐛 Bug: unclassifiedChargeId recebido como string
+
+- [x] Corrigir conversão de tipo: `unclassifiedChargeId` aceita string (asaasChargeId) no backend e frontend
+- [ ] Salvar checkpoint

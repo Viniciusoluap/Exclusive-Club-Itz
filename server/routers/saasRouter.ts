@@ -1206,7 +1206,7 @@ export const saasRouter = router({
   // Classificar cobrança não classificada
   classifyUnclassifiedCharge: adminProcedure
     .input(z.object({
-      unclassifiedChargeId: z.number(),
+      unclassifiedChargeId: z.union([z.number(), z.string()]),
       clientId: z.number(),
       type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]),
     }))
@@ -1214,11 +1214,21 @@ export const saasRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      // Buscar cobrança não classificada
-      const [unclassified] = await db.select()
-        .from(unclassifiedCharges)
-        .where(eq(unclassifiedCharges.id, input.unclassifiedChargeId))
-        .limit(1);
+      // Buscar cobrança não classificada por id numérico ou asaasPaymentId (string)
+      let unclassified: any;
+      if (typeof input.unclassifiedChargeId === 'number') {
+        const [row] = await db.select()
+          .from(unclassifiedCharges)
+          .where(eq(unclassifiedCharges.id, input.unclassifiedChargeId))
+          .limit(1);
+        unclassified = row;
+      } else {
+        const [row] = await db.select()
+          .from(unclassifiedCharges)
+          .where(eq(unclassifiedCharges.asaasPaymentId, input.unclassifiedChargeId))
+          .limit(1);
+        unclassified = row;
+      }
 
       if (!unclassified) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Cobrança não encontrada" });
@@ -1259,7 +1269,7 @@ export const saasRouter = router({
       });
       const newChargeId = newChargeResult[0].insertId;
 
-      // Marcar como classificada
+      // Marcar como classificada (usa o id do registro encontrado no banco)
       await db.update(unclassifiedCharges)
         .set({
           classified: 1,
@@ -1269,7 +1279,7 @@ export const saasRouter = router({
           linkedSubscriptionId: subscription[0].id,
           linkedChargeId: newChargeId,
         })
-        .where(eq(unclassifiedCharges.id, input.unclassifiedChargeId));
+        .where(eq(unclassifiedCharges.id, unclassified.id));
 
       return {
         success: true,
@@ -1280,11 +1290,28 @@ export const saasRouter = router({
   // Ignorar cobrança não classificada permanentemente
   ignoreUnclassifiedCharge: adminProcedure
     .input(z.object({
-      unclassifiedChargeId: z.number(),
+      unclassifiedChargeId: z.union([z.number(), z.string()]),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Buscar por id numérico ou asaasPaymentId (string)
+      let targetId: number | undefined;
+      if (typeof input.unclassifiedChargeId === 'number') {
+        targetId = input.unclassifiedChargeId;
+      } else {
+        const [row] = await db.select({ id: unclassifiedCharges.id })
+          .from(unclassifiedCharges)
+          .where(eq(unclassifiedCharges.asaasPaymentId, input.unclassifiedChargeId))
+          .limit(1);
+        targetId = row?.id;
+      }
+
+      if (!targetId) {
+        // Cobrança não está no banco local (veio direto do Asaas) - apenas retorna sucesso
+        return { success: true, message: "Cobrança ignorada" };
+      }
 
       await db.update(unclassifiedCharges)
         .set({
@@ -1292,7 +1319,7 @@ export const saasRouter = router({
           classifiedAt: new Date().toISOString().replace('T', ' ').split('.')[0],
           classifiedBy: ctx.user?.id ?? null,
         })
-        .where(eq(unclassifiedCharges.id, input.unclassifiedChargeId));
+        .where(eq(unclassifiedCharges.id, targetId));
 
       return {
         success: true,
