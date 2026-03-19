@@ -1503,3 +1503,12 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 
 - [x] Corrigir conversão de tipo: `unclassifiedChargeId` aceita string (asaasChargeId) no backend e frontend
 - [ ] Salvar checkpoint
+
+## 🔤 Renomear módulo Saas para BPO Financeiro
+
+- [x] Título "Saas - Mensalidades" → "BPO Financeiro"
+- [x] Subtítulo → "Gestão de pagamentos e recebimentos"
+- [x] Botão "Nova Mensalidade" → "Nova Cobrança"
+- [x] Dialog título "Nova Mensalidade" → "Nova Cobrança"
+- [x] Dialog subtítulo → "Preencha os dados da Cobrança"
+- [x] Adicionar tipos: Abastecimento, Reparos, Outros no select de Tipo

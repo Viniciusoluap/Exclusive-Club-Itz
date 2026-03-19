@@ -193,7 +193,7 @@ export default function Saas() {
 
   const [form, setForm] = useState({
     clientId: 0,
-    type: "monthly" as "monthly" | "quota_sale",
+    type: "monthly" as "monthly" | "quota_sale" | "fuel" | "repair" | "other",
     value: "",
     dueDay: "10",
     startMonth: currentMonth,
@@ -430,8 +430,8 @@ export default function Saas() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Saas - Mensalidades</h1>
-            <p className="text-sm text-gray-600">Gestão de mensalidades e vendas de cotas</p>
+            <h1 className="text-2xl font-bold text-gray-900">BPO Financeiro</h1>
+            <p className="text-sm text-gray-600">Gestão de pagamentos e recebimentos</p>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -445,7 +445,7 @@ export default function Saas() {
           </Button>
           <Button onClick={() => { resetForm(); setShowDialog(true); }}>
             <Plus className="h-4 w-4 mr-2" />
-            Nova Mensalidade
+            Nova Cobrança
           </Button>
         </div>
       </div>
@@ -789,9 +789,9 @@ export default function Saas() {
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Mensalidade" : "Nova Mensalidade"}</DialogTitle>
+            <DialogTitle>{editingId ? "Editar Cobrança" : "Nova Cobrança"}</DialogTitle>
             <DialogDescription>
-              Preencha os dados da mensalidade
+              Preencha os dados da Cobrança
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -819,7 +819,7 @@ export default function Saas() {
               <Label>Tipo *</Label>
               <Select
                 value={form.type}
-                onValueChange={(value: "monthly" | "quota_sale") => setForm({ ...form, type: value })}
+                onValueChange={(value: "monthly" | "quota_sale" | "fuel" | "repair" | "other") => setForm({ ...form, type: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -827,6 +827,9 @@ export default function Saas() {
                 <SelectContent>
                   <SelectItem value="monthly">Mensalidade</SelectItem>
                   <SelectItem value="quota_sale">Venda de Cota</SelectItem>
+                  <SelectItem value="fuel">Abastecimento</SelectItem>
+                  <SelectItem value="repair">Reparos</SelectItem>
+                  <SelectItem value="other">Outros</SelectItem>
                 </SelectContent>
               </Select>
             </div>
