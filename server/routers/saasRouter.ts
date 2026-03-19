@@ -963,16 +963,10 @@ export const saasRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-    // Buscar todas as cobranças existentes em outras abas (para excluir da listagem)
-    const fuelChargesData = await db.select().from(fuelRecords);
-    const inspectionChargesData = await db.select().from(inspectionCharges);
-    
-    // Buscar cobranças excluídas manualmente do módulo Saas
+    // Buscar cobranças excluídas manualmente do módulo BPO (ignoradas pelo admin)
     const manuallyExcluded = await db.select().from(excludedAsaasCharges);
     
     const excludedAsaasIds = new Set<string>();
-    fuelChargesData.forEach(record => { if (record.asaasChargeId) excludedAsaasIds.add(record.asaasChargeId); });
-    inspectionChargesData.forEach(charge => { if (charge.asaasChargeId) excludedAsaasIds.add(charge.asaasChargeId); });
     manuallyExcluded.forEach(excluded => { excludedAsaasIds.add(excluded.asaasChargeId); });
 
     // Buscar cobranças já classificadas no BPO

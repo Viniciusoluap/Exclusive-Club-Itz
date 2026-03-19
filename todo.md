@@ -1530,3 +1530,9 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Investigar filtro do listUnclassifiedCharges que exclui cobranças RECEIVED
 - [x] Corrigir para exibir cobranças pagas não associadas a subscription_charges (busca TODOS os clientes do Asaas com paginação)
 - [ ] Salvar checkpoint
+
+## 🔧 BPO Financeiro: exibir TODAS as cobranças (incluindo abastecimento/vistoria vinculadas)
+
+- [x] Remover exclusão de fuel_records e inspection_charges do listUnclassifiedCharges
+- [x] Cobranças vinculadas aparecem com tipo já identificado (ex: "Abastecimento") mas ainda editáveis
+- [ ] Salvar checkpoint
