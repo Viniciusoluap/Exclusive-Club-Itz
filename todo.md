@@ -1512,3 +1512,10 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Dialog título "Nova Mensalidade" → "Nova Cobrança"
 - [x] Dialog subtítulo → "Preencha os dados da Cobrança"
 - [x] Adicionar tipos: Abastecimento, Reparos, Outros no select de Tipo
+
+## 🔍 Filtros BPO Financeiro: dois grupos independentes
+
+- [x] Filtro A (status, seleção única): Todas | Pendentes | Pagas | Vencidas
+- [x] Filtro B (tipo, seleção múltipla): Outros | Mensalidades | Vendas de Cotas | Abastecimento | Reparos
+- [x] Backend: aceitar array de tipos no listCharges
+- [ ] Salvar checkpoint
