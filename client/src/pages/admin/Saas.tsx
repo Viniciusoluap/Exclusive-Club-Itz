@@ -15,15 +15,25 @@ import { formatCurrency } from "@/lib/formatCurrency";
 function UnclassifiedChargesSection() {
   const [selectedClient, setSelectedClient] = useState<Record<string, number>>({});
   const [selectedType, setSelectedType] = useState<Record<string, "monthly" | "quota_sale" | "fuel" | "repair" | "other">>({}); 
+  // Vinculação: toggle por asaasChargeId e cobrança selecionada para vincular
+  const [linkMode, setLinkMode] = useState<Record<string, boolean>>({});
+  const [selectedLinkCharge, setSelectedLinkCharge] = useState<Record<string, number>>({});
   // Nota: as chaves dos dicionários são asaasChargeId (string)
   
   const utils = trpc.useUtils();
   const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery();
   const { data: clients } = trpc.allowedClients.list.useQuery();
   
-  const classifyMutation = trpc.saas.classifyUnclassifiedCharge.useMutation({
-    onSuccess: () => {
-      toast.success("Cobrança classificada com sucesso!");
+  // Buscar cobranças pendentes do cliente selecionado (para modo vinculação)
+  const [pendingChargesClientId, setPendingChargesClientId] = useState<number | null>(null);
+  const { data: pendingCharges } = trpc.saas.getClientPendingCharges.useQuery(
+    { clientId: pendingChargesClientId! },
+    { enabled: !!pendingChargesClientId }
+  );
+  
+  const classifyMutation = trpc.saas.classifyCharge.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message || "Cobrança classificada com sucesso!");
       utils.saas.listUnclassifiedCharges.invalidate();
       utils.saas.listCharges.invalidate();
       utils.saas.getFilteredStats.invalidate();
@@ -43,24 +53,53 @@ function UnclassifiedChargesSection() {
     },
   });
 
-  const handleClassify = (asaasChargeId: string) => {
-    const clientId = selectedClient[asaasChargeId];
-    const type = selectedType[asaasChargeId];
+  const handleClassify = (charge: { asaasChargeId: string; value: number; dueDate: string; status: string }) => {
+    const clientId = selectedClient[charge.asaasChargeId];
+    const type = selectedType[charge.asaasChargeId];
+    const isLinkMode = linkMode[charge.asaasChargeId];
+    const linkToChargeId = selectedLinkCharge[charge.asaasChargeId];
 
     if (!clientId || !type) {
       toast.error("Selecione cliente e tipo antes de classificar");
       return;
     }
 
+    if (isLinkMode && !linkToChargeId) {
+      toast.error("Selecione a cobrança existente para vincular");
+      return;
+    }
+
     classifyMutation.mutate({
-      unclassifiedChargeId: asaasChargeId,
+      asaasChargeId: charge.asaasChargeId,
       clientId,
       type,
+      value: typeof charge.value === 'string' ? parseFloat(charge.value) : charge.value,
+      dueDate: charge.dueDate,
+      status: charge.status,
+      linkToChargeId: isLinkMode ? linkToChargeId : undefined,
     });
   };
 
   const handleIgnore = (asaasChargeId: string) => {
     ignoreMutation.mutate({ unclassifiedChargeId: asaasChargeId });
+  };
+
+  const handleClientChange = (asaasChargeId: string, clientId: number) => {
+    setSelectedClient({ ...selectedClient, [asaasChargeId]: clientId });
+    // Ao trocar cliente, resetar vinculação
+    setSelectedLinkCharge(prev => { const n = {...prev}; delete n[asaasChargeId]; return n; });
+    // Se modo vinculação ativo, atualizar clientId para buscar cobranças pendentes
+    if (linkMode[asaasChargeId]) {
+      setPendingChargesClientId(clientId);
+    }
+  };
+
+  const handleToggleLinkMode = (asaasChargeId: string, clientId: number | undefined) => {
+    const newMode = !linkMode[asaasChargeId];
+    setLinkMode(prev => ({ ...prev, [asaasChargeId]: newMode }));
+    if (newMode && clientId) {
+      setPendingChargesClientId(clientId);
+    }
   };
 
   // Não mostrar se não houver cobranças não classificadas
@@ -112,7 +151,7 @@ function UnclassifiedChargesSection() {
                   <Label>Cliente</Label>
                   <Select
                     value={selectedClient[charge.asaasChargeId]?.toString() || ""}
-                    onValueChange={(value) => setSelectedClient({ ...selectedClient, [charge.asaasChargeId]: parseInt(value) })}
+                    onValueChange={(value) => handleClientChange(charge.asaasChargeId, parseInt(value))}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione cliente" />
@@ -146,7 +185,7 @@ function UnclassifiedChargesSection() {
                 </div>
                 <div className="flex items-end gap-2">
                   <Button
-                    onClick={() => handleClassify(charge.asaasChargeId)}
+                    onClick={() => handleClassify(charge)}
                     disabled={classifyMutation.isPending}
                     className="flex-1"
                   >
@@ -161,6 +200,47 @@ function UnclassifiedChargesSection() {
                   </Button>
                 </div>
               </div>
+
+              {/* Opção de Vinculação */}
+              {selectedClient[charge.asaasChargeId] && (
+                <div className="border-t pt-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      id={`link-${charge.asaasChargeId}`}
+                      checked={!!linkMode[charge.asaasChargeId]}
+                      onChange={() => handleToggleLinkMode(charge.asaasChargeId, selectedClient[charge.asaasChargeId])}
+                      className="h-4 w-4 cursor-pointer"
+                    />
+                    <label htmlFor={`link-${charge.asaasChargeId}`} className="text-sm font-medium cursor-pointer text-amber-700">
+                      Vincular a cobrança existente (evitar duplicidade)
+                    </label>
+                  </div>
+                  {linkMode[charge.asaasChargeId] && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Cobrança pendente do cliente para quitar</Label>
+                      <Select
+                        value={selectedLinkCharge[charge.asaasChargeId]?.toString() || ""}
+                        onValueChange={(value) => setSelectedLinkCharge(prev => ({ ...prev, [charge.asaasChargeId]: parseInt(value) }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={pendingCharges ? (pendingCharges.length === 0 ? "Nenhuma cobrança pendente" : "Selecione a cobrança") : "Carregando..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pendingCharges?.map((pc) => (
+                            <SelectItem key={pc.id} value={pc.id.toString()}>
+                              {formatCurrency(typeof pc.value === 'string' ? parseFloat(pc.value) : pc.value)} — Venc: {new Date(pc.dueDate).toLocaleDateString('pt-BR')} — {pc.status === 'overdue' ? '⚠️ Vencida' : '⏳ Pendente'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Ao classificar, a cobrança selecionada será marcada como paga e o Pix será vinculado a ela.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
