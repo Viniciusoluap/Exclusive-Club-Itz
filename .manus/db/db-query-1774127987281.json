@@ -1,0 +1,9 @@
+{
+  "query": "\nSELECT id, asaas_payment_id, asaas_customer_name, asaas_customer_email, value, due_date, status, classified, classified_at, linked_charge_id\nFROM unclassified_charges\nWHERE (asaas_customer_name LIKE '%Ryan%' OR asaas_customer_email LIKE '%limiransafg%')\n   OR (value = 700.00 AND due_date LIKE '2026-03-16%')\nORDER BY due_date DESC\nLIMIT 10;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT id, asaas_payment_id, asaas_customer_name, asaas_customer_email, value, due_date, status, classified, classified_at, linked_charge_id\nFROM unclassified_charges\nWHERE (asaas_customer_name LIKE '%Ryan%' OR asaas_customer_email LIKE '%limiransafg%')\n   OR (value = 700.00 AND due_date LIKE '2026-03-16%')\nORDER BY due_date DESC\nLIMIT 10;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 346
+}

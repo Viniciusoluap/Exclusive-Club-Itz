@@ -971,7 +971,20 @@ export const saasRouter = router({
 
     // Buscar cobranças já classificadas no BPO
     const classifiedCharges = await db.select().from(subscriptionCharges);
-    const classifiedAsaasIds = new Set(classifiedCharges.map(c => c.asaasPaymentId).filter(Boolean) as string[]);
+    const classifiedAsaasIds = new Set<string>();
+    for (const c of classifiedCharges) {
+      // Incluir o asaasPaymentId principal
+      if (c.asaasPaymentId) classifiedAsaasIds.add(c.asaasPaymentId);
+      // Incluir todos os IDs dentro de payment_links (pagamentos parciais/split)
+      if (c.paymentLinks) {
+        try {
+          const links: string[] = JSON.parse(c.paymentLinks as string);
+          links.forEach(id => { if (id) classifiedAsaasIds.add(id); });
+        } catch {
+          // paymentLinks malformado — ignorar
+        }
+      }
+    }
 
     // Mapa de clientes locais por email para enriquecer dados
     const localClients = await db.select().from(allowedClients);

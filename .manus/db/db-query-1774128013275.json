@@ -1,0 +1,22 @@
+{
+  "query": "\nSELECT id, name, email FROM allowed_clients WHERE name LIKE '%Ryan%' OR email LIKE '%limiransafg%';\n\n-- Também verificar na excluded_asaas_charges\nSELECT * FROM excluded_asaas_charges WHERE asaas_charge_id LIKE '%' LIMIT 5;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT id, name, email FROM allowed_clients WHERE name LIKE '%Ryan%' OR email LIKE '%limiransafg%';\n\n-- Também verificar na excluded_asaas_charges\nSELECT * FROM excluded_asaas_charges WHERE asaas_charge_id LIKE '%' LIMIT 5;\n",
+  "rows": [
+    {
+      "id": "2850001",
+      "name": "LUCAS SANTOS MIRANDA",
+      "email": "Limiransafg@gmail.com"
+    }
+  ],
+  "messages": [
+    "id\tasaas_charge_id\texcluded_by\texcluded_at\treason",
+    "1\tpay_oae3746h9syxgdvl\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-21 18:53:56\tCobrança de abastecimento/vistoria",
+    "30001\tpay_m96y66px25lhqvf5\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:34:02\tCobrança de abastecimento/vistoria",
+    "30002\tpay_w9w13bl2t1rh2sxx\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:35:26\tCobrança de abastecimento/vistoria",
+    "30003\tpay_cld3hxcl5g3batpn\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:35:28\tCobrança de abastecimento/vistoria",
+    "30004\tpay_z4t4emthfcxi66lo\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:35:30\tCobrança de abastecimento/vistoria"
+  ],
+  "stdout": "id\tname\temail\n2850001\tLUCAS SANTOS MIRANDA\tLimiransafg@gmail.com\nid\tasaas_charge_id\texcluded_by\texcluded_at\treason\n1\tpay_oae3746h9syxgdvl\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-21 18:53:56\tCobrança de abastecimento/vistoria\n30001\tpay_m96y66px25lhqvf5\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:34:02\tCobrança de abastecimento/vistoria\n30002\tpay_w9w13bl2t1rh2sxx\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:35:26\tCobrança de abastecimento/vistoria\n30003\tpay_cld3hxcl5g3batpn\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:35:28\tCobrança de abastecimento/vistoria\n30004\tpay_z4t4emthfcxi66lo\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-22 01:35:30\tCobrança de abastecimento/vistoria\n",
+  "stderr": "",
+  "execution_time_ms": 396
+}

@@ -1,0 +1,46 @@
+{
+  "query": "\nSELECT id, asaas_payment_id, asaas_customer_name, asaas_customer_email, value, due_date, status, classified, classified_at, linked_charge_id\nFROM unclassified_charges\nWHERE value = 700.00\nORDER BY due_date DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT id, asaas_payment_id, asaas_customer_name, asaas_customer_email, value, due_date, status, classified, classified_at, linked_charge_id\nFROM unclassified_charges\nWHERE value = 700.00\nORDER BY due_date DESC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "id": "30065",
+      "asaas_payment_id": "pay_cuj6hybwmkp234jn",
+      "asaas_customer_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "asaas_customer_email": "mhamedfeiz@hotmail.com",
+      "value": "700.00",
+      "due_date": "2026-02-20 00:00:00",
+      "status": "paid",
+      "classified": "1",
+      "classified_at": "2026-02-23 02:40:36",
+      "linked_charge_id": "180007"
+    },
+    {
+      "id": "30067",
+      "asaas_payment_id": "pay_tm9l14oq2m8fbm26",
+      "asaas_customer_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "asaas_customer_email": "mhamedfeiz@hotmail.com",
+      "value": "700.00",
+      "due_date": "2025-11-22 00:00:00",
+      "status": "paid",
+      "classified": "1",
+      "classified_at": "2026-02-23 02:40:26",
+      "linked_charge_id": "180006"
+    },
+    {
+      "id": "30068",
+      "asaas_payment_id": "pay_oj8yrkx691rtf9i2",
+      "asaas_customer_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "asaas_customer_email": "mhamedfeiz@hotmail.com",
+      "value": "700.00",
+      "due_date": "2025-10-21 00:00:00",
+      "status": "paid",
+      "classified": "1",
+      "classified_at": "2026-02-23 02:40:17",
+      "linked_charge_id": "180005"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tasaas_payment_id\tasaas_customer_name\tasaas_customer_email\tvalue\tdue_date\tstatus\tclassified\tclassified_at\tlinked_charge_id\n30065\tpay_cuj6hybwmkp234jn\tMHAMED FEIZ HUSSEIN YASSIN\tmhamedfeiz@hotmail.com\t700.00\t2026-02-20 00:00:00\tpaid\t1\t2026-02-23 02:40:36\t180007\n30067\tpay_tm9l14oq2m8fbm26\tMHAMED FEIZ HUSSEIN YASSIN\tmhamedfeiz@hotmail.com\t700.00\t2025-11-22 00:00:00\tpaid\t1\t2026-02-23 02:40:26\t180006\n30068\tpay_oj8yrkx691rtf9i2\tMHAMED FEIZ HUSSEIN YASSIN\tmhamedfeiz@hotmail.com\t700.00\t2025-10-21 00:00:00\tpaid\t1\t2026-02-23 02:40:17\t180005\n",
+  "stderr": "",
+  "execution_time_ms": 357
+}
