@@ -1,0 +1,80 @@
+{
+  "query": "\nSELECT s.id, s.type, s.value, s.due_day, s.start_date, s.end_date, s.status, ac.name as clientName\nFROM subscriptions s\nINNER JOIN allowed_clients ac ON s.client_id = ac.id\nWHERE ac.name LIKE '%Lucas%'\nORDER BY s.value DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT s.id, s.type, s.value, s.due_day, s.start_date, s.end_date, s.status, ac.name as clientName\nFROM subscriptions s\nINNER JOIN allowed_clients ac ON s.client_id = ac.id\nWHERE ac.name LIKE '%Lucas%'\nORDER BY s.value DESC;\n",
+  "rows": [
+    {
+      "id": "240001",
+      "type": "quota_sale",
+      "value": "24036.46",
+      "due_day": "15",
+      "start_date": "2026-03-18 00:00:00",
+      "end_date": "NULL",
+      "status": "active",
+      "clientName": "LUCAS SANTOS MIRANDA"
+    },
+    {
+      "id": "240002",
+      "type": "quota_sale",
+      "value": "24036.46",
+      "due_day": "15",
+      "start_date": "2026-03-18 00:00:00",
+      "end_date": "NULL",
+      "status": "active",
+      "clientName": "LUCAS SANTOS MIRANDA"
+    },
+    {
+      "id": "240003",
+      "type": "quota_sale",
+      "value": "24036.46",
+      "due_day": "15",
+      "start_date": "2026-03-15 00:00:00",
+      "end_date": "NULL",
+      "status": "active",
+      "clientName": "LUCAS SANTOS MIRANDA"
+    },
+    {
+      "id": "270002",
+      "type": "quota_sale",
+      "value": "24036.46",
+      "due_day": "15",
+      "start_date": "2026-03-01 00:00:00",
+      "end_date": "NULL",
+      "status": "active",
+      "clientName": "LUCAS SANTOS MIRANDA"
+    },
+    {
+      "id": "210001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_day": "15",
+      "start_date": "2026-03-18 00:00:00",
+      "end_date": "NULL",
+      "status": "active",
+      "clientName": "LUCAS SANTOS MIRANDA"
+    },
+    {
+      "id": "240004",
+      "type": "monthly",
+      "value": "700.00",
+      "due_day": "15",
+      "start_date": "2026-03-18 00:00:00",
+      "end_date": "NULL",
+      "status": "active",
+      "clientName": "LUCAS SANTOS MIRANDA"
+    },
+    {
+      "id": "270001",
+      "type": "monthly",
+      "value": "700.00",
+      "due_day": "15",
+      "start_date": "2026-03-01 00:00:00",
+      "end_date": "NULL",
+      "status": "active",
+      "clientName": "LUCAS SANTOS MIRANDA"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttype\tvalue\tdue_day\tstart_date\tend_date\tstatus\tclientName\n240001\tquota_sale\t24036.46\t15\t2026-03-18 00:00:00\tNULL\tactive\tLUCAS SANTOS MIRANDA\n240002\tquota_sale\t24036.46\t15\t2026-03-18 00:00:00\tNULL\tactive\tLUCAS SANTOS MIRANDA\n240003\tquota_sale\t24036.46\t15\t2026-03-15 00:00:00\tNULL\tactive\tLUCAS SANTOS MIRANDA\n270002\tquota_sale\t24036.46\t15\t2026-03-01 00:00:00\tNULL\tactive\tLUCAS SANTOS MIRANDA\n210001\tmonthly\t700.00\t15\t2026-03-18 00:00:00\tNULL\tactive\tLUCAS SANTOS MIRANDA\n240004\tmonthly\t700.00\t15\t2026-03-18 00:00:00\tNULL\tactive\tLUCAS SANTOS MIRANDA\n270001\tmonthly\t700.00\t15\t2026-03-01 00:00:00\tNULL\tactive\tLUCAS SANTOS MIRANDA\n",
+  "stderr": "",
+  "execution_time_ms": 350
+}

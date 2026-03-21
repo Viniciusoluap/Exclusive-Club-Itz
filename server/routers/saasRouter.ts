@@ -1063,12 +1063,14 @@ export const saasRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
+      // Buscar todas as cobranças pendentes/vencidas/parciais do cliente
       const charges = await db.select({
         id: subscriptionCharges.id,
         dueDate: subscriptionCharges.dueDate,
         value: subscriptionCharges.value,
         status: subscriptionCharges.status,
         type: subscriptions.type,
+        subscriptionValue: subscriptions.value, // valor total da subscription (para detectar cobranças-mãe)
         asaasPaymentId: subscriptionCharges.asaasPaymentId,
         amountPaid: subscriptionCharges.amountPaid,
         paymentLinks: subscriptionCharges.paymentLinks,
@@ -1085,7 +1087,22 @@ export const saasRouter = router({
         ))
         .orderBy(subscriptionCharges.dueDate);
 
-      return charges;
+      // Filtrar cobranças-mãe: são cobranças cujo valor é igual ao valor total da subscription
+      // (valor total do parcelamento), ou seja, não são parcelas individuais.
+      // Uma cobrança é considerada "parcela" quando seu valor é DIFERENTE do valor total da subscription
+      // OU quando a subscription tem apenas 1 cobrança com esse valor (não parcelada).
+      // Regra prática: excluir cobranças cujo valor == subscriptionValue E subscriptionValue > 5000
+      // (limiar conservador para não excluir cobranças legítimas de alto valor sem parcelamento)
+      const filtered = charges.filter(c => {
+        const chargeVal = typeof c.value === 'string' ? parseFloat(c.value) : c.value;
+        const subVal = typeof c.subscriptionValue === 'string' ? parseFloat(c.subscriptionValue) : c.subscriptionValue;
+        // Excluir se o valor da cobrança é igual ao valor total da subscription E esse valor é alto (>5000)
+        // Isso identifica as cobranças-mãe que representam o total do parcelamento
+        const isParentCharge = chargeVal === subVal && subVal > 5000;
+        return !isParentCharge;
+      });
+
+      return filtered.map(({ subscriptionValue: _, ...rest }) => rest);
     }),
 
   // Classificar cobrança manualmente

@@ -1,0 +1,410 @@
+{
+  "query": "\nSELECT sc.id, sc.subscription_id, sc.value, sc.due_date, sc.status, sc.amount_paid, sc.asaas_payment_id, s.type as sub_type\nFROM subscription_charges sc\nINNER JOIN subscriptions s ON sc.subscription_id = s.id\nINNER JOIN allowed_clients ac ON s.client_id = ac.id\nWHERE ac.name LIKE '%Lucas%'\nORDER BY sc.due_date, sc.value DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT sc.id, sc.subscription_id, sc.value, sc.due_date, sc.status, sc.amount_paid, sc.asaas_payment_id, s.type as sub_type\nFROM subscription_charges sc\nINNER JOIN subscriptions s ON sc.subscription_id = s.id\nINNER JOIN allowed_clients ac ON s.client_id = ac.id\nWHERE ac.name LIKE '%Lucas%'\nORDER BY sc.due_date, sc.value DESC;\n",
+  "rows": [
+    {
+      "id": "450021",
+      "subscription_id": "240001",
+      "value": "24036.46",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "NULL",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "450022",
+      "subscription_id": "240002",
+      "value": "24036.46",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "NULL",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "450023",
+      "subscription_id": "240003",
+      "value": "24036.46",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "NULL",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390012",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "paid",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_n48v19q56k9wdhc9",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "450024",
+      "subscription_id": "240004",
+      "value": "700.00",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "NULL",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "390002",
+      "subscription_id": "270001",
+      "value": "700.00",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_hczk3u5wqvz6flxo",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "450020",
+      "subscription_id": "210001",
+      "value": "700.00",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "NULL",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "390013",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_ydcy8r5danzxhvwf",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "360002",
+      "subscription_id": "210001",
+      "value": "700.00",
+      "due_date": "2026-04-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_l6ug251jenobezsy",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "390014",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2026-05-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_w1toa4fn96aj3au2",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390004",
+      "subscription_id": "270001",
+      "value": "700.00",
+      "due_date": "2026-05-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_ctqppvq5e4w8j17j",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "390015",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2026-06-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_1u8vui6lwo08v8ji",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "360004",
+      "subscription_id": "210001",
+      "value": "700.00",
+      "due_date": "2026-06-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_9hcwvqko02sq3b95",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "390016",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2026-07-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_rsyegnxv7htzi86o",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "360005",
+      "subscription_id": "210001",
+      "value": "700.00",
+      "due_date": "2026-07-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_jgaawlc89y7cvw9o",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "390017",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2026-08-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_iui32sc2cmvk83zc",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "360006",
+      "subscription_id": "210001",
+      "value": "700.00",
+      "due_date": "2026-08-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_n746fe0sb7znr977",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "390018",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2026-09-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_fmx81821az667l9o",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390008",
+      "subscription_id": "270001",
+      "value": "700.00",
+      "due_date": "2026-09-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_hsjpfa6tvapnjvd1",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "390019",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2026-10-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_ydb9koion8lvgao9",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390009",
+      "subscription_id": "270001",
+      "value": "700.00",
+      "due_date": "2026-10-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_f24rptsu43h9qqyp",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "390020",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2026-11-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_1wkche2vdndoij6s",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "360009",
+      "subscription_id": "210001",
+      "value": "700.00",
+      "due_date": "2026-11-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_h5yeec2hqjltsp3c",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "390021",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2026-12-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_cdgjjrh7qllej8i4",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "360010",
+      "subscription_id": "210001",
+      "value": "700.00",
+      "due_date": "2026-12-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_b2h5qwf6u6ufg4z6",
+      "sub_type": "monthly"
+    },
+    {
+      "id": "390022",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-01-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_zyu29hbtk0gqlgmt",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390023",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-02-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_0rnt5j6b2c5cnje1",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390024",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-03-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_3lkfwhsvyjep2fzr",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390025",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-04-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_ca326xiwbejbh7d8",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390026",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-05-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_w1d8ko4qdhemuz43",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390027",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-06-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_5cws6yly6hn9049d",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390028",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-07-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_v9frbfoyka270l18",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390029",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-08-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_8yxgrh8cy840zzsy",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390030",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-09-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_3yeg4ewh5mrgahnz",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390031",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-10-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_d28snfi9t12sx5b4",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390032",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-11-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_j7kf5jvdwzptzoiz",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390033",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2027-12-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_e80mi8ex7p3aatax",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390034",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2028-01-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_arb3ket4o202odo4",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390035",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2028-02-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_t17eld9fqlcnxo3m",
+      "sub_type": "quota_sale"
+    },
+    {
+      "id": "390036",
+      "subscription_id": "270002",
+      "value": "961.46",
+      "due_date": "2028-03-15 00:00:00",
+      "status": "pending",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_ar8kmdiaabs7dmjm",
+      "sub_type": "quota_sale"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsubscription_id\tvalue\tdue_date\tstatus\tamount_paid\tasaas_payment_id\tsub_type\n450021\t240001\t24036.46\t2026-03-15 00:00:00\tpending\t0.00\tNULL\tquota_sale\n450022\t240002\t24036.46\t2026-03-15 00:00:00\tpending\t0.00\tNULL\tquota_sale\n450023\t240003\t24036.46\t2026-03-15 00:00:00\tpending\t0.00\tNULL\tquota_sale\n390012\t270002\t961.46\t2026-03-15 00:00:00\tpaid\t0.00\tpay_n48v19q56k9wdhc9\tquota_sale\n450024\t240004\t700.00\t2026-03-15 00:00:00\tpending\t0.00\tNULL\tmonthly\n390002\t270001\t700.00\t2026-03-15 00:00:00\tpending\t0.00\tpay_hczk3u5wqvz6flxo\tmonthly\n450020\t210001\t700.00\t2026-03-15 00:00:00\tpending\t0.00\tNULL\tmonthly\n390013\t270002\t961.46\t2026-04-15 00:00:00\tpending\t0.00\tpay_ydcy8r5danzxhvwf\tquota_sale\n360002\t210001\t700.00\t2026-04-15 00:00:00\tpending\t0.00\tpay_l6ug251jenobezsy\tmonthly\n390014\t270002\t961.46\t2026-05-15 00:00:00\tpending\t0.00\tpay_w1toa4fn96aj3au2\tquota_sale\n390004\t270001\t700.00\t2026-05-15 00:00:00\tpending\t0.00\tpay_ctqppvq5e4w8j17j\tmonthly\n390015\t270002\t961.46\t2026-06-15 00:00:00\tpending\t0.00\tpay_1u8vui6lwo08v8ji\tquota_sale\n360004\t210001\t700.00\t2026-06-15 00:00:00\tpending\t0.00\tpay_9hcwvqko02sq3b95\tmonthly\n390016\t270002\t961.46\t2026-07-15 00:00:00\tpending\t0.00\tpay_rsyegnxv7htzi86o\tquota_sale\n360005\t210001\t700.00\t2026-07-15 00:00:00\tpending\t0.00\tpay_jgaawlc89y7cvw9o\tmonthly\n390017\t270002\t961.46\t2026-08-15 00:00:00\tpending\t0.00\tpay_iui32sc2cmvk83zc\tquota_sale\n360006\t210001\t700.00\t2026-08-15 00:00:00\tpending\t0.00\tpay_n746fe0sb7znr977\tmonthly\n390018\t270002\t961.46\t2026-09-15 00:00:00\tpending\t0.00\tpay_fmx81821az667l9o\tquota_sale\n390008\t270001\t700.00\t2026-09-15 00:00:00\tpending\t0.00\tpay_hsjpfa6tvapnjvd1\tmonthly\n390019\t270002\t961.46\t2026-10-15 00:00:00\tpending\t0.00\tpay_ydb9koion8lvgao9\tquota_sale\n390009\t270001\t700.00\t2026-10-15 00:00:00\tpending\t0.00\tpay_f24rptsu43h9qqyp\tmonthly\n390020\t270002\t961.46\t2026-11-15 00:00:00\tpending\t0.00\tpay_1wkche2vdndoij6s\tquota_sale\n360009\t210001\t700.00\t2026-11-15 00:00:00\tpending\t0.00\tpay_h5yeec2hqjltsp3c\tmonthly\n390021\t270002\t961.46\t2026-12-15 00:00:00\tpending\t0.00\tpay_cdgjjrh7qllej8i4\tquota_sale\n360010\t210001\t700.00\t2026-12-15 00:00:00\tpending\t0.00\tpay_b2h5qwf6u6ufg4z6\tmonthly\n390022\t270002\t961.46\t2027-01-15 00:00:00\tpending\t0.00\tpay_zyu29hbtk0gqlgmt\tquota_sale\n390023\t270002\t961.46\t2027-02-15 00:00:00\tpending\t0.00\tpay_0rnt5j6b2c5cnje1\tquota_sale\n390024\t270002\t961.46\t2027-03-15 00:00:00\tpending\t0.00\tpay_3lkfwhsvyjep2fzr\tquota_sale\n390025\t270002\t961.46\t2027-04-15 00:00:00\tpending\t0.00\tpay_ca326xiwbejbh7d8\tquota_sale\n390026\t270002\t961.46\t2027-05-15 00:00:00\tpending\t0.00\tpay_w1d8ko4qdhemuz43\tquota_sale\n390027\t270002\t961.46\t2027-06-15 00:00:00\tpending\t0.00\tpay_5cws6yly6hn9049d\tquota_sale\n390028\t270002\t961.46\t2027-07-15 00:00:00\tpending\t0.00\tpay_v9frbfoyka270l18\tquota_sale\n390029\t270002\t961.46\t2027-08-15 00:00:00\tpending\t0.00\tpay_8yxgrh8cy840zzsy\tquota_sale\n390030\t270002\t961.46\t2027-09-15 00:00:00\tpending\t0.00\tpay_3yeg4ewh5mrgahnz\tquota_sale\n390031\t270002\t961.46\t2027-10-15 00:00:00\tpending\t0.00\tpay_d28snfi9t12sx5b4\tquota_sale\n390032\t270002\t961.46\t2027-11-15 00:00:00\tpending\t0.00\tpay_j7kf5jvdwzptzoiz\tquota_sale\n390033\t270002\t961.46\t2027-12-15 00:00:00\tpending\t0.00\tpay_e80mi8ex7p3aatax\tquota_sale\n390034\t270002\t961.46\t2028-01-15 00:00:00\tpending\t0.00\tpay_arb3ket4o202odo4\tquota_sale\n390035\t270002\t961.46\t2028-02-15 00:00:00\tpending\t0.00\tpay_t17eld9fqlcnxo3m\tquota_sale\n390036\t270002\t961.46\t2028-03-15 00:00:00\tpending\t0.00\tpay_ar8kmdiaabs7dmjm\tquota_sale\n",
+  "stderr": "",
+  "execution_time_ms": 347
+}

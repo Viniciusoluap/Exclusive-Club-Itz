@@ -1,0 +1,19 @@
+{
+  "query": "\nSELECT sc.id, sc.value, sc.due_date, sc.status, sc.amount_paid, sc.asaas_payment_id, sc.subscription_id\nFROM subscription_charges sc\nINNER JOIN subscriptions s ON sc.subscription_id = s.id\nINNER JOIN allowed_clients ac ON s.client_id = ac.id\nWHERE ac.name LIKE '%Lucas%'\n  AND sc.value BETWEEN 900 AND 1000\n  AND sc.due_date BETWEEN '2026-03-01' AND '2026-03-31'\nORDER BY sc.due_date;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT sc.id, sc.value, sc.due_date, sc.status, sc.amount_paid, sc.asaas_payment_id, sc.subscription_id\nFROM subscription_charges sc\nINNER JOIN subscriptions s ON sc.subscription_id = s.id\nINNER JOIN allowed_clients ac ON s.client_id = ac.id\nWHERE ac.name LIKE '%Lucas%'\n  AND sc.value BETWEEN 900 AND 1000\n  AND sc.due_date BETWEEN '2026-03-01' AND '2026-03-31'\nORDER BY sc.due_date;\n",
+  "rows": [
+    {
+      "id": "390012",
+      "value": "961.46",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "paid",
+      "amount_paid": "0.00",
+      "asaas_payment_id": "pay_n48v19q56k9wdhc9",
+      "subscription_id": "270002"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvalue\tdue_date\tstatus\tamount_paid\tasaas_payment_id\tsubscription_id\n390012\t961.46\t2026-03-15 00:00:00\tpaid\t0.00\tpay_n48v19q56k9wdhc9\t270002\n",
+  "stderr": "",
+  "execution_time_ms": 348
+}

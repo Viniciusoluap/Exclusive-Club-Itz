@@ -1,0 +1,91 @@
+{
+  "query": "\nSELECT sc.id, sc.value, sc.due_date, sc.status, sc.type, sc.subscription_id, ac.name as clientName\nFROM subscription_charges sc\nINNER JOIN subscriptions s ON sc.subscription_id = s.id\nINNER JOIN allowed_clients ac ON s.client_id = ac.id\nWHERE sc.value > 5000\nORDER BY sc.value DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT sc.id, sc.value, sc.due_date, sc.status, sc.type, sc.subscription_id, ac.name as clientName\nFROM subscription_charges sc\nINNER JOIN subscriptions s ON sc.subscription_id = s.id\nINNER JOIN allowed_clients ac ON s.client_id = ac.id\nWHERE sc.value > 5000\nORDER BY sc.value DESC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "id": "450021",
+      "value": "24036.46",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "pending",
+      "type": "NULL",
+      "subscription_id": "240001",
+      "clientName": "LUCAS SANTOS MIRANDA"
+    },
+    {
+      "id": "450022",
+      "value": "24036.46",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "pending",
+      "type": "NULL",
+      "subscription_id": "240002",
+      "clientName": "LUCAS SANTOS MIRANDA"
+    },
+    {
+      "id": "450023",
+      "value": "24036.46",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "pending",
+      "type": "NULL",
+      "subscription_id": "240003",
+      "clientName": "LUCAS SANTOS MIRANDA"
+    },
+    {
+      "id": "142",
+      "value": "22000.00",
+      "due_date": "2025-03-26 00:00:00",
+      "status": "paid",
+      "type": "NULL",
+      "subscription_id": "14",
+      "clientName": "Filippe Augusto Velloso Barbosa Murta"
+    },
+    {
+      "id": "240014",
+      "value": "22000.00",
+      "due_date": "2026-02-26 00:00:00",
+      "status": "pending",
+      "type": "NULL",
+      "subscription_id": "14",
+      "clientName": "Filippe Augusto Velloso Barbosa Murta"
+    },
+    {
+      "id": "450009",
+      "value": "22000.00",
+      "due_date": "2026-03-26 00:00:00",
+      "status": "pending",
+      "type": "NULL",
+      "subscription_id": "14",
+      "clientName": "Filippe Augusto Velloso Barbosa Murta"
+    },
+    {
+      "id": "151",
+      "value": "12000.00",
+      "due_date": "2025-07-31 00:00:00",
+      "status": "paid",
+      "type": "NULL",
+      "subscription_id": "15",
+      "clientName": "Laecio Sousa Silva"
+    },
+    {
+      "id": "240015",
+      "value": "12000.00",
+      "due_date": "2026-03-03 00:00:00",
+      "status": "pending",
+      "type": "NULL",
+      "subscription_id": "15",
+      "clientName": "Laecio Sousa Silva"
+    },
+    {
+      "id": "201",
+      "value": "5400.00",
+      "due_date": "2025-04-15 00:00:00",
+      "status": "paid",
+      "type": "NULL",
+      "subscription_id": "17",
+      "clientName": "Ronaldo Bianchini"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvalue\tdue_date\tstatus\ttype\tsubscription_id\tclientName\n450021\t24036.46\t2026-03-15 00:00:00\tpending\tNULL\t240001\tLUCAS SANTOS MIRANDA\n450022\t24036.46\t2026-03-15 00:00:00\tpending\tNULL\t240002\tLUCAS SANTOS MIRANDA\n450023\t24036.46\t2026-03-15 00:00:00\tpending\tNULL\t240003\tLUCAS SANTOS MIRANDA\n142\t22000.00\t2025-03-26 00:00:00\tpaid\tNULL\t14\tFilippe Augusto Velloso Barbosa Murta\n240014\t22000.00\t2026-02-26 00:00:00\tpending\tNULL\t14\tFilippe Augusto Velloso Barbosa Murta\n450009\t22000.00\t2026-03-26 00:00:00\tpending\tNULL\t14\tFilippe Augusto Velloso Barbosa Murta\n151\t12000.00\t2025-07-31 00:00:00\tpaid\tNULL\t15\tLaecio Sousa Silva\n240015\t12000.00\t2026-03-03 00:00:00\tpending\tNULL\t15\tLaecio Sousa Silva\n201\t5400.00\t2025-04-15 00:00:00\tpaid\tNULL\t17\tRonaldo Bianchini\n",
+  "stderr": "",
+  "execution_time_ms": 364
+}

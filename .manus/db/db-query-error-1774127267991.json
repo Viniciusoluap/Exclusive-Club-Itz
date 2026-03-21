@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT s.id, s.type, s.value, s.installments, s.asaasSubscriptionId, ac.name as clientName\nFROM subscriptions s\nINNER JOIN allowed_clients ac ON s.client_id = ac.id\nWHERE ac.name LIKE '%Lucas%'\nORDER BY s.value DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT s.id, s.type, s.value, s.installments, s.asaasSubscriptionId, ac.name as clientName\nFROM subscriptions s\nINNER JOIN allowed_clients ac ON s.client_id = ac.id\nWHERE ac.name LIKE '%Lucas%'\nORDER BY s.value DESC;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 's.installments' in 'field list'"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "query": "\nSELECT id, value, due_date, status, amount_paid, asaas_payment_id\nFROM subscription_charges\nWHERE id = 390012;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT id, value, due_date, status, amount_paid, asaas_payment_id\nFROM subscription_charges\nWHERE id = 390012;\n",
+  "rows": [
+    {
+      "id": "390012",
+      "value": "961.46",
+      "due_date": "2026-03-15 00:00:00",
+      "status": "partial",
+      "amount_paid": "700.00",
+      "asaas_payment_id": "pay_n48v19q56k9wdhc9"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvalue\tdue_date\tstatus\tamount_paid\tasaas_payment_id\n390012\t961.46\t2026-03-15 00:00:00\tpartial\t700.00\tpay_n48v19q56k9wdhc9\n",
+  "stderr": "",
+  "execution_time_ms": 352
+}
