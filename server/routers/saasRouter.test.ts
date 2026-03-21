@@ -142,3 +142,101 @@ describe("saasRouter", () => {
     });
   });
 });
+
+// ============================================================
+// Testes de lógica de pagamento parcial (sem banco de dados)
+// ============================================================
+describe("partial payment logic", () => {
+  // Simula a lógica central de cálculo de pagamento parcial
+  function calculatePartialPayment(
+    chargeValue: number,
+    currentAmountPaid: number,
+    newPaymentValue: number
+  ) {
+    const newAmountPaid = currentAmountPaid + newPaymentValue;
+    const isPaid = newAmountPaid >= chargeValue;
+    const newStatus = isPaid ? "paid" : "partial";
+    const remaining = chargeValue - newAmountPaid;
+
+    return {
+      newAmountPaid,
+      isPaid,
+      newStatus,
+      remaining: remaining > 0 ? remaining : 0,
+    };
+  }
+
+  it("deve manter status 'partial' quando pagamento parcial não quita o total", () => {
+    // Cobrança de R$ 961,46 - primeiro Pix de R$ 700,00
+    const result = calculatePartialPayment(961.46, 0, 700.00);
+
+    expect(result.isPaid).toBe(false);
+    expect(result.newStatus).toBe("partial");
+    expect(result.newAmountPaid).toBeCloseTo(700.00, 2);
+    expect(result.remaining).toBeCloseTo(261.46, 2);
+  });
+
+  it("deve mudar status para 'paid' quando segundo pagamento completa o valor", () => {
+    // Cobrança de R$ 961,46 - já recebeu R$ 700,00, agora recebe R$ 261,46
+    const result = calculatePartialPayment(961.46, 700.00, 261.46);
+
+    expect(result.isPaid).toBe(true);
+    expect(result.newStatus).toBe("paid");
+    expect(result.newAmountPaid).toBeCloseTo(961.46, 2);
+    expect(result.remaining).toBe(0);
+  });
+
+  it("deve aceitar pagamento que excede o valor da cobrança (overpayment)", () => {
+    // Pagamento maior que o valor da cobrança
+    const result = calculatePartialPayment(961.46, 700.00, 300.00);
+
+    expect(result.isPaid).toBe(true);
+    expect(result.newStatus).toBe("paid");
+    expect(result.remaining).toBe(0); // Não pode ser negativo
+  });
+
+  it("deve calcular saldo restante corretamente após múltiplos pagamentos parciais", () => {
+    // Três pagamentos parciais
+    const step1 = calculatePartialPayment(961.46, 0, 300.00);
+    expect(step1.newStatus).toBe("partial");
+    expect(step1.remaining).toBeCloseTo(661.46, 2);
+
+    const step2 = calculatePartialPayment(961.46, step1.newAmountPaid, 300.00);
+    expect(step2.newStatus).toBe("partial");
+    expect(step2.remaining).toBeCloseTo(361.46, 2);
+
+    const step3 = calculatePartialPayment(961.46, step2.newAmountPaid, 361.46);
+    expect(step3.isPaid).toBe(true);
+    expect(step3.newStatus).toBe("paid");
+    expect(step3.remaining).toBe(0);
+  });
+
+  it("deve retornar status 'paid' para pagamento único que cobre o total", () => {
+    const result = calculatePartialPayment(700.00, 0, 700.00);
+
+    expect(result.isPaid).toBe(true);
+    expect(result.newStatus).toBe("paid");
+    expect(result.remaining).toBe(0);
+  });
+});
+
+describe("getClientPendingCharges - access control", () => {
+  it("deve negar acesso para não-admin", async () => {
+    const { ctx } = createNonAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.saas.getClientPendingCharges({ clientId: 1 })
+    ).rejects.toThrow("You do not have required permission");
+  });
+
+  it("deve permitir admin buscar cobranças pendentes de um cliente", async () => {
+    const { ctx } = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.saas.getClientPendingCharges({ clientId: 999999 });
+    expect(Array.isArray(result)).toBe(true);
+    // Cliente inexistente deve retornar array vazio
+    expect(result.length).toBe(0);
+  });
+});
