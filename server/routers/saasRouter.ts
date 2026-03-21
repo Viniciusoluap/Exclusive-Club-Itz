@@ -1388,4 +1388,204 @@ export const saasRouter = router({
         message: "Cobrança ignorada com sucesso",
       };
     }),
+
+  // ============================================================
+  // SPLIT DE PIX: vincular 1 pagamento a múltiplas cobranças
+  // ============================================================
+  splitPayment: adminProcedure
+    .input(z.object({
+      asaasChargeId: z.string(),           // ID do Pix no Asaas
+      pixValue: z.number(),                // Valor total do Pix
+      splits: z.array(z.object({
+        chargeId: z.number(),              // ID da subscription_charge a quitar
+        amount: z.number(),               // Valor a alocar nesta cobrança
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Validar: soma dos splits não pode exceder o valor do Pix
+      const totalAllocated = input.splits.reduce((sum, s) => sum + s.amount, 0);
+      if (totalAllocated > input.pixValue + 0.01) { // tolância de 1 centavo
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Soma dos valores alocados (R$ ${totalAllocated.toFixed(2)}) excede o valor do Pix (R$ ${input.pixValue.toFixed(2)})`,
+        });
+      }
+
+      const results: Array<{ chargeId: number; status: string; message: string }> = [];
+
+      for (const split of input.splits) {
+        const targetCharges = await db.select()
+          .from(subscriptionCharges)
+          .where(eq(subscriptionCharges.id, split.chargeId))
+          .limit(1);
+
+        if (targetCharges.length === 0) {
+          results.push({ chargeId: split.chargeId, status: "error", message: "Cobrança não encontrada" });
+          continue;
+        }
+
+        const charge = targetCharges[0];
+        const chargeValue = parseFloat(charge.value as string);
+        const currentAmountPaid = parseFloat((charge.amountPaid as string) || '0');
+        const newAmountPaid = currentAmountPaid + split.amount;
+
+        // Atualizar paymentLinks
+        let paymentLinks: string[] = [];
+        try { paymentLinks = charge.paymentLinks ? JSON.parse(charge.paymentLinks as string) : []; } catch { paymentLinks = []; }
+        if (!paymentLinks.includes(input.asaasChargeId)) paymentLinks.push(input.asaasChargeId);
+
+        const isPaid = newAmountPaid >= chargeValue;
+        const newStatus = isPaid ? "paid" : "partial";
+
+        await db.update(subscriptionCharges)
+          .set({
+            status: newStatus,
+            amountPaid: newAmountPaid.toFixed(2),
+            paymentLinks: JSON.stringify(paymentLinks),
+            ...(isPaid ? {
+              asaasPaymentId: input.asaasChargeId,
+              paidDate: new Date().toISOString().split('T')[0],
+            } : {}),
+          })
+          .where(eq(subscriptionCharges.id, split.chargeId));
+
+        const remaining = Math.max(0, chargeValue - newAmountPaid);
+        results.push({
+          chargeId: split.chargeId,
+          status: isPaid ? "paid" : "partial",
+          message: isPaid
+            ? `Quitada (R$ ${newAmountPaid.toFixed(2)})`
+            : `Parcial — Saldo: R$ ${remaining.toFixed(2)}`,
+        });
+      }
+
+      return {
+        success: true,
+        results,
+        totalAllocated,
+        unallocated: Math.max(0, input.pixValue - totalAllocated),
+        message: `${results.filter(r => r.status === 'paid').length} cobrança(s) quitada(s), ${results.filter(r => r.status === 'partial').length} parcial(is)`,
+      };
+    }),
+
+  // ============================================================
+  // AUTO-CLASSIFICAÇÃO: sugerir classificação por descrição/email/valor
+  // ============================================================
+  autoClassifySuggestions: adminProcedure
+    .input(z.object({
+      asaasChargeId: z.string(),
+      description: z.string(),
+      value: z.number(),
+      clientId: z.number().optional(), // 0 = não identificado
+      dueDate: z.string(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const desc_lower = input.description.toLowerCase();
+
+      // 1. Detectar tipo pela descrição
+      let suggestedType: "monthly" | "quota_sale" | "fuel" | "repair" | "other" | null = null;
+      let typeConfidence = 0;
+
+      const fuelKeywords = ['abastecimento', 'combustivel', 'combustível', 'gasolina', 'etanol', 'diesel', 'litro'];
+      const repairKeywords = ['reparo', 'conserto', 'manutenção', 'manutenção', 'revisao', 'revisão', 'dano', 'avaria', 'vistoria'];
+      const quotaKeywords = ['cota', 'quota', 'parcela', 'venda de cota', 'entrada'];
+      const monthlyKeywords = ['mensalidade', 'mensal', 'mensalidade clube', 'taxa mensal'];
+
+      if (fuelKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'fuel'; typeConfidence = 90; }
+      else if (repairKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'repair'; typeConfidence = 85; }
+      else if (quotaKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'quota_sale'; typeConfidence = 80; }
+      else if (monthlyKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'monthly'; typeConfidence = 85; }
+
+      // 2. Buscar cobranças pendentes do cliente que batem com o valor
+      let matchingCharges: Array<{
+        id: number;
+        value: string | number;
+        dueDate: string;
+        status: string;
+        type: string | null;
+        amountPaid: string | number;
+        paymentLinks: string | null;
+        matchScore: number;
+        matchReason: string;
+      }> = [];
+
+      if (input.clientId && input.clientId > 0) {
+        const pendingCharges = await db.select({
+          id: subscriptionCharges.id,
+          dueDate: subscriptionCharges.dueDate,
+          value: subscriptionCharges.value,
+          status: subscriptionCharges.status,
+          type: subscriptions.type,
+          amountPaid: subscriptionCharges.amountPaid,
+          paymentLinks: subscriptionCharges.paymentLinks,
+        })
+          .from(subscriptionCharges)
+          .innerJoin(subscriptions, eq(subscriptionCharges.subscriptionId, subscriptions.id))
+          .where(and(
+            eq(subscriptions.clientId, input.clientId),
+            or(
+              eq(subscriptionCharges.status, 'pending'),
+              eq(subscriptionCharges.status, 'overdue'),
+              eq(subscriptionCharges.status, 'partial'),
+            )
+          ))
+          .orderBy(subscriptionCharges.dueDate);
+
+        for (const pc of pendingCharges) {
+          let score = 0;
+          const reasons: string[] = [];
+          const chargeValue = parseFloat(pc.value as string);
+          const alreadyPaid = parseFloat((pc.amountPaid as string) || '0');
+          const remaining = chargeValue - alreadyPaid;
+
+          // Valor bate exatamente com o saldo restante
+          if (Math.abs(remaining - input.value) < 0.02) { score += 50; reasons.push('valor exato'); }
+          // Valor bate com o total da cobrança
+          else if (Math.abs(chargeValue - input.value) < 0.02) { score += 40; reasons.push('valor total'); }
+          // Valor é parte da cobrança (pagamento parcial possível)
+          else if (input.value < chargeValue && input.value > 0) { score += 20; reasons.push('valor parcial'); }
+
+          // Tipo bate com sugestão de descrição
+          if (suggestedType && pc.type === suggestedType) { score += 30; reasons.push('tipo compatível'); }
+
+          // Vencimento próximo (dentro de 30 dias)
+          const dueDateDiff = Math.abs(new Date(pc.dueDate).getTime() - new Date(input.dueDate).getTime());
+          const daysDiff = dueDateDiff / (1000 * 60 * 60 * 24);
+          if (daysDiff <= 5) { score += 20; reasons.push('vencimento próximo'); }
+          else if (daysDiff <= 30) { score += 10; reasons.push('vencimento no mês'); }
+
+          if (score > 0) {
+            matchingCharges.push({
+              ...pc,
+              matchScore: score,
+              matchReason: reasons.join(', '),
+            });
+          }
+        }
+
+        // Ordenar por score decrescente
+        matchingCharges.sort((a, b) => b.matchScore - a.matchScore);
+      }
+
+      // 3. Determinar confiança geral
+      const bestMatch = matchingCharges[0];
+      const overallConfidence = bestMatch
+        ? Math.min(100, typeConfidence + bestMatch.matchScore)
+        : typeConfidence;
+
+      return {
+        suggestedType,
+        typeConfidence,
+        matchingCharges: matchingCharges.slice(0, 5), // Top 5 sugestões
+        bestMatchChargeId: bestMatch?.id ?? null,
+        overallConfidence,
+        autoClassify: overallConfidence >= 80 && !!suggestedType && !!bestMatch,
+      };
+    }),
 });
