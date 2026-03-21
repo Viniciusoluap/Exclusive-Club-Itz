@@ -11,101 +11,357 @@ import { ArrowLeft, DollarSign, Plus, Pencil, X, RefreshCw, TrendingUp, Trending
 import { useLocation } from "wouter";
 import { formatCurrency } from "@/lib/formatCurrency";
 
-// Componente para listar e classificar cobranças não classificadas
-function UnclassifiedChargesSection() {
-  const [selectedClient, setSelectedClient] = useState<Record<string, number>>({});
-  const [selectedType, setSelectedType] = useState<Record<string, "monthly" | "quota_sale" | "fuel" | "repair" | "other">>({}); 
-  // Vinculação: toggle por asaasChargeId e cobrança selecionada para vincular
-  const [linkMode, setLinkMode] = useState<Record<string, boolean>>({});
-  const [selectedLinkCharge, setSelectedLinkCharge] = useState<Record<string, number>>({});
-  // Nota: as chaves dos dicionários são asaasChargeId (string)
-  
+// Componente para classificar uma cobrança individual (com suporte a split e auto-classificação)
+function UnclassifiedChargeCard({
+  charge,
+  clients,
+  onClassified,
+  onIgnored,
+}: {
+  charge: { asaasChargeId: string; description: string; value: number; dueDate: string; status: string; clientId: number; clientName: string; clientEmail: string; asaasCustomerId: string };
+  clients: Array<{ id: number; name: string; email: string }> | undefined;
+  onClassified: () => void;
+  onIgnored: () => void;
+}) {
+  const pixValue = typeof charge.value === 'string' ? parseFloat(charge.value) : charge.value;
+
+  // Estado local do card
+  const [clientId, setClientId] = useState<number>(charge.clientId || 0);
+  const [type, setType] = useState<"monthly" | "quota_sale" | "fuel" | "repair" | "other" | "">("" as any);
+  const [linkMode, setLinkMode] = useState<"none" | "single" | "split">("none");
+  const [selectedLinkCharge, setSelectedLinkCharge] = useState<number | null>(null);
+
+  // Split: lista de { chargeId, amount }
+  const [splitItems, setSplitItems] = useState<Array<{ chargeId: number; amount: number }>>([]);
+
   const utils = trpc.useUtils();
-  const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery();
-  const { data: clients } = trpc.allowedClients.list.useQuery();
-  
-  // Buscar cobranças pendentes do cliente selecionado (para modo vinculação)
-  const [pendingChargesClientId, setPendingChargesClientId] = useState<number | null>(null);
-  const { data: pendingCharges } = trpc.saas.getClientPendingCharges.useQuery(
-    { clientId: pendingChargesClientId! },
-    { enabled: !!pendingChargesClientId }
+
+  // Auto-sugestões
+  const { data: suggestions } = trpc.saas.autoClassifySuggestions.useQuery(
+    { asaasChargeId: charge.asaasChargeId, description: charge.description, value: pixValue, clientId: clientId || undefined, dueDate: charge.dueDate },
+    { enabled: true }
   );
-  
+
+  // Aplicar sugestão automática ao montar (se confiança alta e cliente identificado)
+  const [suggestionApplied, setSuggestionApplied] = useState(false);
+  useState(() => {
+    if (!suggestionApplied && suggestions?.suggestedType && !type) {
+      setType(suggestions.suggestedType);
+      setSuggestionApplied(true);
+    }
+  });
+
+  // Cobranças pendentes do cliente
+  const { data: pendingCharges } = trpc.saas.getClientPendingCharges.useQuery(
+    { clientId: clientId! },
+    { enabled: clientId > 0 }
+  );
+
   const classifyMutation = trpc.saas.classifyCharge.useMutation({
+    onSuccess: (data) => { toast.success(data.message || "Cobrança classificada!"); onClassified(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const splitMutation = trpc.saas.splitPayment.useMutation({
     onSuccess: (data) => {
-      toast.success(data.message || "Cobrança classificada com sucesso!");
-      utils.saas.listUnclassifiedCharges.invalidate();
-      utils.saas.listCharges.invalidate();
-      utils.saas.getFilteredStats.invalidate();
+      toast.success(data.message || "Split aplicado com sucesso!");
+      // Marcar o Pix como ignorado (já foi distribuído)
+      ignoreMutation.mutate({ unclassifiedChargeId: charge.asaasChargeId });
     },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    onError: (e) => toast.error(e.message),
   });
 
   const ignoreMutation = trpc.saas.ignoreUnclassifiedCharge.useMutation({
-    onSuccess: () => {
-      toast.success("Cobrança ignorada com sucesso!");
-      utils.saas.listUnclassifiedCharges.invalidate();
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
+    onSuccess: () => { onIgnored(); },
+    onError: (e) => toast.error(e.message),
   });
 
-  const handleClassify = (charge: { asaasChargeId: string; value: number; dueDate: string; status: string }) => {
-    const clientId = selectedClient[charge.asaasChargeId];
-    const type = selectedType[charge.asaasChargeId];
-    const isLinkMode = linkMode[charge.asaasChargeId];
-    const linkToChargeId = selectedLinkCharge[charge.asaasChargeId];
+  const handleClientChange = (val: string) => {
+    setClientId(parseInt(val));
+    setSelectedLinkCharge(null);
+    setSplitItems([]);
+  };
 
-    if (!clientId || !type) {
-      toast.error("Selecione cliente e tipo antes de classificar");
-      return;
-    }
-
-    if (isLinkMode && !linkToChargeId) {
-      toast.error("Selecione a cobrança existente para vincular");
-      return;
-    }
-
+  const handleClassify = () => {
+    if (!clientId || !type) { toast.error("Selecione cliente e tipo"); return; }
+    if (linkMode === "single" && !selectedLinkCharge) { toast.error("Selecione a cobrança para vincular"); return; }
     classifyMutation.mutate({
       asaasChargeId: charge.asaasChargeId,
       clientId,
-      type,
-      value: typeof charge.value === 'string' ? parseFloat(charge.value) : charge.value,
+      type: type as any,
+      value: pixValue,
       dueDate: charge.dueDate,
       status: charge.status,
-      linkToChargeId: isLinkMode ? linkToChargeId : undefined,
+      linkToChargeId: linkMode === "single" ? selectedLinkCharge! : undefined,
     });
   };
 
-  const handleIgnore = (asaasChargeId: string) => {
-    ignoreMutation.mutate({ unclassifiedChargeId: asaasChargeId });
+  const handleSplit = () => {
+    if (splitItems.length === 0) { toast.error("Adicione ao menos uma cobrança ao split"); return; }
+    const total = splitItems.reduce((s, i) => s + i.amount, 0);
+    if (total > pixValue + 0.01) { toast.error(`Soma (${formatCurrency(total)}) excede o Pix (${formatCurrency(pixValue)})`); return; }
+    splitMutation.mutate({ asaasChargeId: charge.asaasChargeId, pixValue, splits: splitItems });
   };
 
-  const handleClientChange = (asaasChargeId: string, clientId: number) => {
-    setSelectedClient({ ...selectedClient, [asaasChargeId]: clientId });
-    // Ao trocar cliente, resetar vinculação
-    setSelectedLinkCharge(prev => { const n = {...prev}; delete n[asaasChargeId]; return n; });
-    // Se modo vinculação ativo, atualizar clientId para buscar cobranças pendentes
-    if (linkMode[asaasChargeId]) {
-      setPendingChargesClientId(clientId);
-    }
+  const addSplitItem = (chargeId: number) => {
+    if (splitItems.find(s => s.chargeId === chargeId)) return;
+    const pc = pendingCharges?.find(p => p.id === chargeId);
+    if (!pc) return;
+    const chargeVal = typeof pc.value === 'string' ? parseFloat(pc.value) : pc.value;
+    const alreadyPaid = typeof pc.amountPaid === 'string' ? parseFloat(pc.amountPaid || '0') : (pc.amountPaid || 0);
+    const remaining = chargeVal - alreadyPaid;
+    const allocated = splitItems.reduce((s, i) => s + i.amount, 0);
+    const available = pixValue - allocated;
+    const amount = Math.min(remaining, available);
+    setSplitItems(prev => [...prev, { chargeId, amount }]);
   };
 
-  const handleToggleLinkMode = (asaasChargeId: string, clientId: number | undefined) => {
-    const newMode = !linkMode[asaasChargeId];
-    setLinkMode(prev => ({ ...prev, [asaasChargeId]: newMode }));
-    if (newMode && clientId) {
-      setPendingChargesClientId(clientId);
-    }
+  const updateSplitAmount = (chargeId: number, amount: number) => {
+    setSplitItems(prev => prev.map(s => s.chargeId === chargeId ? { ...s, amount } : s));
+  };
+
+  const removeSplitItem = (chargeId: number) => {
+    setSplitItems(prev => prev.filter(s => s.chargeId !== chargeId));
+  };
+
+  const totalAllocated = splitItems.reduce((s, i) => s + i.amount, 0);
+  const unallocated = pixValue - totalAllocated;
+
+  // Aplicar sugestão de tipo quando suggestions carregam
+  if (suggestions?.suggestedType && !type && !suggestionApplied) {
+    setType(suggestions.suggestedType);
+    setSuggestionApplied(true);
+  }
+
+  return (
+    <div className="p-4 bg-white border rounded-lg space-y-3">
+      {/* Cabeçalho */}
+      <div>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="font-semibold">{charge.clientName || charge.asaasCustomerId}</h3>
+            <p className="text-sm text-muted-foreground">{charge.clientEmail}</p>
+          </div>
+          {suggestions?.autoClassify && (
+            <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 whitespace-nowrap">
+              ✓ Auto-sugerido
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-4 mt-2 text-sm">
+          <span><strong>Descrição:</strong> {charge.description || "Sem descrição"}</span>
+          <span><strong>Valor:</strong> {formatCurrency(pixValue)}</span>
+          <span><strong>Vencimento:</strong> {new Date(charge.dueDate).toLocaleDateString('pt-BR')}</span>
+          <span><strong>Status:</strong> {charge.status}</span>
+        </div>
+        {/* Sugestão de tipo */}
+        {suggestions?.suggestedType && (
+          <div className="mt-2 text-xs text-blue-700 bg-blue-50 rounded px-2 py-1 inline-block">
+            💡 Tipo sugerido: <strong>{{
+              fuel: 'Abastecimento', repair: 'Reparos', quota_sale: 'Venda de Cota', monthly: 'Mensalidade', other: 'Outros'
+            }[suggestions.suggestedType]}</strong> ({suggestions.typeConfidence}% confiança)
+          </div>
+        )}
+      </div>
+
+      {/* Campos de classificação */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <Label>Cliente</Label>
+          <Select value={clientId?.toString() || ""} onValueChange={handleClientChange}>
+            <SelectTrigger><SelectValue placeholder="Selecione cliente" /></SelectTrigger>
+            <SelectContent>
+              {clients?.map((c) => (
+                <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Tipo</Label>
+          <Select value={type} onValueChange={(v: any) => setType(v)}>
+            <SelectTrigger><SelectValue placeholder="Selecione tipo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="monthly">Mensalidade</SelectItem>
+              <SelectItem value="quota_sale">Venda de Cota</SelectItem>
+              <SelectItem value="fuel">Abastecimento</SelectItem>
+              <SelectItem value="repair">Reparos</SelectItem>
+              <SelectItem value="other">Outros</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-end gap-2">
+          {linkMode !== "split" && (
+            <Button onClick={handleClassify} disabled={classifyMutation.isPending} className="flex-1">
+              Classificar
+            </Button>
+          )}
+          {linkMode === "split" && (
+            <Button onClick={handleSplit} disabled={splitMutation.isPending || ignoreMutation.isPending} className="flex-1 bg-orange-600 hover:bg-orange-700">
+              Aplicar Split
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => ignoreMutation.mutate({ unclassifiedChargeId: charge.asaasChargeId })} disabled={ignoreMutation.isPending}>
+            Ignorar
+          </Button>
+        </div>
+      </div>
+
+      {/* Opções de vinculação */}
+      {clientId > 0 && (
+        <div className="border-t pt-3 space-y-2">
+          {/* Toggle: Vincular a 1 cobrança */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id={`link-${charge.asaasChargeId}`}
+              checked={linkMode === "single"}
+              onChange={() => setLinkMode(linkMode === "single" ? "none" : "single")}
+              className="h-4 w-4 cursor-pointer"
+            />
+            <label htmlFor={`link-${charge.asaasChargeId}`} className="text-sm font-medium cursor-pointer text-amber-700">
+              Vincular a cobrança existente (evitar duplicidade)
+            </label>
+          </div>
+
+          {/* Toggle: Split — 1 Pix para múltiplas cobranças */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id={`split-${charge.asaasChargeId}`}
+              checked={linkMode === "split"}
+              onChange={() => { setLinkMode(linkMode === "split" ? "none" : "split"); setSplitItems([]); }}
+              className="h-4 w-4 cursor-pointer"
+            />
+            <label htmlFor={`split-${charge.asaasChargeId}`} className="text-sm font-medium cursor-pointer text-orange-700">
+              Split — distribuir este Pix entre múltiplas cobranças
+            </label>
+          </div>
+
+          {/* Modo: vincular a 1 cobrança */}
+          {linkMode === "single" && (
+            <div className="ml-6">
+              <Label className="text-xs text-muted-foreground">Cobrança pendente para quitar</Label>
+              <Select
+                value={selectedLinkCharge?.toString() || ""}
+                onValueChange={(v) => setSelectedLinkCharge(parseInt(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={pendingCharges ? (pendingCharges.length === 0 ? "Nenhuma cobrança pendente" : "Selecione a cobrança") : "Carregando..."} />
+                </SelectTrigger>
+                <SelectContent>
+                  {pendingCharges?.map((pc) => {
+                    const totalVal = typeof pc.value === 'string' ? parseFloat(pc.value) : pc.value;
+                    const paid = typeof pc.amountPaid === 'string' ? parseFloat(pc.amountPaid || '0') : (pc.amountPaid || 0);
+                    const remaining = totalVal - paid;
+                    return (
+                      <SelectItem key={pc.id} value={pc.id.toString()}>
+                        {formatCurrency(totalVal)} — Venc: {new Date(pc.dueDate).toLocaleDateString('pt-BR')} — {
+                          pc.status === 'partial' ? `🟡 Parcial (Saldo: ${formatCurrency(remaining)})` :
+                          pc.status === 'overdue' ? '⚠️ Vencida' : '⏳ Pendente'
+                        }
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">O valor do Pix será somado ao já recebido. A cobrança só será quitada quando o total atingir o valor da fatura.</p>
+            </div>
+          )}
+
+          {/* Modo: split entre múltiplas cobranças */}
+          {linkMode === "split" && (
+            <div className="ml-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-orange-700">Distribuir {formatCurrency(pixValue)}</p>
+                <span className={`text-xs px-2 py-1 rounded-full ${Math.abs(unallocated) < 0.02 ? 'bg-green-100 text-green-700' : unallocated < 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                  {unallocated >= 0 ? `Saldo livre: ${formatCurrency(unallocated)}` : `Excesso: ${formatCurrency(-unallocated)}`}
+                </span>
+              </div>
+
+              {/* Cobranças já adicionadas ao split */}
+              {splitItems.map((item) => {
+                const pc = pendingCharges?.find(p => p.id === item.chargeId);
+                if (!pc) return null;
+                const totalVal = typeof pc.value === 'string' ? parseFloat(pc.value) : pc.value;
+                return (
+                  <div key={item.chargeId} className="flex items-center gap-2 p-2 bg-orange-50 rounded border border-orange-200">
+                    <div className="flex-1 text-sm">
+                      <span className="font-medium">{formatCurrency(totalVal)}</span>
+                      <span className="text-muted-foreground"> — Venc: {new Date(pc.dueDate).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">Alocar:</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={item.amount}
+                        onChange={(e) => updateSplitAmount(item.chargeId, parseFloat(e.target.value) || 0)}
+                        className="w-24 h-7 text-sm"
+                      />
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeSplitItem(item.chargeId)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                );
+              })}
+
+              {/* Adicionar cobrança ao split */}
+              <div>
+                <Label className="text-xs text-muted-foreground">Adicionar cobrança ao split</Label>
+                <Select onValueChange={(v) => addSplitItem(parseInt(v))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione cobrança pendente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pendingCharges?.filter(pc => !splitItems.find(s => s.chargeId === pc.id)).map((pc) => {
+                      const totalVal = typeof pc.value === 'string' ? parseFloat(pc.value) : pc.value;
+                      const paid = typeof pc.amountPaid === 'string' ? parseFloat(pc.amountPaid || '0') : (pc.amountPaid || 0);
+                      const remaining = totalVal - paid;
+                      return (
+                        <SelectItem key={pc.id} value={pc.id.toString()}>
+                          {formatCurrency(totalVal)} — Venc: {new Date(pc.dueDate).toLocaleDateString('pt-BR')} — {
+                            pc.status === 'partial' ? `🟡 Saldo: ${formatCurrency(remaining)}` :
+                            pc.status === 'overdue' ? '⚠️ Vencida' : '⏳ Pendente'
+                          }
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Cada cobrança receberá o valor alocado. A soma não pode exceder o valor do Pix ({formatCurrency(pixValue)}).
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente para listar e classificar cobranças não classificadas
+function UnclassifiedChargesSection() {
+  const utils = trpc.useUtils();
+  const { data: unclassified, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery();
+  const { data: clients } = trpc.allowedClients.list.useQuery();
+
+  const handleClassified = () => {
+    utils.saas.listUnclassifiedCharges.invalidate();
+    utils.saas.listCharges.invalidate();
+    utils.saas.getFilteredStats.invalidate();
+  };
+
+  const handleIgnored = () => {
+    utils.saas.listUnclassifiedCharges.invalidate();
   };
 
   // Não mostrar se não houver cobranças não classificadas
-  if (!unclassified || unclassified.length === 0) {
-    return null;
-  }
+  if (isLoading) return null;
+  if (!unclassified || unclassified.length === 0) return null;
 
   return (
     <Card className="border-yellow-200 bg-yellow-50">
@@ -115,143 +371,19 @@ function UnclassifiedChargesSection() {
           Cobranças Não Classificadas
         </CardTitle>
         <CardDescription>
-          {unclassified.length} cobrança(s) do Asaas aguardando classificação manual
+          {unclassified.length} cobrança(s) do Asaas aguardando classificação
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {unclassified.map((charge) => (
-            <div
+            <UnclassifiedChargeCard
               key={charge.asaasChargeId}
-              className="p-4 bg-white border rounded-lg space-y-3"
-            >
-              {/* Informações da Cobrança */}
-              <div>
-                <h3 className="font-semibold">{charge.clientName || charge.asaasCustomerId}</h3>
-                <p className="text-sm text-muted-foreground">{charge.clientEmail}</p>
-                <div className="flex flex-wrap gap-4 mt-2 text-sm">
-                  <span>
-                    <strong>Descrição:</strong> {charge.description || "Sem descrição"}
-                  </span>
-                  <span>
-                    <strong>Valor:</strong> {formatCurrency(typeof charge.value === 'string' ? parseFloat(charge.value) : charge.value)}
-                  </span>
-                  <span>
-                    <strong>Vencimento:</strong> {new Date(charge.dueDate).toLocaleDateString('pt-BR')}
-                  </span>
-                  <span>
-                    <strong>Status:</strong> {charge.status}
-                  </span>
-                </div>
-              </div>
-
-              {/* Dropdowns de Classificação */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <Label>Cliente</Label>
-                  <Select
-                    value={selectedClient[charge.asaasChargeId]?.toString() || ""}
-                    onValueChange={(value) => handleClientChange(charge.asaasChargeId, parseInt(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients?.map((client) => (
-                        <SelectItem key={client.id} value={client.id.toString()}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Tipo</Label>
-                  <Select
-                    value={selectedType[charge.asaasChargeId] || ""}
-                    onValueChange={(value: "monthly" | "quota_sale" | "fuel" | "repair" | "other") => setSelectedType({ ...selectedType, [charge.asaasChargeId]: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="monthly">Mensalidade</SelectItem>
-                      <SelectItem value="quota_sale">Venda de Cota</SelectItem>
-                      <SelectItem value="fuel">Abastecimento</SelectItem>
-                      <SelectItem value="repair">Reparos</SelectItem>
-                      <SelectItem value="other">Outros</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end gap-2">
-                  <Button
-                    onClick={() => handleClassify(charge)}
-                    disabled={classifyMutation.isPending}
-                    className="flex-1"
-                  >
-                    Classificar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleIgnore(charge.asaasChargeId)}
-                    disabled={ignoreMutation.isPending}
-                  >
-                    Ignorar
-                  </Button>
-                </div>
-              </div>
-
-              {/* Opção de Vinculação */}
-              {selectedClient[charge.asaasChargeId] && (
-                <div className="border-t pt-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <input
-                      type="checkbox"
-                      id={`link-${charge.asaasChargeId}`}
-                      checked={!!linkMode[charge.asaasChargeId]}
-                      onChange={() => handleToggleLinkMode(charge.asaasChargeId, selectedClient[charge.asaasChargeId])}
-                      className="h-4 w-4 cursor-pointer"
-                    />
-                    <label htmlFor={`link-${charge.asaasChargeId}`} className="text-sm font-medium cursor-pointer text-amber-700">
-                      Vincular a cobrança existente (evitar duplicidade)
-                    </label>
-                  </div>
-                  {linkMode[charge.asaasChargeId] && (
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Cobrança pendente do cliente para quitar</Label>
-                      <Select
-                        value={selectedLinkCharge[charge.asaasChargeId]?.toString() || ""}
-                        onValueChange={(value) => setSelectedLinkCharge(prev => ({ ...prev, [charge.asaasChargeId]: parseInt(value) }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={pendingCharges ? (pendingCharges.length === 0 ? "Nenhuma cobrança pendente" : "Selecione a cobrança") : "Carregando..."} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {pendingCharges?.map((pc) => {
-                            const totalValue = typeof pc.value === 'string' ? parseFloat(pc.value) : pc.value;
-                            const paid = typeof pc.amountPaid === 'string' ? parseFloat(pc.amountPaid || '0') : (pc.amountPaid || 0);
-                            const remaining = totalValue - paid;
-                            const isPartial = pc.status === 'partial';
-                            return (
-                              <SelectItem key={pc.id} value={pc.id.toString()}>
-                                {formatCurrency(totalValue)} — Venc: {new Date(pc.dueDate).toLocaleDateString('pt-BR')} — {
-                                  isPartial
-                                    ? `🟡 Parcial (Saldo: ${formatCurrency(remaining)})`
-                                    : pc.status === 'overdue' ? '⚠️ Vencida' : '⏳ Pendente'
-                                }
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        O valor do Pix será somado ao já recebido. A cobrança só será quitada quando o total atingir o valor da fatura.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+              charge={charge as any}
+              clients={clients}
+              onClassified={handleClassified}
+              onIgnored={handleIgnored}
+            />
           ))}
         </div>
       </CardContent>
