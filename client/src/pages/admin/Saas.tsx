@@ -227,15 +227,25 @@ function UnclassifiedChargesSection() {
                           <SelectValue placeholder={pendingCharges ? (pendingCharges.length === 0 ? "Nenhuma cobrança pendente" : "Selecione a cobrança") : "Carregando..."} />
                         </SelectTrigger>
                         <SelectContent>
-                          {pendingCharges?.map((pc) => (
-                            <SelectItem key={pc.id} value={pc.id.toString()}>
-                              {formatCurrency(typeof pc.value === 'string' ? parseFloat(pc.value) : pc.value)} — Venc: {new Date(pc.dueDate).toLocaleDateString('pt-BR')} — {pc.status === 'overdue' ? '⚠️ Vencida' : '⏳ Pendente'}
-                            </SelectItem>
-                          ))}
+                          {pendingCharges?.map((pc) => {
+                            const totalValue = typeof pc.value === 'string' ? parseFloat(pc.value) : pc.value;
+                            const paid = typeof pc.amountPaid === 'string' ? parseFloat(pc.amountPaid || '0') : (pc.amountPaid || 0);
+                            const remaining = totalValue - paid;
+                            const isPartial = pc.status === 'partial';
+                            return (
+                              <SelectItem key={pc.id} value={pc.id.toString()}>
+                                {formatCurrency(totalValue)} — Venc: {new Date(pc.dueDate).toLocaleDateString('pt-BR')} — {
+                                  isPartial
+                                    ? `🟡 Parcial (Saldo: ${formatCurrency(remaining)})`
+                                    : pc.status === 'overdue' ? '⚠️ Vencida' : '⏳ Pendente'
+                                }
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Ao classificar, a cobrança selecionada será marcada como paga e o Pix será vinculado a ela.
+                        O valor do Pix será somado ao já recebido. A cobrança só será quitada quando o total atingir o valor da fatura.
                       </p>
                     </div>
                   )}
@@ -255,7 +265,7 @@ export default function Saas() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showEditChargeDialog, setShowEditChargeDialog] = useState(false);
   const [editingChargeId, setEditingChargeId] = useState<number | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"pending" | "paid" | "overdue" | "cancelled" | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<"pending" | "paid" | "overdue" | "cancelled" | "partial" | "all">("all");
   const [typeFilters, setTypeFilters] = useState<Array<"monthly" | "quota_sale" | "fuel" | "repair" | "other">>([]); // Filtro B: seleção múltipla
   // Mantém typeFilter para compatibilidade com código legado
   const typeFilter = typeFilters.length === 1 ? typeFilters[0] : "all";
@@ -292,7 +302,7 @@ export default function Saas() {
 
   const utils = trpc.useUtils();
   const { data: charges, isLoading } = trpc.saas.listCharges.useQuery({
-    status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled",
+    status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled" | "partial",
     types: typeFilters.length > 0 ? typeFilters : undefined,
     boatId: boatFilter ? parseInt(boatFilter) : undefined,
     month: monthFilter || undefined,
@@ -302,7 +312,7 @@ export default function Saas() {
   const { data: clients } = trpc.allowedClients.list.useQuery();
   const { data: boats } = trpc.vessels.list.useQuery(); // Buscar lista de embarcações
   const { data: dashboard } = trpc.saas.getFilteredStats.useQuery({
-    status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled",
+    status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled" | "partial",
     types: typeFilters.length > 0 ? typeFilters : undefined,
     boatId: boatFilter ? parseInt(boatFilter) : undefined,
     month: monthFilter || undefined,
@@ -636,6 +646,14 @@ export default function Saas() {
               >
                 Vencidas
               </Button>
+              <Button
+                size="sm"
+                variant={statusFilter === "partial" ? "default" : "outline"}
+                onClick={() => setStatusFilter(statusFilter === "partial" ? "all" : "partial")}
+                className={statusFilter === "partial" ? "" : "border-orange-300 text-orange-700 hover:bg-orange-50"}
+              >
+                Parciais
+              </Button>
             </div>
           </div>
 
@@ -801,11 +819,13 @@ export default function Saas() {
                         item.charge.status === "paid" ? "bg-green-100 text-green-700" :
                         item.charge.status === "pending" ? "bg-yellow-100 text-yellow-700" :
                         item.charge.status === "overdue" ? "bg-red-100 text-red-700" :
+                        item.charge.status === "partial" ? "bg-orange-100 text-orange-700" :
                         "bg-gray-100 text-gray-700"
                       }`}>
                         {item.charge.status === "paid" ? "Paga" :
                          item.charge.status === "pending" ? "Pendente" :
-                         item.charge.status === "overdue" ? "Vencida" : "Cancelada"}
+                         item.charge.status === "overdue" ? "Vencida" :
+                         item.charge.status === "partial" ? "Parcial" : "Cancelada"}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground">{item.client?.email}</p>
@@ -819,6 +839,21 @@ export default function Saas() {
                       <span>
                         <strong>Vencimento:</strong> {new Date(item.charge.dueDate).toLocaleDateString('pt-BR')}
                       </span>
+                      {item.charge.status === "partial" && (() => {
+                        const totalVal = parseFloat(item.charge.value);
+                        const paidVal = parseFloat((item.charge as any).amountPaid || '0');
+                        const remainingVal = totalVal - paidVal;
+                        return (
+                          <>
+                            <span className="text-orange-600">
+                              <strong>Recebido:</strong> {formatCurrency(paidVal)}
+                            </span>
+                            <span className="text-orange-600">
+                              <strong>Saldo:</strong> {formatCurrency(remainingVal)}
+                            </span>
+                          </>
+                        );
+                      })()}
                       {item.charge.paidDate && (
                         <span>
                           <strong>Pago em:</strong> {new Date(item.charge.paidDate).toLocaleDateString('pt-BR')}

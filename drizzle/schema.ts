@@ -288,9 +288,12 @@ export const subscriptionCharges = mysqlTable("subscription_charges", {
 	value: decimal({ precision: 10, scale: 2 }).notNull(),
 	dueDate: timestamp("due_date", { mode: 'string' }).notNull(),
 	paidDate: timestamp("paid_date", { mode: 'string' }),
-	status: mysqlEnum("status", ["pending", "paid", "overdue", "cancelled"]).default("pending").notNull(),
+	status: mysqlEnum("status", ["pending", "paid", "overdue", "cancelled", "partial"]).default("pending").notNull(),
 	type: mysqlEnum("type", ["monthly", "quota_sale", "fuel", "repair", "other"]), // Tipo individual da cobrança (pode ser diferente da subscription)
 	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	// Campos de pagamento parcial
+	amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default('0.00').notNull(),
+	paymentLinks: text("payment_links"), // JSON array de asaasPaymentIds vinculados
 });
 
 export const vessels = mysqlTable("vessels", {

@@ -38,7 +38,7 @@ export const saasRouter = router({
   // Listar cobranças individuais com filtros
   listCharges: adminProcedure
     .input(z.object({
-      status: z.enum(["pending", "paid", "overdue", "cancelled", "all"]).optional().default("all"),
+      status: z.enum(["pending", "paid", "overdue", "cancelled", "partial", "all"]).optional().default("all"),
       type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(), // Filtro por tipo (legado)
       types: z.array(z.enum(["monthly", "quota_sale", "fuel", "repair", "other"])).optional(), // Filtro por múltiplos tipos
       boatId: z.number().optional(), // Filtro por embarcação
@@ -447,7 +447,7 @@ export const saasRouter = router({
   // Dashboard com filtros aplicados
   getFilteredStats: adminProcedure
     .input(z.object({
-      status: z.enum(["pending", "paid", "overdue", "cancelled", "all"]).optional().default("all"),
+      status: z.enum(["pending", "paid", "overdue", "cancelled", "partial", "all"]).optional().default("all"),
       type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(), // Filtro por tipo (legado)
       types: z.array(z.enum(["monthly", "quota_sale", "fuel", "repair", "other"])).optional(), // Filtro por múltiplos tipos
       boatId: z.number().optional(), // Filtro por embarcação
@@ -1054,7 +1054,7 @@ export const saasRouter = router({
     return result;
   }),
 
-  // Buscar cobranças pendentes/vencidas de um cliente para vinculação
+  // Buscar cobranças pendentes/vencidas/parciais de um cliente para vinculação
   getClientPendingCharges: adminProcedure
     .input(z.object({
       clientId: z.number(),
@@ -1070,6 +1070,8 @@ export const saasRouter = router({
         status: subscriptionCharges.status,
         type: subscriptions.type,
         asaasPaymentId: subscriptionCharges.asaasPaymentId,
+        amountPaid: subscriptionCharges.amountPaid,
+        paymentLinks: subscriptionCharges.paymentLinks,
       })
         .from(subscriptionCharges)
         .innerJoin(subscriptions, eq(subscriptionCharges.subscriptionId, subscriptions.id))
@@ -1077,7 +1079,8 @@ export const saasRouter = router({
           eq(subscriptions.clientId, input.clientId),
           or(
             eq(subscriptionCharges.status, "pending"),
-            eq(subscriptionCharges.status, "overdue")
+            eq(subscriptionCharges.status, "overdue"),
+            eq(subscriptionCharges.status, "partial") // Incluir cobranças parcialmente pagas
           )
         ))
         .orderBy(subscriptionCharges.dueDate);
@@ -1118,7 +1121,7 @@ export const saasRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Cobrança já foi classificada" });
       }
 
-      // OPÇÃO 1: Vincular a uma cobrança existente (evita duplicidade)
+      // OPÇÃO 1: Vincular a uma cobrança existente (suporte a pagamento parcial)
       if (input.linkToChargeId) {
         const targetCharge = await db.select()
           .from(subscriptionCharges)
@@ -1129,18 +1132,48 @@ export const saasRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "Cobrança para vincular não encontrada" });
         }
 
-        // Atualizar a cobrança existente: marcar como paga e vincular o asaasPaymentId do Pix
+        const charge = targetCharge[0];
+        const chargeValue = parseFloat(charge.value as string);
+        const currentAmountPaid = parseFloat((charge.amountPaid as string) || '0');
+        const newAmountPaid = currentAmountPaid + input.value;
+
+        // Atualizar lista de paymentLinks (JSON array)
+        let paymentLinks: string[] = [];
+        try {
+          paymentLinks = charge.paymentLinks ? JSON.parse(charge.paymentLinks as string) : [];
+        } catch {
+          paymentLinks = [];
+        }
+        if (!paymentLinks.includes(input.asaasChargeId)) {
+          paymentLinks.push(input.asaasChargeId);
+        }
+
+        // Determinar novo status
+        const isPaid = newAmountPaid >= chargeValue;
+        const newStatus = isPaid ? "paid" : "partial";
+
         await db.update(subscriptionCharges)
           .set({
-            status: "paid",
-            asaasPaymentId: input.asaasChargeId,
-            paidDate: new Date().toISOString().split('T')[0],
+            status: newStatus,
+            amountPaid: newAmountPaid.toFixed(2),
+            paymentLinks: JSON.stringify(paymentLinks),
+            // Só atualiza asaasPaymentId e paidDate quando quitar totalmente
+            ...(isPaid ? {
+              asaasPaymentId: input.asaasChargeId,
+              paidDate: new Date().toISOString().split('T')[0],
+            } : {}),
           })
           .where(eq(subscriptionCharges.id, input.linkToChargeId));
 
+        const remaining = chargeValue - newAmountPaid;
         return {
           success: true,
-          message: "Pagamento vinculado à cobrança existente e marcado como pago",
+          isPaid,
+          newAmountPaid,
+          remaining: remaining > 0 ? remaining : 0,
+          message: isPaid
+            ? `Cobrança quitada! Total recebido: R$ ${newAmountPaid.toFixed(2)}`
+            : `Pagamento parcial registrado. Recebido: R$ ${newAmountPaid.toFixed(2)} de R$ ${chargeValue.toFixed(2)}. Saldo restante: R$ ${remaining.toFixed(2)}`,
         };
       }
 
