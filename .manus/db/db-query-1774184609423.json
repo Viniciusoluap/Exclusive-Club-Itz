@@ -1,0 +1,22 @@
+{
+  "query": "\n-- Desabilitar verificação de chaves estrangeiras temporariamente para o TRUNCATE\nSET FOREIGN_KEY_CHECKS = 0;\n\n-- Apagar todos os registros das tabelas BPO\nTRUNCATE TABLE subscription_charges;\nTRUNCATE TABLE subscriptions;\nTRUNCATE TABLE excluded_asaas_charges;\n\n-- Reabilitar verificação de chaves estrangeiras\nSET FOREIGN_KEY_CHECKS = 1;\n\n-- Confirmar que as tabelas estão vazias\nSELECT 'subscription_charges' as tabela, COUNT(*) as registros FROM subscription_charges\nUNION ALL\nSELECT 'subscriptions', COUNT(*) FROM subscriptions\nUNION ALL\nSELECT 'excluded_asaas_charges', COUNT(*) FROM excluded_asaas_charges;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Desabilitar verificação de chaves estrangeiras temporariamente para o TRUNCATE\nSET FOREIGN_KEY_CHECKS = 0;\n\n-- Apagar todos os registros das tabelas BPO\nTRUNCATE TABLE subscription_charges;\nTRUNCATE TABLE subscriptions;\nTRUNCATE TABLE excluded_asaas_charges;\n\n-- Reabilitar verificação de chaves estrangeiras\nSET FOREIGN_KEY_CHECKS = 1;\n\n-- Confirmar que as tabelas estão vazias\nSELECT 'subscription_charges' as tabela, COUNT(*) as registros FROM subscription_charges\nUNION ALL\nSELECT 'subscriptions', COUNT(*) FROM subscriptions\nUNION ALL\nSELECT 'excluded_asaas_charges', COUNT(*) FROM excluded_asaas_charges;\n",
+  "rows": [
+    {
+      "tabela": "excluded_asaas_charges",
+      "registros": "0"
+    },
+    {
+      "tabela": "subscriptions",
+      "registros": "0"
+    },
+    {
+      "tabela": "subscription_charges",
+      "registros": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "tabela\tregistros\nexcluded_asaas_charges\t0\nsubscriptions\t0\nsubscription_charges\t0\n",
+  "stderr": "",
+  "execution_time_ms": 1968
+}

@@ -1,0 +1,46 @@
+{
+  "query": "\nSELECT 'users' as tabela, COUNT(*) as registros FROM users\nUNION ALL\nSELECT 'allowed_clients', COUNT(*) FROM allowed_clients\nUNION ALL\nSELECT 'bookings', COUNT(*) FROM bookings\nUNION ALL\nSELECT 'fuel_records', COUNT(*) FROM fuel_records\nUNION ALL\nSELECT 'inspections', COUNT(*) FROM inspections\nUNION ALL\nSELECT 'employees', COUNT(*) FROM employees\nUNION ALL\nSELECT 'client_quotas', COUNT(*) FROM client_quotas\nUNION ALL\nSELECT 'asaas_customers', COUNT(*) FROM asaas_customers\nUNION ALL\nSELECT 'asaas_payments', COUNT(*) FROM asaas_payments;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT 'users' as tabela, COUNT(*) as registros FROM users\nUNION ALL\nSELECT 'allowed_clients', COUNT(*) FROM allowed_clients\nUNION ALL\nSELECT 'bookings', COUNT(*) FROM bookings\nUNION ALL\nSELECT 'fuel_records', COUNT(*) FROM fuel_records\nUNION ALL\nSELECT 'inspections', COUNT(*) FROM inspections\nUNION ALL\nSELECT 'employees', COUNT(*) FROM employees\nUNION ALL\nSELECT 'client_quotas', COUNT(*) FROM client_quotas\nUNION ALL\nSELECT 'asaas_customers', COUNT(*) FROM asaas_customers\nUNION ALL\nSELECT 'asaas_payments', COUNT(*) FROM asaas_payments;\n",
+  "rows": [
+    {
+      "tabela": "users",
+      "registros": "24"
+    },
+    {
+      "tabela": "bookings",
+      "registros": "74"
+    },
+    {
+      "tabela": "inspections",
+      "registros": "21"
+    },
+    {
+      "tabela": "allowed_clients",
+      "registros": "44"
+    },
+    {
+      "tabela": "fuel_records",
+      "registros": "28"
+    },
+    {
+      "tabela": "client_quotas",
+      "registros": "454"
+    },
+    {
+      "tabela": "asaas_payments",
+      "registros": "26"
+    },
+    {
+      "tabela": "employees",
+      "registros": "51"
+    },
+    {
+      "tabela": "asaas_customers",
+      "registros": "13"
+    }
+  ],
+  "messages": [],
+  "stdout": "tabela\tregistros\nusers\t24\nbookings\t74\ninspections\t21\nallowed_clients\t44\nfuel_records\t28\nclient_quotas\t454\nasaas_payments\t26\nemployees\t51\nasaas_customers\t13\n",
+  "stderr": "",
+  "execution_time_ms": 357
+}

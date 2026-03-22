@@ -33,6 +33,8 @@ function UnclassifiedChargeCard({
 
   // Split: lista de { chargeId, amount }
   const [splitItems, setSplitItems] = useState<Array<{ chargeId: number; amount: number }>>([]);
+  // Textos dos inputs de split (para aceitar vírgula como separador decimal no mobile)
+  const [splitAmountTexts, setSplitAmountTexts] = useState<Record<number, string>>({});
 
   const utils = trpc.useUtils();
 
@@ -116,12 +118,17 @@ function UnclassifiedChargeCard({
     setSplitItems(prev => [...prev, { chargeId, amount }]);
   };
 
-  const updateSplitAmount = (chargeId: number, amount: number) => {
+  const updateSplitAmount = (chargeId: number, rawText: string) => {
+    // Aceitar vírgula e ponto como separador decimal
+    const normalized = rawText.replace(',', '.');
+    const amount = parseFloat(normalized) || 0;
+    setSplitAmountTexts(prev => ({ ...prev, [chargeId]: rawText }));
     setSplitItems(prev => prev.map(s => s.chargeId === chargeId ? { ...s, amount } : s));
   };
 
   const removeSplitItem = (chargeId: number) => {
     setSplitItems(prev => prev.filter(s => s.chargeId !== chargeId));
+    setSplitAmountTexts(prev => { const n = { ...prev }; delete n[chargeId]; return n; });
   };
 
   const totalAllocated = splitItems.reduce((s, i) => s + i.amount, 0);
@@ -293,11 +300,11 @@ function UnclassifiedChargeCard({
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-muted-foreground">Alocar:</span>
                       <Input
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        value={item.amount}
-                        onChange={(e) => updateSplitAmount(item.chargeId, parseFloat(e.target.value) || 0)}
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={splitAmountTexts[item.chargeId] ?? item.amount.toFixed(2).replace('.', ',')}
+                        onChange={(e) => updateSplitAmount(item.chargeId, e.target.value)}
                         className="w-24 h-7 text-sm"
                       />
                     </div>
