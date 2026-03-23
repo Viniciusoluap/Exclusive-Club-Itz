@@ -1,0 +1,230 @@
+{
+  "query": "\nSELECT sc.id, sc.subscription_id, sc.type, sc.value, sc.amount_paid, sc.status, sc.due_date, sc.asaas_payment_id, sc.payment_links\nFROM subscription_charges sc\nJOIN subscriptions s ON sc.subscription_id = s.id\nJOIN allowed_clients ac ON s.client_id = ac.id\nWHERE LOWER(ac.name) LIKE '%stenio%' OR LOWER(ac.email) LIKE '%stenio%'\nORDER BY sc.due_date DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT sc.id, sc.subscription_id, sc.type, sc.value, sc.amount_paid, sc.status, sc.due_date, sc.asaas_payment_id, sc.payment_links\nFROM subscription_charges sc\nJOIN subscriptions s ON sc.subscription_id = s.id\nJOIN allowed_clients ac ON s.client_id = ac.id\nWHERE LOWER(ac.name) LIKE '%stenio%' OR LOWER(ac.email) LIKE '%stenio%'\nORDER BY sc.due_date DESC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "id": "36",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "475.00",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-12-15 00:00:00",
+      "asaas_payment_id": "pay_he4rlfsoiy6fujcq",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "37",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "475.00",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-11-15 00:00:00",
+      "asaas_payment_id": "pay_s8whohvys4wqbcw0",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "38",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "475.00",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-10-15 00:00:00",
+      "asaas_payment_id": "pay_30cc8aszejwwtyi9",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "39",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "475.00",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-09-15 00:00:00",
+      "asaas_payment_id": "pay_elazhu3ksv8ogb4z",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "40",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "475.00",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-08-15 00:00:00",
+      "asaas_payment_id": "pay_vd89de0y1nprik4b",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "41",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "475.00",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-07-15 00:00:00",
+      "asaas_payment_id": "pay_q68evy3giiaj6isz",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "42",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-06-15 00:00:00",
+      "asaas_payment_id": "pay_fh4d3lhuzpkfrc6k",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "43",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-05-15 00:00:00",
+      "asaas_payment_id": "pay_uq71g4c88roj8mht",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "44",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-04-15 00:00:00",
+      "asaas_payment_id": "pay_heh8ohc13v8u4ika",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "45",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-03-15 00:00:00",
+      "asaas_payment_id": "pay_9m4eb6asufvcggg5",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "46",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-02-15 00:00:00",
+      "asaas_payment_id": "pay_aair3kgh6an01zqk",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "47",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2027-01-15 00:00:00",
+      "asaas_payment_id": "pay_c29cw4rta68gztde",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "48",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2026-12-15 00:00:00",
+      "asaas_payment_id": "pay_xpq1w9m98vlkvztq",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "49",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2026-11-15 00:00:00",
+      "asaas_payment_id": "pay_9yt2svkr7cr99dr6",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "50",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2026-10-15 00:00:00",
+      "asaas_payment_id": "pay_8tqgj2em6d884kcz",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "51",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2026-09-15 00:00:00",
+      "asaas_payment_id": "pay_reha8qdc85c74jpg",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "52",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2026-08-15 00:00:00",
+      "asaas_payment_id": "pay_6pkn3ejy1ylabxq7",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "53",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2026-07-15 00:00:00",
+      "asaas_payment_id": "pay_p226jpyz0nqoarvq",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "54",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2026-06-15 00:00:00",
+      "asaas_payment_id": "pay_afneclv7mfzxfpds",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "55",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2026-05-15 00:00:00",
+      "asaas_payment_id": "pay_jff8ym7g71ciwdqw",
+      "payment_links": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsubscription_id\ttype\tvalue\tamount_paid\tstatus\tdue_date\tasaas_payment_id\tpayment_links\n36\t3\tNULL\t475.00\t0.00\tpending\t2027-12-15 00:00:00\tpay_he4rlfsoiy6fujcq\tNULL\n37\t3\tNULL\t475.00\t0.00\tpending\t2027-11-15 00:00:00\tpay_s8whohvys4wqbcw0\tNULL\n38\t3\tNULL\t475.00\t0.00\tpending\t2027-10-15 00:00:00\tpay_30cc8aszejwwtyi9\tNULL\n39\t3\tNULL\t475.00\t0.00\tpending\t2027-09-15 00:00:00\tpay_elazhu3ksv8ogb4z\tNULL\n40\t3\tNULL\t475.00\t0.00\tpending\t2027-08-15 00:00:00\tpay_vd89de0y1nprik4b\tNULL\n41\t3\tNULL\t475.00\t0.00\tpending\t2027-07-15 00:00:00\tpay_q68evy3giiaj6isz\tNULL\n42\t3\tNULL\t1384.80\t0.00\tpending\t2027-06-15 00:00:00\tpay_fh4d3lhuzpkfrc6k\tNULL\n43\t3\tNULL\t1384.80\t0.00\tpending\t2027-05-15 00:00:00\tpay_uq71g4c88roj8mht\tNULL\n44\t3\tNULL\t1384.80\t0.00\tpending\t2027-04-15 00:00:00\tpay_heh8ohc13v8u4ika\tNULL\n45\t3\tNULL\t1384.80\t0.00\tpending\t2027-03-15 00:00:00\tpay_9m4eb6asufvcggg5\tNULL\n46\t3\tNULL\t1384.80\t0.00\tpending\t2027-02-15 00:00:00\tpay_aair3kgh6an01zqk\tNULL\n47\t3\tNULL\t1384.80\t0.00\tpending\t2027-01-15 00:00:00\tpay_c29cw4rta68gztde\tNULL\n48\t3\tNULL\t1384.80\t0.00\tpending\t2026-12-15 00:00:00\tpay_xpq1w9m98vlkvztq\tNULL\n49\t3\tNULL\t1384.80\t0.00\tpending\t2026-11-15 00:00:00\tpay_9yt2svkr7cr99dr6\tNULL\n50\t3\tNULL\t1384.80\t0.00\tpending\t2026-10-15 00:00:00\tpay_8tqgj2em6d884kcz\tNULL\n51\t3\tNULL\t1384.80\t0.00\tpending\t2026-09-15 00:00:00\tpay_reha8qdc85c74jpg\tNULL\n52\t3\tNULL\t1384.80\t0.00\tpending\t2026-08-15 00:00:00\tpay_6pkn3ejy1ylabxq7\tNULL\n53\t3\tNULL\t1384.80\t0.00\tpending\t2026-07-15 00:00:00\tpay_p226jpyz0nqoarvq\tNULL\n54\t3\tNULL\t1384.80\t0.00\tpending\t2026-06-15 00:00:00\tpay_afneclv7mfzxfpds\tNULL\n55\t3\tNULL\t1384.80\t0.00\tpending\t2026-05-15 00:00:00\tpay_jff8ym7g71ciwdqw\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 350
+}

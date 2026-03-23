@@ -1471,6 +1471,11 @@ export const saasRouter = router({
         });
       }
 
+      // Calcular saldo livre após esta operação
+      const unallocated = Math.max(0, input.pixValue - totalAllocated);
+      // Só marcar o Pix como totalmente classificado quando saldo livre = 0
+      const pixFullyAllocated = unallocated < 0.01;
+
       const results: Array<{ chargeId: number; status: string; message: string }> = [];
 
       for (const split of input.splits) {
@@ -1489,10 +1494,13 @@ export const saasRouter = router({
         const currentAmountPaid = parseFloat((charge.amountPaid as string) || '0');
         const newAmountPaid = currentAmountPaid + split.amount;
 
-        // Atualizar paymentLinks
+        // Só adicionar o Pix ao payment_links da cobrança quando o Pix estiver totalmente alocado
+        // Isso evita que o Pix desapareça da fila de não classificados quando ainda há saldo livre
         let paymentLinks: string[] = [];
         try { paymentLinks = charge.paymentLinks ? JSON.parse(charge.paymentLinks as string) : []; } catch { paymentLinks = []; }
-        if (!paymentLinks.includes(input.asaasChargeId)) paymentLinks.push(input.asaasChargeId);
+        if (pixFullyAllocated && !paymentLinks.includes(input.asaasChargeId)) {
+          paymentLinks.push(input.asaasChargeId);
+        }
 
         const isPaid = newAmountPaid >= chargeValue;
         const newStatus = isPaid ? "paid" : "partial";
@@ -1502,7 +1510,7 @@ export const saasRouter = router({
             status: newStatus,
             amountPaid: newAmountPaid.toFixed(2),
             paymentLinks: JSON.stringify(paymentLinks),
-            ...(isPaid ? {
+            ...(isPaid && pixFullyAllocated ? {
               asaasPaymentId: input.asaasChargeId,
               paidDate: new Date().toISOString().split('T')[0],
             } : {}),
@@ -1523,8 +1531,11 @@ export const saasRouter = router({
         success: true,
         results,
         totalAllocated,
-        unallocated: Math.max(0, input.pixValue - totalAllocated),
-        message: `${results.filter(r => r.status === 'paid').length} cobrança(s) quitada(s), ${results.filter(r => r.status === 'partial').length} parcial(is)`,
+        unallocated,
+        pixFullyAllocated,
+        message: pixFullyAllocated
+          ? `${results.filter(r => r.status === 'paid').length} cobrança(s) quitada(s), ${results.filter(r => r.status === 'partial').length} parcial(is) — Pix totalmente alocado`
+          : `${results.filter(r => r.status === 'paid').length} cobrança(s) quitada(s) — Saldo livre de R$ ${unallocated.toFixed(2)} aguardando alocação`,
       };
     }),
 

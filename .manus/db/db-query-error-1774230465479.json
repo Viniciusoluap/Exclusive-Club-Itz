@@ -1,0 +1,8 @@
+{
+  "query": "\n-- Encontrar cobranças do Stenio com payment_links preenchido (split já aplicado)\nSELECT id, client_id, type, value, amount_paid, status, due_date, asaas_payment_id, payment_links\nFROM subscription_charges\nWHERE client_id IN (\n  SELECT id FROM allowed_clients WHERE LOWER(name) LIKE '%stenio%' OR LOWER(email) LIKE '%stenio%'\n)\nORDER BY due_date DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Encontrar cobranças do Stenio com payment_links preenchido (split já aplicado)\nSELECT id, client_id, type, value, amount_paid, status, due_date, asaas_payment_id, payment_links\nFROM subscription_charges\nWHERE client_id IN (\n  SELECT id FROM allowed_clients WHERE LOWER(name) LIKE '%stenio%' OR LOWER(email) LIKE '%stenio%'\n)\nORDER BY due_date DESC\nLIMIT 20;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 3: Unknown column 'client_id' in 'where clause'"
+  ]
+}

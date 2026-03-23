@@ -1,0 +1,43 @@
+{
+  "query": "\nSELECT sc.id, sc.subscription_id, sc.type, sc.value, sc.amount_paid, sc.status, sc.due_date, sc.asaas_payment_id, sc.payment_links\nFROM subscription_charges sc\nJOIN subscriptions s ON sc.subscription_id = s.id\nJOIN allowed_clients ac ON s.client_id = ac.id\nWHERE (LOWER(ac.name) LIKE '%stenio%' OR LOWER(ac.email) LIKE '%stenio%')\n  AND (sc.due_date < '2026-06-01' OR sc.payment_links IS NOT NULL OR sc.amount_paid > 0 OR sc.status != 'pending')\nORDER BY sc.due_date ASC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT sc.id, sc.subscription_id, sc.type, sc.value, sc.amount_paid, sc.status, sc.due_date, sc.asaas_payment_id, sc.payment_links\nFROM subscription_charges sc\nJOIN subscriptions s ON sc.subscription_id = s.id\nJOIN allowed_clients ac ON s.client_id = ac.id\nWHERE (LOWER(ac.name) LIKE '%stenio%' OR LOWER(ac.email) LIKE '%stenio%')\n  AND (sc.due_date < '2026-06-01' OR sc.payment_links IS NOT NULL OR sc.amount_paid > 0 OR sc.status != 'pending')\nORDER BY sc.due_date ASC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "id": "57",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "909.80",
+      "status": "partial",
+      "due_date": "2026-03-15 00:00:00",
+      "asaas_payment_id": "pay_xq05hemggu7oqiz0",
+      "payment_links": "[\"pay_of260h1db61mm9vc\"]"
+    },
+    {
+      "id": "56",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2026-04-15 00:00:00",
+      "asaas_payment_id": "pay_rw4g82877oy8z3ql",
+      "payment_links": "NULL"
+    },
+    {
+      "id": "55",
+      "subscription_id": "3",
+      "type": "NULL",
+      "value": "1384.80",
+      "amount_paid": "0.00",
+      "status": "pending",
+      "due_date": "2026-05-15 00:00:00",
+      "asaas_payment_id": "pay_jff8ym7g71ciwdqw",
+      "payment_links": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tsubscription_id\ttype\tvalue\tamount_paid\tstatus\tdue_date\tasaas_payment_id\tpayment_links\n57\t3\tNULL\t1384.80\t909.80\tpartial\t2026-03-15 00:00:00\tpay_xq05hemggu7oqiz0\t[\"pay_of260h1db61mm9vc\"]\n56\t3\tNULL\t1384.80\t0.00\tpending\t2026-04-15 00:00:00\tpay_rw4g82877oy8z3ql\tNULL\n55\t3\tNULL\t1384.80\t0.00\tpending\t2026-05-15 00:00:00\tpay_jff8ym7g71ciwdqw\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 349
+}

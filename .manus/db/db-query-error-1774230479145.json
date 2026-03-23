@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT sc.id, sc.subscription_id, sc.type, sc.value, sc.amount_paid, sc.status, sc.due_date, sc.asaas_payment_id, sc.payment_links\nFROM subscription_charges sc\nJOIN subscriptions s ON sc.subscription_id = s.id\nJOIN allowed_clients ac ON s.allowed_client_id = ac.id\nWHERE LOWER(ac.name) LIKE '%stenio%' OR LOWER(ac.email) LIKE '%stenio%'\nORDER BY sc.due_date DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT sc.id, sc.subscription_id, sc.type, sc.value, sc.amount_paid, sc.status, sc.due_date, sc.asaas_payment_id, sc.payment_links\nFROM subscription_charges sc\nJOIN subscriptions s ON sc.subscription_id = s.id\nJOIN allowed_clients ac ON s.allowed_client_id = ac.id\nWHERE LOWER(ac.name) LIKE '%stenio%' OR LOWER(ac.email) LIKE '%stenio%'\nORDER BY sc.due_date DESC\nLIMIT 20;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 's.allowed_client_id' in 'on clause'"
+  ]
+}

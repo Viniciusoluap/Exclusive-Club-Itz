@@ -1,0 +1,17 @@
+{
+  "query": "\n-- Remover o payment_links da cobrança id=57 para que o Pix reapareça na fila\n-- O amount_paid de R$ 909,80 e status 'partial' permanecem corretos\nUPDATE subscription_charges \nSET payment_links = NULL\nWHERE id = 57;\n\n-- Verificar resultado\nSELECT id, value, amount_paid, status, payment_links FROM subscription_charges WHERE id = 57;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Remover o payment_links da cobrança id=57 para que o Pix reapareça na fila\n-- O amount_paid de R$ 909,80 e status 'partial' permanecem corretos\nUPDATE subscription_charges \nSET payment_links = NULL\nWHERE id = 57;\n\n-- Verificar resultado\nSELECT id, value, amount_paid, status, payment_links FROM subscription_charges WHERE id = 57;\n",
+  "rows": [
+    {
+      "id": "57",
+      "value": "1384.80",
+      "amount_paid": "909.80",
+      "status": "partial",
+      "payment_links": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvalue\tamount_paid\tstatus\tpayment_links\n57\t1384.80\t909.80\tpartial\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 962
+}
