@@ -1573,3 +1573,14 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Validar soma contra saldo livre real (não o valor total do Pix)
 - [x] Inserir alocação existente do Pix do Stenio (R$ 909,80 → cobrança id=57) na tabela pix_allocations
 - [x] 25/26 testes passando (1 falha pré-existente: syncWithAsaas timeout)
+
+## 🐛 BUG: Cobranças Não Classificadas (BPO) - Lentidão e Falha
+===============================================================
+
+**Problema:** Lista de cobranças não classificadas falhava ao carregar por fazer chamadas HTTP sequenciais à API Asaas para cada cliente individualmente (N+1 queries).
+
+**Solução:**
+- [x] Criar função `listAllAsaasCharges` no asaasService.ts para buscar todas as cobranças em uma única chamada à API Asaas
+- [x] Reescrever `listUnclassifiedCharges` para usar a nova função (em vez de iterar por cliente)
+- [x] Remover paginação da lista de cobranças não classificadas (exibir tudo em página única)
+- [x] Adicionar cache de 2 minutos no frontend para evitar recargas desnecessárias

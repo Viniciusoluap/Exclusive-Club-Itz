@@ -1015,90 +1015,75 @@ export const saasRouter = router({
       clientName: string;
       clientEmail: string;
       asaasCustomerId: string;
-      allocatedAmount?: number;  // quanto já foi alocado via split
-      freeBalance?: number;      // saldo livre para alocar
-      allocations?: Array<{ subscriptionChargeId: number; amount: number }>; // histórico
+      allocatedAmount?: number;
+      freeBalance?: number;
+      allocations?: Array<{ subscriptionChargeId: number; amount: number }>;
     }> = [];
 
-    // Buscar TODOS os clientes do Asaas com paginação interna
-    let offset = 0;
-    const asaasPageSize = 100;
-    let hasMore = true;
-    let totalAsaasCustomers = 0;
+    // Carregar mapa de clientes Asaas (id -> nome/email) para enriquecer cobranças
+    const asaasCustomerMap = new Map<string, { name: string; email: string }>();
+    let customerOffset = 0;
+    let customerHasMore = true;
+    while (customerHasMore) {
+      const batch = await listAllAsaasCustomers({ limit: 100, offset: customerOffset });
+      if (batch.length === 0) { customerHasMore = false; break; }
+      for (const c of batch) asaasCustomerMap.set(c.id, { name: c.name, email: c.email ?? '' });
+      if (batch.length < 100) customerHasMore = false;
+      customerOffset += 100;
+    }
+
+    // Buscar TODAS as cobranças do Asaas de uma vez (muito mais rápido que iterar por cliente)
+    let chargeOffset = 0;
+    let chargeHasMore = true;
     let totalAsaasCharges = 0;
     let totalExcluded = 0;
     let totalClassified = 0;
 
-    while (hasMore) {
-      const asaasCustomers = await listAllAsaasCustomers({ limit: asaasPageSize, offset });
-      if (asaasCustomers.length === 0) { hasMore = false; break; }
-      totalAsaasCustomers += asaasCustomers.length;
-      if (asaasCustomers.length < asaasPageSize) hasMore = false;
-      offset += asaasPageSize;
+    while (chargeHasMore) {
+      const { charges: batch, hasMore } = await listAllAsaasCharges({ limit: 100, offset: chargeOffset });
+      if (batch.length === 0) { chargeHasMore = false; break; }
+      totalAsaasCharges += batch.length;
+      if (!hasMore || batch.length < 100) chargeHasMore = false;
+      chargeOffset += 100;
 
-      for (const asaasCustomer of asaasCustomers) {
-        try {
-          // Buscar todas as cobranças do cliente no Asaas (com paginação)
-          let chargeOffset = 0;
-          let chargeHasMore = true;
-          while (chargeHasMore) {
-            const charges = await listCustomerCharges(asaasCustomer.id, { limit: 100, offset: chargeOffset });
-            if (charges.length === 0) { chargeHasMore = false; break; }
-            totalAsaasCharges += charges.length;
-            if (charges.length < 100) chargeHasMore = false;
-            chargeOffset += 100;
-
-            for (const charge of charges) {
-              // Pular cobranças canceladas/deletadas — não são relevantes para o BPO
-              if (charge.status === 'DELETED' || charge.status === 'CANCELLED') {
-                totalExcluded++;
-                continue;
-              }
-              // Pular cobranças já vinculadas a outros módulos
-              if (excludedAsaasIds.has(charge.id)) { totalExcluded++; continue; }
-              // Pular cobranças já classificadas no BPO
-              // EXCETO: Pix com alocações parciais (saldo livre > 0) devem permanecer na fila
-              if (classifiedAsaasIds.has(charge.id)) {
-                const allocatedAmt = pixAllocatedMap.get(charge.id) ?? 0;
-                const freeBalance = Math.max(0, charge.value - allocatedAmt);
-                // Se tem saldo livre, mantém na fila
-                if (allocatedAmt === 0 || freeBalance < 0.01) {
-                  totalClassified++;
-                  continue;
-                }
-                // Tem saldo livre — deixa passar para ser incluído na lista
-              }
-
-              // Enriquecer com dados do cliente local, se existir
-              const localClient = localClientByEmail.get((asaasCustomer.email || '').toLowerCase());
-
-              const allocatedAmt = pixAllocatedMap.get(charge.id) ?? 0;
-              const freeBalance = Math.max(0, charge.value - allocatedAmt);
-              // Incluir Pix com alocações parciais (saldo livre > 0) mesmo que esteja em payment_links
-              // Eles já foram filtrados acima pelo classifiedAsaasIds, mas precisamos re-incluir se tiverem saldo
-              result.push({
-                asaasChargeId: charge.id,
-                description: charge.description || 'Sem descrição',
-                value: charge.value,
-                dueDate: charge.dueDate,
-                status: charge.status,
-                clientId: localClient?.id ?? 0,
-                clientName: localClient?.name ?? asaasCustomer.name,
-                clientEmail: localClient?.email ?? asaasCustomer.email ?? '',
-                asaasCustomerId: asaasCustomer.id,
-                allocatedAmount: allocatedAmt > 0 ? allocatedAmt : undefined,
-                freeBalance: allocatedAmt > 0 ? freeBalance : undefined,
-                allocations: pixAllocHistoryMap.get(charge.id),
-              });
-            }
-          }
-        } catch (error) {
-          console.error(`[listUnclassifiedCharges] Erro ao buscar cobranças do cliente ${asaasCustomer.name}:`, error);
+      for (const charge of batch) {
+        // Pular cobranças canceladas/deletadas
+        if (charge.status === 'DELETED' || charge.status === 'CANCELLED') { totalExcluded++; continue; }
+        // Pular cobranças já vinculadas a outros módulos
+        if (excludedAsaasIds.has(charge.id)) { totalExcluded++; continue; }
+        // Pular cobranças já classificadas no BPO
+        // EXCETO: Pix com alocações parciais (saldo livre > 0) devem permanecer na fila
+        if (classifiedAsaasIds.has(charge.id)) {
+          const allocatedAmt = pixAllocatedMap.get(charge.id) ?? 0;
+          const freeBalance = Math.max(0, charge.value - allocatedAmt);
+          if (allocatedAmt === 0 || freeBalance < 0.01) { totalClassified++; continue; }
         }
+
+        // Enriquecer com dados do cliente (do mapa já carregado)
+        const asaasCustomer = asaasCustomerMap.get((charge as any).customer ?? '');
+        const localClient = localClientByEmail.get((asaasCustomer?.email ?? '').toLowerCase());
+
+        const allocatedAmt = pixAllocatedMap.get(charge.id) ?? 0;
+        const freeBalance = Math.max(0, charge.value - allocatedAmt);
+
+        result.push({
+          asaasChargeId: charge.id,
+          description: charge.description || 'Sem descrição',
+          value: charge.value,
+          dueDate: charge.dueDate,
+          status: charge.status,
+          clientId: localClient?.id ?? 0,
+          clientName: localClient?.name ?? asaasCustomer?.name ?? 'Desconhecido',
+          clientEmail: localClient?.email ?? asaasCustomer?.email ?? '',
+          asaasCustomerId: (charge as any).customer ?? '',
+          allocatedAmount: allocatedAmt > 0 ? allocatedAmt : undefined,
+          freeBalance: allocatedAmt > 0 ? freeBalance : undefined,
+          allocations: pixAllocHistoryMap.get(charge.id),
+        });
       }
     }
 
-    console.log(`[listUnclassifiedCharges] Clientes Asaas: ${totalAsaasCustomers} | Cobranças: ${totalAsaasCharges} | Excluídas: ${totalExcluded} | Classificadas: ${totalClassified} | Não classificadas: ${result.length}`);
+    console.log(`[listUnclassifiedCharges] Cobranças Asaas: ${totalAsaasCharges} | Excluídas: ${totalExcluded} | Classificadas: ${totalClassified} | Não classificadas: ${result.length}`);
     
     // Ordenar: RECEIVED primeiro (já pagos aguardando classificação), depois por data de vencimento desc
     result.sort((a, b) => {

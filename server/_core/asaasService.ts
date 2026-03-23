@@ -951,3 +951,46 @@ export async function listAllAsaasCustomers(params?: {
     return [];
   }
 }
+
+/**
+ * Lista TODAS as cobranças do Asaas (sem filtro de cliente)
+ * Muito mais eficiente que iterar cliente por cliente.
+ * Usa paginação interna para buscar todas as páginas.
+ */
+export async function listAllAsaasCharges(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{ charges: AsaasChargeData[]; hasMore: boolean; totalCount: number }> {
+  const apiKey = await getAsaasApiKey();
+  const apiUrl = await getAsaasApiUrl();
+
+  try {
+    const queryParams = new URLSearchParams({
+      limit: String(params?.limit || 100),
+      offset: String(params?.offset || 0),
+    });
+
+    const response = await fetchWithRetry(
+      `${apiUrl}/payments?${queryParams.toString()}`,
+      {
+        method: 'GET',
+        headers: { 'access_token': apiKey },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('[Asaas] Erro ao listar todas as cobranças:', await response.text());
+      return { charges: [], hasMore: false, totalCount: 0 };
+    }
+
+    const data = await response.json();
+    const charges: AsaasChargeData[] = data.data || [];
+    const totalCount: number = data.totalCount ?? charges.length;
+    const hasMore: boolean = data.hasMore ?? false;
+
+    return { charges, hasMore, totalCount };
+  } catch (error) {
+    console.error('[Asaas] Erro ao listar todas as cobranças:', error);
+    return { charges: [], hasMore: false, totalCount: 0 };
+  }
+}
