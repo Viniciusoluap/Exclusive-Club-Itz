@@ -1,0 +1,9 @@
+{
+  "query": "INSERT INTO pix_allocations (asaas_charge_id, subscription_charge_id, amount) VALUES ('pay_of260h1db61mm9vc', 57, '909.80');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute INSERT INTO pix_allocations (asaas_charge_id, subscription_charge_id, amount) VALUES ('pay_of260h1db61mm9vc', 57, '909.80');",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 373
+}

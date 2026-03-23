@@ -1,0 +1,28 @@
+{
+  "query": "SHOW TABLES LIKE 'pix_allocations';\nSELECT * FROM pix_allocations LIMIT 10;\nSELECT id, status, amount_paid, payment_links, asaas_payment_id FROM subscription_charges WHERE id IN (57, 58, 59, 60) OR asaas_payment_id = 'pay_of260h1db61mm9vc' LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SHOW TABLES LIKE 'pix_allocations';\nSELECT * FROM pix_allocations LIMIT 10;\nSELECT id, status, amount_paid, payment_links, asaas_payment_id FROM subscription_charges WHERE id IN (57, 58, 59, 60) OR asaas_payment_id = 'pay_of260h1db61mm9vc' LIMIT 10;",
+  "rows": [
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (pix_allocations)": "pix_allocations"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (pix_allocations)": "id\tstatus\tamount_paid\tpayment_links\tasaas_payment_id"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (pix_allocations)": "57\tpartial\t909.80\tNULL\tpay_of260h1db61mm9vc"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (pix_allocations)": "58\tpending\t0.00\tNULL\tpay_ehyocb70y4u3xoe8"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (pix_allocations)": "59\tpending\t0.00\tNULL\tpay_fthzdisf89vrqy3t"
+    },
+    {
+      "Tables_in_4SVaP8MpsE4tem3Hhe5WES (pix_allocations)": "60\tpending\t0.00\tNULL\tpay_1hszq0sxn8x2thcd"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_4SVaP8MpsE4tem3Hhe5WES (pix_allocations)\npix_allocations\nid\tstatus\tamount_paid\tpayment_links\tasaas_payment_id\n57\tpartial\t909.80\tNULL\tpay_of260h1db61mm9vc\n58\tpending\t0.00\tNULL\tpay_ehyocb70y4u3xoe8\n59\tpending\t0.00\tNULL\tpay_fthzdisf89vrqy3t\n60\tpending\t0.00\tNULL\tpay_1hszq0sxn8x2thcd\n",
+  "stderr": "",
+  "execution_time_ms": 446
+}

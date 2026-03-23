@@ -320,7 +320,7 @@ describe("splitPayment - access control", () => {
 
     await expect(
       caller.saas.splitPayment({
-        asaasChargeId: "pay_test_123",
+        asaasChargeId: "pay_test_no_allocs",
         pixValue: 1000.00,
         splits: [
           { chargeId: 999991, amount: 700.00 },

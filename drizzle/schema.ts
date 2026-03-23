@@ -311,6 +311,19 @@ export const vessels = mysqlTable("vessels", {
 	extraDocumentUrl: text("extra_document_url"),
 });
 
+// Tabela de rastreamento de alocações de split: cada linha = 1 Pix alocado em 1 cobrança
+export const pixAllocations = mysqlTable("pix_allocations", {
+	id: int().autoincrement().notNull(),
+	asaasChargeId: varchar("asaas_charge_id", { length: 255 }).notNull(), // ID do Pix no Asaas
+	subscriptionChargeId: int("subscription_charge_id").notNull(), // ID da subscription_charge
+	amount: decimal({ precision: 10, scale: 2 }).notNull(), // Valor alocado nesta cobrança
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+},
+(table) => [
+	index("pix_alloc_asaas_idx").on(table.asaasChargeId),
+	index("pix_alloc_charge_idx").on(table.subscriptionChargeId),
+]);
+
 export const excludedAsaasCharges = mysqlTable("excluded_asaas_charges", {
 	id: int().autoincrement().notNull(),
 	asaasChargeId: varchar("asaas_charge_id", { length: 255 }).notNull().unique(),

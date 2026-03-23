@@ -1,0 +1,17 @@
+{
+  "query": "\nUPDATE subscription_charges \nSET status = 'partial', \n    amount_paid = 909.80, \n    payment_links = NULL\nWHERE id = 57;\n\nSELECT id, value, amount_paid, status, payment_links FROM subscription_charges WHERE id = 57;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nUPDATE subscription_charges \nSET status = 'partial', \n    amount_paid = 909.80, \n    payment_links = NULL\nWHERE id = 57;\n\nSELECT id, value, amount_paid, status, payment_links FROM subscription_charges WHERE id = 57;\n",
+  "rows": [
+    {
+      "id": "57",
+      "value": "1384.80",
+      "amount_paid": "909.80",
+      "status": "partial",
+      "payment_links": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvalue\tamount_paid\tstatus\tpayment_links\n57\t1384.80\t909.80\tpartial\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 412
+}

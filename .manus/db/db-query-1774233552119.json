@@ -1,0 +1,17 @@
+{
+  "query": "UPDATE subscription_charges SET payment_links = '[\"pay_of260h1db61mm9vc\"]' WHERE id = 57;\nSELECT id, status, amount_paid, payment_links, asaas_payment_id FROM subscription_charges WHERE id = 57;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute UPDATE subscription_charges SET payment_links = '[\"pay_of260h1db61mm9vc\"]' WHERE id = 57;\nSELECT id, status, amount_paid, payment_links, asaas_payment_id FROM subscription_charges WHERE id = 57;",
+  "rows": [
+    {
+      "id": "57",
+      "status": "partial",
+      "amount_paid": "909.80",
+      "payment_links": "[\"pay_of260h1db61mm9vc\"]",
+      "asaas_payment_id": "pay_of260h1db61mm9vc"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tstatus\tamount_paid\tpayment_links\tasaas_payment_id\n57\tpartial\t909.80\t[\"pay_of260h1db61mm9vc\"]\tpay_of260h1db61mm9vc\n",
+  "stderr": "",
+  "execution_time_ms": 401
+}
