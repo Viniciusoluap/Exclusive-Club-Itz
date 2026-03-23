@@ -330,6 +330,13 @@
       "when": 1774125251420,
       "tag": "0046_bizarre_thor_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1774233169395,
+      "tag": "0047_sticky_speed",
+      "breakpoints": true
     }
   ]
 }

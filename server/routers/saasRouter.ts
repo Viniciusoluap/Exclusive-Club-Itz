@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { subscriptions, subscriptionCharges, allowedClients, clientQuotas, fuelRecords, inspectionCharges, excludedAsaasCharges, unclassifiedCharges } from "../../drizzle/schema";
+import { subscriptions, subscriptionCharges, allowedClients, clientQuotas, fuelRecords, inspectionCharges, excludedAsaasCharges, unclassifiedCharges, pixAllocations } from "../../drizzle/schema";
 import { eq, and, or, gte, lte, desc } from "drizzle-orm";
 import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash, cancelCharge, listAllAsaasCustomers } from "../_core/asaasService";
 
@@ -997,6 +997,20 @@ export const saasRouter = router({
     const localClients = await db.select().from(allowedClients);
     const localClientByEmail = new Map(localClients.map(c => [c.email.toLowerCase(), c]));
 
+    // Buscar todas as alocações de Pix existentes (para calcular saldo livre)
+    const allPixAllocs = await db.select().from(pixAllocations);
+    // Mapa: asaasChargeId → total já alocado
+    const pixAllocatedMap = new Map<string, number>();
+    // Mapa: asaasChargeId → lista de alocações (para histórico)
+    const pixAllocHistoryMap = new Map<string, Array<{ subscriptionChargeId: number; amount: number }>>();
+    for (const alloc of allPixAllocs) {
+      const id = alloc.asaasChargeId;
+      const amt = parseFloat(alloc.amount as string);
+      pixAllocatedMap.set(id, (pixAllocatedMap.get(id) ?? 0) + amt);
+      if (!pixAllocHistoryMap.has(id)) pixAllocHistoryMap.set(id, []);
+      pixAllocHistoryMap.get(id)!.push({ subscriptionChargeId: alloc.subscriptionChargeId, amount: amt });
+    }
+
     const result: Array<{
       asaasChargeId: string;
       description: string;
@@ -1007,6 +1021,9 @@ export const saasRouter = router({
       clientName: string;
       clientEmail: string;
       asaasCustomerId: string;
+      allocatedAmount?: number;  // quanto já foi alocado via split
+      freeBalance?: number;      // saldo livre para alocar
+      allocations?: Array<{ subscriptionChargeId: number; amount: number }>; // histórico
     }> = [];
 
     // Buscar TODOS os clientes do Asaas com paginação interna
@@ -1046,11 +1063,25 @@ export const saasRouter = router({
               // Pular cobranças já vinculadas a outros módulos
               if (excludedAsaasIds.has(charge.id)) { totalExcluded++; continue; }
               // Pular cobranças já classificadas no BPO
-              if (classifiedAsaasIds.has(charge.id)) { totalClassified++; continue; }
+              // EXCETO: Pix com alocações parciais (saldo livre > 0) devem permanecer na fila
+              if (classifiedAsaasIds.has(charge.id)) {
+                const allocatedAmt = pixAllocatedMap.get(charge.id) ?? 0;
+                const freeBalance = Math.max(0, charge.value - allocatedAmt);
+                // Se tem saldo livre, mantém na fila
+                if (allocatedAmt === 0 || freeBalance < 0.01) {
+                  totalClassified++;
+                  continue;
+                }
+                // Tem saldo livre — deixa passar para ser incluído na lista
+              }
 
               // Enriquecer com dados do cliente local, se existir
               const localClient = localClientByEmail.get((asaasCustomer.email || '').toLowerCase());
 
+              const allocatedAmt = pixAllocatedMap.get(charge.id) ?? 0;
+              const freeBalance = Math.max(0, charge.value - allocatedAmt);
+              // Incluir Pix com alocações parciais (saldo livre > 0) mesmo que esteja em payment_links
+              // Eles já foram filtrados acima pelo classifiedAsaasIds, mas precisamos re-incluir se tiverem saldo
               result.push({
                 asaasChargeId: charge.id,
                 description: charge.description || 'Sem descrição',
@@ -1061,6 +1092,9 @@ export const saasRouter = router({
                 clientName: localClient?.name ?? asaasCustomer.name,
                 clientEmail: localClient?.email ?? asaasCustomer.email ?? '',
                 asaasCustomerId: asaasCustomer.id,
+                allocatedAmount: allocatedAmt > 0 ? allocatedAmt : undefined,
+                freeBalance: allocatedAmt > 0 ? freeBalance : undefined,
+                allocations: pixAllocHistoryMap.get(charge.id),
               });
             }
           }
@@ -1462,18 +1496,36 @@ export const saasRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      // Validar: soma dos splits não pode exceder o valor do Pix
+      // Verificar alocações já existentes para este Pix
+      const existingAllocations = await db.select()
+        .from(pixAllocations)
+        .where(eq(pixAllocations.asaasChargeId, input.asaasChargeId));
+      const alreadyAllocated = existingAllocations.reduce((sum, a) => sum + parseFloat(a.amount as string), 0);
+
+      // Validar: soma dos splits + já alocado não pode exceder o valor do Pix
       const totalAllocated = input.splits.reduce((sum, s) => sum + s.amount, 0);
-      if (totalAllocated > input.pixValue + 0.01) { // tolância de 1 centavo
+      const grandTotal = alreadyAllocated + totalAllocated;
+      if (grandTotal > input.pixValue + 0.01) { // tolerância de 1 centavo
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: `Soma dos valores alocados (R$ ${totalAllocated.toFixed(2)}) excede o valor do Pix (R$ ${input.pixValue.toFixed(2)})`,
+          message: `Soma total alocada (R$ ${grandTotal.toFixed(2)}) excede o valor do Pix (R$ ${input.pixValue.toFixed(2)})`,
         });
       }
 
+      // Verificar se alguma cobrança já recebeu alocação deste Pix
+      const alreadyAllocatedChargeIds = new Set(existingAllocations.map(a => a.subscriptionChargeId));
+      for (const split of input.splits) {
+        if (alreadyAllocatedChargeIds.has(split.chargeId)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Cobrança #${split.chargeId} já recebeu alocação deste Pix`,
+          });
+        }
+      }
+
       // Calcular saldo livre após esta operação
-      const unallocated = Math.max(0, input.pixValue - totalAllocated);
-      // Só marcar o Pix como totalmente classificado quando saldo livre = 0
+      const unallocated = Math.max(0, input.pixValue - grandTotal);
+      // Marcar o Pix como totalmente classificado quando saldo livre = 0
       const pixFullyAllocated = unallocated < 0.01;
 
       const results: Array<{ chargeId: number; status: string; message: string }> = [];
@@ -1494,15 +1546,21 @@ export const saasRouter = router({
         const currentAmountPaid = parseFloat((charge.amountPaid as string) || '0');
         const newAmountPaid = currentAmountPaid + split.amount;
 
-        // Só adicionar o Pix ao payment_links da cobrança quando o Pix estiver totalmente alocado
-        // Isso evita que o Pix desapareça da fila de não classificados quando ainda há saldo livre
+        // Registrar alocação na tabela pix_allocations
+        await db.insert(pixAllocations).values({
+          asaasChargeId: input.asaasChargeId,
+          subscriptionChargeId: split.chargeId,
+          amount: split.amount.toFixed(2),
+        });
+
+        // Sempre adicionar o Pix ao payment_links da cobrança (para rastreamento)
         let paymentLinks: string[] = [];
         try { paymentLinks = charge.paymentLinks ? JSON.parse(charge.paymentLinks as string) : []; } catch { paymentLinks = []; }
-        if (pixFullyAllocated && !paymentLinks.includes(input.asaasChargeId)) {
+        if (!paymentLinks.includes(input.asaasChargeId)) {
           paymentLinks.push(input.asaasChargeId);
         }
 
-        const isPaid = newAmountPaid >= chargeValue;
+        const isPaid = newAmountPaid >= chargeValue - 0.01;
         const newStatus = isPaid ? "paid" : "partial";
 
         await db.update(subscriptionCharges)
@@ -1510,7 +1568,7 @@ export const saasRouter = router({
             status: newStatus,
             amountPaid: newAmountPaid.toFixed(2),
             paymentLinks: JSON.stringify(paymentLinks),
-            ...(isPaid && pixFullyAllocated ? {
+            ...(isPaid ? {
               asaasPaymentId: input.asaasChargeId,
               paidDate: new Date().toISOString().split('T')[0],
             } : {}),
@@ -1527,10 +1585,24 @@ export const saasRouter = router({
         });
       }
 
+      // Se o Pix foi totalmente alocado, adicioná-lo à lista de excluídos para não reaparecer
+      if (pixFullyAllocated) {
+        const existingExcluded = await db.select()
+          .from(excludedAsaasCharges)
+          .where(eq(excludedAsaasCharges.asaasPaymentId, input.asaasChargeId))
+          .limit(1);
+        if (existingExcluded.length === 0) {
+          await db.insert(excludedAsaasCharges).values({
+            asaasPaymentId: input.asaasChargeId,
+            reason: 'split_fully_allocated',
+          });
+        }
+      }
+
       return {
         success: true,
         results,
-        totalAllocated,
+        totalAllocated: grandTotal,
         unallocated,
         pixFullyAllocated,
         message: pixFullyAllocated

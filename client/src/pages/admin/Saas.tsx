@@ -18,12 +18,27 @@ function UnclassifiedChargeCard({
   onClassified,
   onIgnored,
 }: {
-  charge: { asaasChargeId: string; description: string; value: number; dueDate: string; status: string; clientId: number; clientName: string; clientEmail: string; asaasCustomerId: string };
+  charge: {
+    asaasChargeId: string;
+    description: string;
+    value: number;
+    dueDate: string;
+    status: string;
+    clientId: number;
+    clientName: string;
+    clientEmail: string;
+    asaasCustomerId: string;
+    allocatedAmount?: number;  // quanto já foi alocado via split
+    freeBalance?: number;      // saldo livre para alocar
+    allocations?: Array<{ subscriptionChargeId: number; amount: number }>; // histórico
+  };
   clients: Array<{ id: number; name: string; email: string }> | undefined;
   onClassified: () => void;
   onIgnored: () => void;
 }) {
   const pixValue = typeof charge.value === 'string' ? parseFloat(charge.value) : charge.value;
+  // Saldo livre real (considerando alocações já feitas)
+  const effectiveFreeBalance = charge.freeBalance !== undefined ? charge.freeBalance : pixValue;
 
   // Estado local do card
   const [clientId, setClientId] = useState<number>(charge.clientId || 0);
@@ -67,8 +82,13 @@ function UnclassifiedChargeCard({
   const splitMutation = trpc.saas.splitPayment.useMutation({
     onSuccess: (data) => {
       toast.success(data.message || "Split aplicado com sucesso!");
-      // Marcar o Pix como ignorado (já foi distribuído)
-      ignoreMutation.mutate({ unclassifiedChargeId: charge.asaasChargeId });
+      if (data.pixFullyAllocated) {
+        // Pix totalmente alocado: remover da fila
+        onClassified();
+      } else {
+        // Ainda há saldo livre: recarregar a lista para mostrar o saldo atualizado
+        onIgnored(); // reutilizamos onIgnored para invalidar a query sem remover o card
+      }
     },
     onError: (e) => toast.error(e.message),
   });
@@ -101,7 +121,7 @@ function UnclassifiedChargeCard({
   const handleSplit = () => {
     if (splitItems.length === 0) { toast.error("Adicione ao menos uma cobrança ao split"); return; }
     const total = splitItems.reduce((s, i) => s + i.amount, 0);
-    if (total > pixValue + 0.01) { toast.error(`Soma (${formatCurrency(total)}) excede o Pix (${formatCurrency(pixValue)})`); return; }
+    if (total > effectiveFreeBalance + 0.01) { toast.error(`Soma (${formatCurrency(total)}) excede o saldo livre (${formatCurrency(effectiveFreeBalance)})`); return; }
     splitMutation.mutate({ asaasChargeId: charge.asaasChargeId, pixValue, splits: splitItems });
   };
 
@@ -113,7 +133,8 @@ function UnclassifiedChargeCard({
     const alreadyPaid = typeof pc.amountPaid === 'string' ? parseFloat(pc.amountPaid || '0') : (pc.amountPaid || 0);
     const remaining = chargeVal - alreadyPaid;
     const allocated = splitItems.reduce((s, i) => s + i.amount, 0);
-    const available = pixValue - allocated;
+    // Usar saldo livre real (já descontando alocações anteriores)
+    const available = effectiveFreeBalance - allocated;
     const amount = Math.min(remaining, available);
     setSplitItems(prev => [...prev, { chargeId, amount }]);
   };
@@ -132,7 +153,8 @@ function UnclassifiedChargeCard({
   };
 
   const totalAllocated = splitItems.reduce((s, i) => s + i.amount, 0);
-  const unallocated = pixValue - totalAllocated;
+  // Saldo livre = saldo real disponível - o que está sendo alocado agora
+  const unallocated = effectiveFreeBalance - totalAllocated;
 
   // Aplicar sugestão de tipo quando suggestions carregam
   if (suggestions?.suggestedType && !type && !suggestionApplied) {
@@ -161,12 +183,31 @@ function UnclassifiedChargeCard({
           <span><strong>Vencimento:</strong> {new Date(charge.dueDate).toLocaleDateString('pt-BR')}</span>
           <span><strong>Status:</strong> {charge.status}</span>
         </div>
+        {/* Histórico de alocações parciais */}
+        {charge.allocatedAmount !== undefined && charge.allocatedAmount > 0 && (
+          <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-semibold text-amber-800">Pix com alocações parciais</span>
+              <span className="text-amber-700">Saldo livre: <strong>{formatCurrency(effectiveFreeBalance)}</strong></span>
+            </div>
+            <div className="text-amber-700">
+              Já alocado: {formatCurrency(charge.allocatedAmount)} de {formatCurrency(pixValue)}
+            </div>
+            {charge.allocations && charge.allocations.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                {charge.allocations.map((alloc, idx) => (
+                  <div key={idx} className="text-amber-600">
+                    • Cobrança #{alloc.subscriptionChargeId}: {formatCurrency(alloc.amount)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {/* Sugestão de tipo */}
         {suggestions?.suggestedType && (
           <div className="mt-2 text-xs text-blue-700 bg-blue-50 rounded px-2 py-1 inline-block">
-            💡 Tipo sugerido: <strong>{{
-              fuel: 'Abastecimento', repair: 'Reparos', quota_sale: 'Venda de Cota', monthly: 'Mensalidade', other: 'Outros'
-            }[suggestions.suggestedType]}</strong> ({suggestions.typeConfidence}% confiança)
+            💡 Tipo sugerido: <strong>{suggestions.suggestedType === 'fuel' ? 'Abastecimento' : suggestions.suggestedType === 'repair' ? 'Reparos' : suggestions.suggestedType === 'quota_sale' ? 'Venda de Cota' : suggestions.suggestedType === 'monthly' ? 'Mensalidade' : 'Outros'}</strong> ({suggestions.typeConfidence}% confiança)
           </div>
         )}
       </div>
@@ -280,7 +321,12 @@ function UnclassifiedChargeCard({
           {linkMode === "split" && (
             <div className="ml-6 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-orange-700">Distribuir {formatCurrency(pixValue)}</p>
+                <div>
+                  <p className="text-sm font-medium text-orange-700">Distribuir {formatCurrency(effectiveFreeBalance)}</p>
+                  {charge.allocatedAmount !== undefined && charge.allocatedAmount > 0 && (
+                    <p className="text-xs text-amber-600">Total do Pix: {formatCurrency(pixValue)} | Já alocado: {formatCurrency(charge.allocatedAmount)}</p>
+                  )}
+                </div>
                 <span className={`text-xs px-2 py-1 rounded-full ${Math.abs(unallocated) < 0.02 ? 'bg-green-100 text-green-700' : unallocated < 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
                   {unallocated >= 0 ? `Saldo livre: ${formatCurrency(unallocated)}` : `Excesso: ${formatCurrency(-unallocated)}`}
                 </span>
@@ -327,9 +373,16 @@ function UnclassifiedChargeCard({
                       const totalVal = typeof pc.value === 'string' ? parseFloat(pc.value) : pc.value;
                       const paid = typeof pc.amountPaid === 'string' ? parseFloat(pc.amountPaid || '0') : (pc.amountPaid || 0);
                       const remaining = totalVal - paid;
+                      // Verificar se esta cobrança já recebeu alocação deste Pix
+                      const alreadyAllocatedInThisPix = charge.allocations?.some(a => a.subscriptionChargeId === pc.id);
                       return (
-                        <SelectItem key={pc.id} value={pc.id.toString()}>
-                          {formatCurrency(totalVal)} — Venc: {new Date(pc.dueDate).toLocaleDateString('pt-BR')} — {
+                        <SelectItem
+                          key={pc.id}
+                          value={pc.id.toString()}
+                          disabled={alreadyAllocatedInThisPix}
+                        >
+                          {alreadyAllocatedInThisPix ? '✓ Já alocada: ' : ''}{formatCurrency(totalVal)} — Venc: {new Date(pc.dueDate).toLocaleDateString('pt-BR')} — {
+                            alreadyAllocatedInThisPix ? `Recebeu ${formatCurrency(charge.allocations?.find(a => a.subscriptionChargeId === pc.id)?.amount ?? 0)}` :
                             pc.status === 'partial' ? `🟡 Saldo: ${formatCurrency(remaining)}` :
                             pc.status === 'overdue' ? '⚠️ Vencida' : '⏳ Pendente'
                           }
@@ -339,7 +392,7 @@ function UnclassifiedChargeCard({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Cada cobrança receberá o valor alocado. A soma não pode exceder o valor do Pix ({formatCurrency(pixValue)}).
+                  Cada cobrança receberá o valor alocado. Saldo livre disponível: {formatCurrency(effectiveFreeBalance)}.
                 </p>
               </div>
             </div>

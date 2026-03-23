@@ -1552,3 +1552,24 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Frontend: checkbox "Vincular a cobrança existente (evitar duplicidade)" aparece após selecionar cliente
 - [x] Frontend: select com cobranças pendentes/vencidas do cliente para escolher qual quitar
 - [ ] Salvar checkpoint
+
+## ✅ Sistema de Split de Pix com pix_allocations
+====================================================================================
+
+**Objetivo:** Implementar rastreamento correto de alocações de split na tabela pix_allocations
+
+**Implementações:**
+- [x] Importar pixAllocations no saasRouter.ts
+- [x] Atualizar splitPayment para inserir registros na tabela pix_allocations a cada alocação
+- [x] Validar que a soma das alocações (existentes + novas) não excede o valor do Pix
+- [x] Verificar que cobranças já alocadas neste Pix não recebem nova alocação duplicada
+- [x] Quando Pix totalmente alocado: inserir em excluded_asaas_charges automaticamente
+- [x] Atualizar listUnclassifiedCharges para consultar pix_allocations e calcular saldo livre
+- [x] Pix com alocações parciais (saldo livre > 0) permanecem na fila mesmo estando em payment_links
+- [x] Retornar allocatedAmount, freeBalance e allocations no listUnclassifiedCharges
+- [x] Atualizar frontend (Saas.tsx) para exibir histórico de alocações em banner âmbar
+- [x] Desabilitar no select cobranças que já receberam alocação deste Pix
+- [x] Mostrar saldo livre real (effectiveFreeBalance) no cabeçalho do split
+- [x] Validar soma contra saldo livre real (não o valor total do Pix)
+- [x] Inserir alocação existente do Pix do Stenio (R$ 909,80 → cobrança id=57) na tabela pix_allocations
+- [x] 25/26 testes passando (1 falha pré-existente: syncWithAsaas timeout)
