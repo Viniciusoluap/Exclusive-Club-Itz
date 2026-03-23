@@ -959,14 +959,8 @@ export const saasRouter = router({
 
   // Listar cobranças não classificadas do Asaas
   listUnclassifiedCharges: adminProcedure
-    .input(z.object({
-      page: z.number().min(1).default(1),
-      pageSize: z.number().min(10).max(50).default(20),
-    }).optional())
-    .query(async ({ input }) => {
-    const page = input?.page ?? 1;
-    const pageSize = input?.pageSize ?? 20;
-    console.log(`[listUnclassifiedCharges] Iniciando busca paginada (página ${page}, tamanho ${pageSize})...`);
+    .query(async () => {
+    console.log(`[listUnclassifiedCharges] Iniciando busca completa (sem paginação)...`);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
@@ -1115,16 +1109,10 @@ export const saasRouter = router({
     });
 
     const totalCount = result.length;
-    const totalPages = Math.ceil(totalCount / pageSize);
-    const start = (page - 1) * pageSize;
-    const paginatedResult = result.slice(start, start + pageSize);
 
     return {
-      charges: paginatedResult,
+      charges: result,
       totalCount,
-      totalPages,
-      currentPage: page,
-      pageSize,
     };
   }),
 
