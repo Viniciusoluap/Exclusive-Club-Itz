@@ -406,12 +406,10 @@ function UnclassifiedChargeCard({
 // Componente para listar e classificar cobranças não classificadas
 function UnclassifiedChargesSection() {
   const utils = trpc.useUtils();
-  const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 20;
 
-  const { data: unclassifiedData, isLoading } = trpc.saas.listUnclassifiedCharges.useQuery(
-    { page: currentPage, pageSize: PAGE_SIZE },
-    { keepPreviousData: true }
+  const { data: unclassifiedData, isLoading, error } = trpc.saas.listUnclassifiedCharges.useQuery(
+    undefined,
+    { staleTime: 2 * 60 * 1000, retry: 1 }
   );
   const { data: clients } = trpc.allowedClients.list.useQuery();
 
@@ -429,13 +427,20 @@ function UnclassifiedChargesSection() {
   if (isLoading) return (
     <Card className="border-yellow-200 bg-yellow-50">
       <CardContent className="py-8 text-center text-yellow-700">
-        Carregando cobranças não classificadas...
+        Carregando cobranças não classificadas... (pode levar alguns segundos)
+      </CardContent>
+    </Card>
+  );
+  if (error) return (
+    <Card className="border-red-200 bg-red-50">
+      <CardContent className="py-8 text-center text-red-700">
+        Erro ao carregar cobranças: {error.message}
       </CardContent>
     </Card>
   );
   if (!unclassifiedData || unclassifiedData.totalCount === 0) return null;
 
-  const { charges, totalCount, totalPages } = unclassifiedData;
+  const { charges, totalCount } = unclassifiedData;
 
   return (
     <Card className="border-yellow-200 bg-yellow-50">
@@ -446,7 +451,6 @@ function UnclassifiedChargesSection() {
         </CardTitle>
         <CardDescription>
           {totalCount} cobrança(s) do Asaas aguardando classificação
-          {totalPages > 1 && ` — Página ${currentPage} de ${totalPages}`}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -461,29 +465,7 @@ function UnclassifiedChargesSection() {
             />
           ))}
         </div>
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-yellow-200">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              ← Anterior
-            </Button>
-            <span className="text-sm text-yellow-700">
-              {currentPage} / {totalPages} ({totalCount} total)
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Próxima →
-            </Button>
-          </div>
-        )}
+
       </CardContent>
     </Card>
   );
