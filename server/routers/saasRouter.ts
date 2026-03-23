@@ -684,9 +684,9 @@ export const saasRouter = router({
           const description = asaasCharge.description?.toLowerCase() || "";
           let chargeType: "monthly" | "quota_sale" | null = null;
 
-          if (description.includes("mensalidade") || description.includes("monthly")) {
+          if (description.includes("mensalidade") || description.includes("monthly") || description.includes("taxa mensal") || description.includes("taxa clube")) {
             chargeType = "monthly";
-          } else if (description.includes("cota") || description.includes("quota") || description.includes("venda") || description.includes("parcela")) {
+          } else if (description.includes("cota") || description.includes("quota") || description.includes("venda") || description.includes("parcela") || description.includes("aquisição") || description.includes("aquisicao")) {
             chargeType = "quota_sale";
           }
 
@@ -958,8 +958,15 @@ export const saasRouter = router({
     }),
 
   // Listar cobranças não classificadas do Asaas
-  listUnclassifiedCharges: adminProcedure.query(async () => {
-    console.log('[listUnclassifiedCharges] Iniciando busca COMPLETA de cobranças não classificadas...');
+  listUnclassifiedCharges: adminProcedure
+    .input(z.object({
+      page: z.number().min(1).default(1),
+      pageSize: z.number().min(10).max(50).default(20),
+    }).optional())
+    .query(async ({ input }) => {
+    const page = input?.page ?? 1;
+    const pageSize = input?.pageSize ?? 20;
+    console.log(`[listUnclassifiedCharges] Iniciando busca paginada (página ${page}, tamanho ${pageSize})...`);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
@@ -1002,9 +1009,9 @@ export const saasRouter = router({
       asaasCustomerId: string;
     }> = [];
 
-    // Buscar TODOS os clientes do Asaas com paginação
+    // Buscar TODOS os clientes do Asaas com paginação interna
     let offset = 0;
-    const pageSize = 100;
+    const asaasPageSize = 100;
     let hasMore = true;
     let totalAsaasCustomers = 0;
     let totalAsaasCharges = 0;
@@ -1012,11 +1019,11 @@ export const saasRouter = router({
     let totalClassified = 0;
 
     while (hasMore) {
-      const asaasCustomers = await listAllAsaasCustomers({ limit: pageSize, offset });
+      const asaasCustomers = await listAllAsaasCustomers({ limit: asaasPageSize, offset });
       if (asaasCustomers.length === 0) { hasMore = false; break; }
       totalAsaasCustomers += asaasCustomers.length;
-      if (asaasCustomers.length < pageSize) hasMore = false;
-      offset += pageSize;
+      if (asaasCustomers.length < asaasPageSize) hasMore = false;
+      offset += asaasPageSize;
 
       for (const asaasCustomer of asaasCustomers) {
         try {
@@ -1064,7 +1071,27 @@ export const saasRouter = router({
     }
 
     console.log(`[listUnclassifiedCharges] Clientes Asaas: ${totalAsaasCustomers} | Cobranças: ${totalAsaasCharges} | Excluídas: ${totalExcluded} | Classificadas: ${totalClassified} | Não classificadas: ${result.length}`);
-    return result;
+    
+    // Ordenar: RECEIVED primeiro (já pagos aguardando classificação), depois por data de vencimento desc
+    result.sort((a, b) => {
+      const aReceived = a.status === 'RECEIVED' || a.status === 'CONFIRMED' ? 0 : 1;
+      const bReceived = b.status === 'RECEIVED' || b.status === 'CONFIRMED' ? 0 : 1;
+      if (aReceived !== bReceived) return aReceived - bReceived;
+      return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+    });
+
+    const totalCount = result.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const start = (page - 1) * pageSize;
+    const paginatedResult = result.slice(start, start + pageSize);
+
+    return {
+      charges: paginatedResult,
+      totalCount,
+      totalPages,
+      currentPage: page,
+      pageSize,
+    };
   }),
 
   // Buscar cobranças pendentes/vencidas/parciais de um cliente para vinculação
@@ -1522,10 +1549,10 @@ export const saasRouter = router({
       let suggestedType: "monthly" | "quota_sale" | "fuel" | "repair" | "other" | null = null;
       let typeConfidence = 0;
 
-      const fuelKeywords = ['abastecimento', 'combustivel', 'combustível', 'gasolina', 'etanol', 'diesel', 'litro'];
-      const repairKeywords = ['reparo', 'conserto', 'manutenção', 'manutenção', 'revisao', 'revisão', 'dano', 'avaria', 'vistoria'];
-      const quotaKeywords = ['cota', 'quota', 'parcela', 'venda de cota', 'entrada'];
-      const monthlyKeywords = ['mensalidade', 'mensal', 'mensalidade clube', 'taxa mensal'];
+      const fuelKeywords = ['abastecimento', 'taxa de abastecimento', 'combustivel', 'combustível', 'gasolina', 'etanol', 'diesel', 'litro', 'reabastecimento'];
+      const repairKeywords = ['reparo', 'reparos', 'conserto', 'consertos', 'reforma', 'reformas', 'manutenção', 'manutencao', 'revisao', 'revisão', 'dano', 'danos', 'avaria', 'avarias', 'vistoria', 'vistorias', 'reparo de dano', 'dano embarcação', 'dano embarcacao'];
+      const quotaKeywords = ['cota', 'quota', 'parcela', 'venda de cota', 'entrada', 'aquisição de cota', 'aquisicao de cota'];
+      const monthlyKeywords = ['mensalidade', 'mensal', 'mensalidade clube', 'taxa mensal', 'mensalidade exclusive', 'taxa clube'];
 
       if (fuelKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'fuel'; typeConfidence = 90; }
       else if (repairKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'repair'; typeConfidence = 85; }
