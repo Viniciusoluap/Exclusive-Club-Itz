@@ -3,7 +3,7 @@ import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { subscriptions, subscriptionCharges, allowedClients, clientQuotas, fuelRecords, inspectionCharges, excludedAsaasCharges, unclassifiedCharges, pixAllocations } from "../../drizzle/schema";
 import { eq, and, or, gte, lte, desc } from "drizzle-orm";
-import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash, cancelCharge, listAllAsaasCustomers } from "../_core/asaasService";
+import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash, cancelCharge, listAllAsaasCustomers, listAllAsaasCharges } from "../_core/asaasService";
 
 // Mapear status do Asaas para enum de unclassified_charges
 function mapAsaasStatusToUnclassified(asaasStatus: string): 'pending' | 'paid' | 'overdue' | 'cancelled' {
