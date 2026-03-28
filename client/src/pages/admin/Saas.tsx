@@ -513,7 +513,7 @@ export default function Saas() {
   });
 
   const utils = trpc.useUtils();
-  const { data: charges, isLoading } = trpc.saas.listCharges.useQuery({
+  const { data: charges, isLoading, isError: chargesError } = trpc.saas.listCharges.useQuery({
     status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled" | "partial",
     types: typeFilters.length > 0 ? typeFilters : undefined,
     boatId: boatFilter ? parseInt(boatFilter) : undefined,
@@ -613,7 +613,7 @@ export default function Saas() {
       messages.push(`✅ ${data.syncedCount} cobranças sincronizadas`);
       
       if (data.excludedCount && data.excludedCount > 0) {
-        messages.push(`⛔ ${data.excludedCount} cobranças excluídas (abastecimento/vistorias)`);
+        messages.push(`ℹ️ ${data.excludedCount} cobranças de abastecimento/vistoria ignoradas (já classificadas em outras abas)`);
       }
       
       if (data.unclassifiedCount && data.unclassifiedCount > 0) {
@@ -626,6 +626,7 @@ export default function Saas() {
       
       utils.saas.getFilteredStats.invalidate();
       utils.saas.list.invalidate();
+      utils.saas.listCharges.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -1017,6 +1018,8 @@ export default function Saas() {
         <CardContent>
           {isLoading ? (
             <p className="text-center text-muted-foreground">Carregando...</p>
+          ) : chargesError ? (
+            <p className="text-center text-red-500 py-4">Erro ao carregar cobranças. Tente recarregar a página.</p>
           ) : charges && charges.length > 0 ? (
             <div className="space-y-4">
               {charges.map((item) => (
