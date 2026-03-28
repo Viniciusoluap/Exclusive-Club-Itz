@@ -1,0 +1,17 @@
+{
+  "query": "SELECT \n  (SELECT COUNT(*) FROM subscription_charges) AS total_charges,\n  (SELECT COUNT(*) FROM subscriptions) AS total_subscriptions,\n  (SELECT COUNT(*) FROM allowed_clients WHERE is_active = 1) AS total_clients,\n  (SELECT COUNT(*) FROM excluded_asaas_charges) AS total_excluded,\n  (SELECT COUNT(*) FROM unclassified_charges) AS total_unclassified;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  (SELECT COUNT(*) FROM subscription_charges) AS total_charges,\n  (SELECT COUNT(*) FROM subscriptions) AS total_subscriptions,\n  (SELECT COUNT(*) FROM allowed_clients WHERE is_active = 1) AS total_clients,\n  (SELECT COUNT(*) FROM excluded_asaas_charges) AS total_excluded,\n  (SELECT COUNT(*) FROM unclassified_charges) AS total_unclassified;",
+  "rows": [
+    {
+      "total_charges": "427",
+      "total_subscriptions": "39",
+      "total_clients": "42",
+      "total_excluded": "0",
+      "total_unclassified": "196"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_charges\ttotal_subscriptions\ttotal_clients\ttotal_excluded\ttotal_unclassified\n427\t39\t42\t0\t196\n",
+  "stderr": "",
+  "execution_time_ms": 105
+}

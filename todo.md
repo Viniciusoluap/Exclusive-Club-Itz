@@ -1584,3 +1584,8 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Reescrever `listUnclassifiedCharges` para usar a nova função (em vez de iterar por cliente)
 - [x] Remover paginação da lista de cobranças não classificadas (exibir tudo em página única)
 - [x] Adicionar cache de 2 minutos no frontend para evitar recargas desnecessárias
+
+## 🐛 BUG: BPO - Dois problemas após otimização
+===============================================================
+- [ ] Problema 1: Sincronização marcando 71 cobranças como "excluídas" incorretamente (deveriam ser classificadas)
+- [ ] Problema 2: Lista de cobranças classificadas mostrando 0 registros / não carrega nada
