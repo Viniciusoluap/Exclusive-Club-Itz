@@ -51,9 +51,44 @@ export const saasRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
       let query = db.select({
-        charge: subscriptionCharges,
-        subscription: subscriptions,
-        client: allowedClients,
+        charge: {
+          id: subscriptionCharges.id,
+          subscriptionId: subscriptionCharges.subscriptionId,
+          asaasPaymentId: subscriptionCharges.asaasPaymentId,
+          value: subscriptionCharges.value,
+          dueDate: subscriptionCharges.dueDate,
+          paidDate: subscriptionCharges.paidDate,
+          status: subscriptionCharges.status,
+          type: subscriptionCharges.type,
+          createdAt: subscriptionCharges.createdAt,
+          amountPaid: subscriptionCharges.amountPaid,
+          paymentLinks: subscriptionCharges.paymentLinks,
+        },
+        subscription: {
+          id: subscriptions.id,
+          clientId: subscriptions.clientId,
+          type: subscriptions.type,
+          value: subscriptions.value,
+          dueDay: subscriptions.dueDay,
+          startDate: subscriptions.startDate,
+          endDate: subscriptions.endDate,
+          status: subscriptions.status,
+          yearlyAdjustment: subscriptions.yearlyAdjustment,
+          createdAt: subscriptions.createdAt,
+          updatedAt: subscriptions.updatedAt,
+        },
+        client: {
+          id: allowedClients.id,
+          email: allowedClients.email,
+          name: allowedClients.name,
+          phone: allowedClients.phone,
+          cpfCnpj: allowedClients.cpfCnpj,
+          isActive: allowedClients.isActive,
+          createdAt: allowedClients.createdAt,
+          contractUrl: allowedClients.contractUrl,
+          contract2Url: allowedClients.contract2Url,
+          documentUrl: allowedClients.documentUrl,
+        },
       })
       .from(subscriptionCharges)
       .leftJoin(subscriptions, eq(subscriptionCharges.subscriptionId, subscriptions.id))
@@ -1605,10 +1640,31 @@ export const saasRouter = router({
       let suggestedType: "monthly" | "quota_sale" | "fuel" | "repair" | "other" | null = null;
       let typeConfidence = 0;
 
-      const fuelKeywords = ['abastecimento', 'taxa de abastecimento', 'combustivel', 'combustível', 'gasolina', 'etanol', 'diesel', 'litro', 'reabastecimento'];
-      const repairKeywords = ['reparo', 'reparos', 'conserto', 'consertos', 'reforma', 'reformas', 'manutenção', 'manutencao', 'revisao', 'revisão', 'dano', 'danos', 'avaria', 'avarias', 'vistoria', 'vistorias', 'reparo de dano', 'dano embarcação', 'dano embarcacao'];
-      const quotaKeywords = ['cota', 'quota', 'parcela', 'venda de cota', 'entrada', 'aquisição de cota', 'aquisicao de cota'];
-      const monthlyKeywords = ['mensalidade', 'mensal', 'mensalidade clube', 'taxa mensal', 'mensalidade exclusive', 'taxa clube'];
+      const fuelKeywords = [
+        'abastecimento', 'taxa de abastecimento', 'taxa abastecimento', 'abast',
+        'combustivel', 'combustível', 'gasolina', 'etanol', 'diesel',
+        'litro', 'litros', 'reabastecimento', 'abastec'
+      ];
+      const repairKeywords = [
+        'reparo', 'reparos', 'conserto', 'consertos', 'reforma', 'reformas',
+        'manutenção', 'manutencao', 'revisao', 'revisão', 'dano', 'danos',
+        'avaria', 'avarias', 'vistoria', 'vistorias', 'inspecao', 'inspeção',
+        'reparo de dano', 'dano embarcação', 'dano embarcacao',
+        'serviço técnico', 'servico tecnico', 'serviço', 'servico',
+        'peça', 'peca', 'troca de peça', 'troca de peca', 'motor',
+        'limpeza', 'higienização', 'higienizacao'
+      ];
+      const quotaKeywords = [
+        'cota', 'quota', 'parcela', 'venda de cota', 'venda cota',
+        'entrada', 'aquisição de cota', 'aquisicao de cota',
+        'compra de cota', 'compra cota', 'sinal', 'sinal cota',
+        'transferência de cota', 'transferencia de cota'
+      ];
+      const monthlyKeywords = [
+        'mensalidade', 'mensal', 'mensalidade clube', 'taxa mensal',
+        'mensalidade exclusive', 'taxa clube', 'mensalidade exclusive club',
+        'mensalidade do clube', 'taxa de uso', 'taxa uso', 'taxa mensal clube'
+      ];
 
       if (fuelKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'fuel'; typeConfidence = 90; }
       else if (repairKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'repair'; typeConfidence = 85; }
