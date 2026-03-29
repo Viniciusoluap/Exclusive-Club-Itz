@@ -1,0 +1,26 @@
+{
+  "query": "\n-- Verificação final\nSELECT 'allowed_clients' as tabela, COUNT(*) as testes_restantes FROM allowed_clients \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%' OR LOWER(name) = 'new client'\nUNION ALL\nSELECT 'employees', COUNT(*) FROM employees \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%'\nUNION ALL\nSELECT 'users', COUNT(*) FROM users \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%' OR LOWER(email) LIKE '%test%'\nUNION ALL\nSELECT 'bookings', COUNT(*) FROM bookings \nWHERE LOWER(client_name) LIKE '%teste%' OR LOWER(client_name) LIKE '%test%';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificação final\nSELECT 'allowed_clients' as tabela, COUNT(*) as testes_restantes FROM allowed_clients \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%' OR LOWER(name) = 'new client'\nUNION ALL\nSELECT 'employees', COUNT(*) FROM employees \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%'\nUNION ALL\nSELECT 'users', COUNT(*) FROM users \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%' OR LOWER(email) LIKE '%test%'\nUNION ALL\nSELECT 'bookings', COUNT(*) FROM bookings \nWHERE LOWER(client_name) LIKE '%teste%' OR LOWER(client_name) LIKE '%test%';\n",
+  "rows": [
+    {
+      "tabela": "bookings",
+      "testes_restantes": "0"
+    },
+    {
+      "tabela": "employees",
+      "testes_restantes": "0"
+    },
+    {
+      "tabela": "users",
+      "testes_restantes": "0"
+    },
+    {
+      "tabela": "allowed_clients",
+      "testes_restantes": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "tabela\ttestes_restantes\nbookings\t0\nemployees\t0\nusers\t0\nallowed_clients\t0\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

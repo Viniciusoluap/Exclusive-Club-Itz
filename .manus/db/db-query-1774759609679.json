@@ -1,0 +1,165 @@
+{
+  "query": "\n-- Clientes de teste\nSELECT 'allowed_clients' as tabela, id, name as identificador FROM allowed_clients \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%' OR LOWER(email) LIKE '%teste%' OR LOWER(email) LIKE '%test%';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Clientes de teste\nSELECT 'allowed_clients' as tabela, id, name as identificador FROM allowed_clients \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%' OR LOWER(email) LIKE '%teste%' OR LOWER(email) LIKE '%test%';\n",
+  "rows": [
+    {
+      "tabela": "allowed_clients",
+      "id": "3060001",
+      "identificador": "Cliente Teste Cobrança"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060002",
+      "identificador": "Cliente Teste Duplicado"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060003",
+      "identificador": "Cliente Teste Automático"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060004",
+      "identificador": "Cliente Teste Cobrança"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060005",
+      "identificador": "Cliente Teste Duplicado"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060006",
+      "identificador": "Cliente Teste Automático"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060007",
+      "identificador": "Test Client"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060008",
+      "identificador": "Test Client"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060009",
+      "identificador": "Test Company"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060010",
+      "identificador": "Test Client without CPF"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060011",
+      "identificador": "Test Client with CPF"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060012",
+      "identificador": "Teste"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060013",
+      "identificador": "Cliente Teste Cobrança"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060014",
+      "identificador": "Cliente Teste"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060015",
+      "identificador": "Cliente Teste Cobrança"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060016",
+      "identificador": "Cliente Teste Duplicado"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060017",
+      "identificador": "Cliente Teste Automático"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060031",
+      "identificador": "Test Client Monday"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060032",
+      "identificador": "Test Client"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060033",
+      "identificador": "New Client"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060034",
+      "identificador": "Test Multi Quota"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060039",
+      "identificador": "Test Owner Create"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060040",
+      "identificador": "Cliente Teste Cobrança"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060041",
+      "identificador": "Test Client Monday"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060042",
+      "identificador": "Test Client"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060043",
+      "identificador": "Cliente Teste Duplicado"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060044",
+      "identificador": "Cliente Teste Automático"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3060045",
+      "identificador": "Test Multi Quota"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3090001",
+      "identificador": "Cliente Teste Cobrança"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3090002",
+      "identificador": "Cliente Teste Duplicado"
+    },
+    {
+      "tabela": "allowed_clients",
+      "id": "3090003",
+      "identificador": "Cliente Teste Automático"
+    }
+  ],
+  "messages": [],
+  "stdout": "tabela\tid\tidentificador\nallowed_clients\t3060001\tCliente Teste Cobrança\nallowed_clients\t3060002\tCliente Teste Duplicado\nallowed_clients\t3060003\tCliente Teste Automático\nallowed_clients\t3060004\tCliente Teste Cobrança\nallowed_clients\t3060005\tCliente Teste Duplicado\nallowed_clients\t3060006\tCliente Teste Automático\nallowed_clients\t3060007\tTest Client\nallowed_clients\t3060008\tTest Client\nallowed_clients\t3060009\tTest Company\nallowed_clients\t3060010\tTest Client without CPF\nallowed_clients\t3060011\tTest Client with CPF\nallowed_clients\t3060012\tTeste\nallowed_clients\t3060013\tCliente Teste Cobrança\nallowed_clients\t3060014\tCliente Teste\nallowed_clients\t3060015\tCliente Teste Cobrança\nallowed_clients\t3060016\tCliente Teste Duplicado\nallowed_clients\t3060017\tCliente Teste Automático\nallowed_clients\t3060031\tTest Client Monday\nallowed_clients\t3060032\tTest Client\nallowed_clients\t3060033\tNew Client\nallowed_clients\t3060034\tTest Multi Quota\nallowed_clients\t3060039\tTest Owner Create\nallowed_clients\t3060040\tCliente Teste Cobrança\nallowed_clients\t3060041\tTest Client Monday\nallowed_clients\t3060042\tTest Client\nallowed_clients\t3060043\tCliente Teste Duplicado\nallowed_clients\t3060044\tCliente Teste Automático\nallowed_clients\t3060045\tTest Multi Quota\nallowed_clients\t3090001\tCliente Teste Cobrança\nallowed_clients\t3090002\tCliente Teste Duplicado\nallowed_clients\t3090003\tCliente Teste Automático\n",
+  "stderr": "",
+  "execution_time_ms": 61
+}

@@ -1,0 +1,9 @@
+{
+  "query": "\n-- 1. Excluir bookings de teste (por client_email)\nDELETE FROM bookings \nWHERE LOWER(client_email) LIKE '%teste%' OR LOWER(client_email) LIKE '%test%'\n   OR LOWER(client_name) LIKE '%teste%' OR LOWER(client_name) LIKE '%test%';\n\n-- 2. Excluir funcionários de teste\nDELETE FROM employees \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%';\n\n-- 3. Excluir usuários de teste\nDELETE FROM users \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%'\n   OR LOWER(email) LIKE '%teste%' OR LOWER(email) LIKE '%test%';\n\n-- 4. Excluir clientes de teste (sem dependências)\nDELETE FROM allowed_clients \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%' \n   OR LOWER(email) LIKE '%teste%' OR LOWER(email) LIKE '%test%'\n   OR LOWER(name) = 'new client';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- 1. Excluir bookings de teste (por client_email)\nDELETE FROM bookings \nWHERE LOWER(client_email) LIKE '%teste%' OR LOWER(client_email) LIKE '%test%'\n   OR LOWER(client_name) LIKE '%teste%' OR LOWER(client_name) LIKE '%test%';\n\n-- 2. Excluir funcionários de teste\nDELETE FROM employees \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%';\n\n-- 3. Excluir usuários de teste\nDELETE FROM users \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%'\n   OR LOWER(email) LIKE '%teste%' OR LOWER(email) LIKE '%test%';\n\n-- 4. Excluir clientes de teste (sem dependências)\nDELETE FROM allowed_clients \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%' \n   OR LOWER(email) LIKE '%teste%' OR LOWER(email) LIKE '%test%'\n   OR LOWER(name) = 'new client';\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 94
+}

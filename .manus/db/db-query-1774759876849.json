@@ -1,0 +1,50 @@
+{
+  "query": "\nSELECT 'inspection_charges' as tabela, COUNT(*) as restantes FROM inspection_charges \nWHERE LOWER(client_email) LIKE '%test%' OR LOWER(vessel_name) LIKE '%test%'\nUNION ALL\nSELECT 'fuel_records', COUNT(*) FROM fuel_records \nWHERE LOWER(vessel_name) LIKE '%test%' OR LOWER(client_email) LIKE '%test%'\nUNION ALL\nSELECT 'inspections', COUNT(*) FROM inspections \nWHERE LOWER(vessel_name) LIKE '%test%' OR LOWER(client_email) LIKE '%test%' OR LOWER(client_name) LIKE '%test%'\nUNION ALL\nSELECT 'reviews', COUNT(*) FROM reviews \nWHERE LOWER(client_email) LIKE '%test%' OR LOWER(client_name) LIKE '%test%'\nUNION ALL\nSELECT 'maintenances', COUNT(*) FROM maintenances \nWHERE LOWER(vessel_name) LIKE '%test%' OR LOWER(description) LIKE '%test%'\nUNION ALL\nSELECT 'asaas_customers', COUNT(*) FROM asaas_customers \nWHERE LOWER(client_email) LIKE '%test%' OR LOWER(name) LIKE '%test%'\nUNION ALL\nSELECT 'bookings', COUNT(*) FROM bookings \nWHERE LOWER(vessel_name) LIKE '%test%' OR LOWER(client_name) LIKE '%test%' OR LOWER(client_email) LIKE '%test%'\nUNION ALL\nSELECT 'allowed_clients', COUNT(*) FROM allowed_clients \nWHERE LOWER(name) LIKE '%test%' OR LOWER(email) LIKE '%test%'\nUNION ALL\nSELECT 'employees', COUNT(*) FROM employees \nWHERE LOWER(name) LIKE '%test%'\nUNION ALL\nSELECT 'users', COUNT(*) FROM users \nWHERE LOWER(name) LIKE '%test%' OR LOWER(email) LIKE '%test%';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT 'inspection_charges' as tabela, COUNT(*) as restantes FROM inspection_charges \nWHERE LOWER(client_email) LIKE '%test%' OR LOWER(vessel_name) LIKE '%test%'\nUNION ALL\nSELECT 'fuel_records', COUNT(*) FROM fuel_records \nWHERE LOWER(vessel_name) LIKE '%test%' OR LOWER(client_email) LIKE '%test%'\nUNION ALL\nSELECT 'inspections', COUNT(*) FROM inspections \nWHERE LOWER(vessel_name) LIKE '%test%' OR LOWER(client_email) LIKE '%test%' OR LOWER(client_name) LIKE '%test%'\nUNION ALL\nSELECT 'reviews', COUNT(*) FROM reviews \nWHERE LOWER(client_email) LIKE '%test%' OR LOWER(client_name) LIKE '%test%'\nUNION ALL\nSELECT 'maintenances', COUNT(*) FROM maintenances \nWHERE LOWER(vessel_name) LIKE '%test%' OR LOWER(description) LIKE '%test%'\nUNION ALL\nSELECT 'asaas_customers', COUNT(*) FROM asaas_customers \nWHERE LOWER(client_email) LIKE '%test%' OR LOWER(name) LIKE '%test%'\nUNION ALL\nSELECT 'bookings', COUNT(*) FROM bookings \nWHERE LOWER(vessel_name) LIKE '%test%' OR LOWER(client_name) LIKE '%test%' OR LOWER(client_email) LIKE '%test%'\nUNION ALL\nSELECT 'allowed_clients', COUNT(*) FROM allowed_clients \nWHERE LOWER(name) LIKE '%test%' OR LOWER(email) LIKE '%test%'\nUNION ALL\nSELECT 'employees', COUNT(*) FROM employees \nWHERE LOWER(name) LIKE '%test%'\nUNION ALL\nSELECT 'users', COUNT(*) FROM users \nWHERE LOWER(name) LIKE '%test%' OR LOWER(email) LIKE '%test%';\n",
+  "rows": [
+    {
+      "tabela": "fuel_records",
+      "restantes": "0"
+    },
+    {
+      "tabela": "reviews",
+      "restantes": "0"
+    },
+    {
+      "tabela": "maintenances",
+      "restantes": "0"
+    },
+    {
+      "tabela": "inspection_charges",
+      "restantes": "0"
+    },
+    {
+      "tabela": "inspections",
+      "restantes": "0"
+    },
+    {
+      "tabela": "employees",
+      "restantes": "0"
+    },
+    {
+      "tabela": "asaas_customers",
+      "restantes": "0"
+    },
+    {
+      "tabela": "allowed_clients",
+      "restantes": "0"
+    },
+    {
+      "tabela": "bookings",
+      "restantes": "0"
+    },
+    {
+      "tabela": "users",
+      "restantes": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "tabela\trestantes\nfuel_records\t0\nreviews\t0\nmaintenances\t0\ninspection_charges\t0\ninspections\t0\nemployees\t0\nasaas_customers\t0\nallowed_clients\t0\nbookings\t0\nusers\t0\n",
+  "stderr": "",
+  "execution_time_ms": 58
+}

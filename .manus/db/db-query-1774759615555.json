@@ -1,0 +1,103 @@
+{
+  "query": "\n-- IDs dos clientes de teste\nSELECT id FROM allowed_clients \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%' \n   OR LOWER(email) LIKE '%teste%' OR LOWER(email) LIKE '%test%'\n   OR LOWER(name) = 'new client';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- IDs dos clientes de teste\nSELECT id FROM allowed_clients \nWHERE LOWER(name) LIKE '%teste%' OR LOWER(name) LIKE '%test%' \n   OR LOWER(email) LIKE '%teste%' OR LOWER(email) LIKE '%test%'\n   OR LOWER(name) = 'new client';\n",
+  "rows": [
+    {
+      "id": "3060001"
+    },
+    {
+      "id": "3060002"
+    },
+    {
+      "id": "3060003"
+    },
+    {
+      "id": "3060004"
+    },
+    {
+      "id": "3060005"
+    },
+    {
+      "id": "3060006"
+    },
+    {
+      "id": "3060007"
+    },
+    {
+      "id": "3060008"
+    },
+    {
+      "id": "3060009"
+    },
+    {
+      "id": "3060010"
+    },
+    {
+      "id": "3060011"
+    },
+    {
+      "id": "3060012"
+    },
+    {
+      "id": "3060013"
+    },
+    {
+      "id": "3060014"
+    },
+    {
+      "id": "3060015"
+    },
+    {
+      "id": "3060016"
+    },
+    {
+      "id": "3060017"
+    },
+    {
+      "id": "3060031"
+    },
+    {
+      "id": "3060032"
+    },
+    {
+      "id": "3060033"
+    },
+    {
+      "id": "3060034"
+    },
+    {
+      "id": "3060039"
+    },
+    {
+      "id": "3060040"
+    },
+    {
+      "id": "3060041"
+    },
+    {
+      "id": "3060042"
+    },
+    {
+      "id": "3060043"
+    },
+    {
+      "id": "3060044"
+    },
+    {
+      "id": "3060045"
+    },
+    {
+      "id": "3090001"
+    },
+    {
+      "id": "3090002"
+    },
+    {
+      "id": "3090003"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\n3060001\n3060002\n3060003\n3060004\n3060005\n3060006\n3060007\n3060008\n3060009\n3060010\n3060011\n3060012\n3060013\n3060014\n3060015\n3060016\n3060017\n3060031\n3060032\n3060033\n3060034\n3060039\n3060040\n3060041\n3060042\n3060043\n3060044\n3060045\n3090001\n3090002\n3090003\n",
+  "stderr": "",
+  "execution_time_ms": 54
+}

@@ -1,0 +1,12 @@
+{
+  "query": "\n-- Contar testes em cada tabela\nSELECT 'inspection_charges' as tabela, COUNT(*) as total FROM inspection_charges \nWHERE LOWER(client_email) LIKE '%test%' OR LOWER(vessel_name) LIKE '%test%' OR LOWER(description) LIKE '%test%';\n\nSELECT 'fuel_records' as tabela, COUNT(*) as total FROM fuel_records \nWHERE LOWER(vessel_name) LIKE '%test%' OR LOWER(client_email) LIKE '%test%';\n\nSELECT 'asaas_customers' as tabela, COUNT(*) as total FROM asaas_customers \nWHERE LOWER(name) LIKE '%test%' OR LOWER(email) LIKE '%test%';\n\nSELECT 'maintenances' as tabela, COUNT(*) as total FROM maintenances \nWHERE LOWER(description) LIKE '%test%' OR LOWER(vessel_name) LIKE '%test%';\n\nSELECT 'payment_reconciliations' as tabela, COUNT(*) as total FROM payment_reconciliations \nWHERE LOWER(description) LIKE '%test%';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Contar testes em cada tabela\nSELECT 'inspection_charges' as tabela, COUNT(*) as total FROM inspection_charges \nWHERE LOWER(client_email) LIKE '%test%' OR LOWER(vessel_name) LIKE '%test%' OR LOWER(description) LIKE '%test%';\n\nSELECT 'fuel_records' as tabela, COUNT(*) as total FROM fuel_records \nWHERE LOWER(vessel_name) LIKE '%test%' OR LOWER(client_email) LIKE '%test%';\n\nSELECT 'asaas_customers' as tabela, COUNT(*) as total FROM asaas_customers \nWHERE LOWER(name) LIKE '%test%' OR LOWER(email) LIKE '%test%';\n\nSELECT 'maintenances' as tabela, COUNT(*) as total FROM maintenances \nWHERE LOWER(description) LIKE '%test%' OR LOWER(vessel_name) LIKE '%test%';\n\nSELECT 'payment_reconciliations' as tabela, COUNT(*) as total FROM payment_reconciliations \nWHERE LOWER(description) LIKE '%test%';\n",
+  "returncode": 1,
+  "logs": [
+    "tabela\ttotal",
+    "inspection_charges\t14",
+    "tabela\ttotal",
+    "fuel_records\t0",
+    "ERROR 1054 (42S22) at line 9: Unknown column 'email' in 'where clause'"
+  ]
+}
