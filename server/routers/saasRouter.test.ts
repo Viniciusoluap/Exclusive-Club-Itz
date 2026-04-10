@@ -380,3 +380,35 @@ describe("autoClassifySuggestions - access control", () => {
     expect(result.autoClassify).toBe(false);
   });
 });
+
+describe("autoClassifyAll - access control", () => {
+  it("deve negar acesso para não-admin", async () => {
+    const { ctx } = createNonAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.saas.autoClassifyAll({ confidenceThreshold: 85 })
+    ).rejects.toThrow("You do not have required permission");
+  });
+
+  it("deve validar que confidenceThreshold está entre 0 e 100", async () => {
+    const { ctx } = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.saas.autoClassifyAll({ confidenceThreshold: 101 })
+    ).rejects.toThrow();
+
+    await expect(
+      caller.saas.autoClassifyAll({ confidenceThreshold: -1 })
+    ).rejects.toThrow();
+  });
+
+  it("deve ter procedure autoClassifyAll registrada no router", () => {
+    // Verificar que a procedure existe no router sem fazer chamadas à API
+    const { ctx } = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    // A procedure deve existir como função
+    expect(typeof caller.saas.autoClassifyAll).toBe("function");
+  });
+});

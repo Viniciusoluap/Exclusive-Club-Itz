@@ -413,6 +413,28 @@ function UnclassifiedChargesSection() {
   );
   const { data: clients } = trpc.allowedClients.list.useQuery();
 
+  const autoClassifyMutation = trpc.saas.autoClassifyAll.useMutation({
+    onSuccess: (data) => {
+      if (data.classifiedCount > 0) {
+        toast.success(
+          `⚡ ${data.classifiedCount} cobrança(s) classificada(s) automaticamente!`,
+          { duration: 6000 }
+        );
+      } else {
+        toast.info(
+          `Nenhuma cobrança atingiu o threshold de 85% de confiança`,
+          { duration: 5000 }
+        );
+      }
+      utils.saas.listUnclassifiedCharges.invalidate();
+      utils.saas.listCharges.invalidate();
+      utils.saas.getFilteredStats.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Erro na classificação automática: ${error.message}`);
+    },
+  });
+
   const handleClassified = () => {
     utils.saas.listUnclassifiedCharges.invalidate();
     utils.saas.listCharges.invalidate();
@@ -445,13 +467,27 @@ function UnclassifiedChargesSection() {
   return (
     <Card className="border-yellow-200 bg-yellow-50">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-yellow-600" />
-          Cobranças Não Classificadas
-        </CardTitle>
-        <CardDescription>
-          {totalCount} cobrança(s) do Asaas aguardando classificação
-        </CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-yellow-600" />
+              Cobranças Não Classificadas
+            </CardTitle>
+            <CardDescription className="mt-1">
+              {totalCount} cobrança(s) do Asaas aguardando classificação
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => autoClassifyMutation.mutate({ confidenceThreshold: 85 })}
+            disabled={autoClassifyMutation.isPending}
+            className="bg-white border-yellow-400 text-yellow-700 hover:bg-yellow-50 hover:text-yellow-800 whitespace-nowrap"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${autoClassifyMutation.isPending ? 'animate-spin' : ''}`} />
+            {autoClassifyMutation.isPending ? 'Classificando...' : '⚡ Classificar Automaticamente (≥85%)'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

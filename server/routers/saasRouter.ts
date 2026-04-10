@@ -1597,11 +1597,12 @@ export const saasRouter = router({
       if (pixFullyAllocated) {
         const existingExcluded = await db.select()
           .from(excludedAsaasCharges)
-          .where(eq(excludedAsaasCharges.asaasPaymentId, input.asaasChargeId))
+          .where(eq(excludedAsaasCharges.asaasChargeId, input.asaasChargeId))
           .limit(1);
         if (existingExcluded.length === 0) {
           await db.insert(excludedAsaasCharges).values({
-            asaasPaymentId: input.asaasChargeId,
+            asaasChargeId: input.asaasChargeId,
+            excludedBy: 'system',
             reason: 'split_fully_allocated',
           });
         }
@@ -1755,6 +1756,265 @@ export const saasRouter = router({
         bestMatchChargeId: bestMatch?.id ?? null,
         overallConfidence,
         autoClassify: overallConfidence >= 80 && !!suggestedType && !!bestMatch,
+      };
+    }),
+
+  // ============================================================
+  // AUTO-CLASSIFICAÇÃO EM LOTE: classifica todas as cobranças com confiança ≥ threshold
+  // ============================================================
+  autoClassifyAll: adminProcedure
+    .input(z.object({
+      confidenceThreshold: z.number().min(0).max(100).optional().default(85),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const threshold = input.confidenceThreshold ?? 85;
+
+      // ── 1. Carregar dados de exclusão e classificação já existentes ──
+      const manuallyExcluded = await db.select().from(excludedAsaasCharges);
+      const excludedAsaasIds = new Set<string>(manuallyExcluded.map(e => e.asaasChargeId));
+
+      const classifiedCharges = await db.select().from(subscriptionCharges);
+      const classifiedAsaasIds = new Set<string>();
+      for (const c of classifiedCharges) {
+        if (c.asaasPaymentId) classifiedAsaasIds.add(c.asaasPaymentId);
+        if (c.paymentLinks) {
+          try {
+            const links: string[] = JSON.parse(c.paymentLinks as string);
+            links.forEach(id => { if (id) classifiedAsaasIds.add(id); });
+          } catch { /* ignorar */ }
+        }
+      }
+
+      // ── 2. Carregar mapa de clientes locais por email ──
+      const localClients = await db.select().from(allowedClients);
+      const localClientByEmail = new Map(localClients.map(c => [c.email.toLowerCase(), c]));
+
+      // ── 3. Carregar mapa de clientes Asaas ──
+      const asaasCustomerMap = new Map<string, { name: string; email: string }>();
+      let customerOffset = 0;
+      let customerHasMore = true;
+      while (customerHasMore) {
+        const batch = await listAllAsaasCustomers({ limit: 100, offset: customerOffset });
+        if (batch.length === 0) { customerHasMore = false; break; }
+        for (const c of batch) asaasCustomerMap.set(c.id, { name: c.name, email: c.email ?? '' });
+        if (batch.length < 100) customerHasMore = false;
+        customerOffset += 100;
+      }
+
+      // ── 4. Palavras-chave (mesmas do autoClassifySuggestions) ──
+      const fuelKeywords = [
+        'abastecimento', 'taxa de abastecimento', 'taxa abastecimento', 'abast',
+        'combustivel', 'combustível', 'gasolina', 'etanol', 'diesel',
+        'litro', 'litros', 'reabastecimento', 'abastec'
+      ];
+      const repairKeywords = [
+        'reparo', 'reparos', 'conserto', 'consertos', 'reforma', 'reformas',
+        'manutenção', 'manutencao', 'revisao', 'revisão', 'dano', 'danos',
+        'avaria', 'avarias', 'vistoria', 'vistorias', 'inspecao', 'inspeção',
+        'reparo de dano', 'dano embarcação', 'dano embarcacao',
+        'serviço técnico', 'servico tecnico', 'serviço', 'servico',
+        'peça', 'peca', 'troca de peça', 'troca de peca', 'motor',
+        'limpeza', 'higienização', 'higienizacao'
+      ];
+      const quotaKeywords = [
+        'cota', 'quota', 'parcela', 'venda de cota', 'venda cota',
+        'entrada', 'aquisição de cota', 'aquisicao de cota',
+        'compra de cota', 'compra cota', 'sinal', 'sinal cota',
+        'transferência de cota', 'transferencia de cota'
+      ];
+      const monthlyKeywords = [
+        'mensalidade', 'mensal', 'mensalidade clube', 'taxa mensal',
+        'mensalidade exclusive', 'taxa clube', 'mensalidade exclusive club',
+        'mensalidade do clube', 'taxa de uso', 'taxa uso', 'taxa mensal clube'
+      ];
+
+      // ── 5. Buscar todas as cobranças Asaas e processar ──
+      let chargeOffset = 0;
+      let chargeHasMore = true;
+      const classified: Array<{ asaasChargeId: string; type: string; clientName: string; confidence: number }> = [];
+      const skipped: Array<{ asaasChargeId: string; reason: string }> = [];
+
+      while (chargeHasMore) {
+        const { charges: batch, hasMore } = await listAllAsaasCharges({ limit: 100, offset: chargeOffset });
+        if (batch.length === 0) { chargeHasMore = false; break; }
+        if (!hasMore || batch.length < 100) chargeHasMore = false;
+        chargeOffset += 100;
+
+        for (const charge of batch) {
+          // Pular canceladas/deletadas
+          if (charge.status === 'DELETED' || charge.status === 'CANCELLED') continue;
+          // Pular já excluídas manualmente
+          if (excludedAsaasIds.has(charge.id)) continue;
+          // Pular já classificadas
+          if (classifiedAsaasIds.has(charge.id)) continue;
+
+          // Identificar cliente local
+          const asaasCustomer = asaasCustomerMap.get((charge as any).customer ?? '');
+          const localClient = localClientByEmail.get((asaasCustomer?.email ?? '').toLowerCase());
+          const clientId = localClient?.id ?? 0;
+
+          const desc_lower = (charge.description || '').toLowerCase();
+
+          // Detectar tipo pela descrição
+          let suggestedType: "monthly" | "quota_sale" | "fuel" | "repair" | "other" | null = null;
+          let typeConfidence = 0;
+
+          if (fuelKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'fuel'; typeConfidence = 90; }
+          else if (repairKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'repair'; typeConfidence = 85; }
+          else if (quotaKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'quota_sale'; typeConfidence = 80; }
+          else if (monthlyKeywords.some(k => desc_lower.includes(k))) { suggestedType = 'monthly'; typeConfidence = 85; }
+
+          // Buscar cobranças pendentes do cliente para calcular matchScore
+          let bestMatchChargeId: number | null = null;
+          let bestMatchScore = 0;
+
+          if (clientId > 0 && suggestedType) {
+            const pendingCharges = await db.select({
+              id: subscriptionCharges.id,
+              dueDate: subscriptionCharges.dueDate,
+              value: subscriptionCharges.value,
+              status: subscriptionCharges.status,
+              type: subscriptions.type,
+              amountPaid: subscriptionCharges.amountPaid,
+            })
+              .from(subscriptionCharges)
+              .innerJoin(subscriptions, eq(subscriptionCharges.subscriptionId, subscriptions.id))
+              .where(and(
+                eq(subscriptions.clientId, clientId),
+                or(
+                  eq(subscriptionCharges.status, 'pending'),
+                  eq(subscriptionCharges.status, 'overdue'),
+                  eq(subscriptionCharges.status, 'partial'),
+                )
+              ))
+              .orderBy(subscriptionCharges.dueDate);
+
+            for (const pc of pendingCharges) {
+              let score = 0;
+              const chargeValue = parseFloat(pc.value as string);
+              const alreadyPaid = parseFloat((pc.amountPaid as string) || '0');
+              const remaining = chargeValue - alreadyPaid;
+
+              if (Math.abs(remaining - charge.value) < 0.02) score += 50;
+              else if (Math.abs(chargeValue - charge.value) < 0.02) score += 40;
+              else if (charge.value < chargeValue && charge.value > 0) score += 20;
+
+              if (suggestedType && pc.type === suggestedType) score += 30;
+
+              const dueDateDiff = Math.abs(new Date(pc.dueDate).getTime() - new Date(charge.dueDate).getTime());
+              const daysDiff = dueDateDiff / (1000 * 60 * 60 * 24);
+              if (daysDiff <= 5) score += 20;
+              else if (daysDiff <= 30) score += 10;
+
+              if (score > bestMatchScore) {
+                bestMatchScore = score;
+                bestMatchChargeId = pc.id;
+              }
+            }
+          }
+
+          const overallConfidence = bestMatchChargeId
+            ? Math.min(100, typeConfidence + bestMatchScore)
+            : typeConfidence;
+
+          // Verificar se atinge o threshold
+          if (overallConfidence < threshold || !suggestedType || clientId === 0) {
+            skipped.push({
+              asaasChargeId: charge.id,
+              reason: clientId === 0
+                ? 'Cliente não identificado'
+                : !suggestedType
+                  ? 'Tipo não identificado'
+                  : `Confiança insuficiente (${overallConfidence}% < ${threshold}%)`,
+            });
+            continue;
+          }
+
+          // ── Classificar automaticamente ──
+          try {
+            // Verificar se já existe (dupla checagem)
+            const existing = await db.select({ id: subscriptionCharges.id })
+              .from(subscriptionCharges)
+              .where(eq(subscriptionCharges.asaasPaymentId, charge.id))
+              .limit(1);
+            if (existing.length > 0) {
+              classifiedAsaasIds.add(charge.id);
+              continue;
+            }
+
+            // Buscar ou criar subscription
+            let subscription = await db.select()
+              .from(subscriptions)
+              .where(and(
+                eq(subscriptions.clientId, clientId),
+                eq(subscriptions.type, suggestedType),
+                eq(subscriptions.status, "active")
+              ))
+              .limit(1);
+
+            if (subscription.length === 0) {
+              const [newSub] = await db.insert(subscriptions).values({
+                clientId,
+                type: suggestedType,
+                value: charge.value.toString(),
+                dueDay: new Date(charge.dueDate).getDate(),
+                startDate: charge.dueDate,
+                status: "active",
+                yearlyAdjustment: "manual",
+              });
+              subscription = [{ id: newSub.insertId }] as any;
+            }
+
+            // Mapear status
+            const mappedStatus = mapAsaasStatus(charge.status);
+            let chargeStatus: "pending" | "paid" | "overdue" | "cancelled" = "pending";
+            if (mappedStatus === "received" || mappedStatus === "confirmed") chargeStatus = "paid";
+            else if (mappedStatus === "overdue") chargeStatus = "overdue";
+            else if (mappedStatus === "cancelled" || mappedStatus === "refunded") chargeStatus = "cancelled";
+
+            // Criar cobrança classificada
+            await db.insert(subscriptionCharges).values({
+              subscriptionId: subscription[0].id,
+              dueDate: charge.dueDate,
+              value: charge.value.toString(),
+              status: chargeStatus,
+              asaasPaymentId: charge.id,
+              type: suggestedType,
+              paidDate: chargeStatus === 'paid' ? new Date().toISOString().split('T')[0] : null,
+            });
+
+            // Marcar como classificada para não reprocessar neste loop
+            classifiedAsaasIds.add(charge.id);
+
+            classified.push({
+              asaasChargeId: charge.id,
+              type: suggestedType,
+              clientName: localClient?.name ?? asaasCustomer?.name ?? 'Desconhecido',
+              confidence: overallConfidence,
+            });
+
+            console.log(`[autoClassifyAll] Classificado: ${charge.id} → ${suggestedType} (${overallConfidence}% confiança) — ${localClient?.name ?? 'Desconhecido'}`);
+          } catch (err) {
+            console.error(`[autoClassifyAll] Erro ao classificar ${charge.id}:`, err);
+            skipped.push({ asaasChargeId: charge.id, reason: 'Erro interno ao classificar' });
+          }
+        }
+      }
+
+      console.log(`[autoClassifyAll] Concluído: ${classified.length} classificadas, ${skipped.length} ignoradas`);
+
+      return {
+        success: true,
+        classifiedCount: classified.length,
+        skippedCount: skipped.length,
+        classified,
+        skipped,
+        message: classified.length > 0
+          ? `${classified.length} cobrança(s) classificada(s) automaticamente com confiança ≥ ${threshold}%`
+          : `Nenhuma cobrança atingiu o threshold de ${threshold}% de confiança`,
       };
     }),
 });
