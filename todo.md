@@ -1589,3 +1589,16 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 ===============================================================
 - [ ] Problema 1: Sincronização marcando 71 cobranças como "excluídas" incorretamente (deveriam ser classificadas)
 - [ ] Problema 2: Lista de cobranças classificadas mostrando 0 registros / não carrega nada
+
+## 🧹 Limpeza: Remover Dados de Teste do Banco de Dados
+===============================================================
+
+**Problema:** Dados de teste inseridos pelos testes automatizados estão aparecendo no site em produção.
+
+**Regra:** Todo dado de teste deve ser removido do banco após a execução dos testes.
+
+**Tarefas:**
+- [x] Identificar todos os registros de teste (clientes, cobranças, assinaturas, etc.)
+- [x] Remover via SQL todos os dados de teste (65 registros removidos)
+- [x] Adicionar globalSetup no vitest para limpeza automática após cada execução
+- [ ] Criar checkpoint após limpeza
