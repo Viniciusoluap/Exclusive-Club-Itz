@@ -1072,9 +1072,16 @@ export const saasRouter = router({
                 NOW()
               )
               ON DUPLICATE KEY UPDATE
+                asaas_customer_id = VALUES(asaas_customer_id),
+                asaas_customer_name = COALESCE(NULLIF(VALUES(asaas_customer_name), ''), asaas_customer_name),
+                asaas_customer_email = COALESCE(NULLIF(VALUES(asaas_customer_email), ''), asaas_customer_email),
+                asaas_customer_cpf_cnpj = COALESCE(NULLIF(VALUES(asaas_customer_cpf_cnpj), ''), asaas_customer_cpf_cnpj),
+                description = COALESCE(NULLIF(VALUES(description), ''), description),
+                value = VALUES(value),
+                due_date = VALUES(due_date),
+                paid_date = VALUES(paid_date),
                 asaas_status = VALUES(asaas_status),
                 status = VALUES(status),
-                paid_date = VALUES(paid_date),
                 classified = VALUES(classified),
                 last_synced_at = NOW()
             `));
@@ -1161,12 +1168,15 @@ export const saasRouter = router({
     }
 
     // Contar total no cache (para paginação)
+    // Filtro base: apenas cobranças com nome identificado (asaas_customer_name preenchido)
+    // Cobranças sem nome são Pix anônimos inidentificáveis e são ignoradas automaticamente
+    const baseFilter = `classified = 0 AND status != 'cancelled' AND asaas_customer_name IS NOT NULL AND asaas_customer_name != ''`;
+    const searchFilter = search ? `AND (asaas_customer_name LIKE '%${search.replace(/'/g, "''")}%' OR asaas_customer_email LIKE '%${search.replace(/'/g, "''")}%' OR description LIKE '%${search.replace(/'/g, "''")}%')` : '';
+    const statusSql = statusFilter !== 'all' ? `AND status = '${statusFilter}'` : '';
+
     const countResult = await db.execute(sql.raw(`
       SELECT COUNT(*) as cnt FROM unclassified_charges
-      WHERE classified = 0
-        AND status != 'cancelled'
-        ${search ? `AND (asaas_customer_name LIKE '%${search.replace(/'/g, "''")}%' OR asaas_customer_email LIKE '%${search.replace(/'/g, "''")}%' OR description LIKE '%${search.replace(/'/g, "''")}%')` : ''}
-        ${statusFilter !== 'all' ? `AND status = '${statusFilter}'` : ''}
+      WHERE ${baseFilter} ${searchFilter} ${statusSql}
     `));
     const totalCount = (countResult[0] as any)[0]?.cnt ?? 0;
 
@@ -1176,10 +1186,7 @@ export const saasRouter = router({
       SELECT asaas_payment_id, asaas_customer_id, asaas_customer_name, asaas_customer_email,
              description, value, due_date, paid_date, asaas_status, status, classified, last_synced_at
       FROM unclassified_charges
-      WHERE classified = 0
-        AND status != 'cancelled'
-        ${search ? `AND (asaas_customer_name LIKE '%${search.replace(/'/g, "''")}%' OR asaas_customer_email LIKE '%${search.replace(/'/g, "''")}%' OR description LIKE '%${search.replace(/'/g, "''")}%')` : ''}
-        ${statusFilter !== 'all' ? `AND status = '${statusFilter}'` : ''}
+      WHERE ${baseFilter} ${searchFilter} ${statusSql}
       ORDER BY
         CASE WHEN asaas_status IN ('RECEIVED','CONFIRMED','RECEIVED_IN_CASH') THEN 0 ELSE 1 END ASC,
         due_date DESC
@@ -1190,17 +1197,19 @@ export const saasRouter = router({
 
     const result = rows
       .filter(row => !excludedAsaasIds.has(row.asaas_payment_id))
-      .filter(row => {
-        // Manter se não classificado, ou se tem saldo livre de Pix
-        if (!classifiedAsaasIds.has(row.asaas_payment_id)) return true;
-        const allocatedAmt = pixAllocatedMap.get(row.asaas_payment_id) ?? 0;
-        const freeBalance = Math.max(0, parseFloat(row.value) - allocatedAmt);
-        return allocatedAmt > 0 && freeBalance >= 0.01;
-      })
       .map(row => {
         const localClient = localClientByEmail.get((row.asaas_customer_email ?? '').toLowerCase());
         const allocatedAmt = pixAllocatedMap.get(row.asaas_payment_id) ?? 0;
         const freeBalance = Math.max(0, parseFloat(row.value) - allocatedAmt);
+        // Cobranças sem nome real E sem match de cliente local são inidentificáveis → ignorar automaticamente
+        const hasName = !!(row.asaas_customer_name && row.asaas_customer_name.trim() !== '');
+        const hasLocalClient = !!localClient;
+        const isIdentifiable = hasName || hasLocalClient;
+        // Manter se: identificável E (não classificado OU tem saldo livre de Pix)
+        const isClassifiedWithFreeBalance = classifiedAsaasIds.has(row.asaas_payment_id)
+          ? (allocatedAmt > 0 && freeBalance >= 0.01)
+          : true;
+        if (!isIdentifiable || !isClassifiedWithFreeBalance) return null;
         return {
           asaasChargeId: row.asaas_payment_id,
           description: row.description || 'Sem descrição',
@@ -1208,7 +1217,7 @@ export const saasRouter = router({
           dueDate: row.due_date instanceof Date ? row.due_date.toISOString().split('T')[0] : String(row.due_date).split('T')[0],
           status: row.asaas_status || row.status?.toUpperCase() || 'PENDING',
           clientId: localClient?.id ?? 0,
-          clientName: localClient?.name ?? row.asaas_customer_name ?? 'Desconhecido',
+          clientName: localClient?.name ?? row.asaas_customer_name ?? '',
           clientEmail: localClient?.email ?? row.asaas_customer_email ?? '',
           asaasCustomerId: row.asaas_customer_id ?? '',
           allocatedAmount: allocatedAmt > 0 ? allocatedAmt : undefined,
@@ -1216,7 +1225,9 @@ export const saasRouter = router({
           allocations: pixAllocHistoryMap.get(row.asaas_payment_id),
           lastSyncedAt: row.last_synced_at,
         };
-      });
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+      .filter(row => !excludedAsaasIds.has(row.asaasChargeId));
 
     // Verificar se o cache está vazio (nunca foi sincronizado)
     const cacheEmpty = await db.execute(sql.raw('SELECT COUNT(*) as cnt FROM unclassified_charges'));
@@ -1933,6 +1944,8 @@ export const saasRouter = router({
           FROM unclassified_charges
           WHERE classified = 0
             AND status != 'cancelled'
+            AND asaas_customer_name IS NOT NULL
+            AND asaas_customer_name != ''
           ORDER BY id ASC
           LIMIT 500 OFFSET ${cacheOffset}
         `));
