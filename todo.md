@@ -1623,3 +1623,9 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Reformular autoClassifyAll para usar cache local
 - [x] Atualizar frontend: botão Sincronizar Cache BPO, busca e paginação
 - [ ] Criar checkpoint
+
+## 🔧 Fix: Ignorar cobranças cus_0 e remover duplicatas BPO
+- [ ] Analisar volume de duplicatas em subscription_charges e unclassified_charges
+- [ ] Remover duplicatas do banco com segurança
+- [ ] Adicionar filtro automático cus_0 no backend (syncBpoCache + listUnclassifiedCharges)
+- [ ] Verificar totais após limpeza
