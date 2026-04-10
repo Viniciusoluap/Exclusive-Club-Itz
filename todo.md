@@ -1602,3 +1602,24 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Remover via SQL todos os dados de teste (65 registros removidos)
 - [x] Adicionar globalSetup no vitest para limpeza automática após cada execução
 - [ ] Criar checkpoint após limpeza
+
+## ⚡ Feature: Cache Local BPO + Classificação Automática
+====================================================================================
+
+**Problema resolvido:** Página BPO demorava 15–25s para carregar e autoClassifyAll causava timeout.
+
+**Solução implementada:**
+- Tabela `unclassified_charges` expandida como cache local das cobranças Asaas
+- Nova procedure `syncBpoCache`: sincroniza Asaas → banco local (rápido, sob demanda)
+- `listUnclassifiedCharges` reformulada: lê do cache local com paginação (50/página) e busca
+- `autoClassifyAll` reformulado: processa do cache local sem chamadas HTTP ao Asaas
+- Frontend: botão "🔄 Sincronizar Cache BPO" no header + busca + paginação na seção de não classificadas
+
+**Tarefas:**
+- [x] Expandir tabela unclassified_charges com novos campos (asaas_customer_id, email, classified, etc.)
+- [x] Migrar banco via SQL direto (sem drizzle-kit para evitar deletar tabelas)
+- [x] Implementar procedure syncBpoCache no backend
+- [x] Reformular listUnclassifiedCharges para ler do cache com paginação
+- [x] Reformular autoClassifyAll para usar cache local
+- [x] Atualizar frontend: botão Sincronizar Cache BPO, busca e paginação
+- [ ] Criar checkpoint

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { subscriptions, subscriptionCharges, allowedClients, clientQuotas, fuelRecords, inspectionCharges, excludedAsaasCharges, unclassifiedCharges, pixAllocations } from "../../drizzle/schema";
-import { eq, and, or, gte, lte, desc } from "drizzle-orm";
+import { eq, and, or, gte, lte, desc, sql, inArray, ne } from "drizzle-orm";
 import { createPixCharge, listCustomerCharges, getOrCreateAsaasCustomer, mapAsaasStatus, receiveInCash, cancelCharge, listAllAsaasCustomers, listAllAsaasCharges } from "../_core/asaasService";
 
 // Mapear status do Asaas para enum de unclassified_charges
@@ -992,45 +992,151 @@ export const saasRouter = router({
       };
     }),
 
-  // Listar cobranças não classificadas do Asaas
+  // ─── Sincronizar cache BPO: busca todas as cobranças do Asaas e salva no banco local ───
+  syncBpoCache: adminProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      console.log(`[syncBpoCache] Iniciando sincronização do cache BPO...`);
+
+      // 1. Carregar mapa de clientes Asaas (id → nome/email)
+      const asaasCustomerMap = new Map<string, { name: string; email: string; cpfCnpj?: string }>();
+      let customerOffset = 0;
+      let customerHasMore = true;
+      while (customerHasMore) {
+        const batch = await listAllAsaasCustomers({ limit: 100, offset: customerOffset });
+        if (batch.length === 0) { customerHasMore = false; break; }
+        for (const c of batch) asaasCustomerMap.set(c.id, { name: c.name, email: c.email ?? '', cpfCnpj: c.cpfCnpj ?? undefined });
+        if (batch.length < 100) customerHasMore = false;
+        customerOffset += 100;
+      }
+
+      // 2. Buscar cobranças já classificadas (para marcar no cache)
+      const classifiedCharges = await db.select({ asaasPaymentId: subscriptionCharges.asaasPaymentId }).from(subscriptionCharges);
+      const classifiedIds = new Set(classifiedCharges.map(c => c.asaasPaymentId).filter(Boolean) as string[]);
+
+      // 3. Buscar cobranças excluídas manualmente
+      const excluded = await db.select({ asaasChargeId: excludedAsaasCharges.asaasChargeId }).from(excludedAsaasCharges);
+      const excludedIds = new Set(excluded.map(e => e.asaasChargeId));
+
+      // 4. Buscar IDs de cobranças de abastecimento/vistorias (excluir do BPO)
+      const fuelChargesData = await db.select({ asaasChargeId: fuelRecords.asaasChargeId }).from(fuelRecords);
+      const inspChargesData = await db.select({ asaasChargeId: inspectionCharges.asaasChargeId }).from(inspectionCharges);
+      const otherModuleIds = new Set<string>();
+      fuelChargesData.forEach(r => { if (r.asaasChargeId) otherModuleIds.add(r.asaasChargeId); });
+      inspChargesData.forEach(r => { if (r.asaasChargeId) otherModuleIds.add(r.asaasChargeId); });
+
+      // 5. Buscar TODAS as cobranças do Asaas em lotes e upsert no cache local
+      let chargeOffset = 0;
+      let chargeHasMore = true;
+      let inserted = 0;
+      let updated = 0;
+      let skipped = 0;
+
+      while (chargeHasMore) {
+        const { charges: batch, hasMore } = await listAllAsaasCharges({ limit: 100, offset: chargeOffset });
+        if (batch.length === 0) { chargeHasMore = false; break; }
+        if (!hasMore || batch.length < 100) chargeHasMore = false;
+        chargeOffset += 100;
+
+        for (const charge of batch) {
+          // Pular canceladas/deletadas
+          if (charge.status === 'DELETED' || charge.status === 'CANCELLED') { skipped++; continue; }
+          // Pular cobranças de outros módulos
+          if (otherModuleIds.has(charge.id)) { skipped++; continue; }
+
+          const asaasCustomer = asaasCustomerMap.get((charge as any).customer ?? '');
+          const isClassified = classifiedIds.has(charge.id) ? 1 : 0;
+          const mappedStatus = mapAsaasStatusToUnclassified(charge.status);
+
+          try {
+            // Upsert: inserir ou atualizar se já existe
+            await db.execute(sql.raw(`
+              INSERT INTO unclassified_charges
+                (asaas_payment_id, asaas_customer_id, asaas_customer_name, asaas_customer_email, asaas_customer_cpf_cnpj,
+                 description, value, due_date, paid_date, asaas_status, status, classified, last_synced_at)
+              VALUES (
+                '${charge.id.replace(/'/g, "''")}',
+                '${((charge as any).customer ?? '').replace(/'/g, "''")}',
+                '${(asaasCustomer?.name ?? '').replace(/'/g, "''")}',
+                '${(asaasCustomer?.email ?? '').replace(/'/g, "''")}',
+                '${(asaasCustomer?.cpfCnpj ?? '').replace(/'/g, "''")}',
+                '${(charge.description ?? '').replace(/'/g, "''")}',
+                ${charge.value},
+                '${charge.dueDate}',
+                ${(charge as any).paymentDate ? `'${(charge as any).paymentDate}'` : 'NULL'},
+                '${charge.status}',
+                '${mappedStatus}',
+                ${isClassified},
+                NOW()
+              )
+              ON DUPLICATE KEY UPDATE
+                asaas_status = VALUES(asaas_status),
+                status = VALUES(status),
+                paid_date = VALUES(paid_date),
+                classified = VALUES(classified),
+                last_synced_at = NOW()
+            `));
+            if (isClassified) updated++; else inserted++;
+          } catch (err) {
+            console.error(`[syncBpoCache] Erro ao upsert ${charge.id}:`, err);
+            skipped++;
+          }
+        }
+      }
+
+      // 6. Marcar como classified=1 as cobranças que foram classificadas manualmente após o último sync
+      if (classifiedIds.size > 0) {
+        const classifiedArr = Array.from(classifiedIds);
+        // Processar em lotes de 500 para evitar SQL muito longo
+        for (let i = 0; i < classifiedArr.length; i += 500) {
+          const chunk = classifiedArr.slice(i, i + 500).map(id => `'${id.replace(/'/g, "''")}'`).join(',');
+          await db.execute(sql.raw(`UPDATE unclassified_charges SET classified = 1 WHERE asaas_payment_id IN (${chunk}) AND classified = 0`));
+        }
+      }
+
+      const totalInCache = await db.execute(sql.raw('SELECT COUNT(*) as cnt FROM unclassified_charges WHERE classified = 0'));
+      const unclassifiedCount = (totalInCache[0] as any)[0]?.cnt ?? 0;
+
+      console.log(`[syncBpoCache] Concluído: ${inserted} inseridas, ${updated} atualizadas, ${skipped} ignoradas. Cache: ${unclassifiedCount} não classificadas.`);
+
+      return {
+        success: true,
+        inserted,
+        updated,
+        skipped,
+        unclassifiedCount,
+        message: `Cache sincronizado: ${inserted + updated} cobranças processadas, ${unclassifiedCount} aguardando classificação`,
+      };
+    }),
+
+  // Listar cobranças não classificadas — lê do cache local (< 500ms)
   listUnclassifiedCharges: adminProcedure
-    .query(async () => {
-    console.log(`[listUnclassifiedCharges] Iniciando busca completa (sem paginação)...`);
+    .input(z.object({
+      page: z.number().min(1).optional().default(1),
+      pageSize: z.number().min(10).max(200).optional().default(50),
+      search: z.string().optional(),
+      status: z.enum(['all', 'pending', 'paid', 'overdue']).optional().default('all'),
+    }).optional())
+    .query(async ({ input }) => {
+    const page = input?.page ?? 1;
+    const pageSize = input?.pageSize ?? 50;
+    const search = input?.search ?? '';
+    const statusFilter = input?.status ?? 'all';
+
+    console.log(`[listUnclassifiedCharges] Lendo do cache local (página ${page}, tamanho ${pageSize})...`);
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-    // Buscar cobranças excluídas manualmente do módulo BPO (ignoradas pelo admin)
-    const manuallyExcluded = await db.select().from(excludedAsaasCharges);
-    
-    const excludedAsaasIds = new Set<string>();
-    manuallyExcluded.forEach(excluded => { excludedAsaasIds.add(excluded.asaasChargeId); });
-
-    // Buscar cobranças já classificadas no BPO
-    const classifiedCharges = await db.select().from(subscriptionCharges);
-    const classifiedAsaasIds = new Set<string>();
-    for (const c of classifiedCharges) {
-      // Incluir o asaasPaymentId principal
-      if (c.asaasPaymentId) classifiedAsaasIds.add(c.asaasPaymentId);
-      // Incluir todos os IDs dentro de payment_links (pagamentos parciais/split)
-      if (c.paymentLinks) {
-        try {
-          const links: string[] = JSON.parse(c.paymentLinks as string);
-          links.forEach(id => { if (id) classifiedAsaasIds.add(id); });
-        } catch {
-          // paymentLinks malformado — ignorar
-        }
-      }
-    }
-
-    // Mapa de clientes locais por email para enriquecer dados
+    // ─── NOVA IMPLEMENTAÇÃO: Lê do cache local (unclassified_charges) ───
+    // Mapa de clientes locais por email
     const localClients = await db.select().from(allowedClients);
     const localClientByEmail = new Map(localClients.map(c => [c.email.toLowerCase(), c]));
 
-    // Buscar todas as alocações de Pix existentes (para calcular saldo livre)
+    // Mapa de alocações Pix (para calcular saldo livre)
     const allPixAllocs = await db.select().from(pixAllocations);
-    // Mapa: asaasChargeId → total já alocado
     const pixAllocatedMap = new Map<string, number>();
-    // Mapa: asaasChargeId → lista de alocações (para histórico)
     const pixAllocHistoryMap = new Map<string, Array<{ subscriptionChargeId: number; amount: number }>>();
     for (const alloc of allPixAllocs) {
       const id = alloc.asaasChargeId;
@@ -1040,99 +1146,92 @@ export const saasRouter = router({
       pixAllocHistoryMap.get(id)!.push({ subscriptionChargeId: alloc.subscriptionChargeId, amount: amt });
     }
 
-    const result: Array<{
-      asaasChargeId: string;
-      description: string;
-      value: number;
-      dueDate: string;
-      status: string;
-      clientId: number;
-      clientName: string;
-      clientEmail: string;
-      asaasCustomerId: string;
-      allocatedAmount?: number;
-      freeBalance?: number;
-      allocations?: Array<{ subscriptionChargeId: number; amount: number }>;
-    }> = [];
+    // IDs de cobranças excluídas manualmente
+    const manuallyExcluded = await db.select({ asaasChargeId: excludedAsaasCharges.asaasChargeId }).from(excludedAsaasCharges);
+    const excludedAsaasIds = new Set(manuallyExcluded.map(e => e.asaasChargeId));
 
-    // Carregar mapa de clientes Asaas (id -> nome/email) para enriquecer cobranças
-    const asaasCustomerMap = new Map<string, { name: string; email: string }>();
-    let customerOffset = 0;
-    let customerHasMore = true;
-    while (customerHasMore) {
-      const batch = await listAllAsaasCustomers({ limit: 100, offset: customerOffset });
-      if (batch.length === 0) { customerHasMore = false; break; }
-      for (const c of batch) asaasCustomerMap.set(c.id, { name: c.name, email: c.email ?? '' });
-      if (batch.length < 100) customerHasMore = false;
-      customerOffset += 100;
-    }
-
-    // Buscar TODAS as cobranças do Asaas de uma vez (muito mais rápido que iterar por cliente)
-    let chargeOffset = 0;
-    let chargeHasMore = true;
-    let totalAsaasCharges = 0;
-    let totalExcluded = 0;
-    let totalClassified = 0;
-
-    while (chargeHasMore) {
-      const { charges: batch, hasMore } = await listAllAsaasCharges({ limit: 100, offset: chargeOffset });
-      if (batch.length === 0) { chargeHasMore = false; break; }
-      totalAsaasCharges += batch.length;
-      if (!hasMore || batch.length < 100) chargeHasMore = false;
-      chargeOffset += 100;
-
-      for (const charge of batch) {
-        // Pular cobranças canceladas/deletadas
-        if (charge.status === 'DELETED' || charge.status === 'CANCELLED') { totalExcluded++; continue; }
-        // Pular cobranças já vinculadas a outros módulos
-        if (excludedAsaasIds.has(charge.id)) { totalExcluded++; continue; }
-        // Pular cobranças já classificadas no BPO
-        // EXCETO: Pix com alocações parciais (saldo livre > 0) devem permanecer na fila
-        if (classifiedAsaasIds.has(charge.id)) {
-          const allocatedAmt = pixAllocatedMap.get(charge.id) ?? 0;
-          const freeBalance = Math.max(0, charge.value - allocatedAmt);
-          if (allocatedAmt === 0 || freeBalance < 0.01) { totalClassified++; continue; }
-        }
-
-        // Enriquecer com dados do cliente (do mapa já carregado)
-        const asaasCustomer = asaasCustomerMap.get((charge as any).customer ?? '');
-        const localClient = localClientByEmail.get((asaasCustomer?.email ?? '').toLowerCase());
-
-        const allocatedAmt = pixAllocatedMap.get(charge.id) ?? 0;
-        const freeBalance = Math.max(0, charge.value - allocatedAmt);
-
-        result.push({
-          asaasChargeId: charge.id,
-          description: charge.description || 'Sem descrição',
-          value: charge.value,
-          dueDate: charge.dueDate,
-          status: charge.status,
-          clientId: localClient?.id ?? 0,
-          clientName: localClient?.name ?? asaasCustomer?.name ?? 'Desconhecido',
-          clientEmail: localClient?.email ?? asaasCustomer?.email ?? '',
-          asaasCustomerId: (charge as any).customer ?? '',
-          allocatedAmount: allocatedAmt > 0 ? allocatedAmt : undefined,
-          freeBalance: allocatedAmt > 0 ? freeBalance : undefined,
-          allocations: pixAllocHistoryMap.get(charge.id),
-        });
+    // IDs já classificados (subscription_charges)
+    const classifiedRows = await db.select({ asaasPaymentId: subscriptionCharges.asaasPaymentId, paymentLinks: subscriptionCharges.paymentLinks }).from(subscriptionCharges);
+    const classifiedAsaasIds = new Set<string>();
+    for (const c of classifiedRows) {
+      if (c.asaasPaymentId) classifiedAsaasIds.add(c.asaasPaymentId);
+      if (c.paymentLinks) {
+        try { (JSON.parse(c.paymentLinks as string) as string[]).forEach(id => { if (id) classifiedAsaasIds.add(id); }); } catch { /* ignorar */ }
       }
     }
 
-    console.log(`[listUnclassifiedCharges] Cobranças Asaas: ${totalAsaasCharges} | Excluídas: ${totalExcluded} | Classificadas: ${totalClassified} | Não classificadas: ${result.length}`);
-    
-    // Ordenar: RECEIVED primeiro (já pagos aguardando classificação), depois por data de vencimento desc
-    result.sort((a, b) => {
-      const aReceived = a.status === 'RECEIVED' || a.status === 'CONFIRMED' ? 0 : 1;
-      const bReceived = b.status === 'RECEIVED' || b.status === 'CONFIRMED' ? 0 : 1;
-      if (aReceived !== bReceived) return aReceived - bReceived;
-      return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
-    });
+    // Contar total no cache (para paginação)
+    const countResult = await db.execute(sql.raw(`
+      SELECT COUNT(*) as cnt FROM unclassified_charges
+      WHERE classified = 0
+        AND status != 'cancelled'
+        ${search ? `AND (asaas_customer_name LIKE '%${search.replace(/'/g, "''")}%' OR asaas_customer_email LIKE '%${search.replace(/'/g, "''")}%' OR description LIKE '%${search.replace(/'/g, "''")}%')` : ''}
+        ${statusFilter !== 'all' ? `AND status = '${statusFilter}'` : ''}
+    `));
+    const totalCount = (countResult[0] as any)[0]?.cnt ?? 0;
 
-    const totalCount = result.length;
+    // Buscar página do cache
+    const offset = (page - 1) * pageSize;
+    const cacheRows = await db.execute(sql.raw(`
+      SELECT asaas_payment_id, asaas_customer_id, asaas_customer_name, asaas_customer_email,
+             description, value, due_date, paid_date, asaas_status, status, classified, last_synced_at
+      FROM unclassified_charges
+      WHERE classified = 0
+        AND status != 'cancelled'
+        ${search ? `AND (asaas_customer_name LIKE '%${search.replace(/'/g, "''")}%' OR asaas_customer_email LIKE '%${search.replace(/'/g, "''")}%' OR description LIKE '%${search.replace(/'/g, "''")}%')` : ''}
+        ${statusFilter !== 'all' ? `AND status = '${statusFilter}'` : ''}
+      ORDER BY
+        CASE WHEN asaas_status IN ('RECEIVED','CONFIRMED','RECEIVED_IN_CASH') THEN 0 ELSE 1 END ASC,
+        due_date DESC
+      LIMIT ${pageSize} OFFSET ${offset}
+    `));
+
+    const rows = (cacheRows[0] as any[]) ?? [];
+
+    const result = rows
+      .filter(row => !excludedAsaasIds.has(row.asaas_payment_id))
+      .filter(row => {
+        // Manter se não classificado, ou se tem saldo livre de Pix
+        if (!classifiedAsaasIds.has(row.asaas_payment_id)) return true;
+        const allocatedAmt = pixAllocatedMap.get(row.asaas_payment_id) ?? 0;
+        const freeBalance = Math.max(0, parseFloat(row.value) - allocatedAmt);
+        return allocatedAmt > 0 && freeBalance >= 0.01;
+      })
+      .map(row => {
+        const localClient = localClientByEmail.get((row.asaas_customer_email ?? '').toLowerCase());
+        const allocatedAmt = pixAllocatedMap.get(row.asaas_payment_id) ?? 0;
+        const freeBalance = Math.max(0, parseFloat(row.value) - allocatedAmt);
+        return {
+          asaasChargeId: row.asaas_payment_id,
+          description: row.description || 'Sem descrição',
+          value: parseFloat(row.value),
+          dueDate: row.due_date instanceof Date ? row.due_date.toISOString().split('T')[0] : String(row.due_date).split('T')[0],
+          status: row.asaas_status || row.status?.toUpperCase() || 'PENDING',
+          clientId: localClient?.id ?? 0,
+          clientName: localClient?.name ?? row.asaas_customer_name ?? 'Desconhecido',
+          clientEmail: localClient?.email ?? row.asaas_customer_email ?? '',
+          asaasCustomerId: row.asaas_customer_id ?? '',
+          allocatedAmount: allocatedAmt > 0 ? allocatedAmt : undefined,
+          freeBalance: allocatedAmt > 0 ? freeBalance : undefined,
+          allocations: pixAllocHistoryMap.get(row.asaas_payment_id),
+          lastSyncedAt: row.last_synced_at,
+        };
+      });
+
+    // Verificar se o cache está vazio (nunca foi sincronizado)
+    const cacheEmpty = await db.execute(sql.raw('SELECT COUNT(*) as cnt FROM unclassified_charges'));
+    const cacheSize = (cacheEmpty[0] as any)[0]?.cnt ?? 0;
+
+    console.log(`[listUnclassifiedCharges] Cache: ${cacheSize} total | Retornando ${result.length} (página ${page}/${Math.ceil(totalCount / pageSize)})`);
 
     return {
       charges: result,
       totalCount,
+      page,
+      pageSize,
+      totalPages: Math.ceil(totalCount / pageSize),
+      cacheEmpty: cacheSize === 0,
+      lastSyncedAt: rows[0]?.last_synced_at ?? null,
     };
   }),
 
@@ -1792,19 +1891,7 @@ export const saasRouter = router({
       const localClients = await db.select().from(allowedClients);
       const localClientByEmail = new Map(localClients.map(c => [c.email.toLowerCase(), c]));
 
-      // ── 3. Carregar mapa de clientes Asaas ──
-      const asaasCustomerMap = new Map<string, { name: string; email: string }>();
-      let customerOffset = 0;
-      let customerHasMore = true;
-      while (customerHasMore) {
-        const batch = await listAllAsaasCustomers({ limit: 100, offset: customerOffset });
-        if (batch.length === 0) { customerHasMore = false; break; }
-        for (const c of batch) asaasCustomerMap.set(c.id, { name: c.name, email: c.email ?? '' });
-        if (batch.length < 100) customerHasMore = false;
-        customerOffset += 100;
-      }
-
-      // ── 4. Palavras-chave (mesmas do autoClassifySuggestions) ──
+      // ── 3. Palavras-chave (mesmas do autoClassifySuggestions) ──
       const fuelKeywords = [
         'abastecimento', 'taxa de abastecimento', 'taxa abastecimento', 'abast',
         'combustivel', 'combustível', 'gasolina', 'etanol', 'diesel',
@@ -1831,29 +1918,49 @@ export const saasRouter = router({
         'mensalidade do clube', 'taxa de uso', 'taxa uso', 'taxa mensal clube'
       ];
 
-      // ── 5. Buscar todas as cobranças Asaas e processar ──
-      let chargeOffset = 0;
-      let chargeHasMore = true;
+      // ── 4. Buscar todas as cobranças do CACHE LOCAL e processar ──
       const classified: Array<{ asaasChargeId: string; type: string; clientName: string; confidence: number }> = [];
       const skipped: Array<{ asaasChargeId: string; reason: string }> = [];
 
-      while (chargeHasMore) {
-        const { charges: batch, hasMore } = await listAllAsaasCharges({ limit: 100, offset: chargeOffset });
-        if (batch.length === 0) { chargeHasMore = false; break; }
-        if (!hasMore || batch.length < 100) chargeHasMore = false;
-        chargeOffset += 100;
+      // Buscar do cache local em lotes de 500 para não sobrecarregar memória
+      let cacheOffset = 0;
+      let cacheHasMore = true;
 
-        for (const charge of batch) {
-          // Pular canceladas/deletadas
-          if (charge.status === 'DELETED' || charge.status === 'CANCELLED') continue;
+      while (cacheHasMore) {
+        const cacheResult = await db.execute(sql.raw(`
+          SELECT asaas_payment_id, asaas_customer_id, asaas_customer_name, asaas_customer_email,
+                 description, value, due_date, asaas_status, status
+          FROM unclassified_charges
+          WHERE classified = 0
+            AND status != 'cancelled'
+          ORDER BY id ASC
+          LIMIT 500 OFFSET ${cacheOffset}
+        `));
+
+        const cacheBatch = (cacheResult[0] as any[]) ?? [];
+        if (cacheBatch.length === 0) { cacheHasMore = false; break; }
+        if (cacheBatch.length < 500) cacheHasMore = false;
+        cacheOffset += 500;
+
+        for (const cacheRow of cacheBatch) {
+          const chargeId = cacheRow.asaas_payment_id;
           // Pular já excluídas manualmente
-          if (excludedAsaasIds.has(charge.id)) continue;
+          if (excludedAsaasIds.has(chargeId)) continue;
           // Pular já classificadas
-          if (classifiedAsaasIds.has(charge.id)) continue;
+          if (classifiedAsaasIds.has(chargeId)) continue;
 
-          // Identificar cliente local
-          const asaasCustomer = asaasCustomerMap.get((charge as any).customer ?? '');
-          const localClient = localClientByEmail.get((asaasCustomer?.email ?? '').toLowerCase());
+          // Montar objeto compatível com o restante do código
+          const charge = {
+            id: chargeId,
+            description: cacheRow.description,
+            value: parseFloat(cacheRow.value),
+            dueDate: cacheRow.due_date instanceof Date ? cacheRow.due_date.toISOString().split('T')[0] : String(cacheRow.due_date).split('T')[0],
+            status: cacheRow.asaas_status || cacheRow.status?.toUpperCase() || 'PENDING',
+            customer: cacheRow.asaas_customer_id,
+          };
+
+          // Identificar cliente local pelo email do cache
+          const localClient = localClientByEmail.get((cacheRow.asaas_customer_email ?? '').toLowerCase());
           const clientId = localClient?.id ?? 0;
 
           const desc_lower = (charge.description || '').toLowerCase();
@@ -1989,10 +2096,13 @@ export const saasRouter = router({
             // Marcar como classificada para não reprocessar neste loop
             classifiedAsaasIds.add(charge.id);
 
+            // Marcar como classified=1 no cache local
+            await db.execute(sql.raw(`UPDATE unclassified_charges SET classified = 1, classified_at = NOW() WHERE asaas_payment_id = '${charge.id.replace(/'/g, "''")}' LIMIT 1`));
+
             classified.push({
               asaasChargeId: charge.id,
               type: suggestedType,
-              clientName: localClient?.name ?? asaasCustomer?.name ?? 'Desconhecido',
+              clientName: localClient?.name ?? cacheRow.asaas_customer_name ?? 'Desconhecido',
               confidence: overallConfidence,
             });
 

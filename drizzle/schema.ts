@@ -337,27 +337,37 @@ export const excludedAsaasCharges = mysqlTable("excluded_asaas_charges", {
 
 export const unclassifiedCharges = mysqlTable("unclassified_charges", {
 	id: int().autoincrement().notNull(),
+	// ID da cobrança no Asaas (chave primária do cache)
 	asaasPaymentId: varchar("asaas_payment_id", { length: 255 }).notNull().unique(),
+	// Dados do cliente no Asaas
 	asaasCustomerId: varchar("asaas_customer_id", { length: 255 }).notNull(),
 	asaasCustomerName: varchar("asaas_customer_name", { length: 255 }),
 	asaasCustomerEmail: varchar("asaas_customer_email", { length: 320 }),
 	asaasCustomerCpfCnpj: varchar("asaas_customer_cpf_cnpj", { length: 20 }),
+	// Dados da cobrança
 	description: text(),
 	value: decimal({ precision: 10, scale: 2 }).notNull(),
-	dueDate: timestamp("due_date", { mode: 'string' }).notNull(),
-	paidDate: timestamp("paid_date", { mode: 'string' }),
+	dueDate: varchar("due_date", { length: 10 }).notNull(),
+	paidDate: varchar("paid_date", { length: 10 }),
+	asaasStatus: varchar("asaas_status", { length: 50 }).default('PENDING').notNull(),
 	status: mysqlEnum(['pending','paid','overdue','cancelled']).default('pending').notNull(),
+	// Controle de classificação
 	classified: tinyint().default(0).notNull(),
 	classifiedAt: timestamp("classified_at", { mode: 'string' }),
 	classifiedBy: int("classified_by"),
 	linkedClientId: int("linked_client_id"),
 	linkedSubscriptionId: int("linked_subscription_id"),
 	linkedChargeId: int("linked_charge_id"),
+	// Controle de sincronização
+	lastSyncedAt: timestamp("last_synced_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 },
 (table) => [
-	index("asaas_payment_id").on(table.asaasPaymentId),
-	index("classified").on(table.classified),
+	index("uc_asaas_payment_id").on(table.asaasPaymentId),
+	index("uc_classified").on(table.classified),
+	index("uc_asaas_customer_id").on(table.asaasCustomerId),
+	index("uc_status").on(table.status),
+	index("uc_due_date").on(table.dueDate),
 ]);
 
 // Type exports

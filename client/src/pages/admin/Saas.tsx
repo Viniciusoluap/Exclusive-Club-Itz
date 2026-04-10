@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -406,12 +406,36 @@ function UnclassifiedChargeCard({
 // Componente para listar e classificar cobranças não classificadas
 function UnclassifiedChargesSection() {
   const utils = trpc.useUtils();
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  const { data: unclassifiedData, isLoading, error } = trpc.saas.listUnclassifiedCharges.useQuery(
-    undefined,
-    { staleTime: 2 * 60 * 1000, retry: 1 }
+  // Debounce da busca
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: unclassifiedData, isLoading, error, refetch } = trpc.saas.listUnclassifiedCharges.useQuery(
+    { page, pageSize: 50, search: debouncedSearch || undefined },
+    { staleTime: 60 * 1000, retry: 1 }
   );
   const { data: clients } = trpc.allowedClients.list.useQuery();
+
+  // Sincronizar cache BPO com o Asaas
+  const syncCacheMutation = trpc.saas.syncBpoCache.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `🔄 Cache sincronizado: ${data.inserted + data.updated} cobranças processadas, ${data.unclassifiedCount} aguardando classificação`,
+        { duration: 8000 }
+      );
+      setPage(1);
+      utils.saas.listUnclassifiedCharges.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao sincronizar cache: ${error.message}`);
+    },
+  });
 
   const autoClassifyMutation = trpc.saas.autoClassifyAll.useMutation({
     onSuccess: (data) => {
@@ -445,11 +469,33 @@ function UnclassifiedChargesSection() {
     utils.saas.listUnclassifiedCharges.invalidate();
   };
 
-  // Não mostrar se não houver cobranças não classificadas
+  // Cache vazio: mostrar banner para sincronizar
+  if (!isLoading && unclassifiedData?.cacheEmpty) {
+    return (
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="py-8">
+          <div className="text-center">
+            <AlertCircle className="h-10 w-10 text-blue-500 mx-auto mb-3" />
+            <p className="text-blue-800 font-semibold mb-1">Cache BPO vazio</p>
+            <p className="text-blue-600 text-sm mb-4">Sincronize o cache para carregar as cobranças do Asaas.</p>
+            <Button
+              onClick={() => syncCacheMutation.mutate()}
+              disabled={syncCacheMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncCacheMutation.isPending ? 'animate-spin' : ''}`} />
+              {syncCacheMutation.isPending ? 'Sincronizando...' : 'Sincronizar Cache Agora'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (isLoading) return (
     <Card className="border-yellow-200 bg-yellow-50">
       <CardContent className="py-8 text-center text-yellow-700">
-        Carregando cobranças não classificadas... (pode levar alguns segundos)
+        Carregando cobranças do cache local...
       </CardContent>
     </Card>
   );
@@ -462,7 +508,7 @@ function UnclassifiedChargesSection() {
   );
   if (!unclassifiedData || unclassifiedData.totalCount === 0) return null;
 
-  const { charges, totalCount } = unclassifiedData;
+  const { charges, totalCount, totalPages, lastSyncedAt } = unclassifiedData;
 
   return (
     <Card className="border-yellow-200 bg-yellow-50">
@@ -474,19 +520,46 @@ function UnclassifiedChargesSection() {
               Cobranças Não Classificadas
             </CardTitle>
             <CardDescription className="mt-1">
-              {totalCount} cobrança(s) do Asaas aguardando classificação
+              {totalCount} cobrança(s) aguardando classificação
+              {lastSyncedAt && (
+                <span className="ml-2 text-xs text-yellow-600">
+                  • Última sync: {new Date(lastSyncedAt).toLocaleString('pt-BR')}
+                </span>
+              )}
             </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => autoClassifyMutation.mutate({ confidenceThreshold: 85 })}
-            disabled={autoClassifyMutation.isPending}
-            className="bg-white border-yellow-400 text-yellow-700 hover:bg-yellow-50 hover:text-yellow-800 whitespace-nowrap"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${autoClassifyMutation.isPending ? 'animate-spin' : ''}`} />
-            {autoClassifyMutation.isPending ? 'Classificando...' : '⚡ Classificar Automaticamente (≥85%)'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => syncCacheMutation.mutate()}
+              disabled={syncCacheMutation.isPending || autoClassifyMutation.isPending}
+              className="bg-white border-blue-300 text-blue-700 hover:bg-blue-50 whitespace-nowrap"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncCacheMutation.isPending ? 'animate-spin' : ''}`} />
+              {syncCacheMutation.isPending ? 'Sincronizando...' : '🔄 Sincronizar Cache'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => autoClassifyMutation.mutate({ confidenceThreshold: 85 })}
+              disabled={autoClassifyMutation.isPending || syncCacheMutation.isPending}
+              className="bg-white border-yellow-400 text-yellow-700 hover:bg-yellow-50 hover:text-yellow-800 whitespace-nowrap"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${autoClassifyMutation.isPending ? 'animate-spin' : ''}`} />
+              {autoClassifyMutation.isPending ? 'Classificando...' : '⚡ Classificar Automaticamente (≥85%)'}
+            </Button>
+          </div>
+        </div>
+        {/* Barra de busca */}
+        <div className="mt-3">
+          <input
+            type="text"
+            placeholder="Buscar por cliente, email ou descrição..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="w-full px-3 py-2 text-sm border border-yellow-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          />
         </div>
       </CardHeader>
       <CardContent>
@@ -502,6 +575,34 @@ function UnclassifiedChargesSection() {
           ))}
         </div>
 
+        {/* Paginação */}
+        {totalPages && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-yellow-200">
+            <p className="text-sm text-yellow-700">
+              Página {page} de {totalPages} • {totalCount} cobranças no total
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="bg-white border-yellow-300"
+              >
+                ← Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="bg-white border-yellow-300"
+              >
+                Próxima →
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -669,6 +770,22 @@ export default function Saas() {
     },
   });
 
+  // Sincronizar cache BPO (novo fluxo rápido)
+  const syncBpoCacheMutation = trpc.saas.syncBpoCache.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `🔄 Cache BPO sincronizado: ${data.inserted + data.updated} cobranças processadas, ${data.unclassifiedCount} aguardando classificação`,
+        { duration: 8000 }
+      );
+      utils.saas.listUnclassifiedCharges.invalidate();
+      utils.saas.getFilteredStats.invalidate();
+      utils.saas.listCharges.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Erro ao sincronizar cache BPO: ${error.message}`);
+    },
+  });
+
   const resetForm = () => {
     setForm({
       clientId: 0,
@@ -784,11 +901,21 @@ export default function Saas() {
         <div className="flex flex-col sm:flex-row gap-2">
           <Button
             variant="outline"
+            onClick={() => syncBpoCacheMutation.mutate()}
+            disabled={syncBpoCacheMutation.isPending || syncMutation.isPending}
+            className="border-blue-300 text-blue-700 hover:bg-blue-50"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncBpoCacheMutation.isPending ? 'animate-spin' : ''}`} />
+            {syncBpoCacheMutation.isPending ? 'Sincronizando...' : '🔄 Sincronizar Cache BPO'}
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
+            disabled={syncMutation.isPending || syncBpoCacheMutation.isPending}
+            title="Sincronização completa com o Asaas (mais lenta)"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-            Sincronizar Asaas
+            Sync Completo
           </Button>
           <Button onClick={() => { resetForm(); setShowDialog(true); }}>
             <Plus className="h-4 w-4 mr-2" />
