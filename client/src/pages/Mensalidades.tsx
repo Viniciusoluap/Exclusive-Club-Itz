@@ -163,29 +163,18 @@ export default function Mensalidades() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Exclusive Club" className="h-10 w-10 rounded-full object-cover" />
-            <span className="font-semibold text-gray-800 hidden sm:block">Exclusive Club</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation('/dashboard')}
-              className="flex items-center gap-1 text-gray-600"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4 md:p-8">
+      <div className="max-w-5xl mx-auto space-y-6">
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+      {/* Header com botão Voltar */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={() => setLocation('/dashboard')}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar
+        </Button>
+      </div>
+
+      <div className="space-y-6">
         {/* Título */}
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -381,7 +370,7 @@ export default function Mensalidades() {
             )}
           </CardContent>
         </Card>
-      </main>
+      </div>
 
       {/* Dialog: Solicitar Mudança de Vencimento */}
       <Dialog open={showDueDateDialog} onOpenChange={setShowDueDateDialog}>
@@ -434,6 +423,7 @@ export default function Mensalidades() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
