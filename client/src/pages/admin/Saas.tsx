@@ -650,8 +650,8 @@ export default function Saas() {
   const [consolidatedType, setConsolidatedType] = useState("all");
   const [consolidatedSource, setConsolidatedSource] = useState("all");
   const [consolidatedSearch, setConsolidatedSearch] = useState("");
-  const [consolidatedMonth, setConsolidatedMonth] = useState("");
-  const [consolidatedYear, setConsolidatedYear] = useState("");
+  const [consolidatedMonth, setConsolidatedMonth] = useState("all_months");
+  const [consolidatedYear, setConsolidatedYear] = useState("all_years");
   
   // Gerar mês atual no formato YYYY-MM
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -695,8 +695,8 @@ export default function Saas() {
       type: consolidatedType as any,
       source: consolidatedSource as any,
       search: consolidatedSearch || undefined,
-      month: consolidatedMonth || undefined,
-      year: consolidatedYear || undefined,
+      month: (consolidatedMonth && consolidatedMonth !== "all_months") ? consolidatedMonth : undefined,
+      year: (consolidatedYear && consolidatedYear !== "all_years") ? consolidatedYear : undefined,
     },
     { enabled: activeTab === "consolidated" }
   );
@@ -1644,7 +1644,7 @@ export default function Saas() {
                       <SelectValue placeholder="Mês" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos meses</SelectItem>
+                      <SelectItem value="all_months">Todos meses</SelectItem>
                       {["01","02","03","04","05","06","07","08","09","10","11","12"].map(m => (
                         <SelectItem key={m} value={m}>{new Date(2000, parseInt(m)-1).toLocaleString('pt-BR', {month: 'long'})}</SelectItem>
                       ))}
@@ -1655,7 +1655,7 @@ export default function Saas() {
                       <SelectValue placeholder="Ano" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos anos</SelectItem>
+                      <SelectItem value="all_years">Todos anos</SelectItem>
                       {["2023","2024","2025","2026"].map(y => (
                         <SelectItem key={y} value={y}>{y}</SelectItem>
                       ))}

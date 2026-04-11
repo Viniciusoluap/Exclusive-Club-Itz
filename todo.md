@@ -1699,3 +1699,7 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Remover botão Configurações do header do Admin (desktop e mobile)
 - [x] Adicionar "Configurações" na grade de navegação (abaixo de Funcionários, ao lado direito de Saas)
 - [x] Checkpoint
+
+## Bug: Select.Item com value vazio na aba Visão Consolidada
+- [x] Corrigir SelectItem value="" nos filtros Mês e Ano da Visão Consolidada (causava crash "must have a value prop that is not an empty string")
+- [x] Checkpoint
