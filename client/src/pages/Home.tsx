@@ -30,14 +30,14 @@ export default function Home() {
               <a href="#embarcacoes" className="text-foreground hover:text-primary transition-colors">
                 Embarcações
               </a>
+              <a href="#sobre" className="text-foreground hover:text-primary transition-colors">
+                Sobre Nós
+              </a>
               <Link href="/galeria">
                 <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
                   Galeria
                 </span>
               </Link>
-              <a href="#sobre" className="text-foreground hover:text-primary transition-colors">
-                Sobre Nós
-              </a>
               {isAuthenticated && user?.role !== "employee" && (
                 <Link href="/dashboard">
                   <span className="text-foreground hover:text-primary transition-colors cursor-pointer">

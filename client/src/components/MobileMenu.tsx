@@ -109,10 +109,6 @@ export function MobileMenu() {
             Embarcações
           </a>
 
-          <NavLink href="/galeria">
-            Galeria
-          </NavLink>
-
           <a
             href="/#sobre"
             className="block px-4 py-3 text-lg rounded-lg transition-colors text-foreground hover:bg-accent"
@@ -120,6 +116,10 @@ export function MobileMenu() {
           >
             Sobre Nós
           </a>
+
+          <NavLink href="/galeria">
+            Galeria
+          </NavLink>
 
           {isAuthenticated && user?.role !== "employee" && (
             <>
