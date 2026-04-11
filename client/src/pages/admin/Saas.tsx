@@ -849,13 +849,14 @@ export default function Saas() {
     }
   };
 
-  const handleMarkAsPaid = (subscriptionId: number) => {
-    if (!confirm("Tem certeza que deseja marcar esta mensalidade como paga?")) {
+  const handleMarkAsPaid = (subscriptionId: number, chargeId?: number) => {
+    if (!confirm("Tem certeza que deseja marcar esta cobrança como paga?")) {
       return;
     }
 
     markAsPaidMutation.mutate({
       subscriptionId,
+      chargeId,
       paymentDate: new Date().toISOString().split('T')[0],
       notifyCustomer: false,
     });
@@ -1250,7 +1251,7 @@ export default function Saas() {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => handleMarkAsPaid(item.subscription?.id || 0)}
+                        onClick={() => handleMarkAsPaid(item.subscription?.id || 0, item.charge.id)}
                         disabled={item.charge.status === "cancelled"}
                         title="Marcar como recebido"
                       >

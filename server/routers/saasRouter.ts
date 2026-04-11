@@ -1174,9 +1174,16 @@ export const saasRouter = router({
     const searchFilter = search ? `AND (asaas_customer_name LIKE '%${search.replace(/'/g, "''")}%' OR asaas_customer_email LIKE '%${search.replace(/'/g, "''")}%' OR description LIKE '%${search.replace(/'/g, "''")}%')` : '';
     const statusSql = statusFilter !== 'all' ? `AND status = '${statusFilter}'` : '';
 
+    // Montar lista de IDs excluídos para o COUNT (excluídos manualmente + já classificados)
+    const excludedIdsList = [...excludedAsaasIds, ...classifiedAsaasIds]
+      .map(id => `'${id.replace(/'/g, "''")}'`).join(',');
+    const excludedFilter = excludedIdsList.length > 0
+      ? `AND asaas_payment_id NOT IN (${excludedIdsList})`
+      : '';
+
     const countResult = await db.execute(sql.raw(`
       SELECT COUNT(*) as cnt FROM unclassified_charges
-      WHERE ${baseFilter} ${searchFilter} ${statusSql}
+      WHERE ${baseFilter} ${searchFilter} ${statusSql} ${excludedFilter}
     `));
     const totalCount = (countResult[0] as any)[0]?.cnt ?? 0;
 

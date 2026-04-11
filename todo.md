@@ -1629,3 +1629,7 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] Remover duplicatas do banco com segurança
 - [ ] Adicionar filtro automático cus_0 no backend (syncBpoCache + listUnclassifiedCharges)
 - [ ] Verificar totais após limpeza
+
+## 🐛 Fix: Bugs BPO (11/04/2026)
+- [x] Corrigir contador: totalCount incluía cobranças excluídas (split_fully_allocated)
+- [x] Corrigir handleMarkAsPaid: passar chargeId para atualizar status em subscription_charges
