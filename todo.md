@@ -1648,8 +1648,9 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Salvar checkpoint
 
 ## 🐛 Fix: Cobranças duplicadas no BPO (11/04/2026)
-- [ ] Varredura SQL: identificar cobranças com mesmo subscription_id + due_date + type duplicadas
-- [ ] Identificar cobranças pagas no BPO que aparecem como "Pendente" em subscription_charges
-- [ ] Gerar relatório completo por cliente com valores inflados
-- [ ] Corrigir duplicatas no banco (remover registros errôneos)
-- [ ] Salvar checkpoint após correção
+- [x] Varredura SQL: identificar cobranças com mesmo subscription_id + due_date + type duplicadas
+- [x] Identificar cobranças pagas no BPO que aparecem como "Pendente" em subscription_charges
+- [x] Gerar relatório completo por cliente com valores inflados
+- [x] Corrigir duplicatas no banco: 42 registros removidos, 12 atualizados para paid
+- [x] Corrigir bug no classifyCharge para evitar duplicatas futuras
+- [x] Salvar checkpoint após correção

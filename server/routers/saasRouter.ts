@@ -1485,6 +1485,26 @@ export const saasRouter = router({
         chargeStatus = "cancelled";
       }
 
+      // Verificar se já existe cobrança para esta subscription + dueDate (evitar duplicatas)
+      const existingBySubDate = await db.select({ id: subscriptionCharges.id })
+        .from(subscriptionCharges)
+        .where(and(
+          eq(subscriptionCharges.subscriptionId, subscription[0].id),
+          eq(subscriptionCharges.dueDate, input.dueDate as any)
+        ))
+        .limit(1);
+
+      if (existingBySubDate.length > 0) {
+        // Já existe — apenas atualizar o asaasPaymentId e status
+        await db.update(subscriptionCharges)
+          .set({ asaasPaymentId: input.asaasChargeId, status: chargeStatus })
+          .where(eq(subscriptionCharges.id, existingBySubDate[0].id));
+        return {
+          success: true,
+          message: "Cobrança vinculada à cobrança existente (mesma data de vencimento)",
+        };
+      }
+
       // Criar nova cobrança
       await db.insert(subscriptionCharges).values({
         subscriptionId: subscription[0].id,
