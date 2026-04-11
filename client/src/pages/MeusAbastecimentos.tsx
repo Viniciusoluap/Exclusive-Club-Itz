@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Fuel, ExternalLink, FileText, DollarSign, TrendingUp, Loader2, AlertCircle } from "lucide-react";
+import { Fuel, ExternalLink, FileText, DollarSign, TrendingUp, Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 export default function MeusAbastecimentos() {
   const { user, loading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
 
   const trpcAny = trpc as any;
@@ -61,7 +62,17 @@ export default function MeusAbastecimentos() {
   };
 
   return (
-    <div className="container py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4 md:p-8">
+      <div className="max-w-4xl mx-auto space-y-6">
+
+      {/* Header com botão Voltar */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={() => setLocation('/dashboard')}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar
+        </Button>
+      </div>
+
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Meus Abastecimentos</h1>
         <p className="text-muted-foreground mt-1">
@@ -232,6 +243,7 @@ export default function MeusAbastecimentos() {
           </div>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
