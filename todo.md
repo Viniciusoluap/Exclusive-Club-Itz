@@ -1803,3 +1803,10 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Escrever/atualizar testes do expensesRouter
 - [ ] Criar checkpoint
 
+
+## 🔧 Feature: Mover barra de abas para abaixo dos cards de totais (BPO)
+
+- [x] Localizar os cards de totais e a barra de abas no Saas.tsx
+- [x] Mover TabsList para logo abaixo dos cards de totais (antes dos filtros)
+- [x] Verificar que todas as abas e funcionalidades permanecem intactas
+- [ ] Salvar checkpoint

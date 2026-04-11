@@ -1221,7 +1221,32 @@ export default function Saas() {
           </CardContent>
         </Card>
       </div>
-
+      {/* Barra de Abas — logo abaixo dos cards de totais */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <TabsList className="mb-6 h-auto flex flex-wrap gap-1 p-1">
+          <TabsTrigger value="charges" className="flex items-center gap-1">
+            <CreditCard className="h-4 w-4" />
+            Cobranças
+          </TabsTrigger>
+          <TabsTrigger value="expenses" className="flex items-center gap-1">
+            <TrendingDown className="h-4 w-4" />
+            Despesas
+          </TabsTrigger>
+          <TabsTrigger value="consolidated" className="flex items-center gap-1">
+            <TrendingUp className="h-4 w-4" />
+            Visão Consolidada
+          </TabsTrigger>
+          <TabsTrigger value="webhooks" className="flex items-center gap-1">
+            <Webhook className="h-4 w-4" />
+            Webhooks
+          </TabsTrigger>
+          <TabsTrigger value="reconciliation" className="flex items-center gap-1">
+            <History className="h-4 w-4" />
+            Reconciliação
+          </TabsTrigger>
+        </TabsList>
+        {/* Aba Cobranças: filtros e lista de cobranças */}
+        <TabsContent value="charges">
       {/* Filtros */}
       <Card className="mb-6">
         <CardHeader>
@@ -1536,39 +1561,9 @@ export default function Saas() {
           ) : (
             <p className="text-center text-muted-foreground">Nenhuma mensalidade cadastrada</p>
           )}
-        </CardContent>
+         </CardContent>
       </Card>
-
-      {/* Abas: Webhooks e Reconciliação */}
-      <div className="mt-6">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-          <TabsList className="mb-4 h-auto flex flex-wrap gap-1 p-1">
-            <TabsTrigger value="charges" className="flex items-center gap-1">
-              <CreditCard className="h-4 w-4" />
-              Cobranças
-            </TabsTrigger>
-            <TabsTrigger value="expenses" className="flex items-center gap-1">
-              <TrendingDown className="h-4 w-4" />
-              Despesas
-            </TabsTrigger>
-            <TabsTrigger value="consolidated" className="flex items-center gap-1">
-              <TrendingUp className="h-4 w-4" />
-              Visão Consolidada
-            </TabsTrigger>
-            <TabsTrigger value="webhooks" className="flex items-center gap-1">
-              <Webhook className="h-4 w-4" />
-              Webhooks
-            </TabsTrigger>
-            <TabsTrigger value="reconciliation" className="flex items-center gap-1">
-              <History className="h-4 w-4" />
-              Reconciliação
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Aba Cobranças: apenas placeholder (conteúdo já está acima) */}
-          <TabsContent value="charges">
-            <p className="text-sm text-muted-foreground text-center py-2">Use os filtros e a lista acima para gerenciar cobranças.</p>
-          </TabsContent>
+        </TabsContent>
 
           {/* Aba Webhooks */}
           <TabsContent value="webhooks">
@@ -2221,8 +2216,6 @@ export default function Saas() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-
       {/* Dialog de Criar/Editar Despesa */}
       <Dialog open={showExpenseDialog} onOpenChange={setShowExpenseDialog}>
         <DialogContent className="max-w-md">
