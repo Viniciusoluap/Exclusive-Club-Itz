@@ -1740,3 +1740,44 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] Filtrar cards de totais do BPO por due_date >= 2025-01-01
 - [ ] Proteger charge_type no ON DUPLICATE KEY UPDATE (não perder classificações no sync)
 - [ ] Verificar TypeScript, salvar checkpoint e publicar
+
+## 🐛 BUG CRÍTICO: Erro na Etapa 2 da Reconciliação (updated_at)
+====================================================================================
+
+**Problema:** `fullSync` falhava na Etapa 2 com `ER_BAD_FIELD_ERROR: Unknown column 'updated_at' in subscription_charges`
+
+**Causa:** A coluna `updated_at` não existe em `subscription_charges`. O código tentava fazer `UPDATE subscription_charges SET status='paid', paid_date=CURDATE(), updated_at=NOW()`.
+
+**Correção:**
+- [x] Remover `updated_at=NOW()` de todos os UPDATEs em `subscription_charges` (2 ocorrências)
+- [x] Testes passando: 29/29 no saasRouter.test.ts
+
+## 🐛 BUG: Aba Despesas não visível (TabsList overflow)
+====================================================================================
+
+**Problema:** Com 5 abas no `TabsList`, a aba "Despesas" ficava cortada em telas menores.
+
+**Correção:**
+- [x] Adicionar `flex flex-wrap h-auto gap-1 p-1` no `TabsList`
+- [x] Reordenar abas: Cobranças, Despesas, Visão Consolidada, Webhooks, Reconciliação
+
+## 🐛 BUG: expensesRouter usava $client.query (não-Promise)
+====================================================================================
+
+**Problema:** `expenses.list` e `expenses.stats` usavam `(db as any).$client.query()` que retorna callback-style, causando erro "You have tried to call .then() on a non-promise".
+
+**Correção:**
+- [x] Reescrever `expensesRouter.ts` usando `db.execute(sql.raw(...))` (Promise-based)
+- [x] Corrigir `expenses.update` para usar `{ id, fields: {...} }` (novo schema)
+- [x] Corrigir `expensesListQuery.data` → `expensesListQuery.data?.items` no Saas.tsx
+- [x] Testes passando: 11/11 no expensesRouter.test.ts
+
+## 🐛 BUG: syncWithAsaas falhava com ER_NO_DEFAULT_FOR_FIELD (email)
+====================================================================================
+
+**Problema:** Ao sincronizar clientes do Asaas sem email, o INSERT em `allowed_clients` falhava porque `email` é `NOT NULL` sem default.
+
+**Correção:**
+- [x] Usar email placeholder `asaas_{id}@sem-email.local` quando cliente Asaas não tem email
+- [x] Testes passando: 29/29 no saasRouter.test.ts
+
