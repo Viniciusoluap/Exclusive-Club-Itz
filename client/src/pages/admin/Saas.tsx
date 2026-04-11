@@ -1495,26 +1495,26 @@ export default function Saas() {
       {/* Abas: Webhooks e Reconciliação */}
       <div className="mt-6">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="charges">
-              <CreditCard className="h-4 w-4 mr-2" />
+          <TabsList className="mb-4 h-auto flex flex-wrap gap-1 p-1">
+            <TabsTrigger value="charges" className="flex items-center gap-1">
+              <CreditCard className="h-4 w-4" />
               Cobranças
             </TabsTrigger>
-            <TabsTrigger value="webhooks">
-              <Webhook className="h-4 w-4 mr-2" />
-              Webhooks
+            <TabsTrigger value="expenses" className="flex items-center gap-1">
+              <TrendingDown className="h-4 w-4" />
+              Despesas
             </TabsTrigger>
-            <TabsTrigger value="reconciliation">
-              <History className="h-4 w-4 mr-2" />
-              Reconciliação
-            </TabsTrigger>
-            <TabsTrigger value="consolidated">
-              <TrendingUp className="h-4 w-4 mr-2" />
+            <TabsTrigger value="consolidated" className="flex items-center gap-1">
+              <TrendingUp className="h-4 w-4" />
               Visão Consolidada
             </TabsTrigger>
-            <TabsTrigger value="expenses">
-              <TrendingDown className="h-4 w-4 mr-2" />
-              Despesas
+            <TabsTrigger value="webhooks" className="flex items-center gap-1">
+              <Webhook className="h-4 w-4" />
+              Webhooks
+            </TabsTrigger>
+            <TabsTrigger value="reconciliation" className="flex items-center gap-1">
+              <History className="h-4 w-4" />
+              Reconciliação
             </TabsTrigger>
           </TabsList>
 
@@ -2037,7 +2037,7 @@ export default function Saas() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {(expensesListQuery.data ?? []).map((expense: any) => (
+                        {(expensesListQuery.data?.items ?? []).map((expense: any) => (
                           <TableRow key={expense.id}>
                             <TableCell>
                               <Badge variant="outline">{COST_CENTER_LABELS[expense.costCenter] ?? expense.costCenter}</Badge>
@@ -2088,7 +2088,7 @@ export default function Saas() {
                             </TableCell>
                           </TableRow>
                         ))}
-                        {(expensesListQuery.data ?? []).length === 0 && (
+                        {(expensesListQuery.data?.items ?? []).length === 0 && (
                           <TableRow>
                             <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                               Nenhuma despesa encontrada. Clique em "Nova Despesa" para cadastrar.
@@ -2197,14 +2197,16 @@ export default function Saas() {
                 if (editingExpenseId) {
                   updateExpenseMutation.mutate({
                     id: editingExpenseId,
-                    costCenter: expenseForm.costCenter,
-                    description: expenseForm.description,
-                    recipientName: expenseForm.recipientName || undefined,
-                    value: parseFloat(expenseForm.value),
-                    dueDate: expenseForm.dueDate,
-                    paidDate: expenseForm.paidDate || undefined,
-                    status: expenseForm.status,
-                    notes: expenseForm.notes || undefined,
+                    fields: {
+                      costCenter: expenseForm.costCenter,
+                      description: expenseForm.description,
+                      recipientName: expenseForm.recipientName || undefined,
+                      value: parseFloat(expenseForm.value),
+                      dueDate: expenseForm.dueDate,
+                      paidDate: expenseForm.paidDate || undefined,
+                      status: expenseForm.status,
+                      notes: expenseForm.notes || undefined,
+                    },
                   });
                 } else {
                   createExpenseMutation.mutate({

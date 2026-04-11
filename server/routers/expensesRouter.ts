@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { expenseRecords } from "../../drizzle/schema";
-import { eq, and, gte, lte, like, or, sql, desc } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 // Labels legíveis para centros de custo
@@ -78,7 +78,7 @@ export const expensesRouter = router({
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-      const [rows] = await (db as any).$client.query(`
+      const rawResult = await db.execute(sql.raw(`
         SELECT
           id,
           cost_center,
@@ -100,24 +100,30 @@ export const expensesRouter = router({
         ${whereClause}
         ORDER BY due_date DESC
         LIMIT ${limit} OFFSET ${offset}
-      `) as any[];
+      `));
 
-      return (rows || []).map((r: any) => ({
-        id: r.id,
-        costCenter: r.cost_center as string,
-        costCenterLabel: COST_CENTER_LABELS[r.cost_center] ?? r.cost_center,
-        description: r.description,
-        recipientName: r.recipient_name,
-        value: parseFloat(r.value ?? "0"),
-        dueDate: r.due_date,
-        paidDate: r.paid_date,
-        status: r.status as string,
-        asaasPaymentId: r.asaas_payment_id,
-        notes: r.notes,
-        createdBy: r.created_by,
-        createdAt: r.created_at,
-        updatedAt: r.updated_at,
-      }));
+      const rows = ((rawResult[0] as unknown as any[]) ?? []) as any[];
+      const total = rows.length;
+
+      return {
+        items: rows.map((r: any) => ({
+          id: r.id,
+          costCenter: r.cost_center as string,
+          costCenterLabel: COST_CENTER_LABELS[r.cost_center] ?? r.cost_center,
+          description: r.description,
+          recipientName: r.recipient_name,
+          value: parseFloat(r.value ?? "0"),
+          dueDate: r.due_date,
+          paidDate: r.paid_date,
+          status: r.status as string,
+          asaasPaymentId: r.asaas_payment_id,
+          notes: r.notes,
+          createdBy: r.created_by,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+        })),
+        total,
+      };
     }),
 
   // ── Totais por status (cards) ────────────────────────────────────────────
@@ -148,7 +154,7 @@ export const expensesRouter = router({
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
-      const [rows] = await (db as any).$client.query(`
+      const statsResult = await db.execute(sql.raw(`
         SELECT
           SUM(CASE WHEN status = 'paid' THEN CAST(value AS DECIMAL(10,2)) ELSE 0 END) as total_paid,
           SUM(CASE WHEN status = 'pending' AND due_date >= CURDATE() THEN CAST(value AS DECIMAL(10,2)) ELSE 0 END) as total_pending,
@@ -160,12 +166,12 @@ export const expensesRouter = router({
           SUM(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()) THEN 1 ELSE 0 END) as count_overdue
         FROM expense_records
         ${whereClause}
-      `) as any[];
+      `));
 
-      const row = (rows || [])[0] ?? {};
+      const row = ((statsResult[0] as unknown as any[]) ?? [])[0] ?? {};
 
       // Totais por centro de custo
-      const [byCostCenter] = await (db as any).$client.query(`
+      const byCostCenterResult = await db.execute(sql.raw(`
         SELECT
           cost_center,
           SUM(CAST(value AS DECIMAL(10,2))) as total,
@@ -174,7 +180,9 @@ export const expensesRouter = router({
         ${whereClause}
         GROUP BY cost_center
         ORDER BY total DESC
-      `) as any[];
+      `));
+
+      const byCostCenter = ((byCostCenterResult[0] as unknown as any[]) ?? []) as any[];
 
       return {
         totalAll: parseFloat(row.total_all ?? "0"),
@@ -185,7 +193,7 @@ export const expensesRouter = router({
         countPaid: parseInt(row.count_paid ?? "0"),
         countPending: parseInt(row.count_pending ?? "0"),
         countOverdue: parseInt(row.count_overdue ?? "0"),
-        byCostCenter: (byCostCenter || []).map((r: any) => ({
+        byCostCenter: byCostCenter.map((r: any) => ({
           costCenter: r.cost_center as string,
           label: COST_CENTER_LABELS[r.cost_center] ?? r.cost_center,
           total: parseFloat(r.total ?? "0"),
@@ -234,22 +242,24 @@ export const expensesRouter = router({
     .input(
       z.object({
         id: z.number(),
-        costCenter: z.enum(COST_CENTERS).optional(),
-        description: z.string().min(1).optional(),
-        recipientName: z.string().optional().nullable(),
-        value: z.number().positive().optional(),
-        dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-        paidDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-        status: z.enum(STATUSES).optional(),
-        asaasPaymentId: z.string().optional().nullable(),
-        notes: z.string().optional().nullable(),
+        fields: z.object({
+          costCenter: z.enum(COST_CENTERS).optional(),
+          description: z.string().min(1).optional(),
+          recipientName: z.string().optional().nullable(),
+          value: z.number().positive().optional(),
+          dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+          paidDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+          status: z.enum(STATUSES).optional(),
+          asaasPaymentId: z.string().optional().nullable(),
+          notes: z.string().optional().nullable(),
+        }),
       })
     )
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      const { id, ...fields } = input;
+      const { id, fields } = input;
       const updateData: Record<string, any> = {};
 
       if (fields.costCenter !== undefined) updateData.costCenter = fields.costCenter;

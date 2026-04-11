@@ -518,106 +518,43 @@ export const saasRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      // Buscar todas as cobranças com joins
-      let query = db.select({
-        charge: subscriptionCharges,
-        subscription: subscriptions,
-        client: allowedClients,
-      })
-      .from(subscriptionCharges)
-      .leftJoin(subscriptions, eq(subscriptionCharges.subscriptionId, subscriptions.id))
-      .leftJoin(allowedClients, eq(subscriptions.clientId, allowedClients.id));
+      // ── CARDS DE TOTAIS: usa unclassified_charges (cache do Asaas) como fonte primária ──
+      // Filtro base: apenas cobranças a partir de 01/01/2025
+      const CUTOFF = '2025-01-01';
 
-      let results = await query;
-
-      // Filtrar apenas cobranças a partir de 01/01/2025 (alinhado com filtro do Asaas)
-      const cutoffDate2025 = new Date('2025-01-01');
-      results = results.filter(r => new Date(r.charge.dueDate) >= cutoffDate2025);
-
-      // Normalizar status: pending com due_date passada → overdue
-      const todayNorm = new Date();
-      todayNorm.setHours(0, 0, 0, 0);
-      results = results.map(r => {
-        if (r.charge.status === 'pending' && r.charge.dueDate) {
-          const due = new Date(r.charge.dueDate);
-          due.setHours(0, 0, 0, 0);
-          if (due < todayNorm) {
-            return { ...r, charge: { ...r.charge, status: 'overdue' as const } };
-          }
-        }
-        return r;
-      });
-
-      // Filtrar por status
-      if (input?.status && input.status !== "all") {
-        results = results.filter(r => r.charge.status === input.status);
-      }
-
-      // Filtrar por tipo (suporta array de tipos ou tipo único)
-      const activeTypesStats = input?.types && input.types.length > 0 ? input.types : (input?.type ? [input.type] : null);
-      if (activeTypesStats) {
-        results = results.filter(r => {
-          const chargeType = r.charge.type || r.subscription?.type;
-          return chargeType && activeTypesStats.includes(chargeType as any);
-        });
-      }
-
-      // Filtrar por embarcação (clientes que possuem cotas na embarcação)
-      if (input?.boatId) {
-        const clientsWithBoat = await db.select({ clientId: clientQuotas.clientId })
-          .from(clientQuotas)
-          .where(eq(clientQuotas.vesselId, input.boatId));
-        
-        const clientIds = clientsWithBoat.map(c => c.clientId);
-        results = results.filter(r => r.subscription?.clientId && clientIds.includes(r.subscription.clientId));
-      }
-
-      // Filtrar por mês
+      // Construir WHERE dinâmico para filtros adicionais
+      let whereExtra = '';
       if (input?.month) {
-        results = results.filter(r => {
-          const dueDate = new Date(r.charge.dueDate);
-          const month = String(dueDate.getMonth() + 1).padStart(2, '0');
-          return month === input.month;
-        });
+        whereExtra += ` AND MONTH(due_date) = ${parseInt(input.month, 10)}`;
       }
-
-      // Filtrar por ano
       if (input?.year) {
-        results = results.filter(r => {
-          const dueDate = new Date(r.charge.dueDate);
-          const year = String(dueDate.getFullYear());
-          return year === input.year;
-        });
+        whereExtra += ` AND YEAR(due_date) = ${parseInt(input.year, 10)}`;
       }
-
-      // Filtrar por busca (nome ou email)
       if (input?.search) {
-        const search = input.search.toLowerCase();
-        results = results.filter(r => {
-          const name = r.client?.name?.toLowerCase() || "";
-          const email = r.client?.email?.toLowerCase() || "";
-          return name.includes(search) || email.includes(search);
-        });
+        const s = input.search.replace(/'/g, "''");
+        whereExtra += ` AND (asaas_customer_name LIKE '%${s}%' OR asaas_customer_email LIKE '%${s}%')`;
       }
 
-      // Calcular estatísticas
-      const charges = results.map(r => r.charge);
+      // Normalizar overdue dinamicamente: pending com due_date < hoje → overdue
+      const statsResult = await db.execute(sql.raw(`
+        SELECT
+          SUM(CASE WHEN (status = 'paid') THEN value ELSE 0 END) as totalPaid,
+          SUM(CASE WHEN (status = 'pending' AND due_date < CURDATE()) OR status = 'overdue' THEN value ELSE 0 END) as totalOverdue,
+          SUM(CASE WHEN status = 'pending' AND due_date >= CURDATE() THEN value ELSE 0 END) as totalPending,
+          COUNT(CASE WHEN (status = 'paid') THEN 1 END) as paidCount,
+          COUNT(CASE WHEN (status = 'pending' AND due_date < CURDATE()) OR status = 'overdue' THEN 1 END) as overdueCount,
+          COUNT(CASE WHEN status = 'pending' AND due_date >= CURDATE() THEN 1 END) as pendingCount
+        FROM unclassified_charges
+        WHERE due_date >= '${CUTOFF}'${whereExtra}
+      `));
 
-      const totalPending = charges
-        .filter(c => c.status === "pending")
-        .reduce((sum, c) => sum + parseFloat(c.value), 0);
-
-      const totalPaid = charges
-        .filter(c => c.status === "paid")
-        .reduce((sum, c) => sum + parseFloat(c.value), 0);
-
-      const totalOverdue = charges
-        .filter(c => c.status === "overdue")
-        .reduce((sum, c) => sum + parseFloat(c.value), 0);
-
-      const pendingCount = charges.filter(c => c.status === "pending").length;
-      const paidCount = charges.filter(c => c.status === "paid").length;
-      const overdueCount = charges.filter(c => c.status === "overdue").length;
+      const row = ((statsResult[0] as unknown as any[]) ?? [])[0] ?? {};
+      const totalPaid = parseFloat(row.totalPaid || '0');
+      const totalOverdue = parseFloat(row.totalOverdue || '0');
+      const totalPending = parseFloat(row.totalPending || '0');
+      const paidCount = parseInt(row.paidCount || '0', 10);
+      const overdueCount = parseInt(row.overdueCount || '0', 10);
+      const pendingCount = parseInt(row.pendingCount || '0', 10);
 
       return {
         totalPending,
@@ -732,9 +669,11 @@ export const saasRouter = router({
 
         // Se não encontrar cliente local, criar automaticamente
         if (!localClient) {
+          // Email é NOT NULL no schema; usar placeholder se não disponível no Asaas
+          const emailValue = asaasCustomer.email || `asaas_${asaasCustomer.id || Date.now()}@sem-email.local`;
           const insertNewClient = await db.insert(allowedClients).values({
             name: asaasCustomer.name,
-            email: asaasCustomer.email ?? undefined,
+            email: emailValue,
             cpfCnpj: asaasCustomer.cpfCnpj ?? undefined,
             phone: asaasCustomer.phone ?? undefined,
             isActive: 1,
@@ -2397,11 +2336,10 @@ export const saasRouter = router({
 
           const newStatus = cacheRow.status as string;
           if (newStatus !== row.status && ['paid', 'cancelled', 'overdue'].includes(newStatus)) {
+            const setPaidDate = newStatus === 'paid' ? `, paid_date = CURDATE()` : '';
             await db.execute(sql.raw(`
               UPDATE subscription_charges
-              SET status = '${newStatus}',
-                  ${newStatus === 'paid' ? `paid_date = CURDATE(),` : ''}
-                  updated_at = NOW()
+              SET status = '${newStatus}'${setPaidDate}
               WHERE id = ${row.id}
             `));
             results.reconciled++;
@@ -2677,7 +2615,7 @@ export async function runFullSync(): Promise<{
         const newStatus = mapAsaasStatusToUnclassified(asaasCharge.status || 'PENDING');
         if (newStatus !== row.payment_status) {
           await db.execute(sql.raw(
-            `UPDATE subscription_charges SET payment_status = '${newStatus}', updated_at = NOW() WHERE id = ${row.id}`
+            `UPDATE subscription_charges SET status = '${newStatus}' WHERE id = ${row.id}`
           ));
           results.reconciled++;
         }
