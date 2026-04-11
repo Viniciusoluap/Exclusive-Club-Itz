@@ -126,9 +126,6 @@ export function MobileMenu() {
               <NavLink href="/dashboard">
                 Dashboard
               </NavLink>
-              <NavLink href="/reservas">
-                Minhas Reservas
-              </NavLink>
             </>
           )}
 
