@@ -9,7 +9,7 @@ import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { bpoCharges, unclassifiedCharges } from "../../drizzle/schema";
 import { eq, sql } from "drizzle-orm";
-import { listAllAsaasCharges } from "../_core/asaasService";
+import { listAllAsaasCharges, getChargeStatus } from "../_core/asaasService";
 
 // ============================================================
 // Helper: normalizar status do Asaas para enum bpo_charges
@@ -328,19 +328,14 @@ export const bpoRouter = router({
 
     const pending = Array.isArray(pendingRows) ? pendingRows : [];
 
-    const apiKey = process.env.ASAAS_API_KEY;
-    const apiUrl = process.env.ASAAS_API_URL || "https://api.asaas.com/v3";
-
     for (const row of pending) {
       try {
-        const resp = await fetch(`${apiUrl}/payments/${row.asaas_charge_id}`, {
-          headers: { access_token: apiKey || "" },
-        });
-        if (!resp.ok) {
+        // Usa getChargeStatus que lê a API key do banco (descriptografada)
+        const charge = await getChargeStatus(row.asaas_charge_id);
+        if (!charge) {
           report.errors++;
           continue;
         }
-        const charge = await resp.json();
         const newStatus = normalizeBpoStatus(charge.status);
         const paid = isPaidStatus(newStatus);
 
