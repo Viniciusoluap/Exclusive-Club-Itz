@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X, CheckCircle2, XCircle, Fuel, DollarSign, Copy, QrCode } from "lucide-react";
+import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X, CheckCircle2, XCircle, Fuel, DollarSign, Copy, QrCode, ArrowLeft } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -756,9 +756,10 @@ export default function Dashboard() {
               <Link href="/reservas">
                 <Button variant="ghost">Minhas Reservas</Button>
               </Link>
-              <Link href="/galeria">
-                <Button variant="ghost">Galeria</Button>
-              </Link>
+              <Button variant="ghost" className="flex items-center gap-1" onClick={() => window.history.back()}>
+                <ArrowLeft className="h-4 w-4" />
+                Voltar
+              </Button>
               {isEditingName ? (
                 <div className="flex items-center gap-2">
                   <Input
