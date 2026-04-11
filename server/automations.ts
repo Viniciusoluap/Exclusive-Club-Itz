@@ -46,12 +46,14 @@ export async function generateMonthlyCharges() {
         const dueDay = subscription.dueDay;
         const dueDate = new Date(now.getFullYear(), now.getMonth(), dueDay);
 
-        // Criar nova cobrança
+        // Criar nova cobrança (idempotente: ignora se já existir pelo índice único subscription_id+due_date)
         await db.insert(subscriptionCharges).values({
           subscriptionId: subscription.id,
           value: subscription.value.toString(),
           dueDate: dueDate.toISOString().split('T')[0],
           status: 'pending',
+        }).onDuplicateKeyUpdate({
+          set: { subscriptionId: subscription.id }, // no-op: apenas ignora duplicata silenciosamente
         });
 
         generated++;

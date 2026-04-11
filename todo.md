@@ -1681,3 +1681,12 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] Fase 3: Migrar inspection_charges para subscription_charges (adiado — risco alto)
 - [x] Corrigir erros TypeScript no saasRouter (Set iteration, cast ResultSetHeader)
 - [x] Checkpoint final salvo
+
+## Fase 3 (Opção C): VIEW financial_charges consolidada
+- [x] Criar VIEW SQL financial_charges (subscription_charges + fuel_records + inspection_charges) — 843 registros
+- [x] Criar procedure tRPC saas.financialCharges com filtros por status, tipo, origem, mês, ano e busca
+- [x] Adicionar aba "Visão Consolidada" no BPO com cards de totais e tabela filtrada
+- [x] Corrigir onDuplicateKeyUpdate em todos os 8 pontos de inserção em subscription_charges
+- [x] 14 testes passando (markChargeAsPaid + webhook Fase 2)
+- [x] Zero erros TypeScript
+- [x] Checkpoint final salvo

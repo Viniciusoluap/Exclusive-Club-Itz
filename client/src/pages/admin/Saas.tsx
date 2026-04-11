@@ -643,7 +643,15 @@ export default function Saas() {
   const [showChargeDetail, setShowChargeDetail] = useState(false);
 
   // Aba ativa do painel principal
-  const [activeTab, setActiveTab] = useState<"charges" | "webhooks" | "reconciliation">("charges");
+  const [activeTab, setActiveTab] = useState<"charges" | "webhooks" | "reconciliation" | "consolidated">("charges");
+
+  // Filtros da Visão Consolidada
+  const [consolidatedStatus, setConsolidatedStatus] = useState("all");
+  const [consolidatedType, setConsolidatedType] = useState("all");
+  const [consolidatedSource, setConsolidatedSource] = useState("all");
+  const [consolidatedSearch, setConsolidatedSearch] = useState("");
+  const [consolidatedMonth, setConsolidatedMonth] = useState("");
+  const [consolidatedYear, setConsolidatedYear] = useState("");
   
   // Gerar mês atual no formato YYYY-MM
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -678,6 +686,19 @@ export default function Saas() {
   const reconciliationHistoryQuery = trpc.payments.reconciliationHistory.useQuery(
     { limit: 10 },
     { enabled: activeTab === "reconciliation" }
+  );
+
+  // Query da Visão Consolidada
+  const financialChargesQuery = trpc.saas.financialCharges.useQuery(
+    {
+      status: consolidatedStatus as any,
+      type: consolidatedType as any,
+      source: consolidatedSource as any,
+      search: consolidatedSearch || undefined,
+      month: consolidatedMonth || undefined,
+      year: consolidatedYear || undefined,
+    },
+    { enabled: activeTab === "consolidated" }
   );
 
   const { data: dashboard } = trpc.saas.getFilteredStats.useQuery({
@@ -1370,6 +1391,10 @@ export default function Saas() {
               <History className="h-4 w-4 mr-2" />
               Reconciliação
             </TabsTrigger>
+            <TabsTrigger value="consolidated">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Visão Consolidada
+            </TabsTrigger>
           </TabsList>
 
           {/* Aba Cobranças: apenas placeholder (conteúdo já está acima) */}
@@ -1530,6 +1555,188 @@ export default function Saas() {
                             </TableCell>
                           </TableRow>
                         )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Aba Visão Consolidada */}
+          <TabsContent value="consolidated">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Visão Financeira Consolidada
+                </CardTitle>
+                <CardDescription>Todas as cobranças do sistema: mensalidades, cotas, combustível e vistorias</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Cards de totais */}
+                {financialChargesQuery.data && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                    <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                      <p className="text-xs text-muted-foreground">Total Recebido</p>
+                      <p className="text-lg font-bold text-green-600">{formatCurrency(financialChargesQuery.data.totals.totalPaid)}</p>
+                      <p className="text-xs text-muted-foreground">{financialChargesQuery.data.totals.countPaid} cobranças</p>
+                    </div>
+                    <div className="bg-yellow-50 dark:bg-yellow-950/20 rounded-lg p-3 border border-yellow-200 dark:border-yellow-800">
+                      <p className="text-xs text-muted-foreground">Pendente</p>
+                      <p className="text-lg font-bold text-yellow-600">{formatCurrency(financialChargesQuery.data.totals.totalPending)}</p>
+                      <p className="text-xs text-muted-foreground">{financialChargesQuery.data.totals.countPending} cobranças</p>
+                    </div>
+                    <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                      <p className="text-xs text-muted-foreground">Vencido</p>
+                      <p className="text-lg font-bold text-red-600">{formatCurrency(financialChargesQuery.data.totals.totalOverdue)}</p>
+                      <p className="text-xs text-muted-foreground">{financialChargesQuery.data.totals.countOverdue} cobranças</p>
+                    </div>
+                    <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                      <p className="text-xs text-muted-foreground">Por Origem</p>
+                      <p className="text-xs mt-1">Assinaturas: <span className="font-semibold">{financialChargesQuery.data.totals.bySource.subscription}</span></p>
+                      <p className="text-xs">Combustível: <span className="font-semibold">{financialChargesQuery.data.totals.bySource.fuel}</span></p>
+                      <p className="text-xs">Vistorias: <span className="font-semibold">{financialChargesQuery.data.totals.bySource.inspection}</span></p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Filtros */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Select value={consolidatedStatus} onValueChange={setConsolidatedStatus}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos status</SelectItem>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="paid">Pago</SelectItem>
+                      <SelectItem value="overdue">Vencido</SelectItem>
+                      <SelectItem value="cancelled">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={consolidatedType} onValueChange={setConsolidatedType}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos tipos</SelectItem>
+                      <SelectItem value="monthly">Mensalidade</SelectItem>
+                      <SelectItem value="quota_sale">Venda de Cota</SelectItem>
+                      <SelectItem value="fuel">Combustível</SelectItem>
+                      <SelectItem value="repair">Reparo</SelectItem>
+                      <SelectItem value="other">Outros</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={consolidatedSource} onValueChange={setConsolidatedSource}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Origem" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas origens</SelectItem>
+                      <SelectItem value="subscription">Assinaturas</SelectItem>
+                      <SelectItem value="fuel">Combustível</SelectItem>
+                      <SelectItem value="inspection">Vistorias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={consolidatedMonth} onValueChange={setConsolidatedMonth}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Mês" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos meses</SelectItem>
+                      {["01","02","03","04","05","06","07","08","09","10","11","12"].map(m => (
+                        <SelectItem key={m} value={m}>{new Date(2000, parseInt(m)-1).toLocaleString('pt-BR', {month: 'long'})}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={consolidatedYear} onValueChange={setConsolidatedYear}>
+                    <SelectTrigger className="w-28">
+                      <SelectValue placeholder="Ano" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos anos</SelectItem>
+                      {["2023","2024","2025","2026"].map(y => (
+                        <SelectItem key={y} value={y}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Buscar cliente, e-mail, embarcação..."
+                    value={consolidatedSearch}
+                    onChange={e => setConsolidatedSearch(e.target.value)}
+                    className="w-64"
+                  />
+                </div>
+
+                {/* Tabela */}
+                {financialChargesQuery.isLoading ? (
+                  <p className="text-center text-muted-foreground py-8">Carregando visão consolidada...</p>
+                ) : financialChargesQuery.isError ? (
+                  <p className="text-center text-destructive py-8">Erro ao carregar dados consolidados.</p>
+                ) : !financialChargesQuery.data?.charges?.length ? (
+                  <p className="text-center text-muted-foreground py-8">Nenhuma cobrança encontrada com os filtros selecionados.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Origem</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Embarcação</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Descrição</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {financialChargesQuery.data.charges.map(charge => (
+                          <TableRow key={charge.uid}>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">
+                                {charge.source_table === 'subscription' ? 'Assinatura' :
+                                 charge.source_table === 'fuel' ? 'Combustível' : 'Vistoria'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm font-medium">{charge.client_name || '—'}</div>
+                              <div className="text-xs text-muted-foreground">{charge.client_email || '—'}</div>
+                            </TableCell>
+                            <TableCell className="text-sm">{charge.vessel_name || '—'}</TableCell>
+                            <TableCell>
+                              <span className="text-xs capitalize">
+                                {charge.type === 'monthly' ? 'Mensalidade' :
+                                 charge.type === 'quota_sale' ? 'Venda de Cota' :
+                                 charge.type === 'fuel' ? 'Combustível' :
+                                 charge.type === 'repair' ? 'Reparo' : 'Outros'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="font-semibold">{formatCurrency(parseFloat(charge.value))}</TableCell>
+                            <TableCell className="text-sm">
+                              {charge.due_date ? new Date(charge.due_date).toLocaleDateString('pt-BR') : '—'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={
+                                charge.status === 'paid' ? 'default' :
+                                charge.status === 'overdue' ? 'destructive' :
+                                charge.status === 'cancelled' ? 'secondary' : 'outline'
+                              } className={`text-xs ${
+                                charge.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                                charge.status === 'overdue' ? '' :
+                                charge.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' : ''
+                              }`}>
+                                {charge.status === 'paid' ? 'Pago' :
+                                 charge.status === 'overdue' ? 'Vencido' :
+                                 charge.status === 'pending' ? 'Pendente' : 'Cancelado'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                              {charge.description || '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
                       </TableBody>
                     </Table>
                   </div>
