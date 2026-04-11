@@ -294,6 +294,10 @@ export const subscriptionCharges = mysqlTable("subscription_charges", {
 	// Campos de pagamento parcial
 	amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default('0.00').notNull(),
 	paymentLinks: text("payment_links"), // JSON array de asaasPaymentIds vinculados
+	// Campos adicionados na Fase 2 — consolidação com asaas_payments
+	netValue: decimal("net_value", { precision: 10, scale: 2 }), // Valor líquido após taxas Asaas
+	externalReference: varchar("external_reference", { length: 255 }), // Referência externa usada no Asaas
+	billingType: varchar("billing_type", { length: 20 }), // PIX, BOLETO, CREDIT_CARD
 });
 
 export const vessels = mysqlTable("vessels", {

@@ -1664,9 +1664,10 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Atualizar link em SystemSettings para apontar para /admin/saas ("BPO Financeiro")
 
 ## Fase 2: Consolidação Estrutural — Webhook em Tempo Real (11/04/2026)
-- [ ] Checkpoint de segurança antes das alterações
-- [ ] Adicionar campos net_value e external_reference em subscription_charges (schema + db:push)
-- [ ] Refatorar webhookRouter para atualizar subscription_charges diretamente
-- [ ] Migrar dados históricos: sincronizar 19 registros de overlap entre as tabelas
-- [ ] Atualizar reconciliação para incluir subscription_charges
-- [ ] Testes e checkpoint final
+- [x] Checkpoint de segurança antes das alterações
+- [x] Adicionar campos net_value, external_reference e billing_type em subscription_charges
+- [x] Refatorar webhookRouter: subscription_charges tem prioridade sobre asaas_payments
+- [x] Migrar dados históricos: 19 registros de overlap sincronizados
+- [x] Atualizar reconciliação para incluir subscription_charges como primeira passagem
+- [x] 6 testes unitários do webhook passando (webhook.phase2.test.ts)
+- [x] Checkpoint final salvo

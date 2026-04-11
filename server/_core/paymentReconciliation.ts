@@ -64,7 +64,81 @@ export async function runReconciliation(runBy?: string): Promise<ReconciliationR
   };
 
   try {
-    // Busca pagamentos pendentes para verificar
+    // ═══════════════════════════════════════════════════════
+    // FASE 2: Reconcilia subscription_charges com o Asaas
+    // Verifica cobranças pendentes/vencidas no BPO Financeiro
+    // ═══════════════════════════════════════════════════════
+    const scPending = await db.execute(sql.raw(`
+      SELECT id, asaas_payment_id, status
+      FROM subscription_charges
+      WHERE status IN ('pending', 'overdue')
+      AND asaas_payment_id IS NOT NULL
+      ORDER BY created_at ASC
+      LIMIT ${RECONCILIATION_BATCH_SIZE}
+    `)) as any;
+
+    const scPayments = Array.isArray(scPending[0]) ? scPending[0] : [];
+    console.log(`[Reconciliation] Verificando ${scPayments.length} subscription_charges pendentes...`);
+
+    for (const sc of scPayments) {
+      try {
+        const asaasCharge = await getChargeStatus(sc.asaas_payment_id);
+        if (!asaasCharge) continue;
+
+        // Mapeia status Asaas para subscription_charges
+        let scStatus: 'pending' | 'paid' | 'overdue' | 'cancelled' = 'pending';
+        const asaasUpper = asaasCharge.status.toUpperCase();
+        if (asaasUpper === 'RECEIVED' || asaasUpper === 'CONFIRMED') scStatus = 'paid';
+        else if (asaasUpper === 'OVERDUE') scStatus = 'overdue';
+        else if (['DELETED','REFUNDED','CHARGEBACK_REQUESTED'].includes(asaasUpper)) scStatus = 'cancelled';
+
+        if (scStatus !== sc.status) {
+          result.totalDivergent++;
+          const divergence = {
+            paymentId: sc.id,
+            asaasPaymentId: sc.asaas_payment_id,
+            localStatus: sc.status,
+            asaasStatus: scStatus,
+            fixed: false,
+          };
+
+          try {
+            const paidDate = asaasCharge.paymentDate 
+              ? new Date(asaasCharge.paymentDate).toISOString().slice(0,19).replace('T',' ')
+              : null;
+
+            if (paidDate && scStatus === 'paid') {
+              await db.execute(sql`
+                UPDATE subscription_charges
+                SET status = ${scStatus}, paid_date = ${paidDate},
+                    net_value = ${asaasCharge.netValue ?? null}
+                WHERE id = ${sc.id}
+              `);
+            } else {
+              await db.execute(sql`
+                UPDATE subscription_charges
+                SET status = ${scStatus}
+                WHERE id = ${sc.id}
+              `);
+            }
+            divergence.fixed = true;
+            result.totalFixed++;
+            console.log(`[Reconciliation] SC #${sc.id} corrigido: ${sc.status} → ${scStatus}`);
+          } catch (err) {
+            console.error(`[Reconciliation] Erro ao corrigir SC #${sc.id}:`, err);
+          }
+          result.divergences.push(divergence);
+        }
+        result.totalChecked++;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (err) {
+        console.error(`[Reconciliation] Erro ao verificar SC #${sc.id}:`, err);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // Reconcilia asaas_payments (combustível, vistorias etc.)
+    // ═══════════════════════════════════════════════════════
     const pendingPayments = await db.execute(sql.raw(`
       SELECT id, asaas_payment_id, status, charge_type, charge_id
       FROM asaas_payments 
@@ -75,9 +149,9 @@ export async function runReconciliation(runBy?: string): Promise<ReconciliationR
     `)) as any;
 
     const payments = Array.isArray(pendingPayments[0]) ? pendingPayments[0] : [];
-    result.totalChecked = payments.length;
+    result.totalChecked += payments.length;
 
-    console.log(`[Reconciliation] Verificando ${payments.length} pagamentos...`);
+    console.log(`[Reconciliation] Verificando ${payments.length} asaas_payments pendentes...`);
 
     for (const payment of payments) {
       try {
