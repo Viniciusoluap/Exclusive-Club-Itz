@@ -1719,3 +1719,10 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Corrigir timeout no backup manual (executar em background, retornar imediatamente)
 - [x] Corrigir download de backup (redirecionar para URL do S3 em vez de arquivo local)
 - [x] Checkpoint
+
+## Feature: BPO Financeiro - Sync Unificado
+- [x] Criar função fullSync: importar Asaas (2025+) + reconciliar status + atualizar cache
+- [x] Unificar botões "Sincronizar Cache BPO" + "Sync Completo" + "Reconciliação" em 1 botão
+- [x] Adicionar sync automático diário às 06:00
+- [ ] Atualizar cards do BPO para refletir valores corretos (filtrado a partir de 2025) [próxima etapa]
+- [x] Checkpoint
