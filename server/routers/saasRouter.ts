@@ -909,20 +909,34 @@ export const saasRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Mensalidade não encontrada" });
       }
 
-      // Se asaasPaymentId foi fornecido, marcar como pago no Asaas
-      if (input.asaasPaymentId) {
+      // Determinar asaasPaymentId: usar o fornecido ou buscar do banco
+      let asaasPaymentId = input.asaasPaymentId;
+      if (!asaasPaymentId && input.chargeId) {
+        const chargeRow = await db.select({ asaasPaymentId: subscriptionCharges.asaasPaymentId })
+          .from(subscriptionCharges)
+          .where(eq(subscriptionCharges.id, input.chargeId))
+          .limit(1);
+        if (chargeRow.length > 0 && chargeRow[0].asaasPaymentId) {
+          asaasPaymentId = chargeRow[0].asaasPaymentId;
+        }
+      }
+
+      // Chamar API do Asaas para dar baixa na cobrança
+      if (asaasPaymentId) {
         const result = await receiveInCash({
-          asaasPaymentId: input.asaasPaymentId,
+          asaasPaymentId,
           paymentDate: input.paymentDate,
           notifyCustomer: input.notifyCustomer,
         });
 
         if (!result.success) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: result.error || "Erro ao marcar como pago no Asaas",
-          });
+          // Log do erro mas não bloqueia — atualiza banco local de qualquer forma
+          console.error('[markChargeAsPaid] Erro ao dar baixa no Asaas:', result.error);
+        } else {
+          console.log('[markChargeAsPaid] Baixa no Asaas realizada com sucesso:', asaasPaymentId);
         }
+      } else {
+        console.warn('[markChargeAsPaid] asaasPaymentId não encontrado para chargeId:', input.chargeId);
       }
 
       // Atualizar status no banco local

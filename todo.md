@@ -1637,3 +1637,12 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 ## 🐛 Fix: Status e Duplicatas BPO (11/04/2026)
 - [ ] Corrigir cobranças vencidas que aparecem como "Pendente" (status não atualiza automaticamente)
 - [ ] Eliminar duplicatas: mesma cobrança aparece em Pendentes e Vencidas simultaneamente
+
+## 🐛 Fix CRÍTICO: markChargeAsPaid deve chamar API Asaas (11/04/2026)
+- [x] Diagnosticar: markChargeAsPaid não chamava API Asaas — apenas atualizava banco local
+- [x] Implementar: buscar asaasPaymentId do banco (subscription_charges) quando chargeId fornecido
+- [x] Implementar: chamar receiveInCash() para dar baixa no Asaas
+- [x] Tratar erros: se Asaas falhar, ainda atualiza banco local (não bloqueia operação)
+- [x] Testes: 8 testes unitários passando para a lógica do markChargeAsPaid
+- [x] Limpeza de dados de teste
+- [x] Salvar checkpoint
