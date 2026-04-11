@@ -8,10 +8,36 @@ import {
   updateWebhookLog,
   updatePaymentStatus,
   getPaymentByAsaasId,
-  logPaymentAudit
 } from "./_core/asaasService";
 import { getDb } from "./db";
 import { sql } from "drizzle-orm";
+
+/**
+ * Mapeia status do Asaas para o enum de subscription_charges
+ * Fase 2: subscription_charges é a fonte de verdade para mensalidades e cotas
+ */
+function mapAsaasStatusToSubscriptionCharge(
+  asaasStatus: string
+): 'pending' | 'paid' | 'overdue' | 'cancelled' {
+  switch (asaasStatus.toUpperCase()) {
+    case 'RECEIVED':
+    case 'CONFIRMED':
+      return 'paid';
+    case 'OVERDUE':
+      return 'overdue';
+    case 'DELETED':
+    case 'REFUNDED':
+    case 'CHARGEBACK_REQUESTED':
+    case 'CHARGEBACK_DISPUTE':
+    case 'AWAITING_CHARGEBACK_REVERSAL':
+    case 'DUNNING_REQUESTED':
+    case 'DUNNING_RECEIVED':
+    case 'AWAITING_RISK_ANALYSIS':
+      return 'cancelled';
+    default:
+      return 'pending';
+  }
+}
 
 /**
  * Router para webhooks externos
@@ -22,12 +48,11 @@ export const webhookRouter = router({
    * Webhook do Asaas - recebe notificações de mudanças de status de pagamento
    * Documentação: https://docs.asaas.com/reference/webhooks
    * 
-   * Suporta múltiplos tipos de cobrança:
-   * - fuel: Abastecimentos
-   * - inspection: Vistorias
-   * - repair: Reparos
-   * - booking: Reservas
-   * - monthly: Mensalidades
+   * Fluxo de prioridade (Fase 2):
+   * 1. subscription_charges (BPO Financeiro) — mensalidades e cotas
+   * 2. asaas_payments (tabela central) — combustível, vistorias, reparos
+   * 3. fuel_records (legado direto)
+   * 4. inspection_charges (legado direto)
    */
   asaas: publicProcedure
     .input(z.object({
@@ -37,6 +62,7 @@ export const webhookRouter = router({
         customer: z.string().optional(),
         value: z.number().optional(),
         netValue: z.number().optional(),
+        billingType: z.string().optional(),
         status: z.string(),
         externalReference: z.string().optional(),
         paymentDate: z.string().optional(),
@@ -112,8 +138,78 @@ export const webhookRouter = router({
       const newStatus = mapAsaasStatus(input.payment.status);
       const legacyStatus = mapToLegacyStatus(newStatus);
       const paymentDate = input.payment.paymentDate ? new Date(input.payment.paymentDate) : null;
+      const netValue = input.payment.netValue ?? null;
+      const billingType = input.payment.billingType ?? null;
 
-      // 1. Primeiro tenta atualizar na tabela central asaas_payments
+      // ═══════════════════════════════════════════════════════════════
+      // PRIORIDADE 1: subscription_charges (BPO Financeiro — Fase 2)
+      // Mensalidades e vendas de cotas são gerenciadas aqui
+      // ═══════════════════════════════════════════════════════════════
+      const scResult = await db.execute(sql`
+        SELECT id, status FROM subscription_charges 
+        WHERE asaas_payment_id = ${asaasPaymentId}
+        LIMIT 1
+      `) as any;
+      
+      const scRecord = Array.isArray(scResult[0]) ? scResult[0][0] : scResult[0];
+      
+      if (scRecord) {
+        const scStatus = mapAsaasStatusToSubscriptionCharge(input.payment.status);
+        const paidDateSql = paymentDate 
+          ? paymentDate.toISOString().slice(0, 19).replace('T', ' ')
+          : null;
+
+        // Atualiza subscription_charges com todos os campos relevantes
+        if (paidDateSql) {
+          await db.execute(sql`
+            UPDATE subscription_charges 
+            SET 
+              status = ${scStatus},
+              paid_date = ${paidDateSql},
+              amount_paid = COALESCE(${input.payment.value ?? null}, value),
+              net_value = ${netValue},
+              billing_type = ${billingType}
+            WHERE id = ${scRecord.id}
+          `);
+        } else {
+          await db.execute(sql`
+            UPDATE subscription_charges 
+            SET 
+              status = ${scStatus},
+              net_value = ${netValue},
+              billing_type = ${billingType}
+            WHERE id = ${scRecord.id}
+          `);
+        }
+
+        if (webhookLogId) {
+          await updateWebhookLog({
+            id: webhookLogId,
+            processed: true,
+          });
+        }
+
+        console.log('[Webhook Asaas] subscription_charges atualizado em tempo real:', {
+          chargeId: scRecord.id,
+          asaasPaymentId,
+          oldStatus: scRecord.status,
+          newStatus: scStatus,
+          event: input.event,
+          netValue,
+        });
+
+        return { 
+          success: true, 
+          message: 'BPO Financeiro atualizado em tempo real',
+          source: 'subscription_charges',
+          chargeId: scRecord.id,
+          newStatus: scStatus,
+        };
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // PRIORIDADE 2: asaas_payments (tabela central — combustível etc.)
+      // ═══════════════════════════════════════════════════════════════
       const centralPayment = await getPaymentByAsaasId(asaasPaymentId);
       
       if (centralPayment) {
@@ -137,7 +233,7 @@ export const webhookRouter = router({
           });
         }
 
-        console.log('[Webhook Asaas] Pagamento central atualizado:', {
+        console.log('[Webhook Asaas] asaas_payments atualizado:', {
           paymentId: centralPayment.id,
           chargeType: centralPayment.chargeType,
           chargeId: centralPayment.chargeId,
@@ -147,13 +243,16 @@ export const webhookRouter = router({
         return { 
           success: true, 
           message: 'Status atualizado com sucesso',
+          source: 'asaas_payments',
           paymentId: centralPayment.id,
           chargeType: centralPayment.chargeType,
           newStatus,
         };
       }
 
-      // 2. Fallback: busca em tabelas legadas (fuel_records, inspection_charges)
+      // ═══════════════════════════════════════════════════════════════
+      // PRIORIDADE 3: Tabelas legadas (fuel_records, inspection_charges)
+      // ═══════════════════════════════════════════════════════════════
       let found = false;
       let recordInfo: { type: string; id: number } | null = null;
 
@@ -196,7 +295,7 @@ export const webhookRouter = router({
           await updateWebhookLog({
             id: webhookLogId,
             processed: false,
-            errorMessage: 'Registro não encontrado',
+            errorMessage: 'Registro não encontrado em nenhuma tabela',
           });
         }
         return { success: true, message: 'Registro não encontrado' };
@@ -219,6 +318,7 @@ export const webhookRouter = router({
       return { 
         success: true, 
         message: 'Status atualizado com sucesso',
+        source: 'legacy',
         ...recordInfo,
         newStatus: legacyStatus,
       };
@@ -226,7 +326,7 @@ export const webhookRouter = router({
 });
 
 /**
- * Atualiza tabela de origem baseado no tipo de cobrança
+ * Atualiza tabela de origem baseado no tipo de cobrança (fluxo legado)
  */
 async function updateSourceTable(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
@@ -260,13 +360,12 @@ async function updateSourceTable(
       break;
       
     case 'booking':
-      // Futura implementação para reservas
       console.log('[Webhook] Booking payment update not implemented yet');
       break;
       
     case 'monthly':
-      // Futura implementação para mensalidades
-      console.log('[Webhook] Monthly payment update not implemented yet');
+      // Mensalidades agora são tratadas via subscription_charges (Prioridade 1)
+      console.log('[Webhook] Monthly via asaas_payments — subscription_charges já atualizado se vinculado');
       break;
   }
 }
