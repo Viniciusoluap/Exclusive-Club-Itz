@@ -113,6 +113,14 @@ export function MobileMenu() {
             Galeria
           </NavLink>
 
+          <a
+            href="/#sobre"
+            className="block px-4 py-3 text-lg rounded-lg transition-colors text-foreground hover:bg-accent"
+            onClick={handleLinkClick}
+          >
+            Sobre Nós
+          </a>
+
           {isAuthenticated && user?.role !== "employee" && (
             <>
               <NavLink href="/dashboard">
@@ -123,14 +131,6 @@ export function MobileMenu() {
               </NavLink>
             </>
           )}
-
-          <a
-            href="/#sobre"
-            className="block px-4 py-3 text-lg rounded-lg transition-colors text-foreground hover:bg-accent"
-            onClick={handleLinkClick}
-          >
-            Sobre Nós
-          </a>
 
           {isAuthenticated && user?.role === "admin" && (
             <NavLink href="/admin">

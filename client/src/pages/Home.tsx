@@ -35,6 +35,9 @@ export default function Home() {
                   Galeria
                 </span>
               </Link>
+              <a href="#sobre" className="text-foreground hover:text-primary transition-colors">
+                Sobre Nós
+              </a>
               {isAuthenticated && user?.role !== "employee" && (
                 <Link href="/dashboard">
                   <span className="text-foreground hover:text-primary transition-colors cursor-pointer">
@@ -42,9 +45,6 @@ export default function Home() {
                   </span>
                 </Link>
               )}
-              <a href="#sobre" className="text-foreground hover:text-primary transition-colors">
-                Sobre Nós
-              </a>
               {isAuthenticated ? (
                 <>
                   {user?.role === "admin" && (
