@@ -1201,6 +1201,8 @@ export default function Saas() {
             Reconciliação
           </TabsTrigger>
         </TabsList>
+        {/* Aba Cobranças: cards de totais + filtros + lista */}
+        <TabsContent value="charges">
       {/* Dashboard de Inadimplência */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
@@ -1260,8 +1262,6 @@ export default function Saas() {
           </CardContent>
         </Card>
       </div>
-        {/* Aba Cobranças: filtros e lista de cobranças */}
-        <TabsContent value="charges">
       {/* Filtros */}
       <Card className="mb-6">
         <CardHeader>
