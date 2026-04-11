@@ -80,6 +80,12 @@ export const appRouter = router({
         await db.updateUserName(ctx.user.id, input.name);
         return { success: true };
       }),
+    updateEmail: protectedProcedure
+      .input(z.object({ email: z.string().email("Email inválido") }))
+      .mutation(async ({ ctx, input }) => {
+        await db.updateUserEmail(ctx.user.id, input.email);
+        return { success: true };
+      }),
   }),
 
   // Allowed Clients Management (Admin only)
