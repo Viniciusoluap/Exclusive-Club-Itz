@@ -4211,12 +4211,35 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
     // Admin: Listar todas as cobranças
     listAll: adminProcedure
-      .query(async () => {
+      .input(z.object({
+        status: z.enum(['all', 'pending', 'paid', 'overdue', 'cancelled']).optional().default('all'),
+        month: z.string().optional(), // '01' .. '12'
+        year: z.string().optional(),  // '2024'
+        clientSearch: z.string().optional(),
+      }).optional())
+      .query(async ({ input }) => {
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         try {
           const { sql } = await import('drizzle-orm');
+          
+          const filters: string[] = [];
+          if (input?.status && input.status !== 'all') {
+            filters.push(`ic.payment_status = '${input.status}'`);
+          }
+          if (input?.month) {
+            filters.push(`MONTH(ic.due_date) = ${parseInt(input.month)}`);
+          }
+          if (input?.year) {
+            filters.push(`YEAR(ic.due_date) = ${parseInt(input.year)}`);
+          }
+          if (input?.clientSearch && input.clientSearch.trim()) {
+            const escaped = input.clientSearch.replace(/'/g, "''");
+            filters.push(`(ic.client_email LIKE '%${escaped}%' OR ic.client_name LIKE '%${escaped}%')`);
+          }
+          const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+
           const result = await db.execute(sql.raw(`
             SELECT 
               ic.*,
@@ -4228,6 +4251,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             FROM inspection_charges ic
             LEFT JOIN inspections i ON ic.inspection_id = i.id
             LEFT JOIN due_date_change_requests ddr ON ddr.charge_id = ic.id AND ddr.status = 'pending'
+            ${whereClause}
             ORDER BY ic.created_at DESC
           `)) as any;
           
