@@ -1842,3 +1842,10 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] Atualizar botão "Sincronizar com Asaas" para sync incremental em bpo_charges
 - [ ] Testes finais e validação completa
 - [ ] Salvar checkpoint
+
+## Correções de Bugs (BPO Financeiro) — Sessão Atual
+
+- [x] Problema 4: Cards de totais (Total Esperado, Recebido, Pendente, Vencido) movidos para dentro da aba Cobranças
+- [x] Problema 3: Webhook Asaas — endpoint raw Express `/api/webhooks/asaas` adicionado (responde 200 imediatamente, atualiza bpo_charges e subscription_charges)
+- [x] Problema 2: Botão "Sincronizar com Asaas" corrigido para usar `bpo.syncIncremental` (em vez de `saas.fullSync` inexistente)
+- [x] Problema 1: syncIncremental corrigido para usar `getChargeStatus` (lê API key do banco descriptografada) em vez de `process.env.ASAAS_API_KEY` (não configurada no ambiente)

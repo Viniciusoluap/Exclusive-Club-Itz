@@ -1020,24 +1020,16 @@ export default function Saas() {
     },
   });
 
-  // Sync unificado: Importar Asaas (2025+) + Reconciliar + Atualizar Cache
-  const fullSyncMutation = trpc.saas.fullSync.useMutation({
+  // Sincronização incremental: atualiza cobranças pendentes/vencidas em bpo_charges
+  const fullSyncMutation = trpc.bpo.syncIncremental.useMutation({
     onSuccess: (data) => {
-      if (data.success) {
-        toast.success(
-          `✅ Sincronização completa: ${data.imported} cobranças importadas, ${data.reconciled} reconciliadas`,
-          { duration: 8000 }
-        );
-      } else {
-        toast.warning(
-          `⚠️ Sync parcial: ${data.imported} importadas, ${data.reconciled} reconciliadas. Erros: ${data.errors.join('; ')}`,
-          { duration: 12000 }
-        );
-      }
-      utils.saas.listUnclassifiedCharges.invalidate();
+      toast.success(
+        `✅ Sincronização concluída: ${data.updated} cobranças atualizadas (${data.checked} verificadas)`,
+        { duration: 8000 }
+      );
+      refetchBpoStats();
+      utils.bpo.listCharges.invalidate();
       utils.saas.getFilteredStats.invalidate();
-      utils.saas.listCharges.invalidate();
-      utils.saas.financialCharges.invalidate();
     },
     onError: (error) => {
       toast.error(`Erro na sincronização: ${error.message}`);

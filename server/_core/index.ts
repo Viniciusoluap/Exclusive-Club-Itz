@@ -214,6 +214,68 @@ async function startServer() {
     }
   });
 
+  // ─── Webhook Asaas (endpoint raw — deve ficar ANTES do middleware tRPC) ───
+  // O Asaas envia POST com JSON puro; não usa o protocolo tRPC.
+  // Responde 200 imediatamente para evitar penalização.
+  app.post('/api/webhooks/asaas', async (req, res) => {
+    res.status(200).json({ received: true });
+    try {
+      const payload = req.body;
+      const receivedToken = (req.headers['asaas-access-token'] as string) || '';
+      const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN || '';
+      console.log('[Webhook Asaas] Evento recebido:', payload?.event, '| ID:', payload?.payment?.id);
+      if (webhookToken && receivedToken !== webhookToken) {
+        console.warn('[Webhook Asaas] Token inválido — ignorando evento');
+        return;
+      }
+      const { event, payment } = payload || {};
+      if (!event || !payment?.id) {
+        console.warn('[Webhook Asaas] Payload inválido:', JSON.stringify(payload));
+        return;
+      }
+      const relevantEvents = [
+        'PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED', 'PAYMENT_OVERDUE',
+        'PAYMENT_DELETED', 'PAYMENT_REFUNDED', 'PAYMENT_UPDATED',
+      ];
+      if (!relevantEvents.includes(event)) {
+        console.log('[Webhook Asaas] Evento ignorado:', event);
+        return;
+      }
+      const { normalizeBpoStatus } = await import('../routers/bpoRouter');
+      const { getDb } = await import('../db');
+      const { sql: drizzleSql } = await import('drizzle-orm');
+      const db = await getDb();
+      if (!db) { console.error('[Webhook Asaas] Database não disponível'); return; }
+      const asaasId = String(payment.id).replace(/'/g, '');
+      const newStatus = normalizeBpoStatus(payment.status || '');
+      const isPaid = ['received', 'confirmed', 'receivedInCash'].includes(newStatus);
+      const paidDate = payment.paymentDate || null;
+      const value = payment.value ?? null;
+      const paidDateSqlVal = paidDate ? `'${String(paidDate).replace(/'/g, '')}'` : 'NULL';
+      const amountPaidVal = isPaid && value !== null ? Number(value) : 0;
+      const [bpoResult] = (await db.execute(drizzleSql.raw(`
+        UPDATE bpo_charges
+        SET status = '${newStatus}', paid_date = ${paidDateSqlVal},
+            amount_paid = ${amountPaidVal}, synced_at = NOW(), source = 'asaas_webhook'
+        WHERE asaas_charge_id = '${asaasId}'
+      `))) as any;
+      console.log('[Webhook Asaas] bpo_charges atualizado:', asaasId, '->', newStatus, '| rows:', (bpoResult as any)?.affectedRows ?? 0);
+      const scStatusMap: Record<string, string> = {
+        received: 'paid', confirmed: 'paid', receivedInCash: 'paid',
+        overdue: 'overdue', refunded: 'cancelled', awaitingChargeback: 'cancelled',
+      };
+      const scStatus = scStatusMap[newStatus] || 'pending';
+      await db.execute(drizzleSql.raw(`
+        UPDATE subscription_charges
+        SET status = '${scStatus}'${paidDate ? `, paid_date = ${paidDateSqlVal}` : ''}
+        WHERE asaas_payment_id = '${asaasId}'
+      `));
+      console.log('[Webhook Asaas] Processamento concluído para:', asaasId);
+    } catch (err: any) {
+      console.error('[Webhook Asaas] Erro ao processar:', err?.message || err);
+    }
+  });
+
   // tRPC API
   // Backup download route
   const { downloadBackupRoute } = await import('../downloadBackupRoute');
