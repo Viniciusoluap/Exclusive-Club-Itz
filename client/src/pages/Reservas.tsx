@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { ChevronLeft, ChevronRight, Loader2, Plus, X, Menu } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Plus, X, Menu, ArrowLeft } from "lucide-react";
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -297,8 +297,11 @@ export default function Reservas() {
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-6">
-              <Link href="/">
-                <Button variant="ghost">Voltar ao Início</Button>
+              <Link href="/dashboard">
+                <Button variant="ghost" className="flex items-center gap-1">
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar
+                </Button>
               </Link>
               <Button variant="ghost" onClick={logout}>
                 Sair
