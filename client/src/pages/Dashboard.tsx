@@ -686,6 +686,9 @@ export default function Dashboard() {
   });
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState("");
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editProfileName, setEditProfileName] = useState("");
+  const [editProfileEmail, setEditProfileEmail] = useState("");
   const utils = trpc.useUtils();
 
   // Redirecionamento automático apenas para funcionários
@@ -707,6 +710,16 @@ export default function Dashboard() {
     },
     onError: (error: any) => {
       toast.error(error.message || "Erro ao atualizar nome");
+    },
+  });
+  // @ts-ignore
+  const updateEmail = trpc.auth.updateEmail.useMutation({
+    onSuccess: () => {
+      toast.success("Email atualizado com sucesso!");
+      utils.auth.me.invalidate();
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao atualizar email");
     },
   });
 
@@ -929,25 +942,52 @@ export default function Dashboard() {
             <CardHeader>
               <CardTitle>Ações Rápidas</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Link href="/reservas">
-                <Button className="w-full" variant="default">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Ver Minhas Reservas
-                </Button>
-              </Link>
-              <Link href="/galeria">
-                <Button className="w-full" variant="outline">
-                  <Anchor className="mr-2 h-4 w-4" />
-                  Ver Galeria de Fotos
-                </Button>
-              </Link>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <Link href="/reservas">
+                  <Button className="w-full h-20 flex flex-col gap-1" variant="default">
+                    <Calendar className="h-5 w-5" />
+                    <span className="text-xs">Reservas</span>
+                  </Button>
+                </Link>
+                <a href="#abastecimentos">
+                  <Button className="w-full h-20 flex flex-col gap-1" variant="outline">
+                    <Fuel className="h-5 w-5" />
+                    <span className="text-xs">Abastecimentos</span>
+                  </Button>
+                </a>
+                <a href="#vistorias">
+                  <Button className="w-full h-20 flex flex-col gap-1" variant="outline">
+                    <XCircle className="h-5 w-5" />
+                    <span className="text-xs">Reparos</span>
+                  </Button>
+                </a>
+                <a href="#mensalidades">
+                  <Button className="w-full h-20 flex flex-col gap-1" variant="outline">
+                    <DollarSign className="h-5 w-5" />
+                    <span className="text-xs">Mensalidades</span>
+                  </Button>
+                </a>
+              </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle>Informações</CardTitle>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1"
+                onClick={() => {
+                  setIsEditingProfile(true);
+                  setEditProfileName(user?.name || "");
+                  setEditProfileEmail(user?.email || "");
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Editar
+              </Button>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -966,11 +1006,59 @@ export default function Dashboard() {
           </Card>
         </div>
 
+        {/* Modal de edição de perfil */}
+        <Dialog open={isEditingProfile} onOpenChange={setIsEditingProfile}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Editar Informações</DialogTitle>
+              <DialogDescription>Atualize seu nome e email de contato.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Nome</label>
+                <Input
+                  value={editProfileName}
+                  onChange={(e) => setEditProfileName(e.target.value)}
+                  placeholder="Seu nome"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Email</label>
+                <Input
+                  value={editProfileEmail}
+                  onChange={(e) => setEditProfileEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  type="email"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setIsEditingProfile(false)}>Cancelar</Button>
+              <Button
+                onClick={() => {
+                  if (editProfileName.trim()) {
+                    updateName.mutate({ name: editProfileName.trim() });
+                  }
+                  if (editProfileEmail.trim() && editProfileEmail !== user?.email) {
+                    updateEmail.mutate({ email: editProfileEmail.trim() });
+                  }
+                  setIsEditingProfile(false);
+                }}
+                disabled={!editProfileName.trim() || updateName.isPending || updateEmail.isPending}
+              >
+                Salvar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Meus Abastecimentos Section */}
-        <FuelRecordsSection />
+        <div id="abastecimentos">
+          <FuelRecordsSection />
+        </div>
 
         {/* Vistorias e Danos Section */}
-        <Card className="mt-8">
+        <Card id="vistorias" className="mt-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-red-500" />

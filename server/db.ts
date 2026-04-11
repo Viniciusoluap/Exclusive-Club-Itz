@@ -422,6 +422,12 @@ export async function updateUserName(userId: number, name: string) {
   await db.update(users).set({ name }).where(eq(users.id, userId));
 }
 
+export async function updateUserEmail(userId: number, email: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ email }).where(eq(users.id, userId));
+}
+
 // ============================================================================
 // FUNÇÕES DE HERANÇA DE ESTOQUE E SALDO DO MÊS ANTERIOR
 // ============================================================================
