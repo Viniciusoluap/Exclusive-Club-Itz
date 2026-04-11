@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, DollarSign, Plus, Pencil, X, RefreshCw, TrendingUp, TrendingDown, AlertCircle, CheckCircle, MessageCircle, Trash2 } from "lucide-react";
+import { ArrowLeft, DollarSign, Plus, Pencil, X, RefreshCw, TrendingUp, TrendingDown, AlertCircle, CheckCircle, MessageCircle, Trash2, Webhook, History, Play, Eye, XCircle, Clock, CreditCard } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocation } from "wouter";
 import { formatCurrency } from "@/lib/formatCurrency";
 
@@ -634,6 +637,13 @@ export default function Saas() {
     dueDate: "",
     type: "monthly" as "monthly" | "quota_sale" | "fuel" | "repair" | "other",
   });
+
+  // Estado para detalhe de cobrança
+  const [selectedCharge, setSelectedCharge] = useState<any>(null);
+  const [showChargeDetail, setShowChargeDetail] = useState(false);
+
+  // Aba ativa do painel principal
+  const [activeTab, setActiveTab] = useState<"charges" | "webhooks" | "reconciliation">("charges");
   
   // Gerar mês atual no formato YYYY-MM
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -660,6 +670,16 @@ export default function Saas() {
   });
   const { data: clients } = trpc.allowedClients.list.useQuery();
   const { data: boats } = trpc.vessels.list.useQuery(); // Buscar lista de embarcações
+  // Queries para Webhooks e Reconciliação (migradas da página Pagamentos)
+  const webhookLogsQuery = trpc.payments.webhookLogs.useQuery(
+    { limit: 50 },
+    { enabled: activeTab === "webhooks" }
+  );
+  const reconciliationHistoryQuery = trpc.payments.reconciliationHistory.useQuery(
+    { limit: 10 },
+    { enabled: activeTab === "reconciliation" }
+  );
+
   const { data: dashboard } = trpc.saas.getFilteredStats.useQuery({
     status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled" | "partial",
     types: typeFilters.length > 0 ? typeFilters : undefined,
@@ -770,7 +790,39 @@ export default function Saas() {
     },
   });
 
-  // Sincronizar cache BPO (novo fluxo rápido)
+  // Mutations migradas da página Pagamentos
+  const runReconciliationMutation = trpc.payments.runReconciliation.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Reconciliação concluída: ${data.totalChecked} verificados, ${data.totalFixed} corrigidos`);
+      reconciliationHistoryQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error(`Erro na reconciliação: ${error.message}`);
+    },
+  });
+
+  const runMaintenanceMutation = trpc.payments.runMaintenance.useMutation({
+    onSuccess: () => {
+      toast.success("Tarefas de manutenção executadas com sucesso");
+      reconciliationHistoryQuery.refetch();
+    },
+    onError: (error) => {
+      toast.error(`Erro na manutenção: ${error.message}`);
+    },
+  });
+
+  const cancelChargeFromDetailMutation = trpc.saas.deleteCharge.useMutation({
+    onSuccess: () => {
+      toast.success("Cobrança cancelada com sucesso");
+      utils.saas.listCharges.invalidate();
+      utils.saas.getFilteredStats.invalidate();
+      setShowChargeDetail(false);
+    },
+    onError: (error) => {
+      toast.error(`Erro ao cancelar: ${error.message}`);
+    },
+  });
+
   const syncBpoCacheMutation = trpc.saas.syncBpoCache.useMutation({
     onSuccess: (data) => {
       toast.success(
@@ -1247,6 +1299,14 @@ export default function Saas() {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => { setSelectedCharge(item); setShowChargeDetail(true); }}
+                      title="Ver detalhes"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                     {item.charge.status !== "paid" && (
                       <Button
                         variant="outline"
@@ -1293,6 +1353,286 @@ export default function Saas() {
           )}
         </CardContent>
       </Card>
+
+      {/* Abas: Webhooks e Reconciliação */}
+      <div className="mt-6">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="charges">
+              <CreditCard className="h-4 w-4 mr-2" />
+              Cobranças
+            </TabsTrigger>
+            <TabsTrigger value="webhooks">
+              <Webhook className="h-4 w-4 mr-2" />
+              Webhooks
+            </TabsTrigger>
+            <TabsTrigger value="reconciliation">
+              <History className="h-4 w-4 mr-2" />
+              Reconciliação
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Aba Cobranças: apenas placeholder (conteúdo já está acima) */}
+          <TabsContent value="charges">
+            <p className="text-sm text-muted-foreground text-center py-2">Use os filtros e a lista acima para gerenciar cobranças.</p>
+          </TabsContent>
+
+          {/* Aba Webhooks */}
+          <TabsContent value="webhooks">
+            <Card>
+              <CardHeader>
+                <CardTitle>Logs de Webhook</CardTitle>
+                <CardDescription>Histórico de notificações recebidas do Asaas</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {webhookLogsQuery.isLoading ? (
+                  <p className="text-center text-muted-foreground py-4">Carregando...</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Evento</TableHead>
+                          <TableHead>Processado</TableHead>
+                          <TableHead>IP</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Erro</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {webhookLogsQuery.data?.logs?.map((log: any) => (
+                          <TableRow key={log.id}>
+                            <TableCell className="font-mono text-sm">#{log.id}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{log.eventType}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              {log.processed ? (
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-red-500" />
+                              )}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">{log.ipAddress}</TableCell>
+                            <TableCell className="text-sm">
+                              {new Date(log.createdAt).toLocaleString('pt-BR')}
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate text-red-600 text-sm">
+                              {log.errorMessage}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {(!webhookLogsQuery.data?.logs || webhookLogsQuery.data.logs.length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                              Nenhum log de webhook encontrado
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Aba Reconciliação */}
+          <TabsContent value="reconciliation">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <CardTitle>Reconciliação</CardTitle>
+                    <CardDescription>Verifica divergências entre banco local e Asaas</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => runMaintenanceMutation.mutate()}
+                      disabled={runMaintenanceMutation.isPending}
+                    >
+                      {runMaintenanceMutation.isPending ? (
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Play className="h-4 w-4 mr-2" />
+                      )}
+                      Executar Manutenção
+                    </Button>
+                    <Button
+                      onClick={() => runReconciliationMutation.mutate()}
+                      disabled={runReconciliationMutation.isPending}
+                    >
+                      {runReconciliationMutation.isPending ? (
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                      )}
+                      Reconciliar
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {reconciliationHistoryQuery.isLoading ? (
+                  <p className="text-center text-muted-foreground py-4">Carregando...</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Verificados</TableHead>
+                          <TableHead>Divergentes</TableHead>
+                          <TableHead>Corrigidos</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Executado por</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {reconciliationHistoryQuery.data?.history?.map((rec: any) => (
+                          <TableRow key={rec.id}>
+                            <TableCell className="font-mono text-sm">#{rec.id}</TableCell>
+                            <TableCell className="text-sm">
+                              {new Date(rec.runDate).toLocaleString('pt-BR')}
+                            </TableCell>
+                            <TableCell>{rec.totalChecked}</TableCell>
+                            <TableCell>
+                              {rec.totalDivergent > 0 ? (
+                                <span className="text-yellow-600 font-medium">{rec.totalDivergent}</span>
+                              ) : (
+                                <span className="text-green-600">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-green-600 font-medium">{rec.totalFixed}</span>
+                            </TableCell>
+                            <TableCell>
+                              {rec.status === 'completed' ? (
+                                <Badge className="bg-green-500 text-white">Concluído</Badge>
+                              ) : rec.status === 'running' ? (
+                                <Badge variant="outline">Executando</Badge>
+                              ) : (
+                                <Badge variant="destructive">Falhou</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {rec.runBy || 'Sistema'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {(!reconciliationHistoryQuery.data?.history || reconciliationHistoryQuery.data.history.length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                              Nenhuma reconciliação executada ainda
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Dialog de Detalhe de Cobrança */}
+      <Dialog open={showChargeDetail} onOpenChange={setShowChargeDetail}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Detalhes da Cobrança #{selectedCharge?.charge?.id}</DialogTitle>
+            <DialogDescription>Informações completas da cobrança</DialogDescription>
+          </DialogHeader>
+          {selectedCharge && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Cliente</p>
+                  <p className="font-medium">{selectedCharge.client?.name || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="text-sm">{selectedCharge.client?.email || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tipo</p>
+                  <p className="font-medium">{{
+                    monthly: 'Mensalidade',
+                    quota_sale: 'Venda de Cota',
+                    fuel: 'Abastecimento',
+                    repair: 'Reparo',
+                    other: 'Outro',
+                  }[selectedCharge.charge?.type as string] || selectedCharge.charge?.type || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    selectedCharge.charge?.status === 'paid' ? 'bg-green-100 text-green-700' :
+                    selectedCharge.charge?.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                    selectedCharge.charge?.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {{
+                      paid: 'Paga', pending: 'Pendente', overdue: 'Vencida',
+                      partial: 'Parcial', cancelled: 'Cancelada',
+                    }[selectedCharge.charge?.status as string] || selectedCharge.charge?.status}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Valor</p>
+                  <p className="font-bold text-lg">{formatCurrency(parseFloat(selectedCharge.charge?.value || '0'))}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Vencimento</p>
+                  <p>{selectedCharge.charge?.dueDate ? new Date(selectedCharge.charge.dueDate).toLocaleDateString('pt-BR') : '-'}</p>
+                </div>
+                {selectedCharge.charge?.paidDate && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Pago em</p>
+                    <p>{new Date(selectedCharge.charge.paidDate).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                )}
+                {selectedCharge.charge?.asaasPaymentId && (
+                  <div className="col-span-2">
+                    <p className="text-sm text-muted-foreground">ID Asaas</p>
+                    <p className="font-mono text-sm break-all">{selectedCharge.charge.asaasPaymentId}</p>
+                  </div>
+                )}
+                {selectedCharge.subscription && (
+                  <div className="col-span-2">
+                    <p className="text-sm text-muted-foreground">Subscription ID</p>
+                    <p className="font-mono text-sm">#{selectedCharge.subscription.id}</p>
+                  </div>
+                )}
+              </div>
+              {(selectedCharge.charge?.status === 'pending' || selectedCharge.charge?.status === 'overdue') && selectedCharge.charge?.asaasPaymentId && (
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      if (confirm('Tem certeza que deseja cancelar esta cobrança? A cobrança será removida do sistema e cancelada no Asaas.')) {
+                        cancelChargeFromDetailMutation.mutate({ chargeId: selectedCharge.charge.id });
+                      }
+                    }}
+                    disabled={cancelChargeFromDetailMutation.isPending}
+                  >
+                    {cancelChargeFromDetailMutation.isPending ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <XCircle className="h-4 w-4 mr-2" />
+                    )}
+                    Cancelar Cobrança
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de Criar/Editar */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

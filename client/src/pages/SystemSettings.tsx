@@ -101,10 +101,10 @@ export default function SystemSettings() {
             Integração Asaas
           </Button>
           <Button
-            variant={activeTab === "pagamentos" ? "default" : "outline"}
-            onClick={() => setLocation("/admin/pagamentos")}
+            variant="outline"
+            onClick={() => setLocation("/admin/saas")}
           >
-            Pagamentos
+            BPO Financeiro
           </Button>
           <Button
             variant={activeTab === "backups" ? "default" : "outline"}
