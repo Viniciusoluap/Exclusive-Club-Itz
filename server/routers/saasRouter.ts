@@ -97,6 +97,20 @@ export const saasRouter = router({
 
       let results = await query;
 
+      // Normalizar status: pending com due_date passada → overdue
+      const todayNorm = new Date();
+      todayNorm.setHours(0, 0, 0, 0);
+      results = results.map(r => {
+        if (r.charge.status === 'pending' && r.charge.dueDate) {
+          const due = new Date(r.charge.dueDate);
+          due.setHours(0, 0, 0, 0);
+          if (due < todayNorm) {
+            return { ...r, charge: { ...r.charge, status: 'overdue' as const } };
+          }
+        }
+        return r;
+      });
+
       // Filtrar por status
       if (input?.status && input.status !== "all") {
         results = results.filter(r => r.charge.status === input.status);
@@ -506,6 +520,20 @@ export const saasRouter = router({
 
       let results = await query;
 
+      // Normalizar status: pending com due_date passada → overdue
+      const todayNorm = new Date();
+      todayNorm.setHours(0, 0, 0, 0);
+      results = results.map(r => {
+        if (r.charge.status === 'pending' && r.charge.dueDate) {
+          const due = new Date(r.charge.dueDate);
+          due.setHours(0, 0, 0, 0);
+          if (due < todayNorm) {
+            return { ...r, charge: { ...r.charge, status: 'overdue' as const } };
+          }
+        }
+        return r;
+      });
+
       // Filtrar por status
       if (input?.status && input.status !== "all") {
         results = results.filter(r => r.charge.status === input.status);
@@ -609,9 +637,23 @@ export const saasRouter = router({
       .orderBy(desc(subscriptionCharges.dueDate));
 
       const results = await query;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Normalizar status: pending com due_date passada → overdue
+      const normalized = results.map(r => {
+        if (r.charge.status === 'pending' && r.charge.dueDate) {
+          const due = new Date(r.charge.dueDate);
+          due.setHours(0, 0, 0, 0);
+          if (due < today) {
+            return { ...r, charge: { ...r.charge, status: 'overdue' as const } };
+          }
+        }
+        return r;
+      });
 
       // Filtrar por subscription_id se fornecido
-      let filtered = results;
+      let filtered = normalized;
       if (input.subscriptionId) {
         filtered = filtered.filter(r => r.subscription?.id === input.subscriptionId);
       }
@@ -1535,17 +1577,39 @@ export const saasRouter = router({
         subscription = [{ id: newSubResult[0].insertId }] as any;
       }
 
-      // Criar cobrança em subscription_charges
-      const newChargeResult = await db.insert(subscriptionCharges).values({
-        subscriptionId: subscription[0].id,
-        dueDate: unclassified.dueDate,
-        value: unclassified.value,
-        status: unclassified.status,
-        asaasPaymentId: unclassified.asaasPaymentId,
-        paidDate: unclassified.paidDate,
-        type: input.type,
-      });
-      const newChargeId = newChargeResult[0].insertId;
+      // Verificar se já existe cobrança para esta subscription+dueDate (evitar duplicata)
+      const existingCharge = await db.select()
+        .from(subscriptionCharges)
+        .where(and(
+          eq(subscriptionCharges.subscriptionId, subscription[0].id),
+          eq(subscriptionCharges.dueDate, unclassified.dueDate as any)
+        ))
+        .limit(1);
+
+      let newChargeId: number;
+      if (existingCharge.length > 0) {
+        // Já existe — atualizar com dados do Asaas se necessário
+        newChargeId = existingCharge[0].id;
+        await db.update(subscriptionCharges)
+          .set({
+            asaasPaymentId: unclassified.asaasPaymentId ?? existingCharge[0].asaasPaymentId,
+            status: unclassified.status ?? existingCharge[0].status,
+            paidDate: unclassified.paidDate ?? existingCharge[0].paidDate,
+          })
+          .where(eq(subscriptionCharges.id, newChargeId));
+      } else {
+        // Criar nova cobrança em subscription_charges
+        const newChargeResult = await db.insert(subscriptionCharges).values({
+          subscriptionId: subscription[0].id,
+          dueDate: unclassified.dueDate,
+          value: unclassified.value,
+          status: unclassified.status,
+          asaasPaymentId: unclassified.asaasPaymentId,
+          paidDate: unclassified.paidDate,
+          type: input.type,
+        });
+        newChargeId = newChargeResult[0].insertId;
+      }
 
       // Marcar como classificada (usa o id do registro encontrado no banco)
       await db.update(unclassifiedCharges)
@@ -2102,16 +2166,32 @@ export const saasRouter = router({
             else if (mappedStatus === "overdue") chargeStatus = "overdue";
             else if (mappedStatus === "cancelled" || mappedStatus === "refunded") chargeStatus = "cancelled";
 
-            // Criar cobrança classificada
-            await db.insert(subscriptionCharges).values({
-              subscriptionId: subscription[0].id,
-              dueDate: charge.dueDate,
-              value: charge.value.toString(),
-              status: chargeStatus,
-              asaasPaymentId: charge.id,
-              type: suggestedType,
-              paidDate: chargeStatus === 'paid' ? new Date().toISOString().split('T')[0] : null,
-            });
+            // Verificar duplicata por subscription+dueDate antes de inserir
+            const existingByDate = await db.select({ id: subscriptionCharges.id })
+              .from(subscriptionCharges)
+              .where(and(
+                eq(subscriptionCharges.subscriptionId, subscription[0].id),
+                eq(subscriptionCharges.dueDate, charge.dueDate as any)
+              ))
+              .limit(1);
+
+            if (existingByDate.length > 0) {
+              // Já existe cobrança para esta data — apenas atualizar asaas_payment_id se necessário
+              await db.update(subscriptionCharges)
+                .set({ asaasPaymentId: charge.id, status: chargeStatus })
+                .where(eq(subscriptionCharges.id, existingByDate[0].id));
+            } else {
+              // Criar cobrança classificada
+              await db.insert(subscriptionCharges).values({
+                subscriptionId: subscription[0].id,
+                dueDate: charge.dueDate,
+                value: charge.value.toString(),
+                status: chargeStatus,
+                asaasPaymentId: charge.id,
+                type: suggestedType,
+                paidDate: chargeStatus === 'paid' ? new Date().toISOString().split('T')[0] : null,
+              });
+            }
 
             // Marcar como classificada para não reprocessar neste loop
             classifiedAsaasIds.add(charge.id);
