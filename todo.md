@@ -1654,3 +1654,11 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Corrigir duplicatas no banco: 42 registros removidos, 12 atualizados para paid
 - [x] Corrigir bug no classifyCharge para evitar duplicatas futuras
 - [x] Salvar checkpoint após correção
+
+## Fase 1: Migração Pagamentos → BPO Financeiro (11/04/2026)
+- [x] Adicionar aba "Webhooks" ao BPO com logs de notificações do Asaas
+- [x] Adicionar aba "Reconciliação" ao BPO com histórico + botões Reconciliar e Manutenção
+- [x] Adicionar detalhe expandido de cobrança no BPO (ID Asaas, data pagamento, ID subscription)
+- [x] Adicionar botão Cancelar cobrança pendente no detalhe do BPO
+- [x] Redirecionar rota /admin/pagamentos para /admin/saas
+- [x] Atualizar link em SystemSettings para apontar para /admin/saas ("BPO Financeiro")

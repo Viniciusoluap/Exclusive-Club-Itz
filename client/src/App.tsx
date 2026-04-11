@@ -25,7 +25,9 @@ import MeusAbastecimentos from "./pages/MeusAbastecimentos";
 import SystemSettings from "./pages/SystemSettings";
 import RoleRedirect from "./components/RoleRedirect";
 import PagamentoDanos from "./pages/PagamentoDanos";
-import Pagamentos from "./pages/admin/Pagamentos";
+// Pagamentos migrado para BPO Financeiro — mantido apenas para compatibilidade de import
+import { useEffect } from "react";
+import { useLocation } from "wouter";
 import AdminBackups from "./pages/admin/Backups";
 import AdminSaas from "./pages/admin/Saas";
 
@@ -47,7 +49,7 @@ function Router() {
       <Route path={"/admin/cobrancas-danos"} component={CobrancasDanos} />
       <Route path={"/admin/solicitacoes-vencimento"} component={SolicitacoesVencimento} />
       <Route path={"/admin/configuracoes"} component={SystemSettings} />
-      <Route path={"/admin/pagamentos"} component={Pagamentos} />
+      <Route path={"/admin/pagamentos"} component={() => { const [, nav] = useLocation(); useEffect(() => { nav("/admin/saas"); }, []); return null; }} />
       <Route path={"/admin/backups"} component={AdminBackups} />
       <Route path={"/admin/saas"} component={AdminSaas} />
       <Route path={"/employee/reservas"} component={EmployeeReservas} />
