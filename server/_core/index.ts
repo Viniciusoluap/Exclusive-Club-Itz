@@ -246,3 +246,8 @@ async function startServer() {
 }
 
 startServer().catch(console.error);
+
+// Registrar cron jobs (sincronização BPO às 03:00, reconciliação às 04:00, mensalidades às 00:30)
+import("../cronJobs").then(({ registerCronJobs }) => {
+  registerCronJobs();
+}).catch(err => console.error("[CronJobs] Falha ao registrar:", err));
