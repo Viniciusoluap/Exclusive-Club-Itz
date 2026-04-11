@@ -326,6 +326,8 @@ export const saasRouter = router({
               dueDate: localDate,
               status: "pending",
               type: "quota_sale",
+            }).onDuplicateKeyUpdate({
+              set: { asaasPaymentId: asaasCharge.id, status: "pending" },
             });
           } else {
             // Demais parcelas: sempre usar o dia escolhido
@@ -343,6 +345,8 @@ export const saasRouter = router({
               dueDate: dueDateStr,
               status: "pending",
               type: "quota_sale",
+            }).onDuplicateKeyUpdate({
+              set: { asaasPaymentId: asaasCharge.id, status: "pending" },
             });
           }
         }
@@ -368,6 +372,8 @@ export const saasRouter = router({
               dueDate: localDate,
               status: "pending",
               type: "monthly",
+            }).onDuplicateKeyUpdate({
+              set: { asaasPaymentId: asaasCharge.id, status: "pending" },
             });
           } else {
             // Demais meses: sempre usar o dia escolhido
@@ -386,6 +392,8 @@ export const saasRouter = router({
               dueDate: dueDateStr,
               status: "pending",
               type: "monthly",
+            }).onDuplicateKeyUpdate({
+              set: { asaasPaymentId: asaasCharge.id, status: "pending" },
             });
           }
         }
@@ -408,6 +416,8 @@ export const saasRouter = router({
           dueDate: localDate,
           status: "pending",
           type: chargeType,
+        }).onDuplicateKeyUpdate({
+          set: { asaasPaymentId: asaasCharge.id, status: "pending" },
         });
       }
 
@@ -851,6 +861,8 @@ export const saasRouter = router({
               status: chargeStatus,
               asaasPaymentId: asaasCharge.id,
               paidDate: asaasCharge.paymentDate || null,
+            }).onDuplicateKeyUpdate({
+              set: { asaasPaymentId: asaasCharge.id, status: chargeStatus, paidDate: asaasCharge.paymentDate || null },
             });
             syncedCount++;
           } else {
@@ -1505,7 +1517,7 @@ export const saasRouter = router({
         };
       }
 
-      // Criar nova cobrança
+      // Criar nova cobrança (idempotente)
       await db.insert(subscriptionCharges).values({
         subscriptionId: subscription[0].id,
         dueDate: input.dueDate,
@@ -1513,6 +1525,8 @@ export const saasRouter = router({
         status: chargeStatus,
         asaasPaymentId: input.asaasChargeId,
         paidDate: null,
+      }).onDuplicateKeyUpdate({
+        set: { asaasPaymentId: input.asaasChargeId, status: chargeStatus },
       });
 
       return {
@@ -2215,7 +2229,7 @@ export const saasRouter = router({
                 .set({ asaasPaymentId: charge.id, status: chargeStatus })
                 .where(eq(subscriptionCharges.id, existingByDate[0].id));
             } else {
-              // Criar cobrança classificada
+              // Criar cobrança classificada (idempotente)
               await db.insert(subscriptionCharges).values({
                 subscriptionId: subscription[0].id,
                 dueDate: charge.dueDate,
@@ -2224,6 +2238,8 @@ export const saasRouter = router({
                 asaasPaymentId: charge.id,
                 type: suggestedType,
                 paidDate: chargeStatus === 'paid' ? new Date().toISOString().split('T')[0] : null,
+              }).onDuplicateKeyUpdate({
+                set: { asaasPaymentId: charge.id, status: chargeStatus, type: suggestedType },
               });
             }
 
@@ -2260,5 +2276,99 @@ export const saasRouter = router({
           ? `${classified.length} cobrança(s) classificada(s) automaticamente com confiança ≥ ${threshold}%`
           : `Nenhuma cobrança atingiu o threshold de ${threshold}% de confiança`,
       };
+    }),
+
+  // Visão financeira consolidada (VIEW financial_charges)
+  financialCharges: adminProcedure
+    .input(z.object({
+      status: z.enum(["pending", "paid", "overdue", "cancelled", "all"]).optional().default("all"),
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other", "all"]).optional().default("all"),
+      source: z.enum(["subscription", "fuel", "inspection", "all"]).optional().default("all"),
+      search: z.string().optional(),
+      month: z.string().optional(),
+      year: z.string().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Buscar da VIEW consolidada
+      const [rows] = await (db as any).$client.query(
+        `SELECT uid, source_table, source_id, subscription_id, asaas_payment_id,
+                value, amount_paid, net_value, due_date, paid_date, status, type,
+                client_name, client_email, vessel_name, created_at, description
+         FROM financial_charges
+         ORDER BY due_date DESC`
+      );
+
+      let results = rows as Array<{
+        uid: string; source_table: string; source_id: number;
+        subscription_id: number | null; asaas_payment_id: string | null;
+        value: string; amount_paid: string; net_value: string;
+        due_date: Date; paid_date: Date | null; status: string; type: string;
+        client_name: string | null; client_email: string | null;
+        vessel_name: string | null; created_at: Date; description: string | null;
+      }>;
+
+      // Normalizar overdue
+      const todayNorm = new Date();
+      todayNorm.setHours(0, 0, 0, 0);
+      results = results.map(r => {
+        if (r.status === 'pending' && r.due_date) {
+          const due = new Date(r.due_date);
+          due.setHours(0, 0, 0, 0);
+          if (due < todayNorm) return { ...r, status: 'overdue' };
+        }
+        return r;
+      });
+
+      // Filtros
+      if (input?.status && input.status !== 'all') {
+        results = results.filter(r => r.status === input.status);
+      }
+      if (input?.type && input.type !== 'all') {
+        results = results.filter(r => r.type === input.type);
+      }
+      if (input?.source && input.source !== 'all') {
+        results = results.filter(r => r.source_table === input.source);
+      }
+      if (input?.month) {
+        results = results.filter(r => {
+          const m = String(new Date(r.due_date).getMonth() + 1).padStart(2, '0');
+          return m === input.month;
+        });
+      }
+      if (input?.year) {
+        results = results.filter(r => {
+          return String(new Date(r.due_date).getFullYear()) === input.year;
+        });
+      }
+      if (input?.search) {
+        const s = input.search.toLowerCase();
+        results = results.filter(r =>
+          (r.client_name?.toLowerCase().includes(s)) ||
+          (r.client_email?.toLowerCase().includes(s)) ||
+          (r.vessel_name?.toLowerCase().includes(s)) ||
+          (r.description?.toLowerCase().includes(s))
+        );
+      }
+
+      // Calcular totais
+      const totals = {
+        totalValue: results.reduce((a, r) => a + parseFloat(r.value || '0'), 0),
+        totalPaid: results.filter(r => r.status === 'paid').reduce((a, r) => a + parseFloat(r.amount_paid || '0'), 0),
+        totalPending: results.filter(r => r.status === 'pending').reduce((a, r) => a + parseFloat(r.value || '0'), 0),
+        totalOverdue: results.filter(r => r.status === 'overdue').reduce((a, r) => a + parseFloat(r.value || '0'), 0),
+        countPaid: results.filter(r => r.status === 'paid').length,
+        countPending: results.filter(r => r.status === 'pending').length,
+        countOverdue: results.filter(r => r.status === 'overdue').length,
+        bySource: {
+          subscription: results.filter(r => r.source_table === 'subscription').length,
+          fuel: results.filter(r => r.source_table === 'fuel').length,
+          inspection: results.filter(r => r.source_table === 'inspection').length,
+        },
+      };
+
+      return { charges: results, totals };
     }),
 });
