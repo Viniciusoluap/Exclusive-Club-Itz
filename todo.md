@@ -1703,3 +1703,8 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 ## Bug: Select.Item com value vazio na aba Visão Consolidada
 - [x] Corrigir SelectItem value="" nos filtros Mês e Ano da Visão Consolidada (causava crash "must have a value prop that is not an empty string")
 - [x] Checkpoint
+
+## Feature: Filtros na página Cobranças de Danos
+- [x] Adicionar input de filtros no backend (listAll): status, mês, ano, cliente
+- [x] Adicionar UI de filtros no frontend (CobrancasDanos.tsx)
+- [x] Checkpoint

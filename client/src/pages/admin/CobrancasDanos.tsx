@@ -82,8 +82,19 @@ export default function CobrancasDanos() {
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectDialog, setShowRejectDialog] = useState(false);
 
+  // Estados de filtro
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterMonth, setFilterMonth] = useState("all_months");
+  const [filterYear, setFilterYear] = useState("all_years");
+  const [filterClient, setFilterClient] = useState("");
+
   // Queries
-  const { data: charges, isLoading, refetch } = trpc.inspectionCharges.listAll.useQuery();
+  const { data: charges, isLoading, refetch } = trpc.inspectionCharges.listAll.useQuery({
+    status: filterStatus as any,
+    month: (filterMonth && filterMonth !== "all_months") ? filterMonth : undefined,
+    year: (filterYear && filterYear !== "all_years") ? filterYear : undefined,
+    clientSearch: filterClient || undefined,
+  });
   const { data: failedInspections } = trpc.inspectionCharges.getFailedInspections.useQuery();
   const { data: vessels } = trpc.vessels.listAll.useQuery();
 
@@ -539,6 +550,60 @@ export default function CobrancasDanos() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Filtros */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos status</SelectItem>
+                <SelectItem value="pending">Pendente</SelectItem>
+                <SelectItem value="paid">Pago</SelectItem>
+                <SelectItem value="overdue">Vencido</SelectItem>
+                <SelectItem value="cancelled">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterMonth} onValueChange={setFilterMonth}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_months">Todos meses</SelectItem>
+                {["01","02","03","04","05","06","07","08","09","10","11","12"].map(m => (
+                  <SelectItem key={m} value={m}>
+                    {new Date(2000, parseInt(m)-1).toLocaleString('pt-BR', {month: 'long'})}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="Ano" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_years">Todos anos</SelectItem>
+                {["2023","2024","2025","2026"].map(y => (
+                  <SelectItem key={y} value={y}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              placeholder="Buscar cliente..."
+              value={filterClient}
+              onChange={e => setFilterClient(e.target.value)}
+              className="w-52"
+            />
+            {(filterStatus !== "all" || filterMonth !== "all_months" || filterYear !== "all_years" || filterClient) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setFilterStatus("all"); setFilterMonth("all_months"); setFilterYear("all_years"); setFilterClient(""); }}
+              >
+                Limpar filtros
+              </Button>
+            )}
+          </div>
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin" />
