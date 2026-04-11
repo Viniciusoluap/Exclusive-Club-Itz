@@ -28,6 +28,43 @@ const COST_CENTERS = [
 
 const STATUSES = ["pending", "paid", "overdue", "cancelled"] as const;
 
+/**
+ * Constrói as condições de filtro de data.
+ * Prioridade: dateFrom/dateTo > month+year > year > month
+ */
+function buildDateConditions(opts: {
+  dateFrom?: string;
+  dateTo?: string;
+  month?: string;
+  year?: string;
+}): string[] {
+  const { dateFrom, dateTo, month, year } = opts;
+  const conds: string[] = [];
+
+  if (dateFrom && dateTo) {
+    // Período customizado tem prioridade máxima
+    const from = dateFrom.replace(/'/g, "''");
+    const to = dateTo.replace(/'/g, "''");
+    conds.push(`due_date >= '${from}' AND due_date <= '${to}'`);
+  } else if (dateFrom) {
+    const from = dateFrom.replace(/'/g, "''");
+    conds.push(`due_date >= '${from}'`);
+  } else if (dateTo) {
+    const to = dateTo.replace(/'/g, "''");
+    conds.push(`due_date <= '${to}'`);
+  } else {
+    // Filtros legados de mês/ano
+    if (month && month !== "all_months") {
+      conds.push(`MONTH(due_date) = ${parseInt(month)}`);
+    }
+    if (year && year !== "all_years") {
+      conds.push(`YEAR(due_date) = ${parseInt(year)}`);
+    }
+  }
+
+  return conds;
+}
+
 export const expensesRouter = router({
   // ── Listar despesas com filtros ──────────────────────────────────────────
   list: adminProcedure
@@ -35,8 +72,10 @@ export const expensesRouter = router({
       z.object({
         costCenter: z.enum([...COST_CENTERS, "all"]).optional().default("all"),
         status: z.enum([...STATUSES, "all"]).optional().default("all"),
-        month: z.string().optional(), // "01" a "12"
-        year: z.string().optional(),  // "2025"
+        month: z.string().optional(),    // "01" a "12" (legado)
+        year: z.string().optional(),     // "2025" (legado)
+        dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // "2025-01-01"
+        dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),   // "2025-12-31"
         search: z.string().optional(),
         limit: z.number().optional().default(100),
         offset: z.number().optional().default(0),
@@ -47,7 +86,7 @@ export const expensesRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
       const filters = input ?? {};
-      const { costCenter = "all", status = "all", month, year, search, limit = 100, offset = 0 } = filters;
+      const { costCenter = "all", status = "all", month, year, dateFrom, dateTo, search, limit = 100, offset = 0 } = filters;
 
       // Construir query com filtros dinâmicos
       const conditions: string[] = [];
@@ -65,12 +104,10 @@ export const expensesRouter = router({
         conditions.push(`status = '${status}'`);
       }
 
-      if (month && month !== "all_months") {
-        conditions.push(`MONTH(due_date) = ${parseInt(month)}`);
-      }
-      if (year && year !== "all_years") {
-        conditions.push(`YEAR(due_date) = ${parseInt(year)}`);
-      }
+      // Filtros de data (período customizado tem prioridade sobre mês/ano)
+      const dateConds = buildDateConditions({ dateFrom, dateTo, month, year });
+      conditions.push(...dateConds);
+
       if (search && search.trim()) {
         const s = search.replace(/'/g, "''");
         conditions.push(`(description LIKE '%${s}%' OR recipient_name LIKE '%${s}%')`);
@@ -132,6 +169,8 @@ export const expensesRouter = router({
       z.object({
         month: z.string().optional(),
         year: z.string().optional(),
+        dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
         costCenter: z.enum([...COST_CENTERS, "all"]).optional().default("all"),
       }).optional()
     )
@@ -139,18 +178,16 @@ export const expensesRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      const { month, year, costCenter = "all" } = input ?? {};
+      const { month, year, dateFrom, dateTo, costCenter = "all" } = input ?? {};
       const conditions: string[] = [];
 
       if (costCenter !== "all") {
         conditions.push(`cost_center = '${costCenter}'`);
       }
-      if (month && month !== "all_months") {
-        conditions.push(`MONTH(due_date) = ${parseInt(month)}`);
-      }
-      if (year && year !== "all_years") {
-        conditions.push(`YEAR(due_date) = ${parseInt(year)}`);
-      }
+
+      // Filtros de data
+      const dateConds = buildDateConditions({ dateFrom, dateTo, month, year });
+      conditions.push(...dateConds);
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 

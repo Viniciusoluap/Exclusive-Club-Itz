@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -651,6 +651,49 @@ export default function Saas() {
   const [expenseMonth, setExpenseMonth] = useState("all_months");
   const [expenseYear, setExpenseYear] = useState("all_years");
   const [expenseSearch, setExpenseSearch] = useState("");
+  // Filtro de período (DRE)
+  const [expensePeriodPreset, setExpensePeriodPreset] = useState("current_year");
+  const [expenseDateFrom, setExpenseDateFrom] = useState<string | undefined>(undefined);
+  const [expenseDateTo, setExpenseDateTo] = useState<string | undefined>(undefined);
+  // Calcular dateFrom/dateTo com base no preset selecionado
+  const expensePeriodDates = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth(); // 0-indexed
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    switch (expensePeriodPreset) {
+      case "current_month":
+        return { from: `${y}-${pad(m + 1)}-01`, to: fmt(new Date(y, m + 1, 0)) };
+      case "last_month": {
+        const lm = m === 0 ? 11 : m - 1;
+        const ly = m === 0 ? y - 1 : y;
+        return { from: `${ly}-${pad(lm + 1)}-01`, to: fmt(new Date(ly, lm + 1, 0)) };
+      }
+      case "current_quarter": {
+        const qStart = Math.floor(m / 3) * 3;
+        return { from: `${y}-${pad(qStart + 1)}-01`, to: fmt(new Date(y, qStart + 3, 0)) };
+      }
+      case "last_quarter": {
+        const qStart = (Math.floor(m / 3) - 1 + 4) % 4 * 3;
+        const qy = Math.floor(m / 3) === 0 ? y - 1 : y;
+        return { from: `${qy}-${pad(qStart + 1)}-01`, to: fmt(new Date(qy, qStart + 3, 0)) };
+      }
+      case "current_semester": {
+        const sStart = m < 6 ? 0 : 6;
+        return { from: `${y}-${pad(sStart + 1)}-01`, to: fmt(new Date(y, sStart + 6, 0)) };
+      }
+      case "current_year":
+        return { from: `${y}-01-01`, to: `${y}-12-31` };
+      case "last_year":
+        return { from: `${y - 1}-01-01`, to: `${y - 1}-12-31` };
+      case "custom":
+        return { from: expenseDateFrom, to: expenseDateTo };
+      case "all":
+      default:
+        return { from: undefined, to: undefined };
+    }
+  }, [expensePeriodPreset, expenseDateFrom, expenseDateTo]);
   const [showExpenseDialog, setShowExpenseDialog] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
   const [expenseForm, setExpenseForm] = useState({
@@ -735,18 +778,22 @@ export default function Saas() {
     {
       costCenter: expenseCostCenter as any,
       status: expenseStatusFilter as any,
-      month: expenseMonth !== "all_months" ? expenseMonth : undefined,
-      year: expenseYear !== "all_years" ? expenseYear : undefined,
+      // Se há filtro de período ativo, usa dateFrom/dateTo; caso contrário usa mês/ano legado
+      dateFrom: expensePeriodDates.from ?? undefined,
+      dateTo: expensePeriodDates.to ?? undefined,
+      month: (!expensePeriodDates.from && expenseMonth !== "all_months") ? expenseMonth : undefined,
+      year: (!expensePeriodDates.from && expenseYear !== "all_years") ? expenseYear : undefined,
       search: expenseSearch || undefined,
     },
     { enabled: activeTab === "expenses" }
   );
-
   const expensesStatsQuery = trpc.expenses.stats.useQuery(
     {
       costCenter: expenseCostCenter as any,
-      month: expenseMonth !== "all_months" ? expenseMonth : undefined,
-      year: expenseYear !== "all_years" ? expenseYear : undefined,
+      dateFrom: expensePeriodDates.from ?? undefined,
+      dateTo: expensePeriodDates.to ?? undefined,
+      month: (!expensePeriodDates.from && expenseMonth !== "all_months") ? expenseMonth : undefined,
+      year: (!expensePeriodDates.from && expenseYear !== "all_years") ? expenseYear : undefined,
     },
     { enabled: activeTab === "expenses" }
   );
@@ -1894,6 +1941,61 @@ export default function Saas() {
 
           {/* Aba Despesas / Centro de Custos */}
           <TabsContent value="expenses">
+            {/* Seletor de Período (DRE) */}
+            <Card className="mb-4">
+              <CardContent className="pt-4">
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-muted-foreground">Período de Análise</label>
+                    <Select value={expensePeriodPreset} onValueChange={(v) => { setExpensePeriodPreset(v); }}>
+                      <SelectTrigger className="w-52">
+                        <SelectValue placeholder="Selecionar período" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="current_month">Este mês</SelectItem>
+                        <SelectItem value="last_month">Mês anterior</SelectItem>
+                        <SelectItem value="current_quarter">Trimestre atual</SelectItem>
+                        <SelectItem value="last_quarter">Trimestre anterior</SelectItem>
+                        <SelectItem value="current_semester">Semestre atual</SelectItem>
+                        <SelectItem value="current_year">Ano atual</SelectItem>
+                        <SelectItem value="last_year">Ano anterior</SelectItem>
+                        <SelectItem value="custom">Período customizado</SelectItem>
+                        <SelectItem value="all">Todo o histórico</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {expensePeriodPreset === "custom" && (
+                    <>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-muted-foreground">Data inicial</label>
+                        <input
+                          type="date"
+                          className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          value={expenseDateFrom ?? ""}
+                          onChange={(e) => setExpenseDateFrom(e.target.value || undefined)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-muted-foreground">Data final</label>
+                        <input
+                          type="date"
+                          className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          value={expenseDateTo ?? ""}
+                          onChange={(e) => setExpenseDateTo(e.target.value || undefined)}
+                        />
+                      </div>
+                    </>
+                  )}
+                  {expensePeriodDates.from && expensePeriodDates.to && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 rounded-md border border-blue-200 dark:border-blue-800">
+                      <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                        {new Date(expensePeriodDates.from + "T12:00:00").toLocaleDateString("pt-BR")} – {new Date(expensePeriodDates.to + "T12:00:00").toLocaleDateString("pt-BR")}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
             {/* Cards de resumo */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <Card>
@@ -2013,7 +2115,7 @@ export default function Saas() {
                   />
 
                   {(expenseCostCenter !== "all" || expenseStatusFilter !== "all" || expenseMonth !== "all_months" || expenseYear !== "all_years" || expenseSearch) && (
-                    <Button variant="outline" size="sm" onClick={() => { setExpenseCostCenter("all"); setExpenseStatusFilter("all"); setExpenseMonth("all_months"); setExpenseYear("all_years"); setExpenseSearch(""); }}>
+                    <Button variant="outline" size="sm" onClick={() => { setExpenseCostCenter("all"); setExpenseStatusFilter("all"); setExpenseMonth("all_months"); setExpenseYear("all_years"); setExpenseSearch(""); setExpensePeriodPreset("current_year"); setExpenseDateFrom(undefined); setExpenseDateTo(undefined); }}>
                       <X className="h-4 w-4 mr-1" /> Limpar filtros
                     </Button>
                   )}
