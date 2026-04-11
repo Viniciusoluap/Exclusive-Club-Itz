@@ -1162,6 +1162,30 @@ export default function Saas() {
         </div>
       </div>
 
+      {/* Barra de Abas — acima dos cards de totais */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <TabsList className="mb-4 h-auto flex flex-wrap gap-1 p-1">
+          <TabsTrigger value="charges" className="flex items-center gap-1">
+            <CreditCard className="h-4 w-4" />
+            Cobranças
+          </TabsTrigger>
+          <TabsTrigger value="expenses" className="flex items-center gap-1">
+            <TrendingDown className="h-4 w-4" />
+            Despesas
+          </TabsTrigger>
+          <TabsTrigger value="consolidated" className="flex items-center gap-1">
+            <TrendingUp className="h-4 w-4" />
+            Visão Consolidada
+          </TabsTrigger>
+          <TabsTrigger value="webhooks" className="flex items-center gap-1">
+            <Webhook className="h-4 w-4" />
+            Webhooks
+          </TabsTrigger>
+          <TabsTrigger value="reconciliation" className="flex items-center gap-1">
+            <History className="h-4 w-4" />
+            Reconciliação
+          </TabsTrigger>
+        </TabsList>
       {/* Dashboard de Inadimplência */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
@@ -1221,30 +1245,6 @@ export default function Saas() {
           </CardContent>
         </Card>
       </div>
-      {/* Barra de Abas — logo abaixo dos cards de totais */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="mb-6 h-auto flex flex-wrap gap-1 p-1">
-          <TabsTrigger value="charges" className="flex items-center gap-1">
-            <CreditCard className="h-4 w-4" />
-            Cobranças
-          </TabsTrigger>
-          <TabsTrigger value="expenses" className="flex items-center gap-1">
-            <TrendingDown className="h-4 w-4" />
-            Despesas
-          </TabsTrigger>
-          <TabsTrigger value="consolidated" className="flex items-center gap-1">
-            <TrendingUp className="h-4 w-4" />
-            Visão Consolidada
-          </TabsTrigger>
-          <TabsTrigger value="webhooks" className="flex items-center gap-1">
-            <Webhook className="h-4 w-4" />
-            Webhooks
-          </TabsTrigger>
-          <TabsTrigger value="reconciliation" className="flex items-center gap-1">
-            <History className="h-4 w-4" />
-            Reconciliação
-          </TabsTrigger>
-        </TabsList>
         {/* Aba Cobranças: filtros e lista de cobranças */}
         <TabsContent value="charges">
       {/* Filtros */}

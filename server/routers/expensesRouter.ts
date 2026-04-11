@@ -85,8 +85,15 @@ export const expensesRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      const filters = input ?? {};
-      const { costCenter = "all", status = "all", month, year, dateFrom, dateTo, search, limit = 100, offset = 0 } = filters;
+      const costCenter = input?.costCenter ?? "all";
+      const status = input?.status ?? "all";
+      const month = input?.month;
+      const year = input?.year;
+      const dateFrom = input?.dateFrom;
+      const dateTo = input?.dateTo;
+      const search = input?.search;
+      const limit = input?.limit ?? 100;
+      const offset = input?.offset ?? 0;
 
       // Construir query com filtros dinâmicos
       const conditions: string[] = [];
