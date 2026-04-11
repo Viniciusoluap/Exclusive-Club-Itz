@@ -844,35 +844,64 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col lg:flex-row gap-6">
-              {/* Gráfico com eixo Y fixo 1-7 */}
+              {/* Gráfico com eixo Y fixo 1-7 + linha de referência "Bom uso" no nível 3 */}
               <div className="flex-1">
                 <div className="flex gap-2">
-                  {/* Eixo Y */}
-                  <div className="flex flex-col justify-between items-end pr-1" style={{ height: '224px' }}>
-                    {[7,6,5,4,3,2,1].map(v => (
-                      <span key={v} className="text-xs text-gray-400 leading-none">{v}</span>
+                  {/* Eixo Y — labels alinhados às linhas de grade (sem o 7 no topo) */}
+                  <div className="flex flex-col-reverse items-end pr-1" style={{ height: '224px' }}>
+                    {[1,2,3,4,5,6].map(v => (
+                      <div key={v} className="flex items-center" style={{ height: `${100/7}%` }}>
+                        <span className={`text-xs leading-none ${v === 3 ? 'text-teal-500 font-semibold' : 'text-gray-400'}`}>{v}</span>
+                      </div>
                     ))}
+                    {/* Espaço vazio no topo onde ficaria o 7 */}
+                    <div style={{ height: `${100/7}%` }} />
                   </div>
-                  {/* Barras */}
-                  <div className="flex-1 flex items-end justify-between gap-2" style={{ height: '224px' }}>
-                    {stats?.monthlyUsage.map((month, idx) => {
-                      const MAX_Y = 7;
-                      const clampedCount = Math.min(month.count, MAX_Y);
-                      const heightPct = (clampedCount / MAX_Y) * 100;
+                  {/* Área do gráfico com linhas de grade e barras */}
+                  <div className="flex-1 relative" style={{ height: '224px' }}>
+                    {/* Linhas de grade horizontais */}
+                    {[1,2,3,4,5,6,7].map(v => {
+                      const bottomPct = ((v - 1) / 6) * 100;
+                      const isBomUso = v === 3;
                       return (
-                        <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-                          <div
-                            className="w-full bg-cyan-400 rounded-t-lg relative group cursor-pointer hover:bg-cyan-500 transition-colors"
-                            style={{ height: `${heightPct}%`, minHeight: month.count > 0 ? '6px' : '0' }}
-                          >
-                            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                              {month.count} reserva{month.count !== 1 ? 's' : ''}
-                            </div>
-                          </div>
-                          <span className="text-xs text-gray-500 text-center mt-1">{month.month}</span>
+                        <div
+                          key={v}
+                          className="absolute left-0 right-0"
+                          style={{ bottom: `${bottomPct}%`, height: '1px' }}
+                        >
+                          {isBomUso ? (
+                            <>
+                              <div className="w-full border-t-2 border-dashed border-teal-400 opacity-80" />
+                              <span className="absolute right-0 -top-4 text-xs text-teal-500 font-medium bg-white px-1 rounded">Bom uso</span>
+                            </>
+                          ) : (
+                            <div className="w-full border-t border-gray-100" />
+                          )}
                         </div>
                       );
                     })}
+                    {/* Barras */}
+                    <div className="absolute inset-0 flex items-end justify-between gap-2">
+                      {stats?.monthlyUsage.map((month, idx) => {
+                        const MAX_Y = 7;
+                        const clampedCount = Math.min(month.count, MAX_Y);
+                        // Altura proporcional ao range 0-7 (7 segmentos de 1/7 cada)
+                        const heightPct = (clampedCount / MAX_Y) * 100;
+                        return (
+                          <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end pb-5">
+                            <div
+                              className="w-full bg-cyan-400 rounded-t-lg relative group cursor-pointer hover:bg-cyan-500 transition-colors"
+                              style={{ height: `${heightPct}%`, minHeight: month.count > 0 ? '6px' : '0' }}
+                            >
+                              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                {month.count} reserva{month.count !== 1 ? 's' : ''}
+                              </div>
+                            </div>
+                            <span className="absolute bottom-0 text-xs text-gray-500 text-center">{month.month}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
