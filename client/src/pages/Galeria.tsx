@@ -65,7 +65,6 @@ export default function Galeria() {
             <span className="text-xl font-bold text-cyan-700">{APP_TITLE}</span>
           </a>
           <nav className="flex gap-6 items-center">
-            <a href="/galeria" className="text-cyan-600 font-semibold">Galeria</a>
             <button
               onClick={() => window.history.back()}
               className="flex items-center gap-1 text-gray-700 hover:text-cyan-600 transition-colors"
