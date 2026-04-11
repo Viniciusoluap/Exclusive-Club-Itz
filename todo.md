@@ -1714,3 +1714,8 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Ajustar filtro WHERE para considerar status normalizado (overdue via HAVING ou subquery)
 - [x] Adicionar UPDATE de overdue no cron noturno de reconciliação (inspection_charges)
 - [x] Checkpoint
+
+## Bug: Sistema de Backup
+- [x] Corrigir timeout no backup manual (executar em background, retornar imediatamente)
+- [x] Corrigir download de backup (redirecionar para URL do S3 em vez de arquivo local)
+- [x] Checkpoint

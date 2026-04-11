@@ -99,23 +99,21 @@ export const backupRouter = router({
   }),
 
   /**
-   * Executa backup manualmente
+   * Executa backup manualmente (fire-and-forget para evitar timeout de gateway)
    */
   runNow: adminProcedure.mutation(async () => {
-    try {
-      // Importa e executa a função de backup diretamente
-      // Isso evita problemas com spawn de processo em ambientes de produção
-      const { runBackup } = await import('../backup');
-      await runBackup();
+    // Importa a função de backup
+    const { runBackup } = await import('../backup');
 
-      return {
-        success: true,
-        message: 'Backup executado com sucesso',
-      };
-    } catch (error: any) {
-      console.error('Erro ao executar backup:', error);
-      throw new Error(`Falha ao executar backup: ${error.message}`);
-    }
+    // Dispara o backup em background sem aguardar — evita timeout do gateway
+    runBackup().catch((error: any) => {
+      console.error('[Backup Manual] Erro durante execução em background:', error);
+    });
+
+    return {
+      success: true,
+      message: 'Backup iniciado. Acompanhe o progresso no histórico.',
+    };
   }),
 
   /**
@@ -141,15 +139,19 @@ export const backupRouter = router({
 
       const backupData = backup[0];
 
-      // Verifica se o arquivo existe
-      if (!backupData.localFilePath || !fs.existsSync(backupData.localFilePath)) {
-        throw new Error('Arquivo de backup não encontrado no servidor');
+      // Verifica se existe URL S3 ou arquivo local
+      const hasS3 = !!backupData.s3Url;
+      const hasLocal = !!(backupData.localFilePath && fs.existsSync(backupData.localFilePath));
+
+      if (!hasS3 && !hasLocal) {
+        throw new Error('Arquivo de backup não encontrado. O arquivo pode ter sido removido.');
       }
 
       return {
         id: backupData.id,
         fileName: backupData.fileName,
         filePath: backupData.localFilePath,
+        s3Url: backupData.s3Url,
         fileSizeBytes: backupData.fileSizeBytes,
         createdAt: backupData.startedAt,
       };
