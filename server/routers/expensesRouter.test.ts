@@ -147,6 +147,76 @@ describe("saasRouter - getFilteredStats usa unclassified_charges", () => {
   });
 });
 
+describe("expensesRouter - filtro de período dateFrom/dateTo", () => {
+  it("deve aceitar dateFrom e dateTo no list", async () => {
+    const { ctx } = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    try {
+      const result = await caller.expenses.list({
+        dateFrom: "2025-01-01",
+        dateTo: "2025-12-31",
+      });
+      expect(Array.isArray(result.items)).toBe(true);
+    } catch (e: any) {
+      expect(e.message).toMatch(/database|Database|INTERNAL_SERVER_ERROR/i);
+    }
+  });
+
+  it("deve aceitar dateFrom e dateTo no stats", async () => {
+    const { ctx } = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    try {
+      const result = await caller.expenses.stats({
+        dateFrom: "2025-01-01",
+        dateTo: "2025-03-31",
+      });
+      expect(typeof result.totalAll).toBe("number");
+      expect(typeof result.totalPaid).toBe("number");
+      expect(Array.isArray(result.byCostCenter)).toBe(true);
+    } catch (e: any) {
+      expect(e.message).toMatch(/database|Database|INTERNAL_SERVER_ERROR/i);
+    }
+  });
+
+  it("deve rejeitar dateFrom com formato inválido", async () => {
+    const { ctx } = createAdminContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.expenses.list({ dateFrom: "01/01/2025" } as any)
+    ).rejects.toThrow();
+  });
+
+  it("deve calcular período do trimestre atual corretamente", () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const qStart = Math.floor(m / 3) * 3;
+    const from = `${y}-${pad(qStart + 1)}-01`;
+    const to = fmt(new Date(y, qStart + 3, 0));
+    // Validar que from <= to
+    expect(new Date(from).getTime()).toBeLessThanOrEqual(new Date(to).getTime());
+    // Validar formato YYYY-MM-DD
+    expect(from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("deve calcular período do semestre atual corretamente", () => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const sStart = m < 6 ? 0 : 6;
+    const from = `${y}-${pad(sStart + 1)}-01`;
+    const to = fmt(new Date(y, sStart + 6, 0));
+    expect(new Date(from).getTime()).toBeLessThanOrEqual(new Date(to).getTime());
+    expect(from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
 describe("reconciliação - sem updated_at em subscription_charges", () => {
   it("não deve conter updated_at em queries de subscription_charges", () => {
     // Verificar que o código não usa updated_at em subscription_charges

@@ -1781,3 +1781,25 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Usar email placeholder `asaas_{id}@sem-email.local` quando cliente Asaas não tem email
 - [x] Testes passando: 29/29 no saasRouter.test.ts
 
+
+## 🔧 Feature: Filtro de Período na Aba Despesas (DRE por intervalo)
+====================================================================================
+
+**Requisito:** Adicionar filtro de período customizável (data inicial + data final) na aba Despesas para análise do DRE em diferentes intervalos de tempo.
+
+**Escopo:**
+- Seletor de período rápido: Este mês, Mês anterior, Trimestre atual, Semestre atual, Ano atual, Período customizado
+- Campos de data inicial/final para período customizado
+- Filtro afeta tanto a tabela de despesas quanto os cards de totais e o breakdown por centro de custo
+- Backend: adicionar `dateFrom` e `dateTo` nos parâmetros de `expenses.list` e `expenses.stats`
+- Frontend: UI de seleção de período acima dos filtros existentes
+
+**Tarefas:**
+- [x] Adicionar parâmetros `dateFrom` e `dateTo` no expensesRouter (list + stats)
+- [x] Adicionar seletor de período rápido no frontend (Saas.tsx)
+- [x] Adicionar campos de data customizada
+- [x] Sincronizar filtro de período com os filtros existentes (mês/ano tornam-se secundários)
+- [x] Atualizar label dos cards com o período selecionado
+- [x] Escrever/atualizar testes do expensesRouter
+- [ ] Criar checkpoint
+
