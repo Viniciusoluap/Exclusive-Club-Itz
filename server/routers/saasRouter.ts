@@ -530,6 +530,10 @@ export const saasRouter = router({
 
       let results = await query;
 
+      // Filtrar apenas cobranças a partir de 01/01/2025 (alinhado com filtro do Asaas)
+      const cutoffDate2025 = new Date('2025-01-01');
+      results = results.filter(r => new Date(r.charge.dueDate) >= cutoffDate2025);
+
       // Normalizar status: pending com due_date passada → overdue
       const todayNorm = new Date();
       todayNorm.setHours(0, 0, 0, 0);
@@ -1113,6 +1117,8 @@ export const saasRouter = router({
           if (charge.status === 'DELETED' || charge.status === 'CANCELLED') { skipped++; continue; }
           // Pular cobranças de outros módulos
           if (otherModuleIds.has(charge.id)) { skipped++; continue; }
+          // Pular cobranças anteriores a 2025-01-01
+          if (charge.dueDate && charge.dueDate < '2025-01-01') { skipped++; continue; }
 
           const asaasCustomer = asaasCustomerMap.get((charge as any).customer ?? '');
           const isClassified = classifiedIds.has(charge.id) ? 1 : 0;
@@ -1150,7 +1156,7 @@ export const saasRouter = router({
                 paid_date = VALUES(paid_date),
                 asaas_status = VALUES(asaas_status),
                 status = VALUES(status),
-                classified = VALUES(classified),
+                classified = IF(classified = 1, 1, VALUES(classified)),
                 last_synced_at = NOW()
             `));
             if (isClassified) updated++; else inserted++;
@@ -2501,12 +2507,13 @@ export const saasRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      // Buscar da VIEW consolidada
+      // Buscar da VIEW consolidada — apenas cobranças a partir de 01/01/2025
       const [rows] = await (db as any).$client.query(
         `SELECT uid, source_table, source_id, subscription_id, asaas_payment_id,
                 value, amount_paid, net_value, due_date, paid_date, status, type,
                 client_name, client_email, vessel_name, created_at, description
          FROM financial_charges
+         WHERE due_date >= '2025-01-01'
          ORDER BY due_date DESC`
       );
 

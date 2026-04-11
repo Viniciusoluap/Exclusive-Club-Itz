@@ -1735,3 +1735,8 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Modal de cadastro de despesa (centro de custo, descrição, destinatário, valor, vencimento)
 - [x] Atualizar Visão Consolidada com Receitas vs Despesas e resultado líquido
 - [x] Checkpoint
+
+## Bug Crítico: BPO Financeiro - 3 Correções
+- [ ] Filtrar cards de totais do BPO por due_date >= 2025-01-01
+- [ ] Proteger charge_type no ON DUPLICATE KEY UPDATE (não perder classificações no sync)
+- [ ] Verificar TypeScript, salvar checkpoint e publicar
