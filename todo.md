@@ -1662,3 +1662,11 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Adicionar botão Cancelar cobrança pendente no detalhe do BPO
 - [x] Redirecionar rota /admin/pagamentos para /admin/saas
 - [x] Atualizar link em SystemSettings para apontar para /admin/saas ("BPO Financeiro")
+
+## Fase 2: Consolidação Estrutural — Webhook em Tempo Real (11/04/2026)
+- [ ] Checkpoint de segurança antes das alterações
+- [ ] Adicionar campos net_value e external_reference em subscription_charges (schema + db:push)
+- [ ] Refatorar webhookRouter para atualizar subscription_charges diretamente
+- [ ] Migrar dados históricos: sincronizar 19 registros de overlap entre as tabelas
+- [ ] Atualizar reconciliação para incluir subscription_charges
+- [ ] Testes e checkpoint final
