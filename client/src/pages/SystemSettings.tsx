@@ -68,7 +68,7 @@ export default function SystemSettings() {
     }, 2000);
   };
 
-  const [activeTab, setActiveTab] = useState<"asaas" | "pagamentos" | "backups">("asaas");
+  const [activeTab, setActiveTab] = useState<"asaas" | "backups">("asaas");
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -99,12 +99,6 @@ export default function SystemSettings() {
             onClick={() => setActiveTab("asaas")}
           >
             Integração Asaas
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setLocation("/admin/saas")}
-          >
-            BPO Financeiro
           </Button>
           <Button
             variant={activeTab === "backups" ? "default" : "outline"}
