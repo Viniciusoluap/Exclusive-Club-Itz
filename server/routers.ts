@@ -4224,39 +4224,53 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         try {
           const { sql } = await import('drizzle-orm');
           
-          const filters: string[] = [];
-          if (input?.status && input.status !== 'all') {
-            filters.push(`ic.payment_status = '${input.status}'`);
-          }
+          // Filtros na subquery interna (usa effective_status calculado)
+          const innerFilters: string[] = [];
           if (input?.month) {
-            filters.push(`MONTH(ic.due_date) = ${parseInt(input.month)}`);
+            innerFilters.push(`MONTH(ic.due_date) = ${parseInt(input.month)}`);
           }
           if (input?.year) {
-            filters.push(`YEAR(ic.due_date) = ${parseInt(input.year)}`);
+            innerFilters.push(`YEAR(ic.due_date) = ${parseInt(input.year)}`);
           }
           if (input?.clientSearch && input.clientSearch.trim()) {
             const escaped = input.clientSearch.replace(/'/g, "''");
-            filters.push(`(ic.client_email LIKE '%${escaped}%' OR ic.client_name LIKE '%${escaped}%')`);
+            innerFilters.push(`(ic.client_email LIKE '%${escaped}%' OR ic.client_name LIKE '%${escaped}%')`);
           }
-          const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+          const innerWhere = innerFilters.length > 0 ? `WHERE ${innerFilters.join(' AND ')}` : '';
+
+          // Filtro de status aplicado APÓS calcular effective_status
+          const statusFilter = (input?.status && input.status !== 'all')
+            ? `WHERE effective_status = '${input.status}'`
+            : '';
 
           const result = await db.execute(sql.raw(`
-            SELECT 
-              ic.*,
-              i.created_at as inspection_date,
-              ddr.id as pending_request_id,
-              ddr.new_due_date as pending_new_due_date,
-              ddr.reason as pending_reason,
-              ddr.created_at as pending_request_date
-            FROM inspection_charges ic
-            LEFT JOIN inspections i ON ic.inspection_id = i.id
-            LEFT JOIN due_date_change_requests ddr ON ddr.charge_id = ic.id AND ddr.status = 'pending'
-            ${whereClause}
-            ORDER BY ic.created_at DESC
+            SELECT *
+            FROM (
+              SELECT 
+                ic.*,
+                CASE
+                  WHEN ic.payment_status IN ('paid', 'cancelled') THEN ic.payment_status
+                  WHEN ic.payment_status = 'pending' AND ic.due_date < CURDATE() THEN 'overdue'
+                  ELSE 'pending'
+                END AS effective_status,
+                i.created_at as inspection_date,
+                ddr.id as pending_request_id,
+                ddr.new_due_date as pending_new_due_date,
+                ddr.reason as pending_reason,
+                ddr.created_at as pending_request_date
+              FROM inspection_charges ic
+              LEFT JOIN inspections i ON ic.inspection_id = i.id
+              LEFT JOIN due_date_change_requests ddr ON ddr.charge_id = ic.id AND ddr.status = 'pending'
+              ${innerWhere}
+            ) AS sub
+            ${statusFilter}
+            ORDER BY created_at DESC
           `)) as any;
           
           const charges = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
             ...row,
+            // Sobrescreve payment_status com o status normalizado (overdue se vencido)
+            payment_status: row.effective_status || row.payment_status,
             failed_items: typeof row.failed_items === 'string' && row.failed_items ? JSON.parse(row.failed_items) : row.failed_items,
             pending_due_date_request: row.pending_request_id ? {
               id: row.pending_request_id,

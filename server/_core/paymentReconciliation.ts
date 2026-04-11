@@ -401,6 +401,30 @@ export async function checkOverdueCharges(): Promise<{
     throw error;
   }
 
+  // Atualiza diretamente inspection_charges que não têm asaas_payment vinculado
+  // (cobranças manuais sem integração Asaas)
+  try {
+    const directResult = await db.execute(sql`
+      UPDATE inspection_charges
+      SET payment_status = 'overdue', updated_at = NOW()
+      WHERE payment_status = 'pending'
+        AND due_date < CURDATE()
+        AND id NOT IN (
+          SELECT DISTINCT charge_id FROM asaas_payments
+          WHERE charge_type IN ('inspection', 'repair')
+            AND charge_id IS NOT NULL
+        )
+    `) as any;
+    const directUpdated = directResult?.[0]?.affectedRows ?? 0;
+    if (directUpdated > 0) {
+      console.log(`[Overdue] ${directUpdated} cobranças de danos manuais marcadas como vencidas`);
+      result.updated += directUpdated;
+    }
+  } catch (error) {
+    console.error('[Overdue] Erro ao atualizar inspection_charges manuais:', error);
+    result.errors++;
+  }
+
   console.log(`[Overdue] Concluído: ${result.updated} atualizadas, ${result.errors} erros`);
   return result;
 }

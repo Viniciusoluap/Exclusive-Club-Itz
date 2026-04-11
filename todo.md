@@ -1708,3 +1708,9 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Adicionar input de filtros no backend (listAll): status, mês, ano, cliente
 - [x] Adicionar UI de filtros no frontend (CobrancasDanos.tsx)
 - [x] Checkpoint
+
+## Bug: Status "Vencido" não aparece em Cobranças de Danos
+- [x] Normalizar status dinamicamente na query listAll (CASE WHEN due_date < CURDATE THEN overdue)
+- [x] Ajustar filtro WHERE para considerar status normalizado (overdue via HAVING ou subquery)
+- [x] Adicionar UPDATE de overdue no cron noturno de reconciliação (inspection_charges)
+- [x] Checkpoint
