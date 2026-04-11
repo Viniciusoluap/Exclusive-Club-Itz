@@ -836,102 +836,94 @@ export default function Dashboard() {
           <p className="text-gray-600">Acompanhe suas estatísticas e histórico de uso</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Reservas</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalBookings || 0}</div>
-              <p className="text-xs text-muted-foreground">Desde o início</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Próximas Reservas</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {stats?.nextBookings && stats.nextBookings.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground mb-2">
-                    {new Date(stats.nextBookings[0].bookingDate).toLocaleDateString('pt-BR', {
-                      weekday: 'short',
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric'
-                    })}
-                  </div>
-                  <div className="space-y-1.5 max-h-24 overflow-y-auto">
-                    {stats.nextBookings.map((booking, index) => (
-                      <div key={index} className="text-sm">
-                        <div className="font-semibold">
-                          {booking.vesselName}
-                          {booking.quotaNumber && ` #${booking.quotaNumber}`}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div className="text-2xl font-bold">{stats?.upcomingBookings || 0}</div>
-                  <p className="text-xs text-muted-foreground">Agendadas</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Reservas Concluídas</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.completedBookings || 0}</div>
-              <p className="text-xs text-muted-foreground">Utilizadas</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Embarcação Favorita</CardTitle>
-              <Ship className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg font-bold truncate">{stats?.favoriteVessel || "N/A"}</div>
-              <p className="text-xs text-muted-foreground">Mais utilizada</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Monthly Usage Chart */}
+        {/* Monthly Usage Chart — com painel de resumo e escala Y fixa 1-7 */}
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>Uso Mensal</CardTitle>
             <CardDescription>Suas reservas nos últimos 6 meses</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-end justify-between gap-4">
-              {stats?.monthlyUsage.map((month, idx) => {
-                const maxCount = Math.max(...(stats.monthlyUsage.map(m => m.count) || [1]));
-                const height = maxCount > 0 ? (month.count / maxCount) * 100 : 0;
-                
-                return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-2">
-                    <div className="w-full bg-blue-100 rounded-t-lg relative group cursor-pointer hover:bg-blue-200 transition-colors" 
-                         style={{ height: `${height}%`, minHeight: month.count > 0 ? '20px' : '0' }}>
-                      <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                        {month.count} reserva{month.count !== 1 ? 's' : ''}
-                      </div>
-                    </div>
-                    <span className="text-xs text-gray-600 text-center">{month.month}</span>
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Gráfico com eixo Y fixo 1-7 */}
+              <div className="flex-1">
+                <div className="flex gap-2">
+                  {/* Eixo Y */}
+                  <div className="flex flex-col justify-between items-end pr-1" style={{ height: '224px' }}>
+                    {[7,6,5,4,3,2,1].map(v => (
+                      <span key={v} className="text-xs text-gray-400 leading-none">{v}</span>
+                    ))}
                   </div>
-                );
-              })}
+                  {/* Barras */}
+                  <div className="flex-1 flex items-end justify-between gap-2" style={{ height: '224px' }}>
+                    {stats?.monthlyUsage.map((month, idx) => {
+                      const MAX_Y = 7;
+                      const clampedCount = Math.min(month.count, MAX_Y);
+                      const heightPct = (clampedCount / MAX_Y) * 100;
+                      return (
+                        <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                          <div
+                            className="w-full bg-cyan-400 rounded-t-lg relative group cursor-pointer hover:bg-cyan-500 transition-colors"
+                            style={{ height: `${heightPct}%`, minHeight: month.count > 0 ? '6px' : '0' }}
+                          >
+                            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                              {month.count} reserva{month.count !== 1 ? 's' : ''}
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-500 text-center mt-1">{month.month}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Painel de resumo */}
+              <div className="lg:w-56 grid grid-cols-2 lg:grid-cols-1 gap-3 content-start">
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Calendar className="h-4 w-4 text-blue-500" />
+                    <span className="text-xs text-gray-500 font-medium">Total de Reservas</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-700">{stats?.totalBookings || 0}</div>
+                  <p className="text-xs text-gray-400">Desde o início</p>
+                </div>
+
+                <div className="bg-green-50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp className="h-4 w-4 text-green-500" />
+                    <span className="text-xs text-gray-500 font-medium">Próximas Reservas</span>
+                  </div>
+                  {stats?.nextBookings && stats.nextBookings.length > 0 ? (
+                    <div>
+                      <div className="text-sm font-bold text-green-700 truncate">{stats.nextBookings[0].vesselName}</div>
+                      <p className="text-xs text-gray-400">{new Date(stats.nextBookings[0].bookingDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-2xl font-bold text-green-700">{stats?.upcomingBookings || 0}</div>
+                      <p className="text-xs text-gray-400">Agendadas</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-purple-50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <BarChart3 className="h-4 w-4 text-purple-500" />
+                    <span className="text-xs text-gray-500 font-medium">Concluídas</span>
+                  </div>
+                  <div className="text-2xl font-bold text-purple-700">{stats?.completedBookings || 0}</div>
+                  <p className="text-xs text-gray-400">Utilizadas</p>
+                </div>
+
+                <div className="bg-orange-50 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Ship className="h-4 w-4 text-orange-500" />
+                    <span className="text-xs text-gray-500 font-medium">Embarcação Favorita</span>
+                  </div>
+                  <div className="text-sm font-bold text-orange-700 truncate">{stats?.favoriteVessel || "N/A"}</div>
+                  <p className="text-xs text-gray-400">Mais utilizada</p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
