@@ -1690,3 +1690,7 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] 14 testes passando (markChargeAsPaid + webhook Fase 2)
 - [x] Zero erros TypeScript
 - [x] Checkpoint final salvo
+
+## UI: Remover aba "BPO Financeiro" das Configurações
+- [x] Remover aba "BPO Financeiro" do SystemSettings.tsx (já existe no painel Admin)
+- [x] Checkpoint
