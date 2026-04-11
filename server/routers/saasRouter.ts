@@ -1231,7 +1231,7 @@ export const saasRouter = router({
     const statusSql = statusFilter !== 'all' ? `AND status = '${statusFilter}'` : '';
 
     // Montar lista de IDs excluídos para o COUNT (excluídos manualmente + já classificados)
-    const excludedIdsList = [...excludedAsaasIds, ...classifiedAsaasIds]
+    const excludedIdsList = [...Array.from(excludedAsaasIds), ...Array.from(classifiedAsaasIds)]
       .map(id => `'${id.replace(/'/g, "''")}'`).join(',');
     const excludedFilter = excludedIdsList.length > 0
       ? `AND asaas_payment_id NOT IN (${excludedIdsList})`
@@ -1256,7 +1256,7 @@ export const saasRouter = router({
       LIMIT ${pageSize} OFFSET ${offset}
     `));
 
-    const rows = (cacheRows[0] as any[]) ?? [];
+    const rows = (cacheRows[0] as unknown as any[]) ?? [];
 
     const result = rows
       .filter(row => !excludedAsaasIds.has(row.asaas_payment_id))
@@ -2055,7 +2055,7 @@ export const saasRouter = router({
           LIMIT 500 OFFSET ${cacheOffset}
         `));
 
-        const cacheBatch = (cacheResult[0] as any[]) ?? [];
+        const cacheBatch = (cacheResult[0] as unknown as any[]) ?? [];
         if (cacheBatch.length === 0) { cacheHasMore = false; break; }
         if (cacheBatch.length < 500) cacheHasMore = false;
         cacheOffset += 500;
