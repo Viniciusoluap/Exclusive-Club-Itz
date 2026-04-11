@@ -1810,3 +1810,35 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Mover TabsList para logo abaixo dos cards de totais (antes dos filtros)
 - [x] Verificar que todas as abas e funcionalidades permanecem intactas
 - [ ] Salvar checkpoint
+
+## 🏗️ Solução B: Banco Local bpo_charges como Fonte Única de Verdade
+
+### Fase 1 — Schema
+- [ ] Adicionar tabela `bpo_charges` em drizzle/schema.ts
+- [ ] Rodar `pnpm db:push` para criar a tabela no banco
+
+### Fase 2 — Importação Histórica do Asaas
+- [ ] Criar procedure `bpo.importFromAsaas` no saasRouter
+- [ ] Adicionar botão "Importar Histórico do Asaas" na aba Reconciliação
+- [ ] Testar importação e validar contagem de registros
+
+### Fase 3 — Webhook em Tempo Real
+- [ ] Atualizar handler do webhook para escrever em bpo_charges
+- [ ] Testar atualização de status via webhook
+
+### Fase 4 — Novas Cobranças
+- [ ] Ao criar cobrança, salvar em bpo_charges antes de enviar ao Asaas
+- [ ] Atualizar bpo_charges com asaas_charge_id após criação no Asaas
+
+### Fase 5 — Cards de Totais
+- [ ] Substituir getFilteredStats para ler de bpo_charges
+- [ ] Validar que valores batem com o Asaas
+
+### Fase 6 — Lista de Cobranças
+- [ ] Substituir listCharges para ler de bpo_charges
+- [ ] Manter todos os filtros existentes funcionando
+
+### Fase 7 — Sincronização Manual Incremental
+- [ ] Atualizar botão "Sincronizar com Asaas" para sync incremental em bpo_charges
+- [ ] Testes finais e validação completa
+- [ ] Salvar checkpoint

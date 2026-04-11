@@ -449,3 +449,67 @@ export type UnclassifiedCharge = typeof unclassifiedCharges.$inferSelect;
 export type InsertUnclassifiedCharge = typeof unclassifiedCharges.$inferInsert;
 export type ExpenseRecord = typeof expenseRecords.$inferSelect;
 export type InsertExpenseRecord = typeof expenseRecords.$inferInsert;
+
+// ============================================================
+// BPO CHARGES — Fonte única de verdade do BPO Financeiro
+// Substitui subscription_charges + unclassified_charges como
+// base dos cards de totais e da lista de cobranças.
+// ============================================================
+export const bpoCharges = mysqlTable("bpo_charges", {
+  id: int("id").autoincrement().primaryKey(),
+
+  // Identificadores Asaas
+  asaasChargeId: varchar("asaas_charge_id", { length: 64 }).unique(),
+  asaasCustomerId: varchar("asaas_customer_id", { length: 64 }),
+
+  // Cliente (desnormalizado para performance)
+  clientId: int("client_id"),
+  clientName: varchar("client_name", { length: 255 }),
+  clientEmail: varchar("client_email", { length: 320 }),
+
+  // Valores financeiros
+  value: decimal("value", { precision: 10, scale: 2 }).notNull(),
+  netValue: decimal("net_value", { precision: 10, scale: 2 }),
+  amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default("0"),
+
+  // Datas
+  dueDate: varchar("due_date", { length: 10 }).notNull(),  // "YYYY-MM-DD"
+  paidDate: varchar("paid_date", { length: 10 }),
+
+  // Status e classificação
+  status: mysqlEnum("status", [
+    "pending", "received", "confirmed", "overdue",
+    "refunded", "receivedInCash", "awaitingChargeback",
+    "detached", "partiallyPaid"
+  ]).notNull().default("pending"),
+
+  type: mysqlEnum("type", [
+    "monthly", "quota_sale", "fuel", "repair", "other"
+  ]).default("other"),
+
+  billingType: varchar("billing_type", { length: 32 }),  // PIX, BOLETO, CREDIT_CARD
+
+  // Metadados
+  description: text("description"),
+  externalReference: varchar("external_reference", { length: 255 }),
+  paymentLink: text("payment_link"),
+  invoiceUrl: text("invoice_url"),
+  bankSlipUrl: text("bank_slip_url"),
+
+  // Controle de sincronização
+  syncedAt: timestamp("synced_at"),
+  source: mysqlEnum("source", [
+    "asaas_import", "asaas_webhook", "manual", "system"
+  ]).default("system"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("bpo_charges_asaas_charge_id_idx").on(table.asaasChargeId),
+  index("bpo_charges_client_id_idx").on(table.clientId),
+  index("bpo_charges_due_date_idx").on(table.dueDate),
+  index("bpo_charges_status_idx").on(table.status),
+]);
+
+export type BpoCharge = typeof bpoCharges.$inferSelect;
+export type InsertBpoCharge = typeof bpoCharges.$inferInsert;
