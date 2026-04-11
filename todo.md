@@ -1671,3 +1671,12 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Atualizar reconciliação para incluir subscription_charges como primeira passagem
 - [x] 6 testes unitários do webhook passando (webhook.phase2.test.ts)
 - [x] Checkpoint final salvo
+
+## Próximos Passos — Consolidação Final (11/04/2026)
+- [ ] Cron de syncBpoCache às 3h diariamente (servidor)
+- [ ] Índice único (subscription_id, due_date) em subscription_charges
+- [ ] Fase 3: Migrar fuel_records para subscription_charges
+- [ ] Fase 3: Migrar inspection_charges para subscription_charges
+- [ ] Atualizar webhook para usar subscription_charges como única fonte
+- [ ] Atualizar reconciliação para remover dependência de asaas_payments
+- [ ] Testes e checkpoint final
