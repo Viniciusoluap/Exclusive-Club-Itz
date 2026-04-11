@@ -5,10 +5,10 @@
  * unclassified_charges como base dos cards de totais e lista de cobranças.
  */
 import { z } from "zod";
-import { router, adminProcedure } from "../_core/trpc";
+import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { bpoCharges, unclassifiedCharges } from "../../drizzle/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
 import { listAllAsaasCharges, getChargeStatus } from "../_core/asaasService";
 
 // ============================================================
@@ -395,5 +395,97 @@ export const bpoRouter = router({
         .where(eq(bpoCharges.asaasChargeId, input.asaasChargeId));
 
       return { success: true };
+    }),
+
+  // ============================================================
+  // requestDueDateChange — solicitar mudança de vencimento de bpo_charge
+  // ============================================================
+  requestDueDateChange: protectedProcedure
+    .input(z.object({
+      chargeId: z.number(),
+      newDueDate: z.string(),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+
+      const userEmail = ctx.user.email;
+      if (!userEmail) throw new Error('Usuário não autenticado');
+
+      // Verificar se a cobrança pertence ao cliente
+      const rows = await db
+        .select()
+        .from(bpoCharges)
+        .where(and(eq(bpoCharges.id, input.chargeId), eq(bpoCharges.clientEmail, userEmail)))
+        .limit(1);
+
+      if (rows.length === 0) throw new Error('Cobrança não encontrada');
+
+      // Registrar a solicitação na tabela due_date_change_requests
+      const { dueDateChangeRequests } = await import('../../drizzle/schema');
+      await db.insert(dueDateChangeRequests).values({
+        chargeId: input.chargeId,
+        clientEmail: userEmail,
+        oldDueDate: rows[0].dueDate,
+        newDueDate: input.newDueDate,
+        reason: input.reason ?? '',
+        status: 'pending',
+      });
+
+      return { success: true };
+    }),
+
+  // ============================================================
+  // getMyCharges — cobranças do cliente logado (mensalidades + cotas)
+  // ============================================================
+  getMyCharges: protectedProcedure
+    .input(z.object({
+      types: z.array(z.enum(["monthly", "quota_sale", "fuel", "repair", "other"])).optional(),
+      status: z.array(z.enum(["pending", "received", "confirmed", "overdue", "refunded", "receivedInCash", "awaitingChargeback", "detached", "partiallyPaid"])).optional(),
+      year: z.number().optional(),
+      month: z.number().min(1).max(12).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { charges: [] };
+
+      const userEmail = ctx.user.email;
+      if (!userEmail) return { charges: [] };
+
+      const conditions = [
+        eq(bpoCharges.clientEmail, userEmail),
+      ];
+
+      if (input.types && input.types.length > 0) {
+        conditions.push(inArray(bpoCharges.type, input.types));
+      }
+
+      if (input.status && input.status.length > 0) {
+        conditions.push(inArray(bpoCharges.status, input.status));
+      }
+
+      if (input.year) {
+        const yearStr = String(input.year);
+        if (input.month) {
+          const monthStr = String(input.month).padStart(2, "0");
+          const from = `${yearStr}-${monthStr}-01`;
+          const lastDay = new Date(input.year, input.month, 0).getDate();
+          const to = `${yearStr}-${monthStr}-${String(lastDay).padStart(2, "0")}`;
+          conditions.push(gte(bpoCharges.dueDate, from));
+          conditions.push(lte(bpoCharges.dueDate, to));
+        } else {
+          conditions.push(gte(bpoCharges.dueDate, `${yearStr}-01-01`));
+          conditions.push(lte(bpoCharges.dueDate, `${yearStr}-12-31`));
+        }
+      }
+
+      const rows = await db
+        .select()
+        .from(bpoCharges)
+        .where(and(...conditions))
+        .orderBy(bpoCharges.dueDate);
+
+      return { charges: rows };
     }),
 });

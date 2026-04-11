@@ -25,6 +25,7 @@ import MeusAbastecimentos from "./pages/MeusAbastecimentos";
 import SystemSettings from "./pages/SystemSettings";
 import RoleRedirect from "./components/RoleRedirect";
 import PagamentoDanos from "./pages/PagamentoDanos";
+import Mensalidades from "./pages/Mensalidades";
 // Pagamentos migrado para BPO Financeiro — mantido apenas para compatibilidade de import
 import { useEffect } from "react";
 import { useLocation } from "wouter";
@@ -58,6 +59,7 @@ function Router() {
       <Route path={"/employee/vistorias"} component={EmployeeVistorias} />
       <Route path={"/dashboard/meus-abastecimentos"} component={MeusAbastecimentos} />
       <Route path={"/pagamento-danos"} component={PagamentoDanos} />
+      <Route path={"/mensalidades"} component={Mensalidades} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

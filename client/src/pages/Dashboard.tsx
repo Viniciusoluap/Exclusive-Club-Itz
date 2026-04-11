@@ -954,12 +954,12 @@ export default function Dashboard() {
                     <span className="text-xs">Reparos</span>
                   </Button>
                 </a>
-                <a href="#mensalidades">
+                <Link href="/mensalidades">
                   <Button className="w-full h-20 flex flex-col gap-1" variant="outline">
                     <DollarSign className="h-5 w-5" />
                     <span className="text-xs">Mensalidades</span>
                   </Button>
-                </a>
+                </Link>
               </div>
             </CardContent>
           </Card>
