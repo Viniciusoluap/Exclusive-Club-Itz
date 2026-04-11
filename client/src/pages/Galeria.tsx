@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
 import { APP_LOGO, APP_TITLE } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -64,12 +64,15 @@ export default function Galeria() {
             <img src={APP_LOGO} alt={APP_TITLE} className="h-10 w-10 rounded-full object-cover" style={{width: '70px', height: '65px'}} />
             <span className="text-xl font-bold text-cyan-700">{APP_TITLE}</span>
           </a>
-          <nav className="flex gap-6">
-            <a href="/" className="text-gray-700 hover:text-cyan-600 transition-colors">Home</a>
+          <nav className="flex gap-6 items-center">
             <a href="/galeria" className="text-cyan-600 font-semibold">Galeria</a>
-            {isAuthenticated && user?.role !== "employee" && (
-              <a href="/reservas" className="text-gray-700 hover:text-cyan-600 transition-colors">Minhas Reservas</a>
-            )}
+            <button
+              onClick={() => window.history.back()}
+              className="flex items-center gap-1 text-gray-700 hover:text-cyan-600 transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </button>
           </nav>
         </div>
       </header>
