@@ -971,18 +971,18 @@ export default function Dashboard() {
                     <span className="text-xs">Reservas</span>
                   </Button>
                 </Link>
-                <a href="#abastecimentos">
+                <Link href="/dashboard/meus-abastecimentos">
                   <Button className="w-full h-20 flex flex-col gap-1" variant="outline">
                     <Fuel className="h-5 w-5" />
                     <span className="text-xs">Abastecimentos</span>
                   </Button>
-                </a>
-                <a href="#vistorias">
+                </Link>
+                <Link href="/pagamento-danos">
                   <Button className="w-full h-20 flex flex-col gap-1" variant="outline">
                     <XCircle className="h-5 w-5" />
                     <span className="text-xs">Reparos</span>
                   </Button>
-                </a>
+                </Link>
                 <Link href="/mensalidades">
                   <Button className="w-full h-20 flex flex-col gap-1" variant="outline">
                     <DollarSign className="h-5 w-5" />
@@ -1073,31 +1073,7 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
-        {/* Meus Abastecimentos Section */}
-        <div id="abastecimentos">
-          <FuelRecordsSection />
-        </div>
-
-        {/* Vistorias e Danos Section */}
-        <Card id="vistorias" className="mt-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-500" />
-              Vistorias e Danos
-            </CardTitle>
-            <CardDescription>
-              Acompanhe vistorias reprovadas e realize pagamentos de danos
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/pagamento-danos">
-              <Button className="w-full" variant="default">
-                <DollarSign className="mr-2 h-4 w-4" />
-                Ver Vistorias e Pagamentos
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+         {/* Seções de Abastecimentos e Vistorias removidas do Dashboard — acessíveis pelas Ações Rápidas */}
 
         {/* Documentos das Minhas Embarcações Section */}
         <VesselDocumentsSection />
