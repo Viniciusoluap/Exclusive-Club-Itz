@@ -2278,6 +2278,215 @@ export const saasRouter = router({
       };
     }),
 
+  // ============================================================
+  // FULL SYNC UNIFICADO: Importar Asaas (2025+) + Reconciliar + Atualizar Cache
+  // ============================================================
+  fullSync: adminProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const SYNC_FROM_DATE = '2025-01-01'; // Ignorar cobranças anteriores a esta data
+      const results = {
+        imported: 0,
+        reconciled: 0,
+        cacheUpdated: 0,
+        errors: [] as string[],
+      };
+
+      console.log('[fullSync] Iniciando sincronização completa com Asaas (a partir de 01/01/2025)...');
+
+      // ── ETAPA 1: Importar cobranças do Asaas para unclassified_charges ──
+      try {
+        console.log('[fullSync] Etapa 1: Importando cobranças do Asaas...');
+        let offset = 0;
+        let hasMore = true;
+        const BATCH = 100;
+
+        while (hasMore) {
+          const { charges: asaasCharges, hasMore: more } = await listAllAsaasCharges({ offset, limit: BATCH, dueDateGte: SYNC_FROM_DATE });
+          if (!asaasCharges || asaasCharges.length === 0) { hasMore = false; break; }
+          hasMore = more;
+          offset += asaasCharges.length;
+
+          for (const charge of asaasCharges) {
+            if (!charge.id) continue;
+
+            // Filtrar cobranças anteriores a 2025 (caso o filtro da API não funcione)
+            if (charge.dueDate && charge.dueDate < SYNC_FROM_DATE) continue;
+
+            // Mapear status
+            const mappedStatus = mapAsaasStatusToUnclassified(charge.status || 'PENDING');
+
+            // Buscar nome/email do cliente no Asaas se não vier na cobrança
+            const chargeId = (charge.id || '').replace(/'/g, "''");
+            const customerId = (charge.customer || '').replace(/'/g, "''");
+            const description = (charge.description || '').replace(/'/g, "''");
+            const dueDate = charge.dueDate || '';
+            const paymentDate = charge.paymentDate || null;
+            const value = (charge.value || 0).toString();
+            const status = (charge.status || 'PENDING').replace(/'/g, "''");
+
+            // Upsert no cache unclassified_charges
+            try {
+              await db.execute(sql.raw(`
+                INSERT INTO unclassified_charges
+                  (asaas_payment_id, asaas_customer_id,
+                   description, value, due_date, paid_date, asaas_status, status, classified, last_synced_at)
+                VALUES
+                  ('${chargeId}',
+                   '${customerId}',
+                   ${description ? `'${description}'` : 'NULL'},
+                   '${value}',
+                   '${dueDate}',
+                   ${paymentDate ? `'${paymentDate}'` : 'NULL'},
+                   '${status}',
+                   '${mappedStatus}',
+                   0,
+                   NOW())
+                ON DUPLICATE KEY UPDATE
+                  asaas_status = VALUES(asaas_status),
+                  status = VALUES(status),
+                  paid_date = VALUES(paid_date),
+                  last_synced_at = NOW()
+              `));
+              results.imported++;
+            } catch (e) {
+              // Ignorar erros individuais de insert
+            }
+          }
+        }
+        console.log(`[fullSync] Etapa 1 concluída: ${results.imported} cobranças importadas/atualizadas`);
+      } catch (e: any) {
+        const msg = `Etapa 1 (importar) falhou: ${e?.message || e}`;
+        console.error('[fullSync]', msg);
+        results.errors.push(msg);
+      }
+
+      // ── ETAPA 2: Reconciliar status de subscription_charges com Asaas ──
+      try {
+        console.log('[fullSync] Etapa 2: Reconciliando status de cobranças classificadas...');
+
+        // Buscar todas as subscription_charges com asaas_payment_id que não estão pagas/canceladas
+        const pendingCharges = await db.execute(sql.raw(`
+          SELECT sc.id, sc.asaas_payment_id, sc.status
+          FROM subscription_charges sc
+          WHERE sc.asaas_payment_id IS NOT NULL
+            AND sc.status IN ('pending', 'overdue')
+            AND sc.due_date >= '${SYNC_FROM_DATE}'
+          LIMIT 2000
+        `));
+
+        const pendingRows = (pendingCharges[0] as unknown as any[]) ?? [];
+
+        for (const row of pendingRows) {
+          // Buscar status atualizado no cache local (já sincronizado na etapa 1)
+          const cacheResult = await db.execute(sql.raw(`
+            SELECT status, asaas_status FROM unclassified_charges
+            WHERE asaas_payment_id = '${row.asaas_payment_id.replace(/'/g, "''")}'
+            LIMIT 1
+          `));
+          const cacheRow = ((cacheResult[0] as unknown as any[]) ?? [])[0];
+          if (!cacheRow) continue;
+
+          const newStatus = cacheRow.status as string;
+          if (newStatus !== row.status && ['paid', 'cancelled', 'overdue'].includes(newStatus)) {
+            await db.execute(sql.raw(`
+              UPDATE subscription_charges
+              SET status = '${newStatus}',
+                  ${newStatus === 'paid' ? `paid_date = CURDATE(),` : ''}
+                  updated_at = NOW()
+              WHERE id = ${row.id}
+            `));
+            results.reconciled++;
+          }
+        }
+
+        // Também reconciliar inspection_charges
+        const pendingInspections = await db.execute(sql.raw(`
+          SELECT id, asaas_payment_id, payment_status
+          FROM inspection_charges
+          WHERE asaas_payment_id IS NOT NULL
+            AND payment_status IN ('pending', 'overdue')
+            AND due_date >= '${SYNC_FROM_DATE}'
+          LIMIT 1000
+        `));
+        const inspRows = (pendingInspections[0] as unknown as any[]) ?? [];
+        for (const row of inspRows) {
+          const cacheResult = await db.execute(sql.raw(`
+            SELECT status FROM unclassified_charges
+            WHERE asaas_payment_id = '${row.asaas_payment_id.replace(/'/g, "''")}'
+            LIMIT 1
+          `));
+          const cacheRow = ((cacheResult[0] as unknown as any[]) ?? [])[0];
+          if (!cacheRow) continue;
+          const newStatus = cacheRow.status as string;
+          if (newStatus !== row.payment_status && ['paid', 'cancelled', 'overdue'].includes(newStatus)) {
+            await db.execute(sql.raw(`
+              UPDATE inspection_charges SET payment_status = '${newStatus}' WHERE id = ${row.id}
+            `));
+            results.reconciled++;
+          }
+        }
+
+        // Normalizar vencidos sem asaas_payment_id (cobranças manuais)
+        await db.execute(sql.raw(`
+          UPDATE subscription_charges
+          SET status = 'overdue'
+          WHERE status = 'pending'
+            AND due_date < CURDATE()
+            AND due_date >= '${SYNC_FROM_DATE}'
+        `));
+        await db.execute(sql.raw(`
+          UPDATE inspection_charges
+          SET payment_status = 'overdue'
+          WHERE payment_status = 'pending'
+            AND due_date < CURDATE()
+            AND due_date >= '${SYNC_FROM_DATE}'
+        `));
+
+        console.log(`[fullSync] Etapa 2 concluída: ${results.reconciled} cobranças reconciliadas`);
+      } catch (e: any) {
+        const msg = `Etapa 2 (reconciliar) falhou: ${e?.message || e}`;
+        console.error('[fullSync]', msg);
+        results.errors.push(msg);
+      }
+
+      // ── ETAPA 3: Atualizar cache BPO (sincronizar unclassified_charges com status atual) ──
+      try {
+        console.log('[fullSync] Etapa 3: Atualizando cache BPO...');
+        // Normalizar overdue no cache local também
+        await db.execute(sql.raw(`
+          UPDATE unclassified_charges
+          SET status = 'overdue'
+          WHERE status = 'pending'
+            AND due_date < CURDATE()
+            AND due_date >= '${SYNC_FROM_DATE}'
+        `));
+        // Contar registros no cache
+        const countResult = await db.execute(sql.raw('SELECT COUNT(*) as cnt FROM unclassified_charges'));
+        results.cacheUpdated = (countResult[0] as any)[0]?.cnt ?? 0;
+        console.log(`[fullSync] Etapa 3 concluída: cache BPO com ${results.cacheUpdated} registros`);
+      } catch (e: any) {
+        const msg = `Etapa 3 (cache BPO) falhou: ${e?.message || e}`;
+        console.error('[fullSync]', msg);
+        results.errors.push(msg);
+      }
+
+      console.log('[fullSync] Sincronização completa finalizada:', results);
+
+      return {
+        success: results.errors.length === 0,
+        imported: results.imported,
+        reconciled: results.reconciled,
+        cacheUpdated: results.cacheUpdated,
+        errors: results.errors,
+        message: results.errors.length === 0
+          ? `Sync completo: ${results.imported} cobranças importadas, ${results.reconciled} reconciliadas, cache atualizado`
+          : `Sync parcial: ${results.errors.length} erro(s). ${results.imported} importadas, ${results.reconciled} reconciliadas`,
+      };
+    }),
+
   // Visão financeira consolidada (VIEW financial_charges)
   financialCharges: adminProcedure
     .input(z.object({
@@ -2372,3 +2581,121 @@ export const saasRouter = router({
       return { charges: results, totals };
     }),
 });
+
+/**
+ * Função exportada para uso no cron job (06:00 diário).
+ * Executa as 3 etapas do fullSync sem passar pelo tRPC:
+ * 1. Importar cobranças do Asaas (a partir de 01/01/2025)
+ * 2. Reconciliar status de subscription_charges com o Asaas
+ * 3. Atualizar cache BPO (unclassified_charges)
+ */
+export async function runFullSync(): Promise<{
+  success: boolean;
+  imported: number;
+  reconciled: number;
+  cacheUpdated: number;
+  errors: string[];
+}> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, imported: 0, reconciled: 0, cacheUpdated: 0, errors: ['Database not available'] };
+  }
+
+  const SYNC_FROM_DATE = '2025-01-01';
+  const results = { imported: 0, reconciled: 0, cacheUpdated: 0, errors: [] as string[] };
+
+  // ── ETAPA 1: Importar cobranças do Asaas ──────────────────────────────────
+  try {
+    let offset = 0;
+    let hasMore = true;
+    const BATCH = 100;
+
+    while (hasMore) {
+      const { charges: asaasCharges, hasMore: more } = await listAllAsaasCharges({ offset, limit: BATCH, dueDateGte: SYNC_FROM_DATE });
+      if (!asaasCharges || asaasCharges.length === 0) { hasMore = false; break; }
+      hasMore = more;
+      offset += asaasCharges.length;
+
+      for (const charge of asaasCharges) {
+        if (!charge.id) continue;
+        if (charge.dueDate && charge.dueDate < SYNC_FROM_DATE) continue;
+
+        const mappedStatus = mapAsaasStatusToUnclassified(charge.status || 'PENDING');
+        const chargeId = (charge.id || '').replace(/'/g, "''");
+        const customerId = (charge.customer || '').replace(/'/g, "''");
+        const description = (charge.description || '').replace(/'/g, "''");
+        const dueDate = charge.dueDate || '';
+        const paymentDate = charge.paymentDate || null;
+        const value = (charge.value || 0).toString();
+        const status = (charge.status || 'PENDING').replace(/'/g, "''");
+
+        try {
+          await db.execute(sql.raw(`
+            INSERT INTO unclassified_charges
+              (asaas_payment_id, asaas_customer_id, description, value, due_date, paid_date, asaas_status, status, classified, last_synced_at)
+            VALUES
+              ('${chargeId}', '${customerId}', ${description ? `'${description}'` : 'NULL'}, '${value}', '${dueDate}',
+               ${paymentDate ? `'${paymentDate}'` : 'NULL'}, '${status}', '${mappedStatus}', 0, NOW())
+            ON DUPLICATE KEY UPDATE
+              asaas_status = VALUES(asaas_status),
+              status = VALUES(status),
+              paid_date = VALUES(paid_date),
+              last_synced_at = NOW()
+          `));
+          results.imported++;
+        } catch (e) { /* ignorar erros individuais */ }
+      }
+    }
+  } catch (e: any) {
+    results.errors.push(`Etapa 1 (importar) falhou: ${e?.message || e}`);
+  }
+
+  // ── ETAPA 2: Reconciliar status de subscription_charges ──────────────────
+  try {
+    const [pendingRows] = await (db as any).$client.query(
+      `SELECT sc.id, sc.asaas_payment_id, sc.payment_status
+       FROM subscription_charges sc
+       WHERE sc.asaas_payment_id IS NOT NULL
+         AND sc.payment_status NOT IN ('paid', 'cancelled')
+         AND sc.due_date >= '${SYNC_FROM_DATE}'
+       LIMIT 500`
+    ) as any[];
+
+    for (const row of (pendingRows || [])) {
+      try {
+        const { getAsaasCharge } = await import('./_core/asaasService' as any).catch(() => ({ getAsaasCharge: null }));
+        if (!getAsaasCharge) break;
+        const asaasCharge = await (getAsaasCharge as any)(row.asaas_payment_id);
+        if (!asaasCharge) continue;
+        const newStatus = mapAsaasStatusToUnclassified(asaasCharge.status || 'PENDING');
+        if (newStatus !== row.payment_status) {
+          await db.execute(sql.raw(
+            `UPDATE subscription_charges SET payment_status = '${newStatus}', updated_at = NOW() WHERE id = ${row.id}`
+          ));
+          results.reconciled++;
+        }
+      } catch (e) { /* ignorar erros individuais */ }
+    }
+  } catch (e: any) {
+    results.errors.push(`Etapa 2 (reconciliar) falhou: ${e?.message || e}`);
+  }
+
+  // ── ETAPA 3: Atualizar cache BPO (normalizar overdue) ────────────────────
+  try {
+    const updateResult = await db.execute(sql.raw(
+      `UPDATE unclassified_charges
+       SET status = 'overdue', last_synced_at = NOW()
+       WHERE status = 'pending'
+         AND due_date < CURDATE()
+         AND due_date >= '${SYNC_FROM_DATE}'`
+    )) as any;
+    results.cacheUpdated = (updateResult?.[0] as any)?.affectedRows || 0;
+  } catch (e: any) {
+    results.errors.push(`Etapa 3 (cache BPO) falhou: ${e?.message || e}`);
+  }
+
+  return {
+    success: results.errors.length === 0,
+    ...results,
+  };
+}

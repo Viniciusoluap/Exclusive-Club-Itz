@@ -960,6 +960,7 @@ export async function listAllAsaasCustomers(params?: {
 export async function listAllAsaasCharges(params?: {
   limit?: number;
   offset?: number;
+  dueDateGte?: string; // Filtrar cobranças com vencimento >= esta data (YYYY-MM-DD)
 }): Promise<{ charges: AsaasChargeData[]; hasMore: boolean; totalCount: number }> {
   const apiKey = await getAsaasApiKey();
   const apiUrl = await getAsaasApiUrl();
@@ -969,6 +970,9 @@ export async function listAllAsaasCharges(params?: {
       limit: String(params?.limit || 100),
       offset: String(params?.offset || 0),
     });
+    if (params?.dueDateGte) {
+      queryParams.set('dueDateGte', params.dueDateGte);
+    }
 
     const response = await fetchWithRetry(
       `${apiUrl}/payments?${queryParams.toString()}`,

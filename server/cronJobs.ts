@@ -194,5 +194,21 @@ export function registerCronJobs(): void {
     }
   }, { timezone: "America/Sao_Paulo" });
 
-  console.log("[CronJobs] Registrados: syncBpoCache (03:00), manutenção (04:00), mensalidades (00:30) — Fuso: America/Sao_Paulo");
+  // ── 06:00 — Full Sync Asaas: Importar (2025+) + Reconciliar + Atualizar Cache ───────────
+  cron.schedule("0 6 * * *", async () => {
+    console.log("[CronJob] 06:00 — Executando Full Sync Asaas (importar + reconciliar + cache)...");
+    try {
+      const { runFullSync } = await import("./routers/saasRouter");
+      const result = await runFullSync();
+      console.log("[CronJob fullSync] Resultado:", {
+        imported: result.imported,
+        reconciled: result.reconciled,
+        errors: result.errors,
+      });
+    } catch (err) {
+      console.error("[CronJob fullSync] Erro:", err);
+    }
+  }, { timezone: "America/Sao_Paulo" });
+
+  console.log("[CronJobs] Registrados: mensalidades (00:30), syncBpoCache (03:00), manutenção (04:00), fullSync (06:00) — Fuso: America/Sao_Paulo");
 }

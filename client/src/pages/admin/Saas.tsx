@@ -859,6 +859,30 @@ export default function Saas() {
     },
   });
 
+  // Sync unificado: Importar Asaas (2025+) + Reconciliar + Atualizar Cache
+  const fullSyncMutation = trpc.saas.fullSync.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(
+          `✅ Sincronização completa: ${data.imported} cobranças importadas, ${data.reconciled} reconciliadas`,
+          { duration: 8000 }
+        );
+      } else {
+        toast.warning(
+          `⚠️ Sync parcial: ${data.imported} importadas, ${data.reconciled} reconciliadas. Erros: ${data.errors.join('; ')}`,
+          { duration: 12000 }
+        );
+      }
+      utils.saas.listUnclassifiedCharges.invalidate();
+      utils.saas.getFilteredStats.invalidate();
+      utils.saas.listCharges.invalidate();
+      utils.saas.financialCharges.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Erro na sincronização: ${error.message}`);
+    },
+  });
+
   const resetForm = () => {
     setForm({
       clientId: 0,
@@ -975,21 +999,13 @@ export default function Saas() {
         <div className="flex flex-col sm:flex-row gap-2">
           <Button
             variant="outline"
-            onClick={() => syncBpoCacheMutation.mutate()}
-            disabled={syncBpoCacheMutation.isPending || syncMutation.isPending}
+            onClick={() => fullSyncMutation.mutate()}
+            disabled={fullSyncMutation.isPending}
             className="border-blue-300 text-blue-700 hover:bg-blue-50"
+            title="Importa cobranças do Asaas (a partir de 01/01/2025), reconcilia status e atualiza o BPO"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncBpoCacheMutation.isPending ? 'animate-spin' : ''}`} />
-            {syncBpoCacheMutation.isPending ? 'Sincronizando...' : '🔄 Sincronizar Cache BPO'}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending || syncBpoCacheMutation.isPending}
-            title="Sincronização completa com o Asaas (mais lenta)"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
-            Sync Completo
+            <RefreshCw className={`h-4 w-4 mr-2 ${fullSyncMutation.isPending ? 'animate-spin' : ''}`} />
+            {fullSyncMutation.isPending ? 'Sincronizando...' : '🔄 Sincronizar com Asaas'}
           </Button>
           <Button onClick={() => { resetForm(); setShowDialog(true); }}>
             <Plus className="h-4 w-4 mr-2" />
