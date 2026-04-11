@@ -849,6 +849,19 @@ export default function Saas() {
     other: "Outros",
   };
 
+  // BPO Stats — fonte única de verdade (bpo_charges)
+  const { data: bpoStats, refetch: refetchBpoStats } = trpc.bpo.getStats.useQuery({
+    year: yearFilter || new Date().getFullYear().toString(),
+  });
+
+  const importBpoMutation = trpc.bpo.importFromAsaas.useMutation({
+    onSuccess: (report) => {
+      toast.success(`Importação concluída! ${report.inserted} inseridas, ${report.updated} atualizadas, ${report.errors} erros.`);
+      refetchBpoStats();
+    },
+    onError: (e) => toast.error(`Erro na importação: ${e.message}`),
+  });
+
   const { data: dashboard } = trpc.saas.getFilteredStats.useQuery({
     status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled" | "partial",
     types: typeFilters.length > 0 ? typeFilters : undefined,
@@ -1147,6 +1160,16 @@ export default function Saas() {
         <div className="flex flex-col sm:flex-row gap-2">
           <Button
             variant="outline"
+            onClick={() => importBpoMutation.mutate()}
+            disabled={importBpoMutation.isPending}
+            className="border-purple-300 text-purple-700 hover:bg-purple-50"
+            title="Importa TODO o histórico do Asaas para o banco local (bpo_charges). Execute uma vez para migrar."
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${importBpoMutation.isPending ? 'animate-spin' : ''}`} />
+            {importBpoMutation.isPending ? 'Importando...' : '⬇️ Importar Histórico'}
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => fullSyncMutation.mutate()}
             disabled={fullSyncMutation.isPending}
             className="border-blue-300 text-blue-700 hover:bg-blue-50"
@@ -1195,7 +1218,7 @@ export default function Saas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(dashboard?.totalExpected || 0)}
+              {formatCurrency(bpoStats?.totalExpected || 0)}
             </div>
           </CardContent>
         </Card>
@@ -1207,10 +1230,10 @@ export default function Saas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(dashboard?.totalPaid || 0)}
+              {formatCurrency(bpoStats?.totalPaid || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {dashboard?.paidCount || 0} cobrança(s)
+              {bpoStats?.paidCount || 0} cobrança(s)
             </p>
           </CardContent>
         </Card>
@@ -1222,10 +1245,10 @@ export default function Saas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {formatCurrency(dashboard?.totalPending || 0)}
+              {formatCurrency(bpoStats?.totalPending || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {dashboard?.pendingCount || 0} cobrança(s)
+              {bpoStats?.pendingCount || 0} cobrança(s)
             </p>
           </CardContent>
         </Card>
@@ -1237,10 +1260,10 @@ export default function Saas() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(dashboard?.totalOverdue || 0)}
+              {formatCurrency(bpoStats?.totalOverdue || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {dashboard?.overdueCount || 0} cobrança(s)
+              {bpoStats?.overdueCount || 0} cobrança(s)
             </p>
           </CardContent>
         </Card>
@@ -2216,6 +2239,7 @@ export default function Saas() {
             </Card>
           </TabsContent>
         </Tabs>
+
       {/* Dialog de Criar/Editar Despesa */}
       <Dialog open={showExpenseDialog} onOpenChange={setShowExpenseDialog}>
         <DialogContent className="max-w-md">
