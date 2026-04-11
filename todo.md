@@ -1633,3 +1633,7 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 ## 🐛 Fix: Bugs BPO (11/04/2026)
 - [x] Corrigir contador: totalCount incluía cobranças excluídas (split_fully_allocated)
 - [x] Corrigir handleMarkAsPaid: passar chargeId para atualizar status em subscription_charges
+
+## 🐛 Fix: Status e Duplicatas BPO (11/04/2026)
+- [ ] Corrigir cobranças vencidas que aparecem como "Pendente" (status não atualiza automaticamente)
+- [ ] Eliminar duplicatas: mesma cobrança aparece em Pendentes e Vencidas simultaneamente
