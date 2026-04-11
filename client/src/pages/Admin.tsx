@@ -548,12 +548,6 @@ export default function Admin() {
               <span className="text-sm text-muted-foreground">
                 Olá, {user?.name}
               </span>
-              <Link href="/admin/configuracoes">
-                <Button variant="outline" size="sm">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Configurações
-                </Button>
-              </Link>
               <Link href="/reservas">
                 <Button variant="outline" size="sm">
                   Minhas Reservas
@@ -590,12 +584,6 @@ export default function Admin() {
             <div className="text-sm text-muted-foreground mb-3">
               Olá, {user?.name}
             </div>
-            <Link href="/admin/configuracoes" onClick={() => setMobileMenuOpen(false)}>
-              <Button variant="ghost" className="w-full justify-start">
-                <Settings className="h-4 w-4 mr-2" />
-                Configurações
-              </Button>
-            </Link>
             <Link href="/reservas" onClick={() => setMobileMenuOpen(false)}>
               <Button variant="ghost" className="w-full justify-start">
                 <Calendar className="h-4 w-4 mr-2" />
@@ -661,6 +649,10 @@ export default function Admin() {
               <DollarSign className="h-4 w-4" />
               Saas
             </TabsTrigger>
+            <TabsTrigger value="configuracoes" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Configurações
+            </TabsTrigger>
           </TabsList>
 
           {/* Mobile: Apenas Ícones */}
@@ -691,6 +683,9 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="saas" className="p-3">
               <DollarSign className="h-5 w-5" />
+            </TabsTrigger>
+            <TabsTrigger value="configuracoes" className="p-3">
+              <Settings className="h-5 w-5" />
             </TabsTrigger>
           </TabsList>
 
@@ -1204,6 +1199,24 @@ export default function Admin() {
                   <Button className="w-full">
                     <DollarSign className="h-4 w-4 mr-2" />
                     Acessar Saas
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Configurações Tab */}
+          <TabsContent value="configuracoes" className="space-y-4 pt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configurações</CardTitle>
+                <CardDescription>Integração Asaas, backups e preferências do sistema</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link href="/admin/configuracoes">
+                  <Button className="w-full">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Acessar Configurações
                   </Button>
                 </Link>
               </CardContent>

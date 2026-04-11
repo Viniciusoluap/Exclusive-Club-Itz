@@ -1694,3 +1694,8 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 ## UI: Remover aba "BPO Financeiro" das Configurações
 - [x] Remover aba "BPO Financeiro" do SystemSettings.tsx (já existe no painel Admin)
 - [x] Checkpoint
+
+## UI: Mover "Configurações" do header para a grade de navegação do Admin
+- [x] Remover botão Configurações do header do Admin (desktop e mobile)
+- [x] Adicionar "Configurações" na grade de navegação (abaixo de Funcionários, ao lado direito de Saas)
+- [x] Checkpoint
