@@ -1,0 +1,303 @@
+import { z } from "zod";
+import { router, adminProcedure } from "../_core/trpc";
+import { getDb } from "../db";
+import { expenseRecords } from "../../drizzle/schema";
+import { eq, and, gte, lte, like, or, sql, desc } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+
+// Labels legíveis para centros de custo
+export const COST_CENTER_LABELS: Record<string, string> = {
+  salary: "Salários",
+  rent: "Aluguéis",
+  pro_labore: "Pró-labore",
+  fuel_operational: "Abastecimentos",
+  repair: "Reparos",
+  operational: "Custo Operacional",
+  other: "Outros",
+};
+
+const COST_CENTERS = [
+  "salary",
+  "rent",
+  "pro_labore",
+  "fuel_operational",
+  "repair",
+  "operational",
+  "other",
+] as const;
+
+const STATUSES = ["pending", "paid", "overdue", "cancelled"] as const;
+
+export const expensesRouter = router({
+  // ── Listar despesas com filtros ──────────────────────────────────────────
+  list: adminProcedure
+    .input(
+      z.object({
+        costCenter: z.enum([...COST_CENTERS, "all"]).optional().default("all"),
+        status: z.enum([...STATUSES, "all"]).optional().default("all"),
+        month: z.string().optional(), // "01" a "12"
+        year: z.string().optional(),  // "2025"
+        search: z.string().optional(),
+        limit: z.number().optional().default(100),
+        offset: z.number().optional().default(0),
+      }).optional()
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const filters = input ?? {};
+      const { costCenter = "all", status = "all", month, year, search, limit = 100, offset = 0 } = filters;
+
+      // Construir query com filtros dinâmicos
+      const conditions: string[] = [];
+
+      if (costCenter !== "all") {
+        conditions.push(`cost_center = '${costCenter}'`);
+      }
+
+      // Status com normalização dinâmica de overdue
+      if (status === "overdue") {
+        conditions.push(`(status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()))`);
+      } else if (status === "pending") {
+        conditions.push(`(status = 'pending' AND due_date >= CURDATE())`);
+      } else if (status !== "all") {
+        conditions.push(`status = '${status}'`);
+      }
+
+      if (month && month !== "all_months") {
+        conditions.push(`MONTH(due_date) = ${parseInt(month)}`);
+      }
+      if (year && year !== "all_years") {
+        conditions.push(`YEAR(due_date) = ${parseInt(year)}`);
+      }
+      if (search && search.trim()) {
+        const s = search.replace(/'/g, "''");
+        conditions.push(`(description LIKE '%${s}%' OR recipient_name LIKE '%${s}%')`);
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+      const [rows] = await (db as any).$client.query(`
+        SELECT
+          id,
+          cost_center,
+          description,
+          recipient_name,
+          CAST(value AS DECIMAL(10,2)) as value,
+          due_date,
+          paid_date,
+          CASE
+            WHEN status = 'pending' AND due_date < CURDATE() THEN 'overdue'
+            ELSE status
+          END as status,
+          asaas_payment_id,
+          notes,
+          created_by,
+          created_at,
+          updated_at
+        FROM expense_records
+        ${whereClause}
+        ORDER BY due_date DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `) as any[];
+
+      return (rows || []).map((r: any) => ({
+        id: r.id,
+        costCenter: r.cost_center as string,
+        costCenterLabel: COST_CENTER_LABELS[r.cost_center] ?? r.cost_center,
+        description: r.description,
+        recipientName: r.recipient_name,
+        value: parseFloat(r.value ?? "0"),
+        dueDate: r.due_date,
+        paidDate: r.paid_date,
+        status: r.status as string,
+        asaasPaymentId: r.asaas_payment_id,
+        notes: r.notes,
+        createdBy: r.created_by,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      }));
+    }),
+
+  // ── Totais por status (cards) ────────────────────────────────────────────
+  stats: adminProcedure
+    .input(
+      z.object({
+        month: z.string().optional(),
+        year: z.string().optional(),
+        costCenter: z.enum([...COST_CENTERS, "all"]).optional().default("all"),
+      }).optional()
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const { month, year, costCenter = "all" } = input ?? {};
+      const conditions: string[] = [];
+
+      if (costCenter !== "all") {
+        conditions.push(`cost_center = '${costCenter}'`);
+      }
+      if (month && month !== "all_months") {
+        conditions.push(`MONTH(due_date) = ${parseInt(month)}`);
+      }
+      if (year && year !== "all_years") {
+        conditions.push(`YEAR(due_date) = ${parseInt(year)}`);
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+      const [rows] = await (db as any).$client.query(`
+        SELECT
+          SUM(CASE WHEN status = 'paid' THEN CAST(value AS DECIMAL(10,2)) ELSE 0 END) as total_paid,
+          SUM(CASE WHEN status = 'pending' AND due_date >= CURDATE() THEN CAST(value AS DECIMAL(10,2)) ELSE 0 END) as total_pending,
+          SUM(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()) THEN CAST(value AS DECIMAL(10,2)) ELSE 0 END) as total_overdue,
+          SUM(CAST(value AS DECIMAL(10,2))) as total_all,
+          COUNT(*) as count_all,
+          SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as count_paid,
+          SUM(CASE WHEN status = 'pending' AND due_date >= CURDATE() THEN 1 ELSE 0 END) as count_pending,
+          SUM(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()) THEN 1 ELSE 0 END) as count_overdue
+        FROM expense_records
+        ${whereClause}
+      `) as any[];
+
+      const row = (rows || [])[0] ?? {};
+
+      // Totais por centro de custo
+      const [byCostCenter] = await (db as any).$client.query(`
+        SELECT
+          cost_center,
+          SUM(CAST(value AS DECIMAL(10,2))) as total,
+          COUNT(*) as count
+        FROM expense_records
+        ${whereClause}
+        GROUP BY cost_center
+        ORDER BY total DESC
+      `) as any[];
+
+      return {
+        totalAll: parseFloat(row.total_all ?? "0"),
+        totalPaid: parseFloat(row.total_paid ?? "0"),
+        totalPending: parseFloat(row.total_pending ?? "0"),
+        totalOverdue: parseFloat(row.total_overdue ?? "0"),
+        countAll: parseInt(row.count_all ?? "0"),
+        countPaid: parseInt(row.count_paid ?? "0"),
+        countPending: parseInt(row.count_pending ?? "0"),
+        countOverdue: parseInt(row.count_overdue ?? "0"),
+        byCostCenter: (byCostCenter || []).map((r: any) => ({
+          costCenter: r.cost_center as string,
+          label: COST_CENTER_LABELS[r.cost_center] ?? r.cost_center,
+          total: parseFloat(r.total ?? "0"),
+          count: parseInt(r.count ?? "0"),
+        })),
+      };
+    }),
+
+  // ── Criar despesa ────────────────────────────────────────────────────────
+  create: adminProcedure
+    .input(
+      z.object({
+        costCenter: z.enum(COST_CENTERS),
+        description: z.string().min(1),
+        recipientName: z.string().optional(),
+        value: z.number().positive(),
+        dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        paidDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        status: z.enum(STATUSES).optional().default("pending"),
+        asaasPaymentId: z.string().optional(),
+        notes: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const result = await db.insert(expenseRecords).values({
+        costCenter: input.costCenter,
+        description: input.description,
+        recipientName: input.recipientName ?? null,
+        value: input.value.toFixed(2) as any,
+        dueDate: input.dueDate,
+        paidDate: input.paidDate ?? null,
+        status: input.status ?? "pending",
+        asaasPaymentId: input.asaasPaymentId ?? null,
+        notes: input.notes ?? null,
+        createdBy: ctx.user?.id ?? null,
+      });
+
+      return { success: true, id: (result as any)[0]?.insertId };
+    }),
+
+  // ── Editar despesa ───────────────────────────────────────────────────────
+  update: adminProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        costCenter: z.enum(COST_CENTERS).optional(),
+        description: z.string().min(1).optional(),
+        recipientName: z.string().optional().nullable(),
+        value: z.number().positive().optional(),
+        dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        paidDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+        status: z.enum(STATUSES).optional(),
+        asaasPaymentId: z.string().optional().nullable(),
+        notes: z.string().optional().nullable(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const { id, ...fields } = input;
+      const updateData: Record<string, any> = {};
+
+      if (fields.costCenter !== undefined) updateData.costCenter = fields.costCenter;
+      if (fields.description !== undefined) updateData.description = fields.description;
+      if (fields.recipientName !== undefined) updateData.recipientName = fields.recipientName;
+      if (fields.value !== undefined) updateData.value = fields.value.toFixed(2);
+      if (fields.dueDate !== undefined) updateData.dueDate = fields.dueDate;
+      if (fields.paidDate !== undefined) updateData.paidDate = fields.paidDate;
+      if (fields.status !== undefined) updateData.status = fields.status;
+      if (fields.asaasPaymentId !== undefined) updateData.asaasPaymentId = fields.asaasPaymentId;
+      if (fields.notes !== undefined) updateData.notes = fields.notes;
+
+      if (Object.keys(updateData).length === 0) {
+        return { success: true };
+      }
+
+      await db.update(expenseRecords).set(updateData).where(eq(expenseRecords.id, id));
+      return { success: true };
+    }),
+
+  // ── Dar baixa manual ─────────────────────────────────────────────────────
+  markAsPaid: adminProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        paidDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const today = new Date().toISOString().split("T")[0];
+      await db.update(expenseRecords)
+        .set({ status: "paid", paidDate: input.paidDate ?? today })
+        .where(eq(expenseRecords.id, input.id));
+
+      return { success: true };
+    }),
+
+  // ── Excluir despesa ──────────────────────────────────────────────────────
+  delete: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      await db.delete(expenseRecords).where(eq(expenseRecords.id, input.id));
+      return { success: true };
+    }),
+});

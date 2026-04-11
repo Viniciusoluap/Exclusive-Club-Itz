@@ -6,6 +6,7 @@ import { paymentsRouter } from "./paymentsRouter";
 import { backupRouter } from "./routers/backupRouter";
 import { saasRouter } from "./routers/saasRouter";
 import { reportsRouter } from "./routers/reportsRouter";
+import { expensesRouter } from "./routers/expensesRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -61,6 +62,7 @@ export const appRouter = router({
   backup: backupRouter,
   saas: saasRouter,
   reports: reportsRouter,
+  expenses: expensesRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

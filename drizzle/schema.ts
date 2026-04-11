@@ -374,6 +374,46 @@ export const unclassifiedCharges = mysqlTable("unclassified_charges", {
 	index("uc_due_date").on(table.dueDate),
 ]);
 
+// ─── Despesas / Centro de Custos ───────────────────────────────────────────
+export const expenseRecords = mysqlTable("expense_records", {
+	id: int().autoincrement().notNull().primaryKey(),
+	/** Centro de custo da despesa */
+	costCenter: mysqlEnum("cost_center", [
+		'salary',
+		'rent',
+		'pro_labore',
+		'fuel_operational',
+		'repair',
+		'operational',
+		'other'
+	]).notNull(),
+	/** Descrição livre da despesa */
+	description: text().notNull(),
+	/** Nome do fornecedor, funcionário ou beneficiário */
+	recipientName: varchar("recipient_name", { length: 255 }),
+	/** Valor da despesa */
+	value: decimal({ precision: 10, scale: 2 }).notNull(),
+	/** Data de vencimento (YYYY-MM-DD) */
+	dueDate: varchar("due_date", { length: 10 }).notNull(),
+	/** Data de pagamento (YYYY-MM-DD) */
+	paidDate: varchar("paid_date", { length: 10 }),
+	/** Status da despesa */
+	status: mysqlEnum(['pending', 'paid', 'overdue', 'cancelled']).default('pending').notNull(),
+	/** ID do pagamento no Asaas (opcional, para despesas pagas via Asaas) */
+	asaasPaymentId: varchar("asaas_payment_id", { length: 255 }),
+	/** Observações adicionais */
+	notes: text(),
+	/** Usuário que cadastrou */
+	createdBy: int("created_by"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
+},
+(table) => [
+	index("er_cost_center").on(table.costCenter),
+	index("er_status").on(table.status),
+	index("er_due_date").on(table.dueDate),
+]);
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -407,3 +447,5 @@ export type ExcludedAsaasCharge = typeof excludedAsaasCharges.$inferSelect;
 export type InsertExcludedAsaasCharge = typeof excludedAsaasCharges.$inferInsert;
 export type UnclassifiedCharge = typeof unclassifiedCharges.$inferSelect;
 export type InsertUnclassifiedCharge = typeof unclassifiedCharges.$inferInsert;
+export type ExpenseRecord = typeof expenseRecords.$inferSelect;
+export type InsertExpenseRecord = typeof expenseRecords.$inferInsert;

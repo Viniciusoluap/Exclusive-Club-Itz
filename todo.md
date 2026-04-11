@@ -1726,3 +1726,12 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Adicionar sync automático diário às 06:00
 - [ ] Atualizar cards do BPO para refletir valores corretos (filtrado a partir de 2025) [próxima etapa]
 - [x] Checkpoint
+
+## Feature: BPO Financeiro - Módulo de Despesas / Centro de Custos
+- [x] Criar tabela expense_records no schema (cost_center, description, value, due_date, paid_date, status, recipient_name, asaas_payment_id)
+- [x] Migrar banco com pnpm db:push
+- [x] Criar procedures tRPC: expenses.list, expenses.create, expenses.update, expenses.delete, expenses.markAsPaid, expenses.stats
+- [x] Implementar aba "Despesas" no BPO com cards (Total/Pago/Pendente/Vencido), filtros (centro de custo, status, mês, ano, busca) e tabela
+- [x] Modal de cadastro de despesa (centro de custo, descrição, destinatário, valor, vencimento)
+- [x] Atualizar Visão Consolidada com Receitas vs Despesas e resultado líquido
+- [x] Checkpoint
