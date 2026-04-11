@@ -756,10 +756,12 @@ export default function Dashboard() {
               <Link href="/reservas">
                 <Button variant="ghost">Minhas Reservas</Button>
               </Link>
-              <Button variant="ghost" className="flex items-center gap-1" onClick={() => window.history.back()}>
-                <ArrowLeft className="h-4 w-4" />
-                Voltar
-              </Button>
+              <Link href="/">
+                <Button variant="ghost" className="flex items-center gap-1">
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar
+                </Button>
+              </Link>
               {isEditingName ? (
                 <div className="flex items-center gap-2">
                   <Input
