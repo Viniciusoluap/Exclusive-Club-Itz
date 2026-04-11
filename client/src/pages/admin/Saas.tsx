@@ -643,7 +643,26 @@ export default function Saas() {
   const [showChargeDetail, setShowChargeDetail] = useState(false);
 
   // Aba ativa do painel principal
-  const [activeTab, setActiveTab] = useState<"charges" | "webhooks" | "reconciliation" | "consolidated">("charges");
+  const [activeTab, setActiveTab] = useState<"charges" | "webhooks" | "reconciliation" | "consolidated" | "expenses">("charges");
+
+  // Estados do módulo de Despesas
+  const [expenseStatusFilter, setExpenseStatusFilter] = useState("all");
+  const [expenseCostCenter, setExpenseCostCenter] = useState("all");
+  const [expenseMonth, setExpenseMonth] = useState("all_months");
+  const [expenseYear, setExpenseYear] = useState("all_years");
+  const [expenseSearch, setExpenseSearch] = useState("");
+  const [showExpenseDialog, setShowExpenseDialog] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<number | null>(null);
+  const [expenseForm, setExpenseForm] = useState({
+    costCenter: "salary" as "salary" | "rent" | "pro_labore" | "fuel_operational" | "repair" | "operational" | "other",
+    description: "",
+    recipientName: "",
+    value: "",
+    dueDate: "",
+    paidDate: "",
+    status: "pending" as "pending" | "paid" | "overdue" | "cancelled",
+    notes: "",
+  });
 
   // Filtros da Visão Consolidada
   const [consolidatedStatus, setConsolidatedStatus] = useState("all");
@@ -688,6 +707,16 @@ export default function Saas() {
     { enabled: activeTab === "reconciliation" }
   );
 
+  // Query de stats de despesas para a Visão Consolidada
+  const consolidatedExpensesStats = trpc.expenses.stats.useQuery(
+    {
+      costCenter: "all" as any,
+      month: (consolidatedMonth && consolidatedMonth !== "all_months") ? consolidatedMonth : undefined,
+      year: (consolidatedYear && consolidatedYear !== "all_years") ? consolidatedYear : undefined,
+    },
+    { enabled: activeTab === "consolidated" }
+  );
+
   // Query da Visão Consolidada
   const financialChargesQuery = trpc.saas.financialCharges.useQuery(
     {
@@ -700,6 +729,78 @@ export default function Saas() {
     },
     { enabled: activeTab === "consolidated" }
   );
+
+  // Queries do módulo de Despesas
+  const expensesListQuery = trpc.expenses.list.useQuery(
+    {
+      costCenter: expenseCostCenter as any,
+      status: expenseStatusFilter as any,
+      month: expenseMonth !== "all_months" ? expenseMonth : undefined,
+      year: expenseYear !== "all_years" ? expenseYear : undefined,
+      search: expenseSearch || undefined,
+    },
+    { enabled: activeTab === "expenses" }
+  );
+
+  const expensesStatsQuery = trpc.expenses.stats.useQuery(
+    {
+      costCenter: expenseCostCenter as any,
+      month: expenseMonth !== "all_months" ? expenseMonth : undefined,
+      year: expenseYear !== "all_years" ? expenseYear : undefined,
+    },
+    { enabled: activeTab === "expenses" }
+  );
+
+  const createExpenseMutation = trpc.expenses.create.useMutation({
+    onSuccess: () => {
+      toast.success("Despesa cadastrada com sucesso!");
+      utils.expenses.list.invalidate();
+      utils.expenses.stats.invalidate();
+      setShowExpenseDialog(false);
+      setExpenseForm({ costCenter: "salary", description: "", recipientName: "", value: "", dueDate: "", paidDate: "", status: "pending", notes: "" });
+      setEditingExpenseId(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const updateExpenseMutation = trpc.expenses.update.useMutation({
+    onSuccess: () => {
+      toast.success("Despesa atualizada com sucesso!");
+      utils.expenses.list.invalidate();
+      utils.expenses.stats.invalidate();
+      setShowExpenseDialog(false);
+      setEditingExpenseId(null);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const markExpensePaidMutation = trpc.expenses.markAsPaid.useMutation({
+    onSuccess: () => {
+      toast.success("Despesa marcada como paga!");
+      utils.expenses.list.invalidate();
+      utils.expenses.stats.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const deleteExpenseMutation = trpc.expenses.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Despesa excluída!");
+      utils.expenses.list.invalidate();
+      utils.expenses.stats.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const COST_CENTER_LABELS: Record<string, string> = {
+    salary: "Salários",
+    rent: "Aluguéis",
+    pro_labore: "Pró-labore",
+    fuel_operational: "Abastecimentos",
+    repair: "Reparos",
+    operational: "Custo Operacional",
+    other: "Outros",
+  };
 
   const { data: dashboard } = trpc.saas.getFilteredStats.useQuery({
     status: statusFilter === "all" ? "all" : statusFilter as "pending" | "paid" | "overdue" | "cancelled" | "partial",
@@ -1411,6 +1512,10 @@ export default function Saas() {
               <TrendingUp className="h-4 w-4 mr-2" />
               Visão Consolidada
             </TabsTrigger>
+            <TabsTrigger value="expenses">
+              <TrendingDown className="h-4 w-4 mr-2" />
+              Despesas
+            </TabsTrigger>
           </TabsList>
 
           {/* Aba Cobranças: apenas placeholder (conteúdo já está acima) */}
@@ -1590,32 +1695,58 @@ export default function Saas() {
                 <CardDescription>Todas as cobranças do sistema: mensalidades, cotas, combustível e vistorias</CardDescription>
               </CardHeader>
               <CardContent>
-                {/* Cards de totais */}
-                {financialChargesQuery.data && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
-                      <p className="text-xs text-muted-foreground">Total Recebido</p>
-                      <p className="text-lg font-bold text-green-600">{formatCurrency(financialChargesQuery.data.totals.totalPaid)}</p>
-                      <p className="text-xs text-muted-foreground">{financialChargesQuery.data.totals.countPaid} cobranças</p>
-                    </div>
-                    <div className="bg-yellow-50 dark:bg-yellow-950/20 rounded-lg p-3 border border-yellow-200 dark:border-yellow-800">
-                      <p className="text-xs text-muted-foreground">Pendente</p>
-                      <p className="text-lg font-bold text-yellow-600">{formatCurrency(financialChargesQuery.data.totals.totalPending)}</p>
-                      <p className="text-xs text-muted-foreground">{financialChargesQuery.data.totals.countPending} cobranças</p>
-                    </div>
-                    <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
-                      <p className="text-xs text-muted-foreground">Vencido</p>
-                      <p className="text-lg font-bold text-red-600">{formatCurrency(financialChargesQuery.data.totals.totalOverdue)}</p>
-                      <p className="text-xs text-muted-foreground">{financialChargesQuery.data.totals.countOverdue} cobranças</p>
-                    </div>
-                    <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-                      <p className="text-xs text-muted-foreground">Por Origem</p>
-                      <p className="text-xs mt-1">Assinaturas: <span className="font-semibold">{financialChargesQuery.data.totals.bySource.subscription}</span></p>
-                      <p className="text-xs">Combustível: <span className="font-semibold">{financialChargesQuery.data.totals.bySource.fuel}</span></p>
-                      <p className="text-xs">Vistorias: <span className="font-semibold">{financialChargesQuery.data.totals.bySource.inspection}</span></p>
-                    </div>
-                  </div>
-                )}
+                {/* Cards de totais — Receitas */}
+                {financialChargesQuery.data && (() => {
+                  const totalReceitas = financialChargesQuery.data.totals.totalPaid;
+                  const totalDespesas = consolidatedExpensesStats.data?.totalPaid ?? 0;
+                  const resultadoLiquido = totalReceitas - totalDespesas;
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                        <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                          <p className="text-xs text-muted-foreground">Total Recebido</p>
+                          <p className="text-lg font-bold text-green-600">{formatCurrency(financialChargesQuery.data.totals.totalPaid)}</p>
+                          <p className="text-xs text-muted-foreground">{financialChargesQuery.data.totals.countPaid} cobranças</p>
+                        </div>
+                        <div className="bg-yellow-50 dark:bg-yellow-950/20 rounded-lg p-3 border border-yellow-200 dark:border-yellow-800">
+                          <p className="text-xs text-muted-foreground">Pendente</p>
+                          <p className="text-lg font-bold text-yellow-600">{formatCurrency(financialChargesQuery.data.totals.totalPending)}</p>
+                          <p className="text-xs text-muted-foreground">{financialChargesQuery.data.totals.countPending} cobranças</p>
+                        </div>
+                        <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                          <p className="text-xs text-muted-foreground">Vencido (Receitas)</p>
+                          <p className="text-lg font-bold text-red-600">{formatCurrency(financialChargesQuery.data.totals.totalOverdue)}</p>
+                          <p className="text-xs text-muted-foreground">{financialChargesQuery.data.totals.countOverdue} cobranças</p>
+                        </div>
+                        <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                          <p className="text-xs text-muted-foreground">Por Origem</p>
+                          <p className="text-xs mt-1">Assinaturas: <span className="font-semibold">{financialChargesQuery.data.totals.bySource.subscription}</span></p>
+                          <p className="text-xs">Combustível: <span className="font-semibold">{financialChargesQuery.data.totals.bySource.fuel}</span></p>
+                          <p className="text-xs">Vistorias: <span className="font-semibold">{financialChargesQuery.data.totals.bySource.inspection}</span></p>
+                        </div>
+                      </div>
+
+                      {/* Linha de Resultado Líquido */}
+                      <div className="grid grid-cols-3 gap-3 mb-6">
+                        <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingDown className="h-3 w-3" /> Total Despesas Pagas</p>
+                          <p className="text-lg font-bold text-red-600">{formatCurrency(totalDespesas)}</p>
+                          <p className="text-xs text-muted-foreground">{consolidatedExpensesStats.data?.countPaid ?? 0} registro(s)</p>
+                        </div>
+                        <div className={`rounded-lg p-3 border ${resultadoLiquido >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800' : 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800'}`}>
+                          <p className="text-xs text-muted-foreground">Resultado Líquido (Recebido − Despesas)</p>
+                          <p className={`text-xl font-bold ${resultadoLiquido >= 0 ? 'text-emerald-600' : 'text-orange-600'}`}>{formatCurrency(resultadoLiquido)}</p>
+                          <p className="text-xs text-muted-foreground">{resultadoLiquido >= 0 ? 'Superavit' : 'Deficit'}</p>
+                        </div>
+                        <div className="bg-purple-50 dark:bg-purple-950/20 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
+                          <p className="text-xs text-muted-foreground">Despesas Pendentes</p>
+                          <p className="text-lg font-bold text-purple-600">{formatCurrency(consolidatedExpensesStats.data?.totalPending ?? 0)}</p>
+                          <p className="text-xs text-muted-foreground">{consolidatedExpensesStats.data?.countPending ?? 0} registro(s)</p>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Filtros */}
                 <div className="flex flex-wrap gap-2 mb-4">
@@ -1760,8 +1891,341 @@ export default function Saas() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Aba Despesas / Centro de Custos */}
+          <TabsContent value="expenses">
+            {/* Cards de resumo */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <CardContent className="pt-4">
+                  <p className="text-sm text-muted-foreground">Total de Despesas</p>
+                  <p className="text-2xl font-bold text-foreground">{formatCurrency(expensesStatsQuery.data?.totalAll ?? 0)}</p>
+                  <p className="text-xs text-muted-foreground">{expensesStatsQuery.data?.countAll ?? 0} registro(s)</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <p className="text-sm text-muted-foreground">Pagas</p>
+                  <p className="text-2xl font-bold text-green-600">{formatCurrency(expensesStatsQuery.data?.totalPaid ?? 0)}</p>
+                  <p className="text-xs text-muted-foreground">{expensesStatsQuery.data?.countPaid ?? 0} registro(s)</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <p className="text-sm text-muted-foreground">Pendentes</p>
+                  <p className="text-2xl font-bold text-yellow-600">{formatCurrency(expensesStatsQuery.data?.totalPending ?? 0)}</p>
+                  <p className="text-xs text-muted-foreground">{expensesStatsQuery.data?.countPending ?? 0} registro(s)</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4">
+                  <p className="text-sm text-muted-foreground">Vencidas</p>
+                  <p className="text-2xl font-bold text-red-600">{formatCurrency(expensesStatsQuery.data?.totalOverdue ?? 0)}</p>
+                  <p className="text-xs text-muted-foreground">{expensesStatsQuery.data?.countOverdue ?? 0} registro(s)</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingDown className="h-5 w-5 text-red-500" />
+                    Despesas / Centro de Custos
+                  </CardTitle>
+                  <CardDescription>Gerencie pagamentos realizados pela empresa</CardDescription>
+                </div>
+                <Button onClick={() => { setEditingExpenseId(null); setExpenseForm({ costCenter: "salary", description: "", recipientName: "", value: "", dueDate: "", paidDate: "", status: "pending", notes: "" }); setShowExpenseDialog(true); }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nova Despesa
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {/* Filtros */}
+                <div className="flex flex-wrap gap-3 mb-4">
+                  <Select value={expenseCostCenter} onValueChange={setExpenseCostCenter}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Centro de Custo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os centros</SelectItem>
+                      <SelectItem value="salary">Salários</SelectItem>
+                      <SelectItem value="rent">Aluguéis</SelectItem>
+                      <SelectItem value="pro_labore">Pró-labore</SelectItem>
+                      <SelectItem value="fuel_operational">Abastecimentos</SelectItem>
+                      <SelectItem value="repair">Reparos</SelectItem>
+                      <SelectItem value="operational">Custo Operacional</SelectItem>
+                      <SelectItem value="other">Outros</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={expenseStatusFilter} onValueChange={setExpenseStatusFilter}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos status</SelectItem>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="paid">Pago</SelectItem>
+                      <SelectItem value="overdue">Vencido</SelectItem>
+                      <SelectItem value="cancelled">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={expenseMonth} onValueChange={setExpenseMonth}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue placeholder="Mês" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_months">Todos meses</SelectItem>
+                      <SelectItem value="01">Janeiro</SelectItem>
+                      <SelectItem value="02">Fevereiro</SelectItem>
+                      <SelectItem value="03">Março</SelectItem>
+                      <SelectItem value="04">Abril</SelectItem>
+                      <SelectItem value="05">Maio</SelectItem>
+                      <SelectItem value="06">Junho</SelectItem>
+                      <SelectItem value="07">Julho</SelectItem>
+                      <SelectItem value="08">Agosto</SelectItem>
+                      <SelectItem value="09">Setembro</SelectItem>
+                      <SelectItem value="10">Outubro</SelectItem>
+                      <SelectItem value="11">Novembro</SelectItem>
+                      <SelectItem value="12">Dezembro</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={expenseYear} onValueChange={setExpenseYear}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Ano" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all_years">Todos anos</SelectItem>
+                      <SelectItem value="2025">2025</SelectItem>
+                      <SelectItem value="2026">2026</SelectItem>
+                      <SelectItem value="2027">2027</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <input
+                    className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring w-52"
+                    placeholder="Buscar descrição ou destinatário..."
+                    value={expenseSearch}
+                    onChange={(e) => setExpenseSearch(e.target.value)}
+                  />
+
+                  {(expenseCostCenter !== "all" || expenseStatusFilter !== "all" || expenseMonth !== "all_months" || expenseYear !== "all_years" || expenseSearch) && (
+                    <Button variant="outline" size="sm" onClick={() => { setExpenseCostCenter("all"); setExpenseStatusFilter("all"); setExpenseMonth("all_months"); setExpenseYear("all_years"); setExpenseSearch(""); }}>
+                      <X className="h-4 w-4 mr-1" /> Limpar filtros
+                    </Button>
+                  )}
+                </div>
+
+                {/* Tabela */}
+                {expensesListQuery.isLoading ? (
+                  <p className="text-center text-muted-foreground py-8">Carregando despesas...</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Centro de Custo</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead>Destinatário</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(expensesListQuery.data ?? []).map((expense: any) => (
+                          <TableRow key={expense.id}>
+                            <TableCell>
+                              <Badge variant="outline">{COST_CENTER_LABELS[expense.costCenter] ?? expense.costCenter}</Badge>
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate">{expense.description}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{expense.recipientName || '—'}</TableCell>
+                            <TableCell className="font-medium">{formatCurrency(expense.value)}</TableCell>
+                            <TableCell className="text-sm">{expense.dueDate ? new Date(expense.dueDate + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</TableCell>
+                            <TableCell>
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                expense.status === 'paid' ? 'bg-green-100 text-green-700' :
+                                expense.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                expense.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                                {{ paid: 'Pago', pending: 'Pendente', overdue: 'Vencido', cancelled: 'Cancelado' }[expense.status as string] ?? expense.status}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                {(expense.status === 'pending' || expense.status === 'overdue') && (
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" title="Marcar como pago" onClick={() => markExpensePaidMutation.mutate({ id: expense.id })}>
+                                    <CheckCircle className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => {
+                                  setEditingExpenseId(expense.id);
+                                  setExpenseForm({
+                                    costCenter: expense.costCenter,
+                                    description: expense.description,
+                                    recipientName: expense.recipientName ?? "",
+                                    value: String(expense.value),
+                                    dueDate: expense.dueDate ?? "",
+                                    paidDate: expense.paidDate ?? "",
+                                    status: expense.status,
+                                    notes: expense.notes ?? "",
+                                  });
+                                  setShowExpenseDialog(true);
+                                }}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" title="Excluir" onClick={() => {
+                                  if (confirm('Excluir esta despesa?')) deleteExpenseMutation.mutate({ id: expense.id });
+                                }}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {(expensesListQuery.data ?? []).length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                              Nenhuma despesa encontrada. Clique em "Nova Despesa" para cadastrar.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {/* Breakdown por centro de custo */}
+                {expensesStatsQuery.data?.byCostCenter && expensesStatsQuery.data.byCostCenter.length > 0 && (
+                  <div className="mt-6 pt-4 border-t">
+                    <h4 className="text-sm font-semibold mb-3">Distribuição por Centro de Custo</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {expensesStatsQuery.data.byCostCenter.map((cc: any) => (
+                        <div key={cc.costCenter} className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-xs text-muted-foreground">{cc.label}</p>
+                          <p className="font-semibold text-sm">{formatCurrency(cc.total)}</p>
+                          <p className="text-xs text-muted-foreground">{cc.count} registro(s)</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Dialog de Criar/Editar Despesa */}
+      <Dialog open={showExpenseDialog} onOpenChange={setShowExpenseDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingExpenseId ? "Editar Despesa" : "Nova Despesa"}</DialogTitle>
+            <DialogDescription>Preencha os dados da despesa</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Centro de Custo *</Label>
+              <Select value={expenseForm.costCenter} onValueChange={(v: any) => setExpenseForm({ ...expenseForm, costCenter: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="salary">Salários</SelectItem>
+                  <SelectItem value="rent">Aluguéis</SelectItem>
+                  <SelectItem value="pro_labore">Pró-labore</SelectItem>
+                  <SelectItem value="fuel_operational">Abastecimentos</SelectItem>
+                  <SelectItem value="repair">Reparos</SelectItem>
+                  <SelectItem value="operational">Custo Operacional</SelectItem>
+                  <SelectItem value="other">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Descrição *</Label>
+              <input className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm" placeholder="Ex: Salário Janeiro/2025" value={expenseForm.description} onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })} />
+            </div>
+            <div>
+              <Label>Destinatário / Fornecedor</Label>
+              <input className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm" placeholder="Nome do funcionário ou fornecedor" value={expenseForm.recipientName} onChange={(e) => setExpenseForm({ ...expenseForm, recipientName: e.target.value })} />
+            </div>
+            <div>
+              <Label>Valor (R$) *</Label>
+              <input type="number" step="0.01" className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm" placeholder="0.00" value={expenseForm.value} onChange={(e) => setExpenseForm({ ...expenseForm, value: e.target.value })} />
+            </div>
+            <div>
+              <Label>Data de Vencimento *</Label>
+              <input type="date" className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm" value={expenseForm.dueDate} onChange={(e) => setExpenseForm({ ...expenseForm, dueDate: e.target.value })} />
+            </div>
+            {editingExpenseId && (
+              <div>
+                <Label>Status</Label>
+                <Select value={expenseForm.status} onValueChange={(v: any) => setExpenseForm({ ...expenseForm, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="paid">Pago</SelectItem>
+                    <SelectItem value="overdue">Vencido</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {(editingExpenseId || expenseForm.status === 'paid') && (
+              <div>
+                <Label>Data de Pagamento</Label>
+                <input type="date" className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm" value={expenseForm.paidDate} onChange={(e) => setExpenseForm({ ...expenseForm, paidDate: e.target.value })} />
+              </div>
+            )}
+            <div>
+              <Label>Observações</Label>
+              <textarea className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm" placeholder="Observações opcionais..." value={expenseForm.notes} onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExpenseDialog(false)}>Cancelar</Button>
+            <Button
+              disabled={createExpenseMutation.isPending || updateExpenseMutation.isPending}
+              onClick={() => {
+                if (!expenseForm.description || !expenseForm.value || !expenseForm.dueDate) {
+                  toast.error('Preencha os campos obrigatórios: Descrição, Valor e Vencimento');
+                  return;
+                }
+                if (editingExpenseId) {
+                  updateExpenseMutation.mutate({
+                    id: editingExpenseId,
+                    costCenter: expenseForm.costCenter,
+                    description: expenseForm.description,
+                    recipientName: expenseForm.recipientName || undefined,
+                    value: parseFloat(expenseForm.value),
+                    dueDate: expenseForm.dueDate,
+                    paidDate: expenseForm.paidDate || undefined,
+                    status: expenseForm.status,
+                    notes: expenseForm.notes || undefined,
+                  });
+                } else {
+                  createExpenseMutation.mutate({
+                    costCenter: expenseForm.costCenter,
+                    description: expenseForm.description,
+                    recipientName: expenseForm.recipientName || undefined,
+                    value: parseFloat(expenseForm.value),
+                    dueDate: expenseForm.dueDate,
+                    notes: expenseForm.notes || undefined,
+                  });
+                }
+              }}
+            >
+              {(createExpenseMutation.isPending || updateExpenseMutation.isPending) ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              {editingExpenseId ? 'Salvar Alterações' : 'Cadastrar Despesa'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog de Detalhe de Cobrança */}
       <Dialog open={showChargeDetail} onOpenChange={setShowChargeDetail}>
