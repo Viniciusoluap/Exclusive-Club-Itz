@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X, CheckCircle2, XCircle, Fuel, DollarSign, Copy, QrCode, ArrowLeft } from "lucide-react";
+import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X, CheckCircle2, XCircle, Fuel, DollarSign, Copy, QrCode, ArrowLeft, AlertTriangle, Wrench, CreditCard, Loader2, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -220,6 +220,212 @@ function VesselDocumentsSection() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ============================================================
+// Card de Alertas de Pagamentos Vencidos
+// ============================================================
+function OverdueChargesCard() {
+  const utils = trpc.useUtils();
+  const [showModal, setShowModal] = useState(false);
+  const [chargeResult, setChargeResult] = useState<{
+    invoiceUrl: string | null;
+    value: number;
+    chargeCount: number;
+    description: string;
+  } | null>(null);
+
+  const { data: overdueCharges, isLoading } = (trpc as any).clientPayments.overdueCharges.useQuery();
+
+  const generateCharge = (trpc as any).clientPayments.generateConsolidatedCharge.useMutation({
+    onSuccess: (result: any) => {
+      setChargeResult(result);
+      utils.clientPayments?.overdueCharges?.invalidate?.();
+      toast.success("Cobrança PIX gerada com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao gerar cobrança");
+    },
+  });
+
+  const handleGenerateCharge = () => {
+    if (!overdueCharges || overdueCharges.length === 0) return;
+    const ids = overdueCharges.map((c: any) => c.id);
+    generateCharge.mutate({ chargeIds: ids });
+  };
+
+  const totalOverdue = overdueCharges?.reduce((sum: number, c: any) => sum + c.value, 0) ?? 0;
+
+  const typeIcon = (type: string) => {
+    if (type === 'monthly') return <CreditCard className="h-4 w-4 text-blue-500" />;
+    if (type === 'fuel') return <Fuel className="h-4 w-4 text-orange-500" />;
+    if (type === 'repair') return <Wrench className="h-4 w-4 text-red-500" />;
+    return <DollarSign className="h-4 w-4 text-gray-500" />;
+  };
+
+  const urgencyBadge = (days: number) => {
+    if (days <= 7) return <span className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">Vencido há {days}d</span>;
+    if (days <= 30) return <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Vencido há {days}d</span>;
+    return <span className="text-xs font-medium text-red-800 bg-red-100 px-2 py-0.5 rounded-full">Vencido há {days}d</span>;
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="border-gray-200">
+        <CardContent className="py-6 flex items-center justify-center gap-2 text-gray-400">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Verificando débitos...</span>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Estado vazio — cliente em dia
+  if (!overdueCharges || overdueCharges.length === 0) {
+    return (
+      <Card className="border-green-200 bg-green-50/50">
+        <CardContent className="py-4 flex items-center gap-3">
+          <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-green-700">Você está em dia!</p>
+            <p className="text-xs text-green-600">Nenhum débito vencido encontrado.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card className="border-red-200">
+        {/* Banner de alerta com total */}
+        <div className="bg-red-50 border-b border-red-100 px-4 py-3 rounded-t-lg flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-red-700">Débitos Vencidos</p>
+              <p className="text-xs text-red-500">{overdueCharges.length} cobrança{overdueCharges.length > 1 ? 's' : ''} em aberto</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-bold text-red-700">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOverdue)}
+            </p>
+            <p className="text-xs text-red-400">total em aberto</p>
+          </div>
+        </div>
+
+        <CardContent className="pt-3 pb-4">
+          {/* Lista de débitos */}
+          <div className="space-y-2 mb-4">
+            {overdueCharges.map((charge: any) => (
+              <div key={charge.id} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
+                <div className="shrink-0">{typeIcon(charge.type)}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{charge.description}</p>
+                  <p className="text-xs text-gray-400">
+                    Venc. {new Date(charge.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span className="text-sm font-bold text-gray-700">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(charge.value)}
+                  </span>
+                  {urgencyBadge(charge.daysOverdue)}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Botão consolidado */}
+          <Button
+            className="w-full bg-red-600 hover:bg-red-700 text-white"
+            onClick={() => setShowModal(true)}
+            disabled={generateCharge.isPending}
+          >
+            {generateCharge.isPending ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-2" />Gerando cobrança...</>
+            ) : (
+              <><CreditCard className="h-4 w-4 mr-2" />Gerar cobrança PIX consolidada — {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOverdue)}</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Modal de confirmação */}
+      <Dialog open={showModal && !chargeResult} onOpenChange={(open) => { if (!open) setShowModal(false); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Confirmar Cobrança PIX
+            </DialogTitle>
+            <DialogDescription>
+              Será gerada uma cobrança PIX consolidada com vencimento para amanhã.
+              O valor pode incluir juros e multa conforme as regras da sua conta.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-gray-50 rounded-lg p-4 my-2">
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-gray-500">Cobranças incluídas:</span>
+              <span className="font-medium">{overdueCharges?.length}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Valor total:</span>
+              <span className="font-bold text-red-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalOverdue)}</span>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => { setShowModal(false); handleGenerateCharge(); }}
+              disabled={generateCharge.isPending}
+            >
+              Gerar cobrança PIX
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal com resultado da cobrança */}
+      <Dialog open={!!chargeResult} onOpenChange={(open) => { if (!open) setChargeResult(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-700">
+              <CheckCircle2 className="h-5 w-5" />
+              Cobrança PIX Gerada!
+            </DialogTitle>
+            <DialogDescription>Sua cobrança foi criada com sucesso no Asaas.</DialogDescription>
+          </DialogHeader>
+          {chargeResult && (
+            <div className="space-y-3">
+              <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Valor:</span>
+                  <span className="font-bold text-green-700">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(chargeResult.value)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Cobranças:</span>
+                  <span className="font-medium">{chargeResult.chargeCount}</span>
+                </div>
+              </div>
+              {chargeResult.invoiceUrl && (
+                <Button
+                  className="w-full"
+                  onClick={() => window.open(chargeResult.invoiceUrl!, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Abrir link de pagamento
+                </Button>
+              )}
+              <Button variant="outline" className="w-full" onClick={() => setChargeResult(null)}>Fechar</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -624,6 +830,9 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Alertas de Pagamentos Vencidos */}
+        <OverdueChargesCard />
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

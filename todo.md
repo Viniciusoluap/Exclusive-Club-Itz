@@ -1849,3 +1849,31 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Problema 3: Webhook Asaas — endpoint raw Express `/api/webhooks/asaas` adicionado (responde 200 imediatamente, atualiza bpo_charges e subscription_charges)
 - [x] Problema 2: Botão "Sincronizar com Asaas" corrigido para usar `bpo.syncIncremental` (em vez de `saas.fullSync` inexistente)
 - [x] Problema 1: syncIncremental corrigido para usar `getChargeStatus` (lê API key do banco descriptografada) em vez de `process.env.ASAAS_API_KEY` (não configurada no ambiente)
+
+## 💳 Feature: Card "Alertas de Pagamentos Vencidos" no Dashboard
+===============================================================
+
+**Requisito:** Card entre gráfico Uso Mensal e Ações Rápidas com débitos vencidos do cliente
+
+**Fonte de dados:** Tabela bpo_charges (fonte única de verdade do BPO Financeiro)
+
+**Tarefas:**
+- [ ] Backend: procedure client.overdueCharges — busca bpo_charges vencidas do cliente logado
+- [ ] Backend: procedure client.generateConsolidatedCharge — gera cobrança PIX consolidada no Asaas
+- [ ] Frontend: card "Alertas de Pagamentos Vencidos" entre gráfico e Ações Rápidas
+- [ ] Frontend: estado vazio verde (✓ Você está em dia!)
+- [ ] Frontend: lista de débitos com ícone por tipo, badge "Vencido há N dias", valor
+- [ ] Frontend: banner topo com total consolidado em vermelho/laranja
+- [ ] Frontend: botão "Gerar cobrança PIX consolidada"
+- [ ] Frontend: modal de confirmação antes de gerar cobrança
+- [ ] Frontend: exibição de link/QR Code após geração da cobrança
+
+## ✅ Card de Alertas de Pagamentos Vencidos no Dashboard
+- [x] Backend: procedure clientPayments.overdueCharges (busca bpo_charges vencidas por email)
+- [x] Backend: procedure clientPayments.generateConsolidatedCharge (cria cobrança PIX consolidada no Asaas)
+- [x] Frontend: OverdueChargesCard no Dashboard (entre gráfico e Ações Rápidas)
+- [x] UI: estado vazio "Você está em dia!" (verde)
+- [x] UI: banner vermelho com total consolidado, lista de débitos com ícone por tipo, badge de urgência
+- [x] UI: modal de confirmação antes de gerar cobrança
+- [x] UI: modal de resultado com link de pagamento Asaas
+- [x] Testes: clientPayments.test.ts (7 testes passando)
