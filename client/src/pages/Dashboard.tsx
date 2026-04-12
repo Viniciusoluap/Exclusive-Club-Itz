@@ -847,21 +847,23 @@ export default function Dashboard() {
               {/* Gráfico com eixo Y fixo 1-7 + linha de referência "Bom uso" no nível 3 */}
               <div className="flex-1">
                 <div className="flex gap-2">
-                  {/* Eixo Y — labels alinhados às linhas de grade (sem o 7 no topo) */}
-                  <div className="flex flex-col-reverse items-end pr-1" style={{ height: '224px' }}>
+                  {/* Eixo Y — labels alinhados à escala 0-6, cada nível em (v/6)*100% da altura */}
+                  <div className="flex flex-col-reverse items-end pr-1 relative" style={{ height: '224px' }}>
                     {[1,2,3,4,5,6].map(v => (
-                      <div key={v} className="flex items-center" style={{ height: `${100/7}%` }}>
+                      <div
+                        key={v}
+                        className="absolute flex items-center"
+                        style={{ bottom: `calc(${(v / 6) * 100}% + 20px)`, transform: 'translateY(50%)' }}
+                      >
                         <span className={`text-xs leading-none ${v === 3 ? 'text-teal-500 font-semibold' : 'text-gray-400'}`}>{v}</span>
                       </div>
                     ))}
-                    {/* Espaço vazio no topo onde ficaria o 7 */}
-                    <div style={{ height: `${100/7}%` }} />
                   </div>
                   {/* Área do gráfico com linhas de grade e barras */}
                   <div className="flex-1 relative" style={{ height: '224px' }}>
-                    {/* Linhas de grade horizontais */}
-                    {[1,2,3,4,5,6,7].map(v => {
-                      const bottomPct = ((v - 1) / 6) * 100;
+                    {/* Linhas de grade horizontais — escala 0-6, cada nível em (v/6)*100% */}
+                    {[0,1,2,3,4,5,6].map(v => {
+                      const bottomPct = (v / 6) * 100;
                       const isBomUso = v === 3;
                       return (
                         <div
@@ -880,15 +882,21 @@ export default function Dashboard() {
                         </div>
                       );
                     })}
-                    {/* Barras */}
-                    <div className="absolute inset-0 flex items-end justify-between gap-2">
+                    {/* Barras — escala unificada MAX_Y=6, base alinhada ao nível 0 (abaixo do numeral 1) */}
+                    <div className="absolute inset-x-0 flex items-end justify-between gap-2" style={{ bottom: 0, top: 0 }}>
                       {stats?.monthlyUsage.map((month, idx) => {
-                        const MAX_Y = 7;
+                        const MAX_Y = 6;
                         const clampedCount = Math.min(month.count, MAX_Y);
-                        // Altura proporcional ao range 0-7 (7 segmentos de 1/7 cada)
+                        // Altura proporcional: count/6 * 100% — alinhada com o eixo Y
                         const heightPct = (clampedCount / MAX_Y) * 100;
+                        // Abreviar label: "nov. de 2025" → "nov 25"
+                        const shortLabel = month.month
+                          .replace(/\. de /, ' ')
+                          .replace(/de /, '')
+                          .replace(/\.$/, '')
+                          .replace(/(\d{4})/, (y) => y.slice(2));
                         return (
-                          <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end pb-5">
+                          <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end" style={{ paddingBottom: '20px' }}>
                             <div
                               className="w-full bg-cyan-400 rounded-t-lg relative group cursor-pointer hover:bg-cyan-500 transition-colors"
                               style={{ height: `${heightPct}%`, minHeight: month.count > 0 ? '6px' : '0' }}
@@ -897,7 +905,7 @@ export default function Dashboard() {
                                 {month.count} reserva{month.count !== 1 ? 's' : ''}
                               </div>
                             </div>
-                            <span className="absolute bottom-0 text-xs text-gray-500 text-center">{month.month}</span>
+                            <span className="absolute bottom-0 text-[10px] sm:text-xs text-gray-500 text-center leading-tight">{shortLabel}</span>
                           </div>
                         );
                       })}
