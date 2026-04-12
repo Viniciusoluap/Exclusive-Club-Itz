@@ -18,6 +18,7 @@ import * as db from "./db";
 import * as stats from "./stats";
 import * as weather from "./weather";
 import * as systemSettings from "./systemSettings";
+import { sql } from "drizzle-orm";
 
 // Admin-only procedure
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
@@ -5347,6 +5348,129 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           message: `Erro ao buscar estatísticas: ${error.message}` 
           });
         }
+      }),
+  }),
+
+
+  // ============================================================
+  // CLIENT PAYMENTS — Alertas de débitos vencidos e cobrança consolidada
+  // ============================================================
+  clientPayments: router({
+    // Busca todos os débitos vencidos do cliente logado na tabela bpo_charges
+    overdueCharges: protectedProcedure.query(async ({ ctx }) => {
+      if (!ctx.user.email) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Email não encontrado' });
+      }
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB indisponível' });
+
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      // Busca cobranças vencidas: status=overdue OU (status=pending E dueDate < hoje)
+      const emailEsc = ctx.user.email.replace(/'/g, "''");
+      const [rows] = (await dbConn.execute(sql.raw(`
+        SELECT id, type, description, due_date as dueDate, value,
+               asaas_charge_id as asaasChargeId, asaas_customer_id as asaasCustomerId, status
+        FROM bpo_charges
+        WHERE client_email = '${emailEsc}'
+          AND status NOT IN ('received','confirmed','receivedInCash','refunded')
+          AND (status = 'overdue' OR (status = 'pending' AND due_date < '${todayStr}'))
+        ORDER BY due_date ASC
+      `))) as any;
+      const charges = Array.isArray(rows) ? rows : [];
+      const now = new Date();
+
+      return (charges as any[]).map((c: any) => {
+        const due = new Date(c.dueDate + 'T00:00:00');
+        const daysOverdue = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+        const typeLabel = c.type === 'monthly' ? 'Mensalidade'
+          : c.type === 'fuel' ? 'Abastecimento'
+          : c.type === 'repair' ? 'Reparo'
+          : 'Outro';
+        return {
+          id: c.id as number,
+          type: (c.type ?? 'other') as string,
+          typeLabel,
+          description: (c.description ?? typeLabel) as string,
+          dueDate: c.dueDate as string,
+          value: parseFloat(c.value as string),
+          asaasChargeId: c.asaasChargeId as string | null,
+          asaasCustomerId: c.asaasCustomerId as string | null,
+          daysOverdue: Math.max(0, daysOverdue),
+        };
+      });
+    }),
+
+    // Gera cobrança PIX consolidada no Asaas somando todos os débitos vencidos
+    generateConsolidatedCharge: protectedProcedure
+      .input(z.object({
+        chargeIds: z.array(z.number()).min(1),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.user.email || !ctx.user.name) {
+          throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Dados do usuário incompletos' });
+        }
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB indisponível' });
+
+        // Buscar as cobranças selecionadas e validar que pertencem ao cliente
+        const placeholders = input.chargeIds.map(() => '?').join(',');
+        const emailEsc2 = ctx.user.email.replace(/'/g, "''");
+        const idList = input.chargeIds.join(',');
+        const [rows] = (await dbConn.execute(sql.raw(`
+          SELECT id, type, description, value, asaas_customer_id as asaasCustomerId
+          FROM bpo_charges
+          WHERE id IN (${idList})
+            AND client_email = '${emailEsc2}'
+            AND status NOT IN ('received','confirmed','receivedInCash','refunded')
+        `))) as any;
+        const charges = Array.isArray(rows) ? rows : [];
+        if (!charges || charges.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhuma cobrança vencida encontrada' });
+        }
+
+        // Calcular total consolidado
+        const total = (charges as any[]).reduce((sum: number, c: any) => sum + parseFloat(c.value), 0);
+        const totalRounded = Math.round(total * 100) / 100;
+
+        // Montar descrição consolidada
+        const typeLabels = Array.from(new Set((charges as any[]).map((c: any) =>
+          c.type === 'monthly' ? 'Mensalidade' : c.type === 'fuel' ? 'Abastecimento' : c.type === 'repair' ? 'Reparo' : 'Outros'
+        ))).join(', ');
+        const description = `Regularização de débitos vencidos — ${typeLabels} (${charges.length} cobrança${charges.length > 1 ? 's' : ''})`;
+
+        // Obter ou criar cliente no Asaas
+        const asaas = await import('./_core/asaas');
+        const customer = await asaas.getOrCreateCustomer({
+          name: ctx.user.name,
+          email: ctx.user.email,
+        });
+
+        // Vencimento: amanhã
+        const today = new Date();
+        const dueDate = new Date(today);
+        dueDate.setDate(dueDate.getDate() + 1);
+        const dueDateStr = dueDate.toISOString().split('T')[0];
+
+        // Criar cobrança PIX consolidada no Asaas
+        const charge = await asaas.createCharge({
+          customer: customer.id,
+          billingType: 'PIX',
+          value: totalRounded,
+          dueDate: dueDateStr,
+          description,
+          externalReference: `consolidated-${ctx.user.email}-${Date.now()}`,
+        });
+
+        return {
+          success: true,
+          invoiceUrl: (charge.invoiceUrl || charge.bankSlipUrl || null) as string | null,
+          value: totalRounded,
+          chargeCount: charges.length,
+          description,
+          asaasChargeId: charge.id as string,
+        };
       }),
   }),
 
