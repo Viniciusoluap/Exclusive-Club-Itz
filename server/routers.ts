@@ -5503,13 +5503,42 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
       return await systemSettings.listSettings();
     }),
     
-    delete: adminProcedure
+     delete: adminProcedure
       .input(z.object({ key: z.string() }))
       .mutation(async ({ input }) => {
         await systemSettings.deleteSetting(input.key);
         return { success: true };
       }),
+
+    testConnection: adminProcedure
+      .mutation(async () => {
+        const apiKey = await systemSettings.getSetting('asaas_api_key');
+        if (!apiKey) {
+          return { success: false, message: 'Chave API não configurada. Salve a chave antes de testar.' };
+        }
+        const isProd = apiKey.startsWith('$aact_prod_');
+        const apiUrl = isProd ? 'https://api.asaas.com/v3' : 'https://sandbox.asaas.com/api/v3';
+        const env = isProd ? 'Produção' : 'Sandbox';
+        try {
+          const resp = await fetch(`${apiUrl}/myAccount`, {
+            headers: { 'access_token': apiKey, 'Content-Type': 'application/json' },
+          });
+          const data = await resp.json() as any;
+          if (resp.ok && data.name) {
+            return {
+              success: true,
+              message: `Conexão OK (${env}) — Conta: ${data.name}`,
+              account: data.name as string,
+              environment: env,
+            };
+          } else {
+            const errMsg = (data?.errors?.[0]?.description || data?.message || 'Chave inválida ou sem permissão') as string;
+            return { success: false, message: `Erro (${env}): ${errMsg}` };
+          }
+        } catch (err: any) {
+          return { success: false, message: `Falha de rede ao conectar ao Asaas: ${err.message}` };
+        }
+      }),
   }),
 });
-
 export type AppRouter = typeof appRouter;

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { Loader2, Save, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Loader2, Save, AlertCircle, CheckCircle2, ArrowLeft, XCircle } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function SystemSettings() {
@@ -52,20 +52,31 @@ export default function SystemSettings() {
     });
   };
 
+  const testMutation = trpc.systemSettings.testConnection.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        setTestStatus("success");
+        toast.success(data.message);
+      } else {
+        setTestStatus("error");
+        toast.error(data.message);
+      }
+      setTimeout(() => setTestStatus("idle"), 4000);
+    },
+    onError: (err) => {
+      setTestStatus("error");
+      toast.error(`Erro ao testar conexão: ${err.message}`);
+      setTimeout(() => setTestStatus("idle"), 4000);
+    },
+  });
+
   const handleTest = async () => {
     if (!currentKey?.value && !asaasApiKey) {
-      toast.error("Configure a chave API primeiro");
+      toast.error("Configure e salve a chave API antes de testar");
       return;
     }
-
     setTestStatus("testing");
-    
-    // Simular teste de conexão (você pode implementar um endpoint real depois)
-    setTimeout(() => {
-      setTestStatus("success");
-      toast.success("Conexão com Asaas OK!");
-      setTimeout(() => setTestStatus("idle"), 3000);
-    }, 2000);
+    testMutation.mutate();
   };
 
   const [activeTab, setActiveTab] = useState<"asaas" | "backups">("asaas");
@@ -219,6 +230,11 @@ export default function SystemSettings() {
                 <>
                   <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" />
                   Conexão OK
+                </>
+              ) : testStatus === "error" ? (
+                <>
+                  <XCircle className="mr-2 h-4 w-4 text-red-500" />
+                  Falha na Conexão
                 </>
               ) : (
                 "Testar Conexão"
