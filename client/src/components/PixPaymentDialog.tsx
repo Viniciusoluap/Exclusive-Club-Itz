@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Copy, Check, Clock, QrCode, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { trpc } from "@/lib/trpc";
 
 interface PixPaymentDialogProps {
   open: boolean;
@@ -49,28 +48,7 @@ export function PixPaymentDialog({
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [status, setStatus] = useState<'pending' | 'confirmed' | 'expired'>('pending');
 
-  // Query para verificar status do pagamento
-  const statusQuery = trpc.payments.getStatus.useQuery(
-    { paymentId, asaasPaymentId },
-    {
-      enabled: open && (!!paymentId || !!asaasPaymentId) && status === 'pending',
-      refetchInterval: 5000, // Verifica a cada 5 segundos
-    }
-  );
-
-  // Atualiza status quando a query retorna
-  useEffect(() => {
-    if (statusQuery.data) {
-      const paymentStatus = statusQuery.data.status;
-      if (['confirmed', 'received'].includes(paymentStatus)) {
-        setStatus('confirmed');
-        onPaymentConfirmed?.();
-      } else if (['cancelled', 'failed'].includes(paymentStatus)) {
-        setStatus('expired');
-        onPaymentExpired?.();
-      }
-    }
-  }, [statusQuery.data, onPaymentConfirmed, onPaymentExpired]);
+  // Status é atualizado via webhook do Asaas — sem polling ativo
 
   // Calcula tempo restante até expiração
   useEffect(() => {
@@ -225,13 +203,7 @@ export function PixPaymentDialog({
             </div>
           )}
 
-          {/* Loading indicator */}
-          {status === 'pending' && statusQuery.isFetching && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              Verificando pagamento...
-            </div>
-          )}
+          {/* Status atualizado via webhook do Asaas */}
 
           {/* Mensagem de sucesso */}
           {status === 'confirmed' && (
