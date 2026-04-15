@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { bookings, fuelRecords, maintenances, allowedClients, vessels, subscriptionCharges, clientQuotas, fuelBudget } from "../../drizzle/schema";
+import { bookings, fuelRecords, maintenances, allowedClients, vessels, clientQuotas, fuelBudget } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc, sql, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
@@ -32,19 +32,15 @@ export const reportsRouter = router({
         )
       );
 
-      const subscriptionRevenue = await db.select({
-        total: sql<number>`SUM(${subscriptionCharges.value})`.as('total'),
-      })
-      .from(subscriptionCharges)
-      .where(
-        and(
-          gte(subscriptionCharges.dueDate, new Date(start).toISOString()),
-          lte(subscriptionCharges.dueDate, new Date(end).toISOString()),
-          eq(subscriptionCharges.status, 'paid')
-        )
-      );
+      const bpoRevenue = await db.execute(sql`
+        SELECT SUM(amount_paid) as total FROM bpo_charges
+        WHERE status IN ('received','confirmed','receivedInCash')
+          AND due_date >= ${new Date(start).toISOString().split('T')[0]}
+          AND due_date <= ${new Date(end).toISOString().split('T')[0]}
+      `) as any;
+      const bpoRevenueTotal = parseFloat((Array.isArray(bpoRevenue[0]) ? bpoRevenue[0][0] : bpoRevenue[0])?.total || 0);
 
-      const totalRevenue = parseFloat(String(fuelRevenue[0]?.total || 0)) + (parseFloat(subscriptionRevenue[0]?.total as any) || 0);
+      const totalRevenue = parseFloat(String(fuelRevenue[0]?.total || 0)) + bpoRevenueTotal;
 
       // 2. Ticket Médio por Cliente
       const clientsWithRevenue = await db.select({
@@ -115,33 +111,23 @@ export const reportsRouter = router({
         }
       }
 
-      // 5. Taxa de Inadimplência
-      const totalCharges = await db.select({
-        count: sql<number>`COUNT(*)`.as('count'),
-      })
-      .from(subscriptionCharges)
-      .where(
-        and(
-          gte(subscriptionCharges.dueDate, new Date(start).toISOString()),
-          lte(subscriptionCharges.dueDate, new Date(end).toISOString())
-        )
-      );
+      // 5. Taxa de Inadimplência (via bpo_charges)
+      const totalChargesResult = await db.execute(sql`
+        SELECT COUNT(*) as count FROM bpo_charges
+        WHERE due_date >= ${new Date(start).toISOString().split('T')[0]}
+          AND due_date <= ${new Date(end).toISOString().split('T')[0]}
+      `) as any;
+      const totalChargesCount = parseInt((Array.isArray(totalChargesResult[0]) ? totalChargesResult[0][0] : totalChargesResult[0])?.count || 0);
 
-      const overdueCharges = await db.select({
-        count: sql<number>`COUNT(*)`.as('count'),
-      })
-      .from(subscriptionCharges)
-      .where(
-        and(
-          gte(subscriptionCharges.dueDate, new Date(start).toISOString()),
-          lte(subscriptionCharges.dueDate, new Date(end).toISOString()),
-          eq(subscriptionCharges.status, 'overdue')
-        )
-      );
+      const overdueChargesResult = await db.execute(sql`
+        SELECT COUNT(*) as count FROM bpo_charges
+        WHERE status = 'overdue'
+          AND due_date >= ${new Date(start).toISOString().split('T')[0]}
+          AND due_date <= ${new Date(end).toISOString().split('T')[0]}
+      `) as any;
+      const overdueChargesCount = parseInt((Array.isArray(overdueChargesResult[0]) ? overdueChargesResult[0][0] : overdueChargesResult[0])?.count || 0);
 
-      const defaultRate = totalCharges[0]?.count > 0
-        ? (overdueCharges[0]?.count / totalCharges[0]?.count) * 100
-        : 0;
+      const defaultRate = totalChargesCount > 0 ? (overdueChargesCount / totalChargesCount) * 100 : 0;
 
       // 6. Custo de Manutenção vs Receita (placeholder - precisa de campo de custo em maintenances)
       const maintenanceCost = 0; // TODO: adicionar campo cost em maintenances
@@ -237,18 +223,15 @@ export const reportsRouter = router({
       });
     }
 
-    // Alerta: Taxa de inadimplência alta
-    const overdueCharges = await db.select({
-      count: sql<number>`COUNT(*)`.as('count'),
-    })
-    .from(subscriptionCharges)
-    .where(eq(subscriptionCharges.status, 'overdue'));
+    // Alerta: Taxa de inadimplência alta (via bpo_charges)
+    const overdueChargesExec = await db.execute(sql`SELECT COUNT(*) as count FROM bpo_charges WHERE status = 'overdue'`) as any;
+    const overdueChargesCount = parseInt((Array.isArray(overdueChargesExec[0]) ? overdueChargesExec[0][0] : overdueChargesExec[0])?.count || 0);
 
-    if (overdueCharges[0]?.count > 0) {
+    if (overdueChargesCount > 0) {
       alerts.push({
         type: 'critical',
         title: 'Inadimplência Detectada',
-        message: `${overdueCharges[0].count} cobrança(s) vencida(s)`,
+        message: `${overdueChargesCount} cobrança(s) vencida(s)`,
       });
     }
 
@@ -259,8 +242,8 @@ export const reportsRouter = router({
     let score = 100;
 
     // Penalizar por inadimplência
-    if (overdueCharges[0]?.count > 0) {
-      score -= Math.min(overdueCharges[0].count * 5, 30);
+    if (overdueChargesCount > 0) {
+      score -= Math.min(overdueChargesCount * 5, 30);
     }
 
     // Penalizar por manutenções ativas
@@ -556,14 +539,13 @@ export const reportsRouter = router({
       .orderBy(desc(sql`SUM(${fuelRecords.totalAmount})`))
       .limit(10);
 
-      // 4. Clientes Inadimplentes
+      // 4. Clientes Inadimplentes (via bpo_charges)
       const defaultingClients = await db.execute(sql`
-        SELECT ac.email, ac.name, COUNT(*) as overdue_count
-        FROM subscription_charges sc
-        JOIN subscriptions s ON sc.subscription_id = s.id
-        JOIN allowed_clients ac ON s.client_id = ac.id
-        WHERE sc.status = 'overdue'
-        GROUP BY ac.email, ac.name
+        SELECT bc.client_email as email, COALESCE(ac.name, bc.client_name, bc.client_email) as name, COUNT(*) as overdue_count
+        FROM bpo_charges bc
+        LEFT JOIN allowed_clients ac ON ac.email = bc.client_email
+        WHERE bc.status = 'overdue'
+        GROUP BY bc.client_email, ac.name, bc.client_name
         ORDER BY overdue_count DESC
       `) as any;
 

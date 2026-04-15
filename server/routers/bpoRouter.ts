@@ -7,10 +7,9 @@
 import { z } from "zod";
 import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { bpoCharges, unclassifiedCharges } from "../../drizzle/schema";
+import { bpoCharges, allowedClients as acTable } from "../../drizzle/schema";
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
-import { listAllAsaasCharges, getChargeStatus } from "../_core/asaasService";
-
+import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers } from "../_core/asaasService";
 // ============================================================
 // Helper: normalizar status do Asaas para enum bpo_charges
 // ============================================================
@@ -66,26 +65,25 @@ export const bpoRouter = router({
     if (!db) throw new Error("Database not available");
 
     const report = { total: 0, inserted: 0, updated: 0, errors: 0 };
-
-    // Montar mapa asaas_customer_id → cliente local via unclassified_charges
-    const ucLinks = await db.select({
-      asaasCustomerId: unclassifiedCharges.asaasCustomerId,
-      linkedClientId: unclassifiedCharges.linkedClientId,
-      asaasCustomerName: unclassifiedCharges.asaasCustomerName,
-      asaasCustomerEmail: unclassifiedCharges.asaasCustomerEmail,
-    }).from(unclassifiedCharges);
-
-    const clientMap = new Map<string, { id: number; name: string; email: string }>();
-    for (const uc of ucLinks) {
-      if (uc.asaasCustomerId && uc.linkedClientId && !clientMap.has(uc.asaasCustomerId)) {
-        clientMap.set(uc.asaasCustomerId, {
-          id: uc.linkedClientId,
-          name: uc.asaasCustomerName || "",
-          email: uc.asaasCustomerEmail || "",
-        });
-      }
+    // Montar mapa asaasCustomerId → cliente local
+    // Passo 1: buscar todos os clientes do Asaas para obter email por ID
+    const asaasCustomers = await listAllAsaasCustomers({ limit: 100 });
+    const asaasIdToEmail = new Map<string, string>();
+    for (const ac of asaasCustomers) {
+      if (ac.id && ac.email) asaasIdToEmail.set(ac.id, ac.email.toLowerCase());
     }
-
+    // Passo 2: cruzar email com allowedClients locais
+    const localClients = await db.select().from(acTable);
+    const emailToClient = new Map<string, { id: number; name: string; email: string }>();
+    for (const c of localClients) {
+      emailToClient.set(c.email.toLowerCase(), { id: c.id, name: c.name, email: c.email });
+    }
+    // Passo 3: mapa final asaasCustomerId → cliente local
+    const clientMap = new Map<string, { id: number; name: string; email: string }>();
+    for (const [asaasId, email] of Array.from(asaasIdToEmail.entries())) {
+      const client = emailToClient.get(email);
+      if (client) clientMap.set(asaasId, client);
+    }
     // Paginar todas as cobranças do Asaas
     let offset = 0;
     const limit = 100;
@@ -546,52 +544,33 @@ export const bpoRouter = router({
     await db.delete(bpoCharges);
     console.log("[bpo.resetAndReimport] Tabela bpo_charges zerada");
 
-    // 2. Montar mapa asaasCustomerId → cliente local
-    // Fonte A: unclassified_charges (já tem vínculo asaasCustomerId → linkedClientId)
-    const ucLinks = await db.select({
-      asaasCustomerId: unclassifiedCharges.asaasCustomerId,
-      linkedClientId: unclassifiedCharges.linkedClientId,
-      asaasCustomerName: unclassifiedCharges.asaasCustomerName,
-      asaasCustomerEmail: unclassifiedCharges.asaasCustomerEmail,
-    }).from(unclassifiedCharges);
-
-    const clientMap = new Map<string, { id: number; name: string; email: string }>();
-    for (const uc of ucLinks) {
-      if (uc.asaasCustomerId && uc.linkedClientId && !clientMap.has(uc.asaasCustomerId)) {
-        clientMap.set(uc.asaasCustomerId, {
-          id: uc.linkedClientId,
-          name: uc.asaasCustomerName || "",
-          email: uc.asaasCustomerEmail || "",
-        });
-      }
-    }
-
-    // Fonte B: fuelRecords como ponte asaasCustomerId → email → allowedClient
-    const { allowedClients: acTable, fuelRecords: frTable } = await import("../../drizzle/schema");
+      // 2. Montar mapa asaasCustomerId → cliente local via email (allowedClients)
+    // O Asaas retorna charge.customerEmail que podemos cruzar com allowedClients.email
+    const { fuelRecords: frTable } = await import("../../drizzle/schema");
     const clients = await db.select().from(acTable);
+    // emailMap: email → { id, name, email }
+    const emailMap = new Map<string, { id: number; name: string; email: string }>();
+    for (const c of clients) {
+      emailMap.set(c.email.toLowerCase(), { id: c.id, name: c.name, email: c.email });
+    }
+    // asaasCustomerId → email via fuelRecords (já vinculados)
     const fuelLinks = await db.select({
       clientEmail: frTable.clientEmail,
       asaasCustomerId: frTable.asaasCustomerId,
     }).from(frTable).where(sql`${frTable.asaasCustomerId} IS NOT NULL`);
-
-    const emailToAsaasId = new Map<string, string>();
+    const clientMap = new Map<string, { id: number; name: string; email: string }>();
     for (const fr of fuelLinks) {
-      if (fr.clientEmail && fr.asaasCustomerId && !emailToAsaasId.has(fr.clientEmail)) {
-        emailToAsaasId.set(fr.clientEmail, fr.asaasCustomerId);
-      }
-    }
-    for (const client of clients) {
-      const asaasId = emailToAsaasId.get(client.email);
-      if (asaasId && !clientMap.has(asaasId)) {
-        clientMap.set(asaasId, { id: client.id, name: client.name, email: client.email });
+      if (fr.clientEmail && fr.asaasCustomerId && !clientMap.has(fr.asaasCustomerId)) {
+        const client = emailMap.get(fr.clientEmail.toLowerCase());
+        if (client) clientMap.set(fr.asaasCustomerId, client);
       }
     }
 
     // 3. Classificação automática por palavras-chave
-    function autoClassify(description: string | null, externalRef: string | null): {
+    const autoClassify = (description: string | null, externalRef: string | null): {
       type: "monthly" | "quota_sale" | "fuel" | "repair" | "other";
       classifiedBy: "auto" | "unclassified";
-    } {
+    } => {
       const text = `${description || ""} ${externalRef || ""}`.toLowerCase();
       if (/mensalidade|cota|quota|parcela|contrato|assinatura|subscription/.test(text)) {
         return { type: "monthly", classifiedBy: "auto" };

@@ -372,6 +372,13 @@
       "when": 1776217944155,
       "tag": "0052_known_thunderball",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "5",
+      "when": 1776225874730,
+      "tag": "0053_unusual_maelstrom",
+      "breakpoints": true
     }
   ]
 }

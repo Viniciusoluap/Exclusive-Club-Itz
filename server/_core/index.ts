@@ -260,16 +260,6 @@ async function startServer() {
         WHERE asaas_charge_id = '${asaasId}'
       `))) as any;
       console.log('[Webhook Asaas] bpo_charges atualizado:', asaasId, '->', newStatus, '| rows:', (bpoResult as any)?.affectedRows ?? 0);
-      const scStatusMap: Record<string, string> = {
-        received: 'paid', confirmed: 'paid', receivedInCash: 'paid',
-        overdue: 'overdue', refunded: 'cancelled', awaitingChargeback: 'cancelled',
-      };
-      const scStatus = scStatusMap[newStatus] || 'pending';
-      await db.execute(drizzleSql.raw(`
-        UPDATE subscription_charges
-        SET status = '${scStatus}'${paidDate ? `, paid_date = ${paidDateSqlVal}` : ''}
-        WHERE asaas_payment_id = '${asaasId}'
-      `));
       console.log('[Webhook Asaas] Processamento concluído para:', asaasId);
     } catch (err: any) {
       console.error('[Webhook Asaas] Erro ao processar:', err?.message || err);

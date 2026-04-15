@@ -1,10 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { webhookRouter } from "./webhookRouter";
-import { paymentsRouter } from "./paymentsRouter";
 import { backupRouter } from "./routers/backupRouter";
-import { saasRouter } from "./routers/saasRouter";
 import { reportsRouter } from "./routers/reportsRouter";
 import { expensesRouter } from "./routers/expensesRouter";
 import { bpoRouter } from "./routers/bpoRouter";
@@ -59,10 +56,7 @@ const employeeProcedure = protectedProcedure.use(({ ctx, next }) => {
 
 export const appRouter = router({
   system: systemRouter,
-  webhooks: webhookRouter,
-  payments: paymentsRouter,
   backup: backupRouter,
-  saas: saasRouter,
   reports: reportsRouter,
   expenses: expensesRouter,
   bpo: bpoRouter,
@@ -2034,27 +2028,7 @@ Nenhuma reserva foi afetada.
         
         console.log('[fuelRecords.create] Abastecimento salvo no banco com sync_status:', syncStatus);
 
-        // Registrar pagamento em asaas_payments se cobrança foi criada com sucesso (PULAR se operacional)
-        if (!input.isOperational && asaasChargeId && syncStatus === 'synced') {
-          try {
-            const { savePaymentRecord } = await import('./_core/asaasService');
-            await savePaymentRecord({
-              asaasPaymentId: asaasChargeId,
-              asaasCustomerId: asaasCustomerId,
-              chargeType: 'fuel',
-              chargeId: fuelRecordId,
-              value: totalAmount / 100,
-              billingType: 'PIX',
-              dueDate: dueDate,
-              clientEmail: booking.client_email,
-              description: `Abastecimento - ${booking.vessel_name_actual} - ${finalLiters.toFixed(2)}L`,
-            });
-            console.log('[fuelRecords.create] ✅ Pagamento registrado em asaas_payments');
-          } catch (error) {
-            console.error('[fuelRecords.create] ⚠️ Erro ao registrar em asaas_payments:', error);
-            // Não falhar a operação se apenas o registro falhar
-          }
-        }
+        // Nota: cobranças de abastecimento são gerenciadas via bpo_charges (importação do Asaas)
 
         return { 
           success: true,
@@ -4424,25 +4398,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Cobrança não encontrada' });
           }
           
-          // Sincronizar com Asaas se existir asaas_charge_id
-          if (charge.asaas_charge_id) {
-            try {
-              const { receiveInCash } = await import('./_core/asaasService');
-              const result = await receiveInCash({
-                asaasPaymentId: charge.asaas_charge_id,
-                paymentDate: new Date().toISOString().split('T')[0],
-                notifyCustomer: false,
-              });
-              
-              if (!result.success) {
-                console.warn('[inspectionCharges.markAsPaid] Erro ao confirmar no Asaas:', result.error);
-                // Continua com atualização local mesmo se falhar no Asaas
-              }
-            } catch (asaasError: any) {
-              console.warn('[inspectionCharges.markAsPaid] Erro ao sincronizar com Asaas:', asaasError.message);
-              // Continua com atualização local mesmo se falhar no Asaas
-            }
-          }
+          // Nota: sincronização com Asaas é feita via webhook e bpo_charges
           
           // Atualizar status local para "paid"
           await db.update(inspectionCharges)

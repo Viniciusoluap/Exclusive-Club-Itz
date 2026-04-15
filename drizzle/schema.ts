@@ -267,38 +267,7 @@ export const backupHistory = mysqlTable("backup_history", {
 	s3Url: text("s3_url"), // URL do backup no S3
 });
 
-export const subscriptions = mysqlTable("subscriptions", {
-	id: int().autoincrement().notNull(),
-	clientId: int("client_id").notNull(),
-	type: mysqlEnum("type", ["monthly", "quota_sale", "fuel", "repair", "other"]).notNull(),
-	value: decimal({ precision: 10, scale: 2 }).notNull(),
-	dueDay: int("due_day").notNull(),
-	startDate: timestamp("start_date", { mode: 'string' }).notNull(),
-	endDate: timestamp("end_date", { mode: 'string' }),
-	status: mysqlEnum("status", ["active", "paused", "cancelled"]).default("active").notNull(),
-	yearlyAdjustment: mysqlEnum("yearly_adjustment", ["manual", "ipca", "igpm"]).default("manual").notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
-});
-
-export const subscriptionCharges = mysqlTable("subscription_charges", {
-	id: int().autoincrement().notNull(),
-	subscriptionId: int("subscription_id").notNull(),
-	asaasPaymentId: varchar("asaas_payment_id", { length: 64 }),
-	value: decimal({ precision: 10, scale: 2 }).notNull(),
-	dueDate: timestamp("due_date", { mode: 'string' }).notNull(),
-	paidDate: timestamp("paid_date", { mode: 'string' }),
-	status: mysqlEnum("status", ["pending", "paid", "overdue", "cancelled", "partial"]).default("pending").notNull(),
-	type: mysqlEnum("type", ["monthly", "quota_sale", "fuel", "repair", "other"]), // Tipo individual da cobrança (pode ser diferente da subscription)
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	// Campos de pagamento parcial
-	amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default('0.00').notNull(),
-	paymentLinks: text("payment_links"), // JSON array de asaasPaymentIds vinculados
-	// Campos adicionados na Fase 2 — consolidação com asaas_payments
-	netValue: decimal("net_value", { precision: 10, scale: 2 }), // Valor líquido após taxas Asaas
-	externalReference: varchar("external_reference", { length: 255 }), // Referência externa usada no Asaas
-	billingType: varchar("billing_type", { length: 20 }), // PIX, BOLETO, CREDIT_CARD
-});
+// subscriptions e subscription_charges removidas — substituídas por bpo_charges
 
 export const vessels = mysqlTable("vessels", {
 	id: int().autoincrement().notNull(),
@@ -315,64 +284,7 @@ export const vessels = mysqlTable("vessels", {
 	extraDocumentUrl: text("extra_document_url"),
 });
 
-// Tabela de rastreamento de alocações de split: cada linha = 1 Pix alocado em 1 cobrança
-export const pixAllocations = mysqlTable("pix_allocations", {
-	id: int().autoincrement().notNull(),
-	asaasChargeId: varchar("asaas_charge_id", { length: 255 }).notNull(), // ID do Pix no Asaas
-	subscriptionChargeId: int("subscription_charge_id").notNull(), // ID da subscription_charge
-	amount: decimal({ precision: 10, scale: 2 }).notNull(), // Valor alocado nesta cobrança
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-},
-(table) => [
-	index("pix_alloc_asaas_idx").on(table.asaasChargeId),
-	index("pix_alloc_charge_idx").on(table.subscriptionChargeId),
-]);
-
-export const excludedAsaasCharges = mysqlTable("excluded_asaas_charges", {
-	id: int().autoincrement().notNull(),
-	asaasChargeId: varchar("asaas_charge_id", { length: 255 }).notNull().unique(),
-	excludedBy: varchar("excluded_by", { length: 320 }).notNull(),
-	excludedAt: timestamp("excluded_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	reason: text(),
-},
-(table) => [
-	index("asaas_charge_id").on(table.asaasChargeId),
-]);
-
-export const unclassifiedCharges = mysqlTable("unclassified_charges", {
-	id: int().autoincrement().notNull(),
-	// ID da cobrança no Asaas (chave primária do cache)
-	asaasPaymentId: varchar("asaas_payment_id", { length: 255 }).notNull().unique(),
-	// Dados do cliente no Asaas
-	asaasCustomerId: varchar("asaas_customer_id", { length: 255 }).notNull(),
-	asaasCustomerName: varchar("asaas_customer_name", { length: 255 }),
-	asaasCustomerEmail: varchar("asaas_customer_email", { length: 320 }),
-	asaasCustomerCpfCnpj: varchar("asaas_customer_cpf_cnpj", { length: 20 }),
-	// Dados da cobrança
-	description: text(),
-	value: decimal({ precision: 10, scale: 2 }).notNull(),
-	dueDate: varchar("due_date", { length: 10 }).notNull(),
-	paidDate: varchar("paid_date", { length: 10 }),
-	asaasStatus: varchar("asaas_status", { length: 50 }).default('PENDING').notNull(),
-	status: mysqlEnum(['pending','paid','overdue','cancelled']).default('pending').notNull(),
-	// Controle de classificação
-	classified: tinyint().default(0).notNull(),
-	classifiedAt: timestamp("classified_at", { mode: 'string' }),
-	classifiedBy: int("classified_by"),
-	linkedClientId: int("linked_client_id"),
-	linkedSubscriptionId: int("linked_subscription_id"),
-	linkedChargeId: int("linked_charge_id"),
-	// Controle de sincronização
-	lastSyncedAt: timestamp("last_synced_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
-},
-(table) => [
-	index("uc_asaas_payment_id").on(table.asaasPaymentId),
-	index("uc_classified").on(table.classified),
-	index("uc_asaas_customer_id").on(table.asaasCustomerId),
-	index("uc_status").on(table.status),
-	index("uc_due_date").on(table.dueDate),
-]);
+// pixAllocations, excludedAsaasCharges e unclassifiedCharges removidas — substituídas por bpo_charges
 
 // ─── Despesas / Centro de Custos ───────────────────────────────────────────
 export const expenseRecords = mysqlTable("expense_records", {
@@ -439,14 +351,7 @@ export type FuelRecordContainer = typeof fuelRecordContainers.$inferSelect;
 export type InsertFuelRecordContainer = typeof fuelRecordContainers.$inferInsert;
 export type BackupHistory = typeof backupHistory.$inferSelect;
 export type InsertBackupHistory = typeof backupHistory.$inferInsert;
-export type Subscription = typeof subscriptions.$inferSelect;
-export type InsertSubscription = typeof subscriptions.$inferInsert;
-export type SubscriptionCharge = typeof subscriptionCharges.$inferSelect;
-export type InsertSubscriptionCharge = typeof subscriptionCharges.$inferInsert;
-export type ExcludedAsaasCharge = typeof excludedAsaasCharges.$inferSelect;
-export type InsertExcludedAsaasCharge = typeof excludedAsaasCharges.$inferInsert;
-export type UnclassifiedCharge = typeof unclassifiedCharges.$inferSelect;
-export type InsertUnclassifiedCharge = typeof unclassifiedCharges.$inferInsert;
+// Tipos legados removidos — usar BpoCharge / InsertBpoCharge
 export type ExpenseRecord = typeof expenseRecords.$inferSelect;
 export type InsertExpenseRecord = typeof expenseRecords.$inferInsert;
 

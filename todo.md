@@ -1896,3 +1896,21 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Corrigir bug na lógica de filtros/cards do BPO (valores não batem com filtros ativos)
 - [x] Corrigir query getStats para respeitar filtros de ano/mês/tipo/status
 - [x] Limpar tabela bpo_charges (TRUNCATE) para reimportação manual
+
+## Migração BPO — Remoção de Tabelas Legadas
+
+- [ ] Mapear todas as tabelas legadas e referências no código
+- [ ] Remover routers/procedures legados (saas, payments, unclassified)
+- [ ] Remover tabelas legadas do schema e migrar banco
+- [ ] Atualizar frontend para remover todas as referências legadas
+- [ ] Testes e checkpoint final
+
+## ✅ Migração BPO — Remoção Completa de Tabelas Legadas (15/04/2026)
+- [x] Dropar tabelas legadas do banco: subscription_charges, subscriptions, pix_allocations, excluded_asaas_charges, unclassified_charges, asaas_payments, webhook_logs, payment_audit_logs, financial_charges
+- [x] Remover routers legados: saasRouter.ts, paymentsRouter.ts, webhookRouter.ts
+- [x] Reescrever Saas.tsx usando apenas trpc.bpo.*
+- [x] Reescrever Pagamentos.tsx removendo tabs legadas
+- [x] Corrigir reportsRouter para usar bpo_charges
+- [x] Corrigir cronJobs.ts para usar bpo.syncIncremental
+- [x] Limpar referências legadas em index.ts, PixPaymentDialog.tsx
+- [x] Banco zerado (bpo_charges vazia) para reimportação manual do Asaas
