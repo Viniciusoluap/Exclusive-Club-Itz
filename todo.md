@@ -1914,3 +1914,30 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Corrigir cronJobs.ts para usar bpo.syncIncremental
 - [x] Limpar referências legadas em index.ts, PixPaymentDialog.tsx
 - [x] Banco zerado (bpo_charges vazia) para reimportação manual do Asaas
+
+---
+
+## Restauração do Banco de Dados — BPO Financeiro Completo
+
+- [x] Identificar tabelas faltantes: subscriptions, subscription_charges, pix_allocations, excluded_asaas_charges, unclassified_charges, asaas_payments, webhook_logs
+- [x] Criar script scripts/restore-missing-tables.mjs
+- [x] Executar script — 7 tabelas criadas com sucesso
+- [x] Recriar VIEW financial_charges (une subscription_charges + fuel_records + inspection_charges)
+- [x] Verificar servidor — sem erros TypeScript ou LSP
+
+
+---
+
+## Restauração BPO Financeiro (Sessão 2026-04-15)
+
+- [x] Recriar tabelas faltantes no banco: subscriptions, subscription_charges, pix_allocations, excluded_asaas_charges, unclassified_charges, webhook_logs, asaas_payments
+- [x] Recriar VIEW financial_charges
+- [x] Adicionar gravação de webhook_logs no handler do Asaas (server/_core/index.ts)
+- [x] Adicionar procedure bpo.getDRE (DRE Consolidado)
+- [x] Adicionar procedure bpo.listWebhookLogs (Log de Webhooks)
+- [x] Adicionar procedure bpo.getReconciliationReport (Reconciliação)
+- [x] Implementar aba Despesas na Saas.tsx (com criação, dar baixa, excluir)
+- [x] Implementar aba DRE Consolidado na Saas.tsx (receitas vs despesas por período)
+- [x] Implementar aba Webhooks na Saas.tsx (log de eventos do Asaas)
+- [x] Implementar aba Reconciliação na Saas.tsx (cobranças pendentes e divergências)
+- [x] Corrigir automations.ts para remover dependências de tabelas removidas

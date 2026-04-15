@@ -686,6 +686,166 @@ export const bpoRouter = router({
     }),
 
   // ============================================================
+  // DRE CONSOLIDADO — Receitas vs Despesas por período
+  // ============================================================
+  getDRE: adminProcedure
+    .input(z.object({
+      year: z.string().optional(),
+      month: z.string().optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const yearVal = input?.year || String(new Date().getFullYear());
+      const monthVal = input?.month || "all";
+      let dateFilter = `due_date LIKE '${yearVal}-%'`;
+      if (monthVal && monthVal !== "all") {
+        const m = monthVal.padStart(2, "0");
+        dateFilter = `due_date LIKE '${yearVal}-${m}-%'`;
+      }
+      const [bpoRows] = (await db.execute(sql.raw(`
+        SELECT
+          COALESCE(type, 'other') as type,
+          COALESCE(SUM(CASE WHEN status IN ('received','confirmed','receivedInCash') THEN CAST(amount_paid AS DECIMAL(10,2)) ELSE 0 END), 0) as received,
+          COALESCE(SUM(CAST(value AS DECIMAL(10,2))), 0) as expected,
+          COUNT(*) as count
+        FROM bpo_charges
+        WHERE ${dateFilter}
+        GROUP BY COALESCE(type, 'other')
+      `))) as any;
+      const bpoByType = Array.isArray(bpoRows) ? bpoRows : [];
+      const totalRevenue = bpoByType.reduce((sum: number, r: any) => sum + parseFloat(r.received ?? "0"), 0);
+      const totalExpected = bpoByType.reduce((sum: number, r: any) => sum + parseFloat(r.expected ?? "0"), 0);
+      let expenseDateFilter = `YEAR(due_date) = ${parseInt(yearVal)}`;
+      if (monthVal && monthVal !== "all") {
+        expenseDateFilter += ` AND MONTH(due_date) = ${parseInt(monthVal)}`;
+      }
+      const [expRows] = (await db.execute(sql.raw(`
+        SELECT
+          cost_center,
+          COALESCE(SUM(CASE WHEN status = 'paid' THEN CAST(value AS DECIMAL(10,2)) ELSE 0 END), 0) as paid,
+          COALESCE(SUM(CAST(value AS DECIMAL(10,2))), 0) as total,
+          COUNT(*) as count
+        FROM expense_records
+        WHERE ${expenseDateFilter}
+        GROUP BY cost_center
+      `))) as any;
+      const expByCenter = Array.isArray(expRows) ? expRows : [];
+      const totalExpenses = expByCenter.reduce((sum: number, r: any) => sum + parseFloat(r.paid ?? "0"), 0);
+      const totalExpensesAll = expByCenter.reduce((sum: number, r: any) => sum + parseFloat(r.total ?? "0"), 0);
+      const netResult = totalRevenue - totalExpenses;
+      const TYPE_LABELS: Record<string, string> = {
+        monthly: "Mensalidades", quota_sale: "Vendas de Cotas",
+        fuel: "Abastecimentos", repair: "Reparos", other: "Outros",
+      };
+      const COST_CENTER_LABELS: Record<string, string> = {
+        salary: "Salários", rent: "Aluguéis", pro_labore: "Pró-labore",
+        fuel_operational: "Abastecimentos (Op.)", repair: "Reparos",
+        operational: "Custo Operacional", other: "Outros",
+      };
+      return {
+        year: yearVal, month: monthVal,
+        revenue: {
+          total: totalRevenue, expected: totalExpected,
+          byType: bpoByType.map((r: any) => ({
+            type: r.type as string,
+            label: TYPE_LABELS[r.type] ?? r.type,
+            received: parseFloat(r.received ?? "0"),
+            expected: parseFloat(r.expected ?? "0"),
+            count: parseInt(r.count ?? "0"),
+          })),
+        },
+        expenses: {
+          total: totalExpenses, totalAll: totalExpensesAll,
+          byCenter: expByCenter.map((r: any) => ({
+            costCenter: r.cost_center as string,
+            label: COST_CENTER_LABELS[r.cost_center] ?? r.cost_center,
+            paid: parseFloat(r.paid ?? "0"),
+            total: parseFloat(r.total ?? "0"),
+            count: parseInt(r.count ?? "0"),
+          })),
+        },
+        netResult,
+        margin: totalRevenue > 0 ? (netResult / totalRevenue) * 100 : 0,
+      };
+    }),
+
+  // ============================================================
+  // WEBHOOK LOGS — histórico de eventos recebidos do Asaas
+  // ============================================================
+  listWebhookLogs: adminProcedure
+    .input(z.object({ limit: z.number().default(50), offset: z.number().default(0) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [rows] = (await db.execute(sql.raw(`
+        SELECT id, event, asaas_payment_id, payload, processed, error, created_at
+        FROM webhook_logs ORDER BY created_at DESC
+        LIMIT ${input.limit} OFFSET ${input.offset}
+      `))) as any;
+      const [countRows] = (await db.execute(sql.raw(`SELECT COUNT(*) as total FROM webhook_logs`))) as any;
+      const logs = Array.isArray(rows) ? rows : [];
+      const total = parseInt((Array.isArray(countRows) ? countRows[0] : countRows)?.total ?? "0");
+      return { logs, total };
+    }),
+
+  // ============================================================
+  // RECONCILIAÇÃO — cobranças pendentes vs status no Asaas
+  // ============================================================
+  getReconciliationReport: adminProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const [rows] = (await db.execute(sql.raw(`
+        SELECT id, asaas_charge_id, client_name, client_email, value, status, due_date, synced_at
+        FROM bpo_charges
+        WHERE status IN ('pending','overdue')
+          AND asaas_charge_id IS NOT NULL
+          AND due_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+        ORDER BY due_date ASC LIMIT 100
+      `))) as any;
+      const pending = Array.isArray(rows) ? rows : [];
+      const [divergentRows] = (await db.execute(sql.raw(`
+        SELECT id, asaas_charge_id, client_name, value, status, due_date, synced_at
+        FROM bpo_charges
+        WHERE status IN ('pending','overdue')
+          AND asaas_charge_id IS NOT NULL
+          AND (synced_at IS NULL OR synced_at < DATE_SUB(NOW(), INTERVAL 7 DAY))
+          AND due_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+        LIMIT 50
+      `))) as any;
+      const divergent = Array.isArray(divergentRows) ? divergentRows : [];
+      const [statsRows] = (await db.execute(sql.raw(`
+        SELECT status, COUNT(*) as count, COALESCE(SUM(CAST(value AS DECIMAL(10,2))), 0) as total
+        FROM bpo_charges
+        WHERE due_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+        GROUP BY status
+      `))) as any;
+      const stats = Array.isArray(statsRows) ? statsRows : [];
+      return {
+        pendingCharges: pending.map((r: any) => ({
+          id: r.id as number, asaasChargeId: r.asaas_charge_id as string,
+          clientName: r.client_name as string, clientEmail: r.client_email as string,
+          value: parseFloat(r.value ?? "0"), status: r.status as string,
+          dueDate: r.due_date as string, syncedAt: r.synced_at as string | null,
+        })),
+        divergentCharges: divergent.map((r: any) => ({
+          id: r.id as number, asaasChargeId: r.asaas_charge_id as string,
+          clientName: r.client_name as string, value: parseFloat(r.value ?? "0"),
+          status: r.status as string, dueDate: r.due_date as string,
+          syncedAt: r.synced_at as string | null,
+        })),
+        statusStats: stats.map((r: any) => ({
+          status: r.status as string,
+          count: parseInt(r.count ?? "0"),
+          total: parseFloat(r.total ?? "0"),
+        })),
+        totalPending: pending.length,
+        totalDivergent: divergent.length,
+      };
+    }),
+
+  // ============================================================
   // LISTAR NÃO CLASSIFICADAS — para painel de classificação manual
   // ============================================================
   listUnclassified: adminProcedure
