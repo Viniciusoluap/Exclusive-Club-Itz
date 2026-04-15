@@ -173,7 +173,10 @@ export const bpoRouter = router({
           dateFrom: z.string().optional(),
           dateTo: z.string().optional(),
           year: z.string().optional(),
-          type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(),
+          month: z.string().optional(),
+          type: z.string().optional(),
+          status: z.string().optional(),
+          search: z.string().optional(),
         })
         .optional()
     )
@@ -181,11 +184,48 @@ export const bpoRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const year = input?.year || new Date().getFullYear().toString();
-      const dateFrom = input?.dateFrom || `${year}-01-01`;
-      const dateTo = input?.dateTo || `${year}-12-31`;
-      const typeFilter = input?.type ? `AND type = '${input.type}'` : "";
+      // Construir condições de filtro — idêntico ao listCharges
+      const conditions: string[] = [];
 
+      const yearFilter = input?.year || "";
+      const monthFilter = input?.month || "";
+      const dateFromFilter = input?.dateFrom || "";
+      const dateToFilter = input?.dateTo || "";
+      const typeVal = input?.type || "all";
+      const statusVal = input?.status || "all";
+      const searchVal = (input?.search || "").replace(/'/g, "''");
+
+      // Filtro de data
+      if (dateFromFilter && dateToFilter) {
+        conditions.push(`due_date BETWEEN '${dateFromFilter}' AND '${dateToFilter}'`);
+      } else if (monthFilter && monthFilter !== "all") {
+        const m = monthFilter.padStart(2, "0");
+        if (yearFilter) {
+          conditions.push(`due_date LIKE '${yearFilter}-${m}-%'`);
+        } else {
+          conditions.push(`MONTH(due_date) = ${parseInt(monthFilter)}`);
+        }
+      } else if (yearFilter) {
+        conditions.push(`due_date LIKE '${yearFilter}-%'`);
+      }
+      // Se não há filtro de data, retorna TODOS os registros
+
+      // Filtro de tipo
+      if (typeVal !== "all" && typeVal) {
+        conditions.push(`type = '${typeVal}'`);
+      }
+
+      // Filtro de busca
+      if (searchVal) {
+        conditions.push(
+          `(client_name LIKE '%${searchVal}%' OR client_email LIKE '%${searchVal}%' OR description LIKE '%${searchVal}%')`
+        );
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+      // Os cards mostram TODOS os status do conjunto filtrado
+      // (não filtramos por status nos cards — o filtro de status é só para a lista)
       const [rows] = (await db.execute(sql.raw(`
         SELECT
           COALESCE(SUM(value), 0) as totalExpected,
@@ -197,7 +237,7 @@ export const bpoRouter = router({
           COUNT(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()) THEN 1 END) as overdueCount,
           COUNT(*) as totalCount
         FROM bpo_charges
-        WHERE due_date BETWEEN '${dateFrom}' AND '${dateTo}' ${typeFilter}
+        ${whereClause}
       `))) as any;
 
       const s = Array.isArray(rows) ? rows[0] : rows;
