@@ -850,8 +850,12 @@ export default function Saas() {
   };
 
   // BPO Stats — fonte única de verdade (bpo_charges)
+  // Os cards de totais usam os mesmos filtros da lista para garantir consistência
   const { data: bpoStats, refetch: refetchBpoStats } = trpc.bpo.getStats.useQuery({
-    year: yearFilter || new Date().getFullYear().toString(),
+    year: yearFilter || undefined,
+    month: monthFilter || undefined,
+    type: typeFilters.length === 1 ? typeFilters[0] : undefined,
+    search: searchQuery || undefined,
   });
 
   const importBpoMutation = trpc.bpo.importFromAsaas.useMutation({

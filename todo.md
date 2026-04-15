@@ -1890,3 +1890,9 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Etapa 7: getStats do bpoRouter — filtro por type adicionado
 - [x] Etapa 8: Pagamentos.tsx — aba "BPO" com botão Reimportar + tabela de classificação manual
 - [x] Correção TypeScript: description/externalReference ?? null no bpoRouter
+
+## Correção BPO Financeiro - Filtros e Reset
+
+- [x] Corrigir bug na lógica de filtros/cards do BPO (valores não batem com filtros ativos)
+- [x] Corrigir query getStats para respeitar filtros de ano/mês/tipo/status
+- [x] Limpar tabela bpo_charges (TRUNCATE) para reimportação manual
