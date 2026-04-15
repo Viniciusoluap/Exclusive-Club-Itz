@@ -1,80 +1,30 @@
 import { getDb } from "./db";
-import { subscriptions, subscriptionCharges, allowedClients } from "../drizzle/schema";
-import { eq, and, lte, gte } from "drizzle-orm";
+import { allowedClients } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
 import { notifyOwner } from "./_core/notification";
+import { sql } from "drizzle-orm";
+
+// NOTA: subscriptions e subscriptionCharges foram removidas do schema.
+// O BPO agora usa bpo_charges como tabela central (importado do Asaas via bpoRouter.importFromAsaas).
+// As automações abaixo foram adaptadas para usar bpo_charges.
 
 /**
  * AUTOMAÇÃO 1: Geração Automática de Mensalidades
  * 
- * Execução sugerida: Diariamente às 00:00
- * 
- * Função: Gera cobranças mensais automaticamente para todas as assinaturas ativas
- * que ainda não possuem cobrança para o mês corrente.
+ * DESATIVADA — O sistema agora importa cobranças diretamente do Asaas via bpoRouter.importFromAsaas.
+ * Use o botão "Importar Histórico" ou "Sincronizar" no BPO Financeiro.
  */
 export async function generateMonthlyCharges() {
-  const db = await getDb();
-  if (!db) {
-    console.error("[Automação] Database não disponível");
-    return { success: false, error: "Database não disponível" };
-  }
-
-  try {
-    // Buscar todas as assinaturas ativas
-    const activeSubscriptions = await db.select()
-      .from(subscriptions)
-      .where(eq(subscriptions.status, 'active'));
-
-    let generated = 0;
-    const now = new Date();
-    const currentMonth = now.toISOString().slice(0, 7); // YYYY-MM
-
-    for (const subscription of activeSubscriptions) {
-      // Verificar se já existe cobrança para o mês corrente
-      const existingCharge = await db.select()
-        .from(subscriptionCharges)
-        .where(
-          and(
-            eq(subscriptionCharges.subscriptionId, subscription.id),
-            gte(subscriptionCharges.dueDate, `${currentMonth}-01`),
-            lte(subscriptionCharges.dueDate, `${currentMonth}-31`)
-          )
-        )
-        .limit(1);
-
-      if (existingCharge.length === 0) {
-        // Calcular data de vencimento (dia do mês da assinatura)
-        const dueDay = subscription.dueDay;
-        const dueDate = new Date(now.getFullYear(), now.getMonth(), dueDay);
-
-        // Criar nova cobrança (idempotente: ignora se já existir pelo índice único subscription_id+due_date)
-        await db.insert(subscriptionCharges).values({
-          subscriptionId: subscription.id,
-          value: subscription.value.toString(),
-          dueDate: dueDate.toISOString().split('T')[0],
-          status: 'pending',
-        }).onDuplicateKeyUpdate({
-          set: { subscriptionId: subscription.id }, // no-op: apenas ignora duplicata silenciosamente
-        });
-
-        generated++;
-      }
-    }
-
-    console.log(`[Automação] ${generated} mensalidades geradas`);
-    return { success: true, generated };
-  } catch (error) {
-    console.error("[Automação] Erro ao gerar mensalidades:", error);
-    return { success: false, error: String(error) };
-  }
+  console.log("[Automação] generateMonthlyCharges desativada — use bpoRouter.importFromAsaas");
+  return { success: true, generated: 0, skipped: 0 };
 }
 
 /**
- * AUTOMAÇÃO 2: Envio de Alertas de Inadimplência
+ * AUTOMAÇÃO 2: Alerta de Inadimplência
  * 
- * Execução sugerida: Diariamente às 09:00
+ * Execução sugerida: Diariamente às 08:00
  * 
- * Função: Identifica cobranças vencidas e envia notificação ao proprietário
- * com lista de inadimplentes.
+ * Função: Notifica o proprietário sobre cobranças vencidas no bpo_charges.
  */
 export async function sendOverdueAlerts() {
   const db = await getDb();
@@ -84,33 +34,26 @@ export async function sendOverdueAlerts() {
   }
 
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
 
-    // Buscar cobranças vencidas
-    const overdueCharges = await db.select({
-      charge: subscriptionCharges,
-      subscription: subscriptions,
-      client: allowedClients,
-    })
-    .from(subscriptionCharges)
-    .innerJoin(subscriptions, eq(subscriptionCharges.subscriptionId, subscriptions.id))
-    .innerJoin(allowedClients, eq(subscriptions.clientId, allowedClients.id))
-    .where(
-      and(
-        lte(subscriptionCharges.dueDate, today),
-        eq(subscriptionCharges.status, 'pending')
-      )
-    );
+    const [overdueRows] = (await db.execute(sql.raw(`
+      SELECT b.id, b.client_name, b.client_email, b.value, b.due_date
+      FROM bpo_charges b
+      WHERE (b.status = 'overdue' OR (b.status = 'pending' AND b.due_date < '${today}'))
+        AND b.due_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      ORDER BY b.due_date ASC
+      LIMIT 50
+    `))) as any;
+
+    const overdueCharges = Array.isArray(overdueRows) ? overdueRows : [];
 
     if (overdueCharges.length > 0) {
-      // Montar mensagem
-      const clientList = overdueCharges.map(item => 
-        `- ${item.client.name} (${item.client.email}): R$ ${(parseFloat(item.charge.value) / 100).toFixed(2)} - Vencimento: ${item.charge.dueDate}`
-      ).join('\n');
+      const clientList = overdueCharges.map((item: any) =>
+        `- ${item.client_name || item.client_email || "Desconhecido"}: R$ ${parseFloat(item.value).toFixed(2)} - Vencimento: ${item.due_date}`
+      ).join("\n");
 
       const message = `🚨 ALERTA DE INADIMPLÊNCIA\n\n${overdueCharges.length} cobrança(s) vencida(s):\n\n${clientList}`;
 
-      // Enviar notificação ao proprietário
       await notifyOwner({
         title: "Inadimplência Detectada",
         content: message,
@@ -143,37 +86,36 @@ export async function sendMonthlyReport() {
   }
 
   try {
-    // Calcular mês anterior
     const now = new Date();
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthStr = lastMonth.toISOString().slice(0, 7);
 
-    // Buscar métricas do mês anterior
-    const totalCharges = await db.select()
-      .from(subscriptionCharges)
-      .where(
-        and(
-          gte(subscriptionCharges.dueDate, `${lastMonthStr}-01`),
-          lte(subscriptionCharges.dueDate, `${lastMonthStr}-31`)
-        )
-      );
+    const [rows] = (await db.execute(sql.raw(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN status IN ('received','confirmed','receivedInCash') THEN 1 ELSE 0 END) as paid_count,
+        SUM(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()) THEN 1 ELSE 0 END) as overdue_count,
+        COALESCE(SUM(CASE WHEN status IN ('received','confirmed','receivedInCash') THEN CAST(amount_paid AS DECIMAL(10,2)) ELSE 0 END), 0) as revenue,
+        COALESCE(SUM(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()) THEN CAST(value AS DECIMAL(10,2)) ELSE 0 END), 0) as overdue_value
+      FROM bpo_charges
+      WHERE due_date LIKE '${lastMonthStr}-%'
+    `))) as any;
 
-    const paidCharges = totalCharges.filter(c => c.status === 'paid');
-    const overdueCharges = totalCharges.filter(c => c.status === 'overdue');
+    const r = Array.isArray(rows) ? rows[0] : rows;
+    const total = parseInt(r?.total ?? "0");
+    const paidCount = parseInt(r?.paid_count ?? "0");
+    const overdueCount = parseInt(r?.overdue_count ?? "0");
+    const revenue = parseFloat(r?.revenue ?? "0");
+    const overdueValue = parseFloat(r?.overdue_value ?? "0");
 
-    const totalRevenue = paidCharges.reduce((sum, c) => sum + parseFloat(c.value), 0);
-    const totalOverdue = overdueCharges.reduce((sum, c) => sum + parseFloat(c.value), 0);
-
-    // Montar relatório
     const message = `📊 RELATÓRIO MENSAL - ${lastMonthStr}\n\n` +
-      `Total de Cobranças: ${totalCharges.length}\n` +
-      `Cobranças Pagas: ${paidCharges.length}\n` +
-      `Cobranças Vencidas: ${overdueCharges.length}\n\n` +
-      `Receita Total: R$ ${(totalRevenue / 100).toFixed(2)}\n` +
-      `Valor em Atraso: R$ ${(totalOverdue / 100).toFixed(2)}\n\n` +
-      `Taxa de Inadimplência: ${totalCharges.length > 0 ? ((overdueCharges.length / totalCharges.length) * 100).toFixed(1) : 0}%`;
+      `Total de Cobranças: ${total}\n` +
+      `Cobranças Pagas: ${paidCount}\n` +
+      `Cobranças Vencidas: ${overdueCount}\n\n` +
+      `Receita Total: R$ ${revenue.toFixed(2)}\n` +
+      `Valor em Atraso: R$ ${overdueValue.toFixed(2)}\n\n` +
+      `Taxa de Inadimplência: ${total > 0 ? ((overdueCount / total) * 100).toFixed(1) : 0}%`;
 
-    // Enviar notificação ao proprietário
     await notifyOwner({
       title: `Relatório Mensal - ${lastMonthStr}`,
       content: message,
@@ -193,7 +135,10 @@ export async function sendMonthlyReport() {
  * Endpoint: POST /api/webhooks/asaas
  * 
  * Função: Recebe notificações do Asaas sobre mudanças de status de pagamento
- * e atualiza automaticamente as cobranças no sistema.
+ * e atualiza automaticamente as cobranças no bpo_charges.
+ * 
+ * NOTA: Esta função é mantida para compatibilidade, mas o handler principal
+ * está em server/_core/index.ts (app.post('/api/webhooks/asaas', ...))
  */
 export async function handleAsaasWebhook(payload: any) {
   const db = await getDb();
@@ -204,41 +149,13 @@ export async function handleAsaasWebhook(payload: any) {
 
   try {
     const { event, payment } = payload;
-
-    if (!payment || !payment.externalReference) {
+    if (!payment?.id) {
       console.error("[Webhook] Payload inválido:", payload);
       return { success: false, error: "Payload inválido" };
     }
 
-    // externalReference deve conter o ID da cobrança
-    const chargeId = parseInt(payment.externalReference);
-
-    // Mapear status do Asaas para status do sistema
-    let newStatus: 'pending' | 'paid' | 'overdue' | 'cancelled' = 'pending';
-    
-    switch (event) {
-      case 'PAYMENT_RECEIVED':
-      case 'PAYMENT_CONFIRMED':
-        newStatus = 'paid';
-        break;
-      case 'PAYMENT_OVERDUE':
-        newStatus = 'overdue';
-        break;
-      case 'PAYMENT_DELETED':
-        newStatus = 'cancelled';
-        break;
-    }
-
-    // Atualizar status da cobrança
-    await db.update(subscriptionCharges)
-      .set({ 
-        status: newStatus,
-        asaasPaymentId: payment.id,
-      })
-      .where(eq(subscriptionCharges.id, chargeId));
-
-    console.log(`[Webhook] Cobrança ${chargeId} atualizada para ${newStatus}`);
-    return { success: true, chargeId, newStatus };
+    console.log(`[Webhook] Evento ${event} para pagamento ${payment.id} — processado pelo handler principal`);
+    return { success: true, event, paymentId: payment.id };
   } catch (error) {
     console.error("[Webhook] Erro ao processar webhook:", error);
     return { success: false, error: String(error) };

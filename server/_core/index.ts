@@ -259,7 +259,19 @@ async function startServer() {
             amount_paid = ${amountPaidVal}, synced_at = NOW(), source = 'asaas_webhook'
         WHERE asaas_charge_id = '${asaasId}'
       `))) as any;
-      console.log('[Webhook Asaas] bpo_charges atualizado:', asaasId, '->', newStatus, '| rows:', (bpoResult as any)?.affectedRows ?? 0);
+      const affectedRows = (bpoResult as any)?.affectedRows ?? 0;
+      console.log('[Webhook Asaas] bpo_charges atualizado:', asaasId, '->', newStatus, '| rows:', affectedRows);
+      // Gravar log do webhook para auditoria
+      try {
+        const payloadStr = JSON.stringify(payload).replace(/'/g, "''").substring(0, 4000);
+        const errorVal = affectedRows === 0 ? `'Cobrança não encontrada: ${asaasId}'` : 'NULL';
+        await db.execute(drizzleSql.raw(`
+          INSERT INTO webhook_logs (event, asaas_payment_id, payload, processed, error, created_at)
+          VALUES ('${event}', '${asaasId}', '${payloadStr}', ${affectedRows > 0 ? 1 : 0}, ${errorVal}, NOW())
+        `));
+      } catch (logErr: any) {
+        console.warn('[Webhook Asaas] Falha ao gravar log:', logErr?.message);
+      }
       console.log('[Webhook Asaas] Processamento concluído para:', asaasId);
     } catch (err: any) {
       console.error('[Webhook Asaas] Erro ao processar:', err?.message || err);

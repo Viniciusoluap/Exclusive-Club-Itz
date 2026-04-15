@@ -58,90 +58,125 @@ function createNonAdminContext(): { ctx: TrpcContext } {
   return { ctx };
 }
 
-describe("saasRouter", () => {
-  describe("list", () => {
-    it("deve permitir admin acessar lista de mensalidades", async () => {
+// bpoRouter — substitui o saasRouter legado
+describe("bpoRouter", () => {
+  describe("getStats", () => {
+    it("deve retornar stats de cobranças para admin", async () => {
       const { ctx } = createAdminContext();
       const caller = appRouter.createCaller(ctx);
 
-      const result = await caller.saas.list();
-      expect(Array.isArray(result)).toBe(true);
-    });
-
-    it("deve negar acesso para não-admin", async () => {
-      const { ctx } = createNonAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      await expect(caller.saas.list()).rejects.toThrow("You do not have required permission");
-    });
-  });
-
-  describe("getInvoiceDashboard", () => {
-    it("deve retornar dashboard de inadimplência para admin", async () => {
-      const { ctx } = createAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const result = await caller.saas.getInvoiceDashboard();
-      
-      expect(result).toHaveProperty("totalPending");
+      const result = await caller.bpo.getStats({});
       expect(result).toHaveProperty("totalPaid");
+      expect(result).toHaveProperty("totalPending");
       expect(result).toHaveProperty("totalOverdue");
-      expect(result).toHaveProperty("pendingCount");
       expect(result).toHaveProperty("paidCount");
+      expect(result).toHaveProperty("pendingCount");
       expect(result).toHaveProperty("overdueCount");
-      expect(result).toHaveProperty("totalExpected");
-      
-      expect(typeof result.totalPending).toBe("number");
       expect(typeof result.totalPaid).toBe("number");
-      expect(typeof result.totalOverdue).toBe("number");
     });
 
     it("deve negar acesso para não-admin", async () => {
       const { ctx } = createNonAdminContext();
       const caller = appRouter.createCaller(ctx);
 
-      await expect(caller.saas.getInvoiceDashboard()).rejects.toThrow("You do not have required permission");
+      await expect(caller.bpo.getStats({})).rejects.toThrow("You do not have required permission");
     });
   });
 
-  describe("getCharges", () => {
+  describe("listCharges", () => {
     it("deve permitir admin listar cobranças", async () => {
       const { ctx } = createAdminContext();
       const caller = appRouter.createCaller(ctx);
 
-      const result = await caller.saas.getCharges({ status: "all" });
-      expect(Array.isArray(result)).toBe(true);
+      const result = await caller.bpo.listCharges({});
+      expect(result).toHaveProperty("items");
+      expect(result).toHaveProperty("total");
+      expect(Array.isArray(result.items)).toBe(true);
     });
 
     it("deve negar acesso para não-admin", async () => {
       const { ctx } = createNonAdminContext();
       const caller = appRouter.createCaller(ctx);
 
-      await expect(caller.saas.getCharges({ status: "all" })).rejects.toThrow("You do not have required permission");
+      await expect(caller.bpo.listCharges({})).rejects.toThrow("You do not have required permission");
     });
   });
 
-  describe("syncWithAsaas", () => {
-    it("deve permitir admin sincronizar com Asaas (acesso permitido)", async () => {
+  describe("listUnclassified", () => {
+    it("deve retornar cobranças não classificadas para admin", async () => {
       const { ctx } = createAdminContext();
       const caller = appRouter.createCaller(ctx);
-      // syncWithAsaas faz chamada real ao Asaas; pode falhar em ambiente de teste sem rede
-      try {
-        const result = await caller.saas.syncWithAsaas();
-        expect(result).toHaveProperty("syncedCount");
-        expect(result).toHaveProperty("errorCount");
-        expect(result).toHaveProperty("success");
-      } catch (e: any) {
-        // Aceitar erro de rede ou Asaas indisponível em ambiente de teste
-        expect(typeof e.message).toBe("string");
-      }
-    }, 30000);
+
+      const result = await caller.bpo.listUnclassified({ limit: 10, offset: 0 });
+      expect(result).toHaveProperty("charges");
+      expect(result).toHaveProperty("total");
+      expect(Array.isArray(result.charges)).toBe(true);
+    });
 
     it("deve negar acesso para não-admin", async () => {
       const { ctx } = createNonAdminContext();
       const caller = appRouter.createCaller(ctx);
 
-      await expect(caller.saas.syncWithAsaas()).rejects.toThrow("You do not have required permission");
+      await expect(caller.bpo.listUnclassified({ limit: 10, offset: 0 })).rejects.toThrow("You do not have required permission");
+    });
+  });
+
+  describe("getDRE", () => {
+    it("deve retornar DRE consolidado para admin", async () => {
+      const { ctx } = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const result = await caller.bpo.getDRE({ year: "2026" });
+      expect(result).toHaveProperty("revenue");
+      expect(result).toHaveProperty("expenses");
+      expect(result).toHaveProperty("netResult");
+      expect(result).toHaveProperty("margin");
+    });
+
+    it("deve negar acesso para não-admin", async () => {
+      const { ctx } = createNonAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      await expect(caller.bpo.getDRE({ year: "2026" })).rejects.toThrow("You do not have required permission");
+    });
+  });
+
+  describe("listWebhookLogs", () => {
+    it("deve retornar logs de webhooks para admin", async () => {
+      const { ctx } = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const result = await caller.bpo.listWebhookLogs({ limit: 10, offset: 0 });
+      expect(result).toHaveProperty("logs");
+      expect(result).toHaveProperty("total");
+      expect(Array.isArray(result.logs)).toBe(true);
+    });
+
+    it("deve negar acesso para não-admin", async () => {
+      const { ctx } = createNonAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      await expect(caller.bpo.listWebhookLogs({ limit: 10, offset: 0 })).rejects.toThrow("You do not have required permission");
+    });
+  });
+
+  describe("getReconciliationReport", () => {
+    it("deve retornar relatório de reconciliação para admin", async () => {
+      const { ctx } = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const result = await caller.bpo.getReconciliationReport();
+      expect(result).toHaveProperty("pendingCharges");
+      expect(result).toHaveProperty("totalPending");
+      expect(result).toHaveProperty("statusStats");
+      expect(Array.isArray(result.pendingCharges)).toBe(true);
+    });
+
+    it("deve negar acesso para não-admin", async () => {
+      const { ctx } = createNonAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      await expect(caller.bpo.getReconciliationReport()).rejects.toThrow("You do not have required permission");
     });
   });
 });
@@ -223,26 +258,7 @@ describe("partial payment logic", () => {
   });
 });
 
-describe("getClientPendingCharges - access control", () => {
-  it("deve negar acesso para não-admin", async () => {
-    const { ctx } = createNonAdminContext();
-    const caller = appRouter.createCaller(ctx);
-
-    await expect(
-      caller.saas.getClientPendingCharges({ clientId: 1 })
-    ).rejects.toThrow("You do not have required permission");
-  });
-
-  it("deve permitir admin buscar cobranças pendentes de um cliente", async () => {
-    const { ctx } = createAdminContext();
-    const caller = appRouter.createCaller(ctx);
-
-    const result = await caller.saas.getClientPendingCharges({ clientId: 999999 });
-    expect(Array.isArray(result)).toBe(true);
-    // Cliente inexistente deve retornar array vazio
-    expect(result.length).toBe(0);
-  });
-});
+// getClientPendingCharges foi removida — substituída por bpo.listCharges com filtro de cliente
 
 // ============================================================
 // Testes da engine de auto-classificação (sem banco de dados)
@@ -303,115 +319,8 @@ describe("autoClassify keyword detection logic", () => {
   });
 });
 
-describe("splitPayment - access control", () => {
-  it("deve negar acesso para não-admin", async () => {
-    const { ctx } = createNonAdminContext();
-    const caller = appRouter.createCaller(ctx);
+// splitPayment foi removida — substituída por bpo.manualClassify
 
-    await expect(
-      caller.saas.splitPayment({
-        asaasChargeId: "pay_test_123",
-        pixValue: 1384.00,
-        splits: [{ chargeId: 1, amount: 700.00 }, { chargeId: 2, amount: 684.00 }],
-      })
-    ).rejects.toThrow("You do not have required permission");
-  });
+// autoClassifySuggestions foi removida — substituída por bpo.manualClassify
 
-  it("deve rejeitar split quando soma excede o valor do Pix", async () => {
-    const { ctx } = createAdminContext();
-    const caller = appRouter.createCaller(ctx);
-
-    await expect(
-      caller.saas.splitPayment({
-        asaasChargeId: "pay_test_no_allocs",
-        pixValue: 1000.00,
-        splits: [
-          { chargeId: 999991, amount: 700.00 },
-          { chargeId: 999992, amount: 400.00 }, // Total: 1100 > 1000
-        ],
-      })
-    ).rejects.toThrow(/excede o valor do Pix/);
-  });
-});
-
-describe("autoClassifySuggestions - access control", () => {
-  it("deve negar acesso para não-admin", async () => {
-    const { ctx } = createNonAdminContext();
-    const caller = appRouter.createCaller(ctx);
-
-    await expect(
-      caller.saas.autoClassifySuggestions({
-        asaasChargeId: "pay_test_456",
-        description: "Abastecimento de combustível",
-        value: 500.00,
-        clientId: 1,
-        dueDate: "2026-03-17",
-      })
-    ).rejects.toThrow("You do not have required permission");
-  });
-
-  it("deve retornar sugestão de tipo 'fuel' para descrição de abastecimento", async () => {
-    const { ctx } = createAdminContext();
-    const caller = appRouter.createCaller(ctx);
-
-    const result = await caller.saas.autoClassifySuggestions({
-      asaasChargeId: "pay_test_456",
-      description: "Abastecimento de combustível - 50 litros",
-      value: 500.00,
-      clientId: 999999, // cliente inexistente
-      dueDate: "2026-03-17",
-    });
-
-    expect(result.suggestedType).toBe("fuel");
-    expect(result.typeConfidence).toBe(90);
-    expect(result.matchingCharges).toEqual([]); // cliente inexistente
-  });
-
-  it("deve retornar tipo null para descrição genérica", async () => {
-    const { ctx } = createAdminContext();
-    const caller = appRouter.createCaller(ctx);
-
-    const result = await caller.saas.autoClassifySuggestions({
-      asaasChargeId: "pay_test_789",
-      description: "Cobrança gerada automaticamente a partir de Pix recebido",
-      value: 1384.00,
-      dueDate: "2026-03-17",
-    });
-
-    expect(result.suggestedType).toBeNull();
-    expect(result.typeConfidence).toBe(0);
-    expect(result.autoClassify).toBe(false);
-  });
-});
-
-describe("autoClassifyAll - access control", () => {
-  it("deve negar acesso para não-admin", async () => {
-    const { ctx } = createNonAdminContext();
-    const caller = appRouter.createCaller(ctx);
-
-    await expect(
-      caller.saas.autoClassifyAll({ confidenceThreshold: 85 })
-    ).rejects.toThrow("You do not have required permission");
-  });
-
-  it("deve validar que confidenceThreshold está entre 0 e 100", async () => {
-    const { ctx } = createAdminContext();
-    const caller = appRouter.createCaller(ctx);
-
-    await expect(
-      caller.saas.autoClassifyAll({ confidenceThreshold: 101 })
-    ).rejects.toThrow();
-
-    await expect(
-      caller.saas.autoClassifyAll({ confidenceThreshold: -1 })
-    ).rejects.toThrow();
-  });
-
-  it("deve ter procedure autoClassifyAll registrada no router", () => {
-    // Verificar que a procedure existe no router sem fazer chamadas à API
-    const { ctx } = createAdminContext();
-    const caller = appRouter.createCaller(ctx);
-    // A procedure deve existir como função
-    expect(typeof caller.saas.autoClassifyAll).toBe("function");
-  });
-});
+// autoClassifyAll foi removida — substituída por bpo.manualClassify (classificação manual por cobrança)
