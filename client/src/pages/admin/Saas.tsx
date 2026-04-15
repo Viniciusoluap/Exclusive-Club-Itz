@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -144,6 +145,8 @@ export default function Saas() {
   const totalCharges = chargesQuery.data?.total ?? 0;
   const totalPages = Math.ceil(totalCharges / PAGE_SIZE);
 
+  const [, navigate] = useLocation();
+
   function clearFilters() {
     setStatusFilter("all");
     setTypeFilter("all");
@@ -164,9 +167,20 @@ export default function Saas() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">BPO Financeiro</h1>
-          <p className="text-sm text-muted-foreground">Gestão de pagamentos e recebimentos</p>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.history.back()}
+            className="shrink-0"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Voltar
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">BPO Financeiro</h1>
+            <p className="text-sm text-muted-foreground">Gestão de pagamentos e recebimentos</p>
+          </div>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button
