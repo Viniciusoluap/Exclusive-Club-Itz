@@ -1877,3 +1877,16 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] UI: modal de confirmação antes de gerar cobrança
 - [x] UI: modal de resultado com link de pagamento Asaas
 - [x] Testes: clientPayments.test.ts (7 testes passando)
+
+## ✅ Reestruturação BPO Financeiro — Banco Central Único (Sessão Atual)
+
+### Etapas concluídas:
+- [x] Etapa 1: Reimportação histórica do Asaas → bpo_charges (2.971 cobranças, 587 classificadas)
+- [x] Etapa 2: MeusAbastecimentos.tsx migrado para trpc.bpo.getMyCharges (types=['fuel'])
+- [x] Etapa 3: PagamentoDanos.tsx migrado para trpc.bpo.getMyCharges (types=['repair'])
+- [x] Etapa 4: Mensalidades.tsx já usava trpc.bpo.getMyCharges — confirmado sem alteração
+- [x] Etapa 5: Abastecimento.tsx (Admin) — card BPO de cobranças de abastecimento adicionado
+- [x] Etapa 6: Vistorias.tsx (Admin) — card BPO de cobranças de reparo adicionado
+- [x] Etapa 7: getStats do bpoRouter — filtro por type adicionado
+- [x] Etapa 8: Pagamentos.tsx — aba "BPO" com botão Reimportar + tabela de classificação manual
+- [x] Correção TypeScript: description/externalReference ?? null no bpoRouter

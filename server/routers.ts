@@ -5435,9 +5435,12 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         const totalRounded = Math.round(total * 100) / 100;
 
         // Montar descrição consolidada
-        const typeLabels = Array.from(new Set((charges as any[]).map((c: any) =>
-          c.type === 'monthly' ? 'Mensalidade' : c.type === 'fuel' ? 'Abastecimento' : c.type === 'repair' ? 'Reparo' : 'Outros'
-        ))).join(', ');
+        const _typeLabelSet = new Set<string>();
+        (charges as any[]).forEach((c: any) => {
+          const label = c.type === 'monthly' ? 'Mensalidade' : c.type === 'fuel' ? 'Abastecimento' : c.type === 'repair' ? 'Reparo' : 'Outros';
+          _typeLabelSet.add(label);
+        });
+        const typeLabels = Array.from(_typeLabelSet).join(', ');
         const description = `Regularização de débitos vencidos — ${typeLabels} (${charges.length} cobrança${charges.length > 1 ? 's' : ''})`;
 
         // Obter ou criar cliente no Asaas
