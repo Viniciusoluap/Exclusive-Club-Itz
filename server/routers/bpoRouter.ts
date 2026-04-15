@@ -173,6 +173,7 @@ export const bpoRouter = router({
           dateFrom: z.string().optional(),
           dateTo: z.string().optional(),
           year: z.string().optional(),
+          type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(),
         })
         .optional()
     )
@@ -183,6 +184,7 @@ export const bpoRouter = router({
       const year = input?.year || new Date().getFullYear().toString();
       const dateFrom = input?.dateFrom || `${year}-01-01`;
       const dateTo = input?.dateTo || `${year}-12-31`;
+      const typeFilter = input?.type ? `AND type = '${input.type}'` : "";
 
       const [rows] = (await db.execute(sql.raw(`
         SELECT
@@ -195,7 +197,7 @@ export const bpoRouter = router({
           COUNT(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()) THEN 1 END) as overdueCount,
           COUNT(*) as totalCount
         FROM bpo_charges
-        WHERE due_date BETWEEN '${dateFrom}' AND '${dateTo}'
+        WHERE due_date BETWEEN '${dateFrom}' AND '${dateTo}' ${typeFilter}
       `))) as any;
 
       const s = Array.isArray(rows) ? rows[0] : rows;
@@ -487,5 +489,205 @@ export const bpoRouter = router({
         .orderBy(bpoCharges.dueDate);
 
       return { charges: rows };
+    }),
+
+  // ============================================================
+  // RESET + REIMPORTAÇÃO COMPLETA DO ASAAS → bpo_charges
+  // Zera a tabela e reimporta todas as cobranças de 01/01/2025
+  // com classificação automática por palavras-chave.
+  // ============================================================
+  resetAndReimport: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    const report = { total: 0, inserted: 0, classified: 0, unclassified: 0, errors: 0 };
+
+    // 1. Zerar a tabela bpo_charges
+    await db.delete(bpoCharges);
+    console.log("[bpo.resetAndReimport] Tabela bpo_charges zerada");
+
+    // 2. Montar mapa asaasCustomerId → cliente local
+    // Fonte A: unclassified_charges (já tem vínculo asaasCustomerId → linkedClientId)
+    const ucLinks = await db.select({
+      asaasCustomerId: unclassifiedCharges.asaasCustomerId,
+      linkedClientId: unclassifiedCharges.linkedClientId,
+      asaasCustomerName: unclassifiedCharges.asaasCustomerName,
+      asaasCustomerEmail: unclassifiedCharges.asaasCustomerEmail,
+    }).from(unclassifiedCharges);
+
+    const clientMap = new Map<string, { id: number; name: string; email: string }>();
+    for (const uc of ucLinks) {
+      if (uc.asaasCustomerId && uc.linkedClientId && !clientMap.has(uc.asaasCustomerId)) {
+        clientMap.set(uc.asaasCustomerId, {
+          id: uc.linkedClientId,
+          name: uc.asaasCustomerName || "",
+          email: uc.asaasCustomerEmail || "",
+        });
+      }
+    }
+
+    // Fonte B: fuelRecords como ponte asaasCustomerId → email → allowedClient
+    const { allowedClients: acTable, fuelRecords: frTable } = await import("../../drizzle/schema");
+    const clients = await db.select().from(acTable);
+    const fuelLinks = await db.select({
+      clientEmail: frTable.clientEmail,
+      asaasCustomerId: frTable.asaasCustomerId,
+    }).from(frTable).where(sql`${frTable.asaasCustomerId} IS NOT NULL`);
+
+    const emailToAsaasId = new Map<string, string>();
+    for (const fr of fuelLinks) {
+      if (fr.clientEmail && fr.asaasCustomerId && !emailToAsaasId.has(fr.clientEmail)) {
+        emailToAsaasId.set(fr.clientEmail, fr.asaasCustomerId);
+      }
+    }
+    for (const client of clients) {
+      const asaasId = emailToAsaasId.get(client.email);
+      if (asaasId && !clientMap.has(asaasId)) {
+        clientMap.set(asaasId, { id: client.id, name: client.name, email: client.email });
+      }
+    }
+
+    // 3. Classificação automática por palavras-chave
+    function autoClassify(description: string | null, externalRef: string | null): {
+      type: "monthly" | "quota_sale" | "fuel" | "repair" | "other";
+      classifiedBy: "auto" | "unclassified";
+    } {
+      const text = `${description || ""} ${externalRef || ""}`.toLowerCase();
+      if (/mensalidade|cota|quota|parcela|contrato|assinatura|subscription/.test(text)) {
+        return { type: "monthly", classifiedBy: "auto" };
+      }
+      if (/abastecimento|combustivel|gasolina|litros|fuel|tanque/.test(text)) {
+        return { type: "fuel", classifiedBy: "auto" };
+      }
+      if (/vistoria|reparo|dano|avaria|reprovacao|conserto|manutencao/.test(text)) {
+        return { type: "repair", classifiedBy: "auto" };
+      }
+      if (/venda|quota_sale|aquisicao|compra.*cota|cota.*compra/.test(text)) {
+        return { type: "quota_sale", classifiedBy: "auto" };
+      }
+      return { type: "other", classifiedBy: "unclassified" };
+    }
+
+    // 4. Paginar todas as cobranças do Asaas a partir de 01/01/2025
+    let offset = 0;
+    const limit = 100;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { charges, hasMore: more } = await listAllAsaasCharges({
+        limit,
+        offset,
+        dueDateGte: "2025-01-01",
+      });
+      hasMore = more;
+      offset += limit;
+
+      for (const charge of charges) {
+        try {
+          const clientInfo = clientMap.get(charge.customer);
+          const normalizedStatus = normalizeBpoStatus(charge.status);
+          const paid = isPaidStatus(normalizedStatus);
+          const { type, classifiedBy } = autoClassify(charge.description ?? null, charge.externalReference ?? null);
+
+          await db.insert(bpoCharges).values({
+            asaasChargeId: charge.id,
+            asaasCustomerId: charge.customer,
+            clientId: clientInfo?.id ?? null,
+            clientName: clientInfo?.name ?? null,
+            clientEmail: clientInfo?.email ?? null,
+            value: String(charge.value),
+            netValue: charge.netValue != null ? String(charge.netValue) : null,
+            amountPaid: paid ? String(charge.value) : "0",
+            dueDate: charge.dueDate,
+            paidDate: charge.paymentDate || null,
+            status: normalizedStatus,
+            type,
+            classifiedBy,
+            billingType: charge.billingType || null,
+            description: charge.description || null,
+            externalReference: charge.externalReference || null,
+            paymentLink: charge.invoiceUrl || null,
+            invoiceUrl: charge.invoiceUrl || null,
+            bankSlipUrl: charge.bankSlipUrl || null,
+            source: "asaas_import",
+            syncedAt: new Date(),
+          });
+
+          report.inserted++;
+          if (classifiedBy === "auto") report.classified++;
+          else report.unclassified++;
+          report.total++;
+        } catch (err: any) {
+          console.error("[bpo.resetAndReimport] Erro:", charge.id, err.message);
+          report.errors++;
+        }
+      }
+
+      if (hasMore) await new Promise((r) => setTimeout(r, 200));
+    }
+
+    console.log("[bpo.resetAndReimport] Concluído:", report);
+    return report;
+  }),
+
+  // ============================================================
+  // CLASSIFICAÇÃO MANUAL — admin reclassifica cobranças 'other'
+  // ============================================================
+  manualClassify: adminProcedure
+    .input(z.object({
+      chargeId: z.number(),
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]),
+      clientEmail: z.string().email().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const updateData: Record<string, any> = {
+        type: input.type,
+        classifiedBy: "manual",
+      };
+
+      if (input.clientEmail) {
+        updateData.clientEmail = input.clientEmail;
+        const { allowedClients: acTable } = await import("../../drizzle/schema");
+        const clientResult = await db.select().from(acTable)
+          .where(eq(acTable.email, input.clientEmail)).limit(1);
+        if (clientResult.length > 0) {
+          updateData.clientId = clientResult[0].id;
+          updateData.clientName = clientResult[0].name;
+        }
+      }
+
+      await db.update(bpoCharges)
+        .set(updateData)
+        .where(eq(bpoCharges.id, input.chargeId));
+
+      return { success: true };
+    }),
+
+  // ============================================================
+  // LISTAR NÃO CLASSIFICADAS — para painel de classificação manual
+  // ============================================================
+  listUnclassified: adminProcedure
+    .input(z.object({
+      limit: z.number().default(50),
+      offset: z.number().default(0),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const charges = await db.select().from(bpoCharges)
+        .where(eq(bpoCharges.classifiedBy, "unclassified"))
+        .orderBy(bpoCharges.dueDate)
+        .limit(input.limit)
+        .offset(input.offset);
+
+      const [countResult] = await db.select({ count: sql<number>`COUNT(*)` })
+        .from(bpoCharges)
+        .where(eq(bpoCharges.classifiedBy, "unclassified"));
+
+      return { charges, total: countResult?.count ?? 0 };
     }),
 });

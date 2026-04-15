@@ -31,6 +31,10 @@ import {
   Webhook,
   Eye,
   Play,
+  Database,
+  Tag,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 export default function Pagamentos() {
@@ -38,6 +42,36 @@ export default function Pagamentos() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [searchEmail, setSearchEmail] = useState("");
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
+
+  // BPO states
+  const [bpoPage, setBpoPage] = useState(0);
+  const BPO_PAGE_SIZE = 20;
+
+  // BPO Queries
+  const bpoUnclassifiedQuery = trpc.bpo.listUnclassified.useQuery({
+    limit: BPO_PAGE_SIZE,
+    offset: bpoPage * BPO_PAGE_SIZE,
+  });
+
+  const bpoImportMutation = trpc.bpo.importFromAsaas.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Importação concluída: ${data.inserted ?? 0} inseridas, ${data.updated ?? 0} atualizadas`);
+      bpoUnclassifiedQuery.refetch();
+    },
+    onError: (error: any) => {
+      toast.error(`Erro na importação: ${error.message}`);
+    },
+  });
+
+  const bpoClassifyMutation = trpc.bpo.manualClassify.useMutation({
+    onSuccess: () => {
+      toast.success("Cobrança classificada!");
+      bpoUnclassifiedQuery.refetch();
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao classificar: ${error.message}`);
+    },
+  });
 
   // Queries
   const paymentsQuery = trpc.payments.adminList.useQuery({
@@ -274,6 +308,10 @@ export default function Pagamentos() {
               <CreditCard className="h-4 w-4 mr-2" />
               Pagamentos
             </TabsTrigger>
+            <TabsTrigger value="bpo">
+              <Database className="h-4 w-4 mr-2" />
+              BPO
+            </TabsTrigger>
             <TabsTrigger value="webhooks">
               <Webhook className="h-4 w-4 mr-2" />
               Webhooks
@@ -394,6 +432,156 @@ export default function Pagamentos() {
                       )}
                     </TableBody>
                   </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* BPO Tab */}
+          <TabsContent value="bpo" className="space-y-4">
+            {/* Header BPO */}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Database className="h-5 w-5 text-blue-600" />
+                      BPO Financeiro — Banco Central
+                    </CardTitle>
+                    <CardDescription>
+                      Cobranças importadas do Asaas. Total não classificadas: {bpoUnclassifiedQuery.data?.total ?? "..."}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    onClick={() => bpoImportMutation.mutate()}
+                    disabled={bpoImportMutation.isPending}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {bpoImportMutation.isPending ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Reimportar do Asaas
+                  </Button>
+                </div>
+              </CardHeader>
+            </Card>
+
+            {/* Tabela de Classificação Manual */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-orange-500" />
+                  Cobranças Não Classificadas
+                </CardTitle>
+                <CardDescription>Classifique manualmente cada cobrança para que aparecerça nos relatórios corretos</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {bpoUnclassifiedQuery.isLoading ? (
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
+                    ))}
+                  </div>
+                ) : bpoUnclassifiedQuery.data?.charges.length === 0 ? (
+                  <div className="text-center py-8">
+                    <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-3" />
+                    <p className="text-muted-foreground">Todas as cobranças estão classificadas!</p>
+                  </div>
+                ) : (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Classificar como</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {bpoUnclassifiedQuery.data?.charges.map((charge) => (
+                          <TableRow key={charge.id}>
+                            <TableCell className="font-mono text-xs">#{charge.id}</TableCell>
+                            <TableCell className="max-w-[200px]">
+                              <p className="truncate text-sm">{charge.description || <span className="text-muted-foreground italic">Sem descrição</span>}</p>
+                              {charge.externalReference && (
+                                <p className="text-xs text-muted-foreground truncate">Ref: {charge.externalReference}</p>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              <p className="truncate max-w-[150px]">{charge.clientName || charge.clientEmail || <span className="text-muted-foreground italic">Desconhecido</span>}</p>
+                            </TableCell>
+                            <TableCell className="font-medium text-sm">
+                              {formatCurrency(parseFloat(charge.value))}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {charge.dueDate ? new Date(charge.dueDate + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
+                            </TableCell>
+                            <TableCell>
+                              {charge.status === 'received' || charge.status === 'confirmed' || charge.status === 'receivedInCash' ? (
+                                <Badge className="bg-green-100 text-green-800 text-xs">Pago</Badge>
+                              ) : charge.status === 'overdue' ? (
+                                <Badge className="bg-red-100 text-red-800 text-xs">Vencido</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs">{charge.status}</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                onValueChange={(value) =>
+                                  bpoClassifyMutation.mutate({
+                                    chargeId: charge.id,
+                                    type: value as any,
+                                  })
+                                }
+                              >
+                                <SelectTrigger className="w-[140px] h-8 text-xs">
+                                  <SelectValue placeholder="Selecionar..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="monthly">Mensalidade</SelectItem>
+                                  <SelectItem value="fuel">Abastecimento</SelectItem>
+                                  <SelectItem value="repair">Reparo</SelectItem>
+                                  <SelectItem value="quota_sale">Venda de Cota</SelectItem>
+                                  <SelectItem value="other">Outro</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    {/* Paginação */}
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <p className="text-sm text-muted-foreground">
+                        Mostrando {bpoPage * BPO_PAGE_SIZE + 1}–{Math.min((bpoPage + 1) * BPO_PAGE_SIZE, bpoUnclassifiedQuery.data?.total ?? 0)} de {bpoUnclassifiedQuery.data?.total ?? 0}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setBpoPage(p => Math.max(0, p - 1))}
+                          disabled={bpoPage === 0}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setBpoPage(p => p + 1)}
+                          disabled={(bpoPage + 1) * BPO_PAGE_SIZE >= (bpoUnclassifiedQuery.data?.total ?? 0)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>

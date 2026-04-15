@@ -1,0 +1,1 @@
+ALTER TABLE `bpo_charges` ADD `classified_by` enum('auto','manual','unclassified') DEFAULT 'unclassified';

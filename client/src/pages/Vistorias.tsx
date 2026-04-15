@@ -72,6 +72,13 @@ export default function Vistorias() {
   const { data: inspections, refetch } = trpcAny.inspections?.list.useQuery({}) || { data: [] };
   const { data: vessels } = trpc.vessels.list.useQuery();
 
+  // BPO: dados financeiros de cobranças de reparo
+  const currentYear = new Date().getFullYear();
+  const { data: bpoRepairStats } = trpc.bpo.getStats.useQuery(
+    { year: String(currentYear), type: 'repair' },
+    { enabled: true }
+  );
+
   const createMutation = trpcAny.inspections?.create.useMutation({
     onSuccess: () => {
       toast.success("Vistoria registrada com sucesso!");
@@ -309,6 +316,40 @@ export default function Vistorias() {
           </div>
         </div>
       </div>
+
+      {/* Card BPO: Cobranças de Reparo */}
+      {bpoRepairStats && (
+        <Card className="mb-6 border-orange-200 bg-orange-50/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ClipboardCheck className="w-4 h-4 text-orange-600" />
+              Cobranças BPO — Reparos ({currentYear})
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">Dados financeiros centralizados de bpo_charges</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="text-center p-2 bg-white rounded-lg border">
+                <p className="text-xs text-muted-foreground">Total Cobrado</p>
+                <p className="font-bold text-sm">R$ {bpoRepairStats.totalExpected.toFixed(2)}</p>
+              </div>
+              <div className="text-center p-2 bg-white rounded-lg border">
+                <p className="text-xs text-muted-foreground">Recebido</p>
+                <p className="font-bold text-sm text-green-600">R$ {bpoRepairStats.totalPaid.toFixed(2)}</p>
+              </div>
+              <div className="text-center p-2 bg-white rounded-lg border">
+                <p className="text-xs text-muted-foreground">Pendente</p>
+                <p className="font-bold text-sm text-yellow-600">R$ {bpoRepairStats.totalPending.toFixed(2)}</p>
+              </div>
+              <div className="text-center p-2 bg-white rounded-lg border">
+                <p className="text-xs text-muted-foreground">Vencido</p>
+                <p className="font-bold text-sm text-red-600">R$ {bpoRepairStats.totalOverdue.toFixed(2)}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">{bpoRepairStats.totalCount} cobranças de reparo no BPO</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Inspections */}
       <div className="space-y-4">

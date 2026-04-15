@@ -84,6 +84,12 @@ export default function Abastecimento() {
   const { data: gallonStock, refetch: refetchGallonStock } = trpcAny.fuelPurchases?.getGallonStock.useQuery() || { data: [] };
   const { data: balanceData } = trpcAny.fuelBudget?.getCurrentBalance.useQuery({ monthYear: currentMonthYear }) || { data: null };
 
+  // BPO: dados financeiros de cobranças de abastecimento
+  const { data: bpoFuelStats } = trpc.bpo.getStats.useQuery(
+    { year: String(selectedYear), type: 'fuel' },
+    { enabled: true }
+  );
+
   useEffect(() => {
     refetch();
   }, [selectedMonth, selectedYear]);
@@ -825,6 +831,40 @@ export default function Abastecimento() {
           )}
         </CardContent>
       </Card>
+
+      {/* Card BPO: Cobranças de Abastecimento */}
+      {bpoFuelStats && (
+        <Card className="mb-6 border-blue-200 bg-blue-50/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Banknote className="w-4 h-4 text-blue-600" />
+              Cobranças BPO — Abastecimentos ({selectedYear})
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">Dados financeiros centralizados de bpo_charges</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="text-center p-2 bg-white rounded-lg border">
+                <p className="text-xs text-muted-foreground">Total Cobrado</p>
+                <p className="font-bold text-sm">R$ {bpoFuelStats.totalExpected.toFixed(2)}</p>
+              </div>
+              <div className="text-center p-2 bg-white rounded-lg border">
+                <p className="text-xs text-muted-foreground">Recebido</p>
+                <p className="font-bold text-sm text-green-600">R$ {bpoFuelStats.totalPaid.toFixed(2)}</p>
+              </div>
+              <div className="text-center p-2 bg-white rounded-lg border">
+                <p className="text-xs text-muted-foreground">Pendente</p>
+                <p className="font-bold text-sm text-yellow-600">R$ {bpoFuelStats.totalPending.toFixed(2)}</p>
+              </div>
+              <div className="text-center p-2 bg-white rounded-lg border">
+                <p className="text-xs text-muted-foreground">Vencido</p>
+                <p className="font-bold text-sm text-red-600">R$ {bpoFuelStats.totalOverdue.toFixed(2)}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">{bpoFuelStats.totalCount} cobranças registradas no BPO</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Botões de Ação */}
       <div className="flex flex-wrap gap-2 mb-6">

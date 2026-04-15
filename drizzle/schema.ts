@@ -487,6 +487,10 @@ export const bpoCharges = mysqlTable("bpo_charges", {
     "monthly", "quota_sale", "fuel", "repair", "other"
   ]).default("other"),
 
+  classifiedBy: mysqlEnum("classified_by", [
+    "auto", "manual", "unclassified"
+  ]).default("unclassified"),
+
   billingType: varchar("billing_type", { length: 32 }),  // PIX, BOLETO, CREDIT_CARD
 
   // Metadados
