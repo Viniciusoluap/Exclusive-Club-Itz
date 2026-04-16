@@ -69,7 +69,7 @@ const MONTHS = [
 export default function Saas() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [yearFilter, setYearFilter] = useState(String(new Date().getFullYear()));
+  const [yearFilter, setYearFilter] = useState("Todos os anos");
   const [monthFilter, setMonthFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [vesselFilter, setVesselFilter] = useState("all");
@@ -316,7 +316,7 @@ export default function Saas() {
   function clearFilters() {
     setStatusFilter("all");
     setTypeFilter("all");
-    setYearFilter(String(new Date().getFullYear()));
+    setYearFilter("Todos os anos");
     setMonthFilter("all");
     setSearch("");
     setVesselFilter("all");
@@ -326,7 +326,7 @@ export default function Saas() {
   const hasFilters =
     statusFilter !== "all" ||
     typeFilter !== "all" ||
-    yearFilter !== String(new Date().getFullYear()) ||
+    yearFilter !== "Todos os anos" ||
     monthFilter !== "all" ||
     search !== "" ||
     vesselFilter !== "all";

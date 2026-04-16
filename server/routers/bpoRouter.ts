@@ -199,12 +199,15 @@ export const bpoRouter = router({
         if (yearFilter) {
           conditions.push(`due_date LIKE '${yearFilter}-${m}-%'`);
         } else {
-          conditions.push(`MONTH(due_date) = ${parseInt(monthFilter)}`);
+          // Todos os anos: filtrar a partir de 2025-01-01 no mês específico
+          conditions.push(`(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(m)})`);
         }
       } else if (yearFilter) {
         conditions.push(`due_date LIKE '${yearFilter}-%'`);
+      } else {
+        // Todos os anos: tudo a partir de 01/01/2025
+        conditions.push(`due_date >= '2025-01-01'`);
       }
-      // Se não há filtro de data, retorna TODOS os registros
 
       // Filtro de tipo
       if (typeVal !== "all" && typeVal) {
@@ -277,7 +280,7 @@ export const bpoRouter = router({
       const statusFilter = input?.status ?? "all";
       const typeFilter = input?.type ?? "all";
       const monthFilter = input?.month;
-      const yearFilter = input?.year ?? new Date().getFullYear().toString();
+      const yearFilter = input?.year; // undefined = todos os anos
       const dateFromFilter = input?.dateFrom;
       const dateToFilter = input?.dateTo;
       const searchFilter = (input?.search ?? "").replace(/'/g, "''");
@@ -291,9 +294,17 @@ export const bpoRouter = router({
         conditions.push(`due_date BETWEEN '${dateFromFilter}' AND '${dateToFilter}'`);
       } else if (monthFilter && monthFilter !== "all") {
         const m = monthFilter.padStart(2, "0");
-        conditions.push(`due_date LIKE '${yearFilter}-${m}-%'`);
-      } else {
+        if (yearFilter) {
+          conditions.push(`due_date LIKE '${yearFilter}-${m}-%'`);
+        } else {
+          // Todos os anos: filtrar a partir de 2025-01-01 no mês específico
+          conditions.push(`(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(m)})`);
+        }
+      } else if (yearFilter) {
         conditions.push(`due_date LIKE '${yearFilter}-%'`);
+      } else {
+        // Todos os anos: tudo a partir de 01/01/2025
+        conditions.push(`due_date >= '2025-01-01'`);
       }
 
       // Filtro de status
