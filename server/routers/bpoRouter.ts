@@ -880,6 +880,7 @@ export const bpoRouter = router({
       startMonth: z.string(), // formato YYYY-MM
       installments: z.number().min(1).max(36).optional().default(1),
       description: z.string().optional(),
+      yearlyAdjustment: z.enum(["manual", "ipca", "igpm"]).optional(),
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
