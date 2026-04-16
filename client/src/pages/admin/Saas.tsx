@@ -127,6 +127,7 @@ export default function Saas() {
     startMonth: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`,
     installments: "1",
     description: "",
+    yearlyAdjustment: "none" as "none" | "ipca" | "igpm" | "manual",
   });
 
   // ── Dialog: Editar Cobrança ──
@@ -909,6 +910,25 @@ export default function Saas() {
               )}
             </div>
 
+            {createForm.type === "monthly" && (
+              <div className="space-y-1">
+                <Label>Reajuste Anual</Label>
+                <Select
+                  value={createForm.yearlyAdjustment}
+                  onValueChange={(v) => setCreateForm(f => ({ ...f, yearlyAdjustment: v as any }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Manual (sem reajuste automático)</SelectItem>
+                    <SelectItem value="ipca">IPCA (~4,5% a.a.)</SelectItem>
+                    <SelectItem value="igpm">IGP-M (~5% a.a.)</SelectItem>
+                    <SelectItem value="manual">Manual (definir manualmente)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Índice de reajuste aplicado nas cobranças de anos futuros</p>
+              </div>
+            )}
+
             <div className="space-y-1">
               <Label>Descrição (opcional)</Label>
               <Input
@@ -940,6 +960,7 @@ export default function Saas() {
                   startMonth: createForm.startMonth,
                   installments: parseInt(createForm.installments),
                   description: createForm.description || undefined,
+                  yearlyAdjustment: createForm.type === "monthly" && createForm.yearlyAdjustment !== "none" ? createForm.yearlyAdjustment as any : undefined,
                 });
               }}
               disabled={createChargeMutation.isPending}
@@ -1598,8 +1619,8 @@ const EXPENSE_STATUS_LABELS: Record<string, { label: string; color: string }> = 
 };
 
 function ExpensesTab() {
-  const [expYear, setExpYear] = useState(String(new Date().getFullYear()));
-  const [expMonth, setExpMonth] = useState(String(new Date().getMonth() + 1));
+  const [expYear, setExpYear] = useState("all");
+  const [expMonth, setExpMonth] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     costCenter: "operational", description: "", recipientName: "",
@@ -1609,13 +1630,22 @@ function ExpensesTab() {
   const utils = trpc.useUtils();
 
   const expensesQuery = trpc.expenses.list.useQuery(
-    { year: expYear, month: expMonth.padStart(2, "0") },
+    { year: expYear !== "all" ? expYear : undefined, month: expMonth !== "all" ? expMonth.padStart(2, "0") : undefined },
     { refetchOnWindowFocus: false }
   );
   const expenseStatsQuery = trpc.expenses.stats.useQuery(
-    { year: expYear, month: expMonth.padStart(2, "0") },
+    { year: expYear !== "all" ? expYear : undefined, month: expMonth !== "all" ? expMonth.padStart(2, "0") : undefined },
     { refetchOnWindowFocus: false }
   );
+
+  const importFromAsaasMutation = trpc.expenses.importFromAsaas.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Importação concluída: ${data.imported} despesa(s) inserida(s)`);
+      utils.expenses.list.invalidate();
+      utils.expenses.stats.invalidate();
+    },
+    onError: (err) => toast.error(`Erro na importação: ${err.message}`),
+  });
 
   const createMutation = trpc.expenses.create.useMutation({
     onSuccess: () => {
@@ -1653,23 +1683,37 @@ function ExpensesTab() {
     <div className="space-y-4">
       {/* Filtros */}
       <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Select value={expYear} onValueChange={setExpYear}>
-            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {["2024","2025","2026","2027"].map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+              <SelectItem value="all">Todos os anos</SelectItem>
+              {["2025","2026","2027"].map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={expMonth} onValueChange={setExpMonth}>
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {MONTHS.filter(m => m.value !== "all").map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+              {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
-        <Button size="sm" onClick={() => setShowForm(v => !v)}>
-          {showForm ? "Cancelar" : "+ Nova Despesa"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => importFromAsaasMutation.mutate()}
+            disabled={importFromAsaasMutation.isPending}
+          >
+            {importFromAsaasMutation.isPending
+              ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              : <Download className="h-4 w-4 mr-2" />}
+            Importar do Asaas
+          </Button>
+          <Button size="sm" onClick={() => setShowForm(v => !v)}>
+            {showForm ? "Cancelar" : "+ Nova Despesa"}
+          </Button>
+        </div>
       </div>
 
       {/* Cards de stats */}
