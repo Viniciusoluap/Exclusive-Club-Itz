@@ -384,64 +384,6 @@ export default function Saas() {
         </div>
       </div>
 
-      {/* Cards de totais */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <DollarSign className="h-4 w-4" /> Total Esperado
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {statsQuery.isLoading ? "..." : fmt(stats?.totalExpected ?? 0)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-500" /> Recebido
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-green-600">
-              {statsQuery.isLoading ? "..." : fmt(stats?.totalPaid ?? 0)}
-            </p>
-            <p className="text-xs text-muted-foreground">{stats?.paidCount ?? 0} cobrança(s)</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Clock className="h-4 w-4 text-yellow-500" /> Pendente
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-yellow-600">
-              {statsQuery.isLoading ? "..." : fmt(stats?.totalPending ?? 0)}
-            </p>
-            <p className="text-xs text-muted-foreground">{stats?.pendingCount ?? 0} cobrança(s)</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-500" /> Vencido
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-red-600">
-              {statsQuery.isLoading ? "..." : fmt(stats?.totalOverdue ?? 0)}
-            </p>
-            <p className="text-xs text-muted-foreground">{stats?.overdueCount ?? 0} cobrança(s)</p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Tabs */}
       <Tabs defaultValue="charges">
         <TabsList className="flex-wrap h-auto gap-1">
@@ -462,6 +404,64 @@ export default function Saas() {
 
         {/* ── Tab: Cobranças ── */}
         <TabsContent value="charges" className="space-y-4">
+          {/* Cards de totais — apenas na aba Cobranças */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" /> Total Esperado
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">
+                  {statsQuery.isLoading ? "..." : fmt(stats?.totalExpected ?? 0)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-green-500" /> Recebido
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-green-600">
+                  {statsQuery.isLoading ? "..." : fmt(stats?.totalPaid ?? 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">{stats?.paidCount ?? 0} cobrança(s)</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-yellow-500" /> Pendente
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {statsQuery.isLoading ? "..." : fmt(stats?.totalPending ?? 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">{stats?.pendingCount ?? 0} cobrança(s)</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-500" /> Vencido
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-red-600">
+                  {statsQuery.isLoading ? "..." : fmt(stats?.totalOverdue ?? 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">{stats?.overdueCount ?? 0} cobrança(s)</p>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
             <CardContent className="pt-4 space-y-4">
               {/* Filtros de status */}
