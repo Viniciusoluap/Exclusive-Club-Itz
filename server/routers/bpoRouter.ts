@@ -7,7 +7,7 @@
 import { z } from "zod";
 import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { bpoCharges, allowedClients as acTable, vessels as vesselsTable } from "../../drizzle/schema";
+import { bpoCharges, allowedClients as acTable, vessels as vesselsTable, clientQuotas } from "../../drizzle/schema";
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers, createPixCharge, getOrCreateAsaasCustomer, cancelCharge, receiveInCash } from "../_core/asaasService";// ============================================================
 // Helper: normalizar status do Asaas para enum bpo_charges
 // ============================================================
@@ -326,18 +326,56 @@ export const bpoRouter = router({
         );
       }
 
-      // Filtro por embarcação
-      const vesselNameFilter = (input?.vesselName ?? "").replace(/'/g, "''");
-      if (vesselNameFilter) {
-        conditions.push(`description LIKE '%${vesselNameFilter}%'`);
+      // Filtro por embarcação — via client_quotas (clientes com cota ativa na embarcação)
+      if (input?.vesselName) {
+        // Buscar o vessel_id pelo nome
+        const [vesselRows] = (await db.execute(sql.raw(
+          `SELECT id FROM vessels WHERE name = '${input.vesselName.replace(/'/g, "''")}' LIMIT 1`
+        ))) as any;
+        const vesselRow = Array.isArray(vesselRows) ? vesselRows[0] : null;
+        if (vesselRow?.id) {
+          // Buscar client_ids com cota ativa nessa embarcação, ordenados por quota_number
+          const [quotaRows] = (await db.execute(sql.raw(
+            `SELECT DISTINCT cq.client_id, ac.email
+             FROM client_quotas cq
+             JOIN allowed_clients ac ON ac.id = cq.client_id
+             WHERE cq.vessel_id = ${vesselRow.id} AND cq.is_active = 1
+             ORDER BY cq.quota_number ASC`
+          ))) as any;
+          const quotaEmails: string[] = Array.isArray(quotaRows)
+            ? quotaRows.map((r: any) => `'${r.email.replace(/'/g, "''")}'`)
+            : [];
+          if (quotaEmails.length > 0) {
+            conditions.push(`client_email IN (${quotaEmails.join(",")})`);
+          } else {
+            // Nenhum cotista nessa embarcação — retornar vazio
+            conditions.push(`1 = 0`);
+          }
+        } else {
+          conditions.push(`1 = 0`);
+        }
       }
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+      // Ordenar por quota_number quando filtro por embarcação estiver ativo
+      let orderBy = "ORDER BY due_date DESC";
+      if (input?.vesselName) {
+        orderBy = `ORDER BY (
+          SELECT cq.quota_number FROM client_quotas cq
+          JOIN allowed_clients ac ON ac.id = cq.client_id
+          JOIN vessels v ON v.id = cq.vessel_id
+          WHERE ac.email = bpo_charges.client_email
+            AND v.name = '${(input.vesselName ?? "").replace(/'/g, "''")}'
+            AND cq.is_active = 1
+          LIMIT 1
+        ) ASC, due_date DESC`;
+      }
+
       const [rows] = (await db.execute(sql.raw(`
         SELECT * FROM bpo_charges
         ${whereClause}
-        ORDER BY due_date DESC
+        ${orderBy}
         LIMIT ${limitVal} OFFSET ${offsetVal}
       `))) as any;
 
@@ -1508,11 +1546,13 @@ export const bpoRouter = router({
     .query(async () => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      const list = await db.select({
-        id: vesselsTable.id,
-        name: vesselsTable.name,
-      }).from(vesselsTable)
-        .orderBy(vesselsTable.name);
-      return list;
+      // Retornar apenas embarcações que tenham pelo menos um cotista ativo
+      const [rows] = (await db.execute(sql.raw(`
+        SELECT DISTINCT v.id, v.name
+        FROM vessels v
+        INNER JOIN client_quotas cq ON cq.vessel_id = v.id AND cq.is_active = 1
+        ORDER BY v.name ASC
+      `))) as any;
+      return Array.isArray(rows) ? rows : [];
     }),
 });
