@@ -8,8 +8,7 @@ import { z } from "zod";
 import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { bpoCharges, allowedClients as acTable } from "../../drizzle/schema";
-import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
-import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers, createPixCharge, getOrCreateAsaasCustomer, cancelCharge } from "../_core/asaasService";// ============================================================
+import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers, createPixCharge, getOrCreateAsaasCustomer, cancelCharge, receiveInCash } from "../_core/asaasService";// ============================================================
 // Helper: normalizar status do Asaas para enum bpo_charges
 // ============================================================
 export function normalizeBpoStatus(
@@ -1036,5 +1035,222 @@ export const bpoRouter = router({
       await db.delete(bpoCharges).where(eq(bpoCharges.id, input.chargeId));
 
       return { success: true, message: "Cobrança excluída com sucesso" };
+    }),
+
+  // ============================================================
+  // DAR BAIXA MANUAL — confirma recebimento em dinheiro/manual
+  // Chama receiveInCash no Asaas e atualiza status no banco
+  // ============================================================
+  markAsPaid: adminProcedure
+    .input(z.object({
+      chargeId: z.number(),
+      paymentDate: z.string().optional(), // YYYY-MM-DD, padrão = hoje
+      value: z.number().optional(),       // Se omitido, usa valor total da cobrança
+      notifyCustomer: z.boolean().optional().default(false),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const rows = await db.select().from(bpoCharges)
+        .where(eq(bpoCharges.id, input.chargeId)).limit(1);
+      if (rows.length === 0) throw new Error("Cobrança não encontrada");
+
+      const charge = rows[0];
+      const paymentDate = input.paymentDate || new Date().toISOString().split('T')[0];
+      const paidValue = input.value ?? parseFloat(String(charge.value));
+
+      // Tentar confirmar no Asaas se tiver ID
+      if (charge.asaasChargeId) {
+        const result = await receiveInCash({
+          asaasPaymentId: charge.asaasChargeId,
+          paymentDate,
+          value: paidValue,
+          notifyCustomer: input.notifyCustomer,
+        });
+        if (!result.success) {
+          console.warn("[bpo.markAsPaid] Falha no Asaas:", result.error);
+          // Continua mesmo se falhar no Asaas — atualiza banco local
+        }
+      }
+
+      await db.update(bpoCharges)
+        .set({
+          status: "receivedInCash",
+          amountPaid: String(paidValue),
+          paidDate: paymentDate,
+          updatedAt: new Date(),
+        })
+        .where(eq(bpoCharges.id, input.chargeId));
+
+      return {
+        success: true,
+        message: `Baixa registrada com sucesso! Valor: R$ ${paidValue.toFixed(2)}`,
+      };
+    }),
+
+  // ============================================================
+  // PAGAMENTO PARCIAL — acumula amountPaid, status partiallyPaid
+  // Quando amountPaid >= value, muda para receivedInCash
+  // ============================================================
+  registerPartialPayment: adminProcedure
+    .input(z.object({
+      chargeId: z.number(),
+      value: z.number(),              // Valor recebido neste pagamento
+      asaasChargeId: z.string().optional(), // ID do PIX no Asaas (opcional)
+      paymentDate: z.string().optional(),   // YYYY-MM-DD
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const rows = await db.select().from(bpoCharges)
+        .where(eq(bpoCharges.id, input.chargeId)).limit(1);
+      if (rows.length === 0) throw new Error("Cobrança não encontrada");
+
+      const charge = rows[0];
+      const chargeValue = parseFloat(String(charge.value));
+      const currentAmountPaid = parseFloat(String(charge.amountPaid || '0'));
+      const newAmountPaid = currentAmountPaid + input.value;
+
+      // Atualizar paymentLinks (JSON array de IDs Asaas vinculados)
+      let paymentLinks: string[] = [];
+      try {
+        paymentLinks = charge.paymentLinks ? JSON.parse(charge.paymentLinks) : [];
+      } catch { paymentLinks = []; }
+      if (input.asaasChargeId && !paymentLinks.includes(input.asaasChargeId)) {
+        paymentLinks.push(input.asaasChargeId);
+      }
+
+      const isPaid = newAmountPaid >= chargeValue - 0.01; // tolerância 1 centavo
+      const newStatus = isPaid ? "receivedInCash" : "partiallyPaid";
+      const paymentDate = input.paymentDate || new Date().toISOString().split('T')[0];
+      const remaining = Math.max(0, chargeValue - newAmountPaid);
+
+      await db.update(bpoCharges)
+        .set({
+          status: newStatus,
+          amountPaid: newAmountPaid.toFixed(2),
+          paymentLinks: JSON.stringify(paymentLinks),
+          ...(isPaid ? { paidDate: paymentDate } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(bpoCharges.id, input.chargeId));
+
+      return {
+        success: true,
+        isPaid,
+        newAmountPaid,
+        remaining,
+        message: isPaid
+          ? `Cobrança quitada! Total recebido: R$ ${newAmountPaid.toFixed(2)}`
+          : `Pagamento parcial registrado. Recebido: R$ ${newAmountPaid.toFixed(2)} de R$ ${chargeValue.toFixed(2)}. Saldo: R$ ${remaining.toFixed(2)}`,
+      };
+    }),
+
+  // ============================================================
+  // SPLIT DE PIX — distribui 1 PIX entre N cobranças bpo_charges
+  // ============================================================
+  splitPayment: adminProcedure
+    .input(z.object({
+      pixValue: z.number(),           // Valor total do PIX recebido
+      asaasChargeId: z.string().optional(), // ID do PIX no Asaas
+      paymentDate: z.string().optional(),
+      splits: z.array(z.object({
+        chargeId: z.number(),         // ID da bpo_charge a quitar
+        amount: z.number(),           // Valor a alocar nesta cobrança
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Validar: soma dos splits não pode exceder o valor do PIX
+      const totalAllocated = input.splits.reduce((sum, s) => sum + s.amount, 0);
+      if (totalAllocated > input.pixValue + 0.01) {
+        throw new Error(
+          `Soma dos valores (R$ ${totalAllocated.toFixed(2)}) excede o PIX (R$ ${input.pixValue.toFixed(2)})`
+        );
+      }
+
+      const paymentDate = input.paymentDate || new Date().toISOString().split('T')[0];
+      const results: Array<{ chargeId: number; status: string; message: string }> = [];
+
+      for (const split of input.splits) {
+        const rows = await db.select().from(bpoCharges)
+          .where(eq(bpoCharges.id, split.chargeId)).limit(1);
+        if (rows.length === 0) {
+          results.push({ chargeId: split.chargeId, status: "error", message: "Cobrança não encontrada" });
+          continue;
+        }
+
+        const charge = rows[0];
+        const chargeValue = parseFloat(String(charge.value));
+        const currentAmountPaid = parseFloat(String(charge.amountPaid || '0'));
+        const newAmountPaid = currentAmountPaid + split.amount;
+
+        // Atualizar paymentLinks
+        let paymentLinks: string[] = [];
+        try { paymentLinks = charge.paymentLinks ? JSON.parse(charge.paymentLinks) : []; } catch { paymentLinks = []; }
+        if (input.asaasChargeId && !paymentLinks.includes(input.asaasChargeId)) {
+          paymentLinks.push(input.asaasChargeId);
+        }
+
+        const isPaid = newAmountPaid >= chargeValue - 0.01;
+        const newStatus = isPaid ? "receivedInCash" : "partiallyPaid";
+        const remaining = Math.max(0, chargeValue - newAmountPaid);
+
+        await db.update(bpoCharges)
+          .set({
+            status: newStatus,
+            amountPaid: newAmountPaid.toFixed(2),
+            paymentLinks: JSON.stringify(paymentLinks),
+            ...(isPaid ? { paidDate: paymentDate } : {}),
+            updatedAt: new Date(),
+          })
+          .where(eq(bpoCharges.id, split.chargeId));
+
+        results.push({
+          chargeId: split.chargeId,
+          status: isPaid ? "paid" : "partial",
+          message: isPaid
+            ? `Quitada (R$ ${newAmountPaid.toFixed(2)})`
+            : `Parcial — Saldo: R$ ${remaining.toFixed(2)}`,
+        });
+      }
+
+      return {
+        success: true,
+        results,
+        totalAllocated,
+        unallocated: Math.max(0, input.pixValue - totalAllocated),
+        paidCount: results.filter(r => r.status === 'paid').length,
+        partialCount: results.filter(r => r.status === 'partial').length,
+        message: `${results.filter(r => r.status === 'paid').length} cobrança(s) quitada(s), ${results.filter(r => r.status === 'partial').length} parcial(is)`,
+      };
+    }),
+
+  // ============================================================
+  // BUSCAR COBRANÇAS PENDENTES DE UM CLIENTE — para split/parcial
+  // ============================================================
+  getClientPendingCharges: adminProcedure
+    .input(z.object({
+      clientId: z.number(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [rows] = (await db.execute(sql.raw(`
+        SELECT id, due_date as dueDate, value, amount_paid as amountPaid,
+               status, type, description, asaas_charge_id as asaasChargeId
+        FROM bpo_charges
+        WHERE client_id = ${input.clientId}
+          AND status IN ('pending', 'overdue', 'partiallyPaid')
+        ORDER BY due_date ASC
+        LIMIT 50
+      `))) as any;
+
+      return Array.isArray(rows) ? rows : [];
     }),
 });

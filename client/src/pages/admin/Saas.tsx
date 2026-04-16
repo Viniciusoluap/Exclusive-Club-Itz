@@ -13,7 +13,7 @@ import {
   RefreshCw, Download, Search, ChevronLeft, ChevronRight,
   CheckCircle2, Loader2, RotateCcw, BarChart3, Webhook,
   GitCompare, Receipt, TrendingDown, Activity, AlertCircle,
-  Pencil, Trash2, Plus
+  Pencil, Trash2, Plus, CreditCard, Scissors, HandCoins
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -138,6 +138,34 @@ export default function Saas() {
     description: "",
   });
 
+  // ── Dialog: Dar Baixa ──
+  const [markPaidCharge, setMarkPaidCharge] = useState<any>(null);
+  const [markPaidForm, setMarkPaidForm] = useState({
+    paymentDate: new Date().toISOString().split('T')[0],
+    value: "",
+  });
+
+  // ── Dialog: Pagamento Parcial ──
+  const [partialCharge, setPartialCharge] = useState<any>(null);
+  const [partialForm, setPartialForm] = useState({
+    value: "",
+    paymentDate: new Date().toISOString().split('T')[0],
+  });
+
+  // ── Dialog: Split de PIX ──
+  const [showSplitDialog, setShowSplitDialog] = useState(false);
+  const [splitPixCharge, setSplitPixCharge] = useState<any>(null); // cobrança do Asaas origem
+  const [splitForm, setSplitForm] = useState({
+    pixValue: "",
+    paymentDate: new Date().toISOString().split('T')[0],
+    splits: [] as Array<{ chargeId: number; clientName: string; value: number; chargeValue: number; dueDate: string; amount: string }>,
+  });
+  const [splitClientId, setSplitClientId] = useState("");
+  const pendingChargesQuery = trpc.bpo.getClientPendingCharges.useQuery(
+    { clientId: parseInt(splitClientId) },
+    { enabled: showSplitDialog && !!splitClientId && !isNaN(parseInt(splitClientId)), refetchOnWindowFocus: false }
+  );
+
   // ── Lista de clientes para o formulário ──
   const clientsQuery = trpc.allowedClients.list.useQuery(
     undefined,
@@ -171,6 +199,39 @@ export default function Saas() {
       utils.bpo.listCharges.invalidate();
     },
     onError: (err) => toast.error(`Erro ao excluir: ${err.message}`),
+  });
+
+  const markAsPaidMutation = trpc.bpo.markAsPaid.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setMarkPaidCharge(null);
+      utils.bpo.getStats.invalidate();
+      utils.bpo.listCharges.invalidate();
+    },
+    onError: (err) => toast.error(`Erro ao dar baixa: ${err.message}`),
+  });
+
+  const registerPartialMutation = trpc.bpo.registerPartialPayment.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setPartialCharge(null);
+      utils.bpo.getStats.invalidate();
+      utils.bpo.listCharges.invalidate();
+    },
+    onError: (err) => toast.error(`Erro no pagamento parcial: ${err.message}`),
+  });
+
+  const splitPaymentMutation = trpc.bpo.splitPayment.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setShowSplitDialog(false);
+      setSplitForm({ pixValue: "", paymentDate: new Date().toISOString().split('T')[0], splits: [] });
+      setSplitClientId("");
+      utils.bpo.getStats.invalidate();
+      utils.bpo.listCharges.invalidate();
+      utils.bpo.listUnclassified.invalidate();
+    },
+    onError: (err) => toast.error(`Erro no split: ${err.message}`),
   });
 
   function handleEditClick(charge: any) {
@@ -500,7 +561,7 @@ export default function Saas() {
                           {charge.paid_date && ` · Pago: ${charge.paid_date}`}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                         <div className="text-right">
                           <p className="font-semibold">{fmt(parseFloat(charge.value ?? "0"))}</p>
                           {charge.amount_paid &&
@@ -511,27 +572,60 @@ export default function Saas() {
                               </p>
                             )}
                         </div>
-                        <div className="flex flex-col gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-blue-600"
-                            onClick={() => handleEditClick(charge)}
-                            title="Editar cobrança"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-red-600"
-                            onClick={() => handleDeleteClick(charge)}
-                            disabled={deleteChargeMutation.isPending}
-                            title="Excluir cobrança"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                        {(charge.status === "pending" || charge.status === "overdue") && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs text-green-700 hover:text-green-800 hover:bg-green-50 px-2"
+                              onClick={() => {
+                                setMarkPaidCharge(charge);
+                                setMarkPaidForm({
+                                  paymentDate: new Date().toISOString().split('T')[0],
+                                  value: String(charge.value ?? ""),
+                                });
+                              }}
+                              title="Dar baixa (recebido)"
+                            >
+                              <HandCoins className="h-3.5 w-3.5 mr-1" />Dar Baixa
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs text-orange-700 hover:text-orange-800 hover:bg-orange-50 px-2"
+                              onClick={() => {
+                                setPartialCharge(charge);
+                                setPartialForm({
+                                  value: "",
+                                  paymentDate: new Date().toISOString().split('T')[0],
+                                });
+                              }}
+                              title="Registrar pagamento parcial"
+                            >
+                              <CreditCard className="h-3.5 w-3.5 mr-1" />Parcial
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-blue-600"
+                          onClick={() => handleEditClick(charge)}
+                          disabled={updateChargeMutation.isPending}
+                          title="Editar cobrança"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-red-600"
+                          onClick={() => handleDeleteClick(charge)}
+                          disabled={deleteChargeMutation.isPending}
+                          title="Excluir cobrança"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -688,6 +782,14 @@ export default function Saas() {
                 {unclassifiedQuery.data?.total ?? 0} cobrança(s) aguardando classificação
               </p>
             </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-purple-700 border-purple-300 hover:bg-purple-50"
+              onClick={() => { setShowSplitDialog(true); setSplitPixCharge(null); setSplitForm({ pixValue: "", paymentDate: new Date().toISOString().split('T')[0], splits: [] }); setSplitClientId(""); }}
+            >
+              <Scissors className="h-3.5 w-3.5 mr-1" />Split de PIX
+            </Button>
           </div>
 
           {unclassifiedQuery.isLoading ? (
@@ -848,6 +950,266 @@ export default function Saas() {
               ) : (
                 <><Plus className="h-4 w-4 mr-2" />Criar Cobrança</>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Dialog: Dar Baixa ─── */}
+      <Dialog open={!!markPaidCharge} onOpenChange={(open) => { if (!open) setMarkPaidCharge(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HandCoins className="h-5 w-5 text-green-600" />Dar Baixa
+            </DialogTitle>
+          </DialogHeader>
+          {markPaidCharge && (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Cliente: <strong>{markPaidCharge.client_name ?? markPaidCharge.client_email ?? "Desconhecido"}</strong>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Valor original: <strong>{fmt(parseFloat(markPaidCharge.value ?? "0"))}</strong>
+              </p>
+              <div className="space-y-1">
+                <Label>Valor Recebido (R$)</Label>
+                <Input
+                  type="number" step="0.01" min="0.01"
+                  value={markPaidForm.value}
+                  onChange={(e) => setMarkPaidForm(f => ({ ...f, value: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Data do Pagamento</Label>
+                <Input
+                  type="date"
+                  value={markPaidForm.paymentDate}
+                  onChange={(e) => setMarkPaidForm(f => ({ ...f, paymentDate: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMarkPaidCharge(null)}>Cancelar</Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => {
+                if (!markPaidCharge) return;
+                if (!markPaidForm.value || parseFloat(markPaidForm.value) <= 0) return toast.error("Informe o valor recebido");
+                markAsPaidMutation.mutate({
+                  chargeId: markPaidCharge.id,
+                  paymentDate: markPaidForm.paymentDate,
+                  value: parseFloat(markPaidForm.value),
+                });
+              }}
+              disabled={markAsPaidMutation.isPending}
+            >
+              {markAsPaidMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              Confirmar Baixa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Dialog: Pagamento Parcial ─── */}
+      <Dialog open={!!partialCharge} onOpenChange={(open) => { if (!open) setPartialCharge(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-orange-600" />Pagamento Parcial
+            </DialogTitle>
+          </DialogHeader>
+          {partialCharge && (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Cliente: <strong>{partialCharge.client_name ?? partialCharge.client_email ?? "Desconhecido"}</strong>
+              </p>
+              <div className="flex gap-4 text-sm">
+                <span>Total: <strong>{fmt(parseFloat(partialCharge.value ?? "0"))}</strong></span>
+                {partialCharge.amount_paid && parseFloat(partialCharge.amount_paid) > 0 && (
+                  <span className="text-green-700">Já pago: <strong>{fmt(parseFloat(partialCharge.amount_paid))}</strong></span>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label>Valor Recebido Agora (R$)</Label>
+                <Input
+                  type="number" step="0.01" min="0.01"
+                  placeholder="0,00"
+                  value={partialForm.value}
+                  onChange={(e) => setPartialForm(f => ({ ...f, value: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Data do Pagamento</Label>
+                <Input
+                  type="date"
+                  value={partialForm.paymentDate}
+                  onChange={(e) => setPartialForm(f => ({ ...f, paymentDate: e.target.value }))}
+                />
+              </div>
+              {partialForm.value && parseFloat(partialForm.value) > 0 && (
+                <p className="text-xs text-muted-foreground bg-orange-50 border border-orange-200 rounded p-2">
+                  Saldo restante após este pagamento:{" "}
+                  <strong className="text-orange-700">
+                    {fmt(Math.max(0, parseFloat(partialCharge.value ?? "0") - (parseFloat(partialCharge.amount_paid ?? "0") + parseFloat(partialForm.value))))}
+                  </strong>
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPartialCharge(null)}>Cancelar</Button>
+            <Button
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+              onClick={() => {
+                if (!partialCharge) return;
+                if (!partialForm.value || parseFloat(partialForm.value) <= 0) return toast.error("Informe o valor recebido");
+                registerPartialMutation.mutate({
+                  chargeId: partialCharge.id,
+                  value: parseFloat(partialForm.value),
+                  paymentDate: partialForm.paymentDate,
+                });
+              }}
+              disabled={registerPartialMutation.isPending}
+            >
+              {registerPartialMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
+              Registrar Pagamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Dialog: Split de PIX ─── */}
+      <Dialog open={showSplitDialog} onOpenChange={(open) => { if (!open) { setShowSplitDialog(false); setSplitClientId(""); setSplitForm({ pixValue: "", paymentDate: new Date().toISOString().split('T')[0], splits: [] }); } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Scissors className="h-5 w-5 text-purple-600" />Split de PIX
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">Distribua um pagamento PIX recebido entre múltiplas cobranças.</p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Valor Total do PIX (R$)</Label>
+                <Input
+                  type="number" step="0.01" min="0.01"
+                  placeholder="0,00"
+                  value={splitForm.pixValue}
+                  onChange={(e) => setSplitForm(f => ({ ...f, pixValue: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Data do Pagamento</Label>
+                <Input
+                  type="date"
+                  value={splitForm.paymentDate}
+                  onChange={(e) => setSplitForm(f => ({ ...f, paymentDate: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Buscar Cobranças por Cliente</Label>
+              <Select value={splitClientId} onValueChange={(v) => { setSplitClientId(v); setSplitForm(f => ({ ...f, splits: [] })); }}>
+                <SelectTrigger><SelectValue placeholder="Selecione o cliente..." /></SelectTrigger>
+                <SelectContent>
+                  {(clientsQuery.data ?? []).map((c: any) => (
+                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {splitClientId && pendingChargesQuery.isLoading && (
+              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            )}
+
+            {splitClientId && !pendingChargesQuery.isLoading && (pendingChargesQuery.data ?? []).length > 0 && (
+              <div className="space-y-2">
+                <Label>Cobranças Pendentes/Vencidas</Label>
+                {(pendingChargesQuery.data ?? []).map((c: any) => {
+                  const alreadyAdded = splitForm.splits.find(s => s.chargeId === c.id);
+                  return (
+                    <div key={c.id} className={`flex items-center justify-between p-2 rounded border text-sm ${alreadyAdded ? 'bg-green-50 border-green-200' : 'bg-muted/30'}`}>
+                      <div>
+                        <p className="font-medium">{c.description || TYPE_LABELS[c.type] || c.type}</p>
+                        <p className="text-xs text-muted-foreground">Venc: {c.due_date} · {fmt(parseFloat(c.value ?? "0"))}</p>
+                      </div>
+                      {alreadyAdded ? (
+                        <Button size="sm" variant="ghost" className="text-xs text-red-600 h-7"
+                          onClick={() => setSplitForm(f => ({ ...f, splits: f.splits.filter(s => s.chargeId !== c.id) }))}
+                        >Remover</Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="text-xs h-7"
+                          onClick={() => setSplitForm(f => ({ ...f, splits: [...f.splits, { chargeId: c.id, clientName: c.client_name || "", value: parseFloat(c.value ?? "0"), chargeValue: parseFloat(c.value ?? "0"), dueDate: c.due_date || "", amount: String(c.value ?? "") }] }))}
+                        >+ Adicionar</Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {splitForm.splits.length > 0 && (
+              <div className="space-y-2">
+                <Label>Distribuição do Split</Label>
+                {splitForm.splits.map((s, idx) => (
+                  <div key={s.chargeId} className="flex items-center gap-2 p-2 rounded border bg-purple-50/40">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{s.clientName || `Cobrança #${s.chargeId}`}</p>
+                      <p className="text-xs text-muted-foreground">Venc: {s.dueDate} · Total: {fmt(s.chargeValue)}</p>
+                    </div>
+                    <div className="w-28">
+                      <Input
+                        type="number" step="0.01" min="0.01"
+                        className="h-7 text-xs"
+                        value={s.amount}
+                        onChange={(e) => setSplitForm(f => ({ ...f, splits: f.splits.map((sp, i) => i === idx ? { ...sp, amount: e.target.value } : sp) }))}
+                      />
+                    </div>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 shrink-0"
+                      onClick={() => setSplitForm(f => ({ ...f, splits: f.splits.filter((_, i) => i !== idx) }))}
+                    ><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
+                ))}
+
+                {splitForm.pixValue && (
+                  <div className="flex items-center justify-between text-sm p-2 rounded bg-muted/30">
+                    <span>Total alocado:</span>
+                    <span className={`font-semibold ${
+                      Math.abs(splitForm.splits.reduce((acc, s) => acc + parseFloat(s.amount || "0"), 0) - parseFloat(splitForm.pixValue || "0")) < 0.02
+                        ? 'text-green-700' : 'text-orange-700'
+                    }`}>
+                      {fmt(splitForm.splits.reduce((acc, s) => acc + parseFloat(s.amount || "0"), 0))}
+                      {" / "}{fmt(parseFloat(splitForm.pixValue || "0"))}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowSplitDialog(false); setSplitClientId(""); setSplitForm({ pixValue: "", paymentDate: new Date().toISOString().split('T')[0], splits: [] }); }}>Cancelar</Button>
+            <Button
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+              disabled={splitPaymentMutation.isPending || splitForm.splits.length === 0 || !splitForm.pixValue}
+              onClick={() => {
+                if (!splitForm.pixValue || parseFloat(splitForm.pixValue) <= 0) return toast.error("Informe o valor total do PIX");
+                if (splitForm.splits.length === 0) return toast.error("Adicione ao menos uma cobrança ao split");
+                const totalAllocated = splitForm.splits.reduce((acc, s) => acc + parseFloat(s.amount || "0"), 0);
+                const pixTotal = parseFloat(splitForm.pixValue);
+                if (Math.abs(totalAllocated - pixTotal) > 0.02) return toast.error(`Total alocado (${fmt(totalAllocated)}) difere do PIX (${fmt(pixTotal)})`);
+                splitPaymentMutation.mutate({
+                  pixValue: pixTotal,
+                  paymentDate: splitForm.paymentDate,
+                  splits: splitForm.splits.map(s => ({ chargeId: s.chargeId, amount: parseFloat(s.amount || "0") })),
+                });
+              }}
+            >
+              {splitPaymentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Scissors className="h-4 w-4 mr-2" />}
+              Confirmar Split
             </Button>
           </DialogFooter>
         </DialogContent>
