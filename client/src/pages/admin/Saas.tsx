@@ -139,7 +139,9 @@ export default function Saas() {
     value: "",
     dueDate: "",
     description: "",
+    clientId: undefined as number | undefined,
   });
+  const [editClientSearch, setEditClientSearch] = useState("");
 
   // ── Dialog: Dar Baixa ──
   const [markPaidCharge, setMarkPaidCharge] = useState<any>(null);
@@ -244,7 +246,9 @@ export default function Saas() {
       value: String(parseFloat(charge.value ?? "0")),
       dueDate: charge.due_date ?? "",
       description: charge.description ?? "",
+      clientId: undefined,
     });
+    setEditClientSearch("");
   }
 
   function handleDeleteClick(charge: any) {
@@ -1301,9 +1305,45 @@ export default function Saas() {
           </DialogHeader>
           {editCharge && (
             <div className="space-y-4 py-2">
-              <p className="text-sm text-muted-foreground">
-                Cliente: <strong>{editCharge.client_name ?? editCharge.client_email ?? "Desconhecido"}</strong>
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Cliente: <strong>{editForm.clientId
+                    ? (activeClientsQuery.data?.find(c => c.id === editForm.clientId)?.name ?? "Selecionado")
+                    : (editCharge.client_name ?? editCharge.client_email ?? "Desconhecido")}
+                  </strong>
+                </p>
+              </div>
+
+              {/* Vincular/Trocar Cliente */}
+              <div className="space-y-1 border rounded-md p-3 bg-muted/30">
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vincular Cliente</Label>
+                <Input
+                  placeholder="Buscar por nome ou email..."
+                  value={editClientSearch}
+                  onChange={(e) => setEditClientSearch(e.target.value)}
+                  className="h-8 text-sm"
+                />
+                <Select
+                  value={editForm.clientId ? String(editForm.clientId) : ""}
+                  onValueChange={(v) => setEditForm(f => ({ ...f, clientId: v ? Number(v) : undefined }))}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Selecione o cliente..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-56">
+                    <SelectItem value="">— Manter cliente atual —</SelectItem>
+                    {(activeClientsQuery.data ?? []).filter(c =>
+                      editClientSearch.length < 2 ||
+                      c.name.toLowerCase().includes(editClientSearch.toLowerCase()) ||
+                      (c.email ?? "").toLowerCase().includes(editClientSearch.toLowerCase())
+                    ).map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.name}{c.email ? ` — ${c.email}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="space-y-1">
                 <Label>Tipo</Label>
@@ -1362,6 +1402,7 @@ export default function Saas() {
                   value: parseFloat(editForm.value),
                   dueDate: editForm.dueDate || undefined,
                   description: editForm.description || undefined,
+                  clientId: editForm.clientId,
                 });
               }}
               disabled={updateChargeMutation.isPending}
