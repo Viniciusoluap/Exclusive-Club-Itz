@@ -289,6 +289,16 @@ export default function Saas() {
     onError: (err) => toast.error(`Erro na classificação automática: ${err.message}`),
   });
 
+  const linkClientMutation = trpc.bpo.linkClient.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Cliente vinculado: ${data.clientName}`);
+      utils.bpo.listUnclassified.invalidate();
+    },
+    onError: (err) => toast.error(`Erro ao vincular cliente: ${err.message}`),
+  });
+
+  const activeClientsQuery = trpc.bpo.listActiveClients.useQuery(undefined, { refetchOnWindowFocus: false });
+
   const stats = statsQuery.data;
   const charges = chargesQuery.data?.items ?? [];
   const totalCharges = chargesQuery.data?.total ?? 0;
@@ -837,6 +847,11 @@ export default function Saas() {
                     classifyMutation.mutate({ chargeId: charge.id, type: type as "monthly" | "quota_sale" | "fuel" | "repair" | "other" })
                   }
                   loading={classifyMutation.isPending}
+                  onLinkClient={(clientId) =>
+                    linkClientMutation.mutate({ chargeId: charge.id, clientId })
+                  }
+                  linkLoading={linkClientMutation.isPending}
+                  activeClients={activeClientsQuery.data ?? []}
                 />
               ))}
             </div>
@@ -1353,64 +1368,189 @@ function UnclassifiedChargeCard({
   charge,
   onClassify,
   loading,
+  onLinkClient,
+  linkLoading,
+  activeClients,
 }: {
   charge: any;
   onClassify: (type: string) => void;
   loading: boolean;
+  onLinkClient: (clientId: number) => void;
+  linkLoading: boolean;
+  activeClients: Array<{ id: number; name: string; email: string }>;
 }) {
   const [selectedType, setSelectedType] = useState("");
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [clientSearch, setClientSearch] = useState("");
+
+  const isUnknown = !charge.clientName && !charge.client_name && !charge.clientEmail && !charge.client_email;
+  const displayName = charge.clientName || charge.client_name || charge.clientEmail || charge.client_email || null;
+
+  // Dados de sugestão vindos do backend
+  const suggestion = charge.suggestedClient as {
+    clientId: number; clientName: string; clientEmail: string; confidence: number;
+  } | null;
+  const possibleMatch = charge.possibleMatch as {
+    clientId: number; clientName: string; clientEmail: string;
+    matchType: string; matchValue: string; matchDate: string;
+  } | null;
+
+  const filteredClients = activeClients.filter(c =>
+    clientSearch.length < 2 ||
+    c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+    c.email.toLowerCase().includes(clientSearch.toLowerCase())
+  );
+
+  function handleLinkConfirm() {
+    if (!selectedClientId) return;
+    onLinkClient(Number(selectedClientId));
+    setShowLinkDialog(false);
+    setSelectedClientId("");
+    setClientSearch("");
+  }
 
   return (
-    <Card className="border-yellow-200 bg-yellow-50/30">
-      <CardContent className="py-3 px-4 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-          <div>
-            <p className="font-medium text-sm">
-              {charge.client_name || charge.client_email || "Cliente desconhecido"}
-            </p>
-            {charge.description && (
-              <p className="text-xs text-muted-foreground">{charge.description}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Venc: {charge.due_date} · Status: {charge.status}
-            </p>
-          </div>
-          <p className="font-semibold text-sm shrink-0">
-            {fmt(parseFloat(charge.value ?? "0"))}
-          </p>
-        </div>
-
-        <div className="flex gap-2 flex-wrap items-center">
-          {Object.entries(TYPE_LABELS).map(([v, l]) => (
-            <Button
-              key={v}
-              variant={selectedType === v ? "default" : "outline"}
-              size="sm"
-              className="text-xs h-7"
-              onClick={() => setSelectedType(v)}
-              disabled={loading}
-            >
-              {l}
-            </Button>
-          ))}
-          {selectedType && (
-            <Button
-              size="sm"
-              className="text-xs h-7 ml-auto"
-              onClick={() => onClassify(selectedType)}
-              disabled={loading}
-            >
-              {loading ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              ) : (
-                <CheckCircle2 className="h-3 w-3 mr-1" />
+    <>
+      <Card className="border-yellow-200 bg-yellow-50/30">
+        <CardContent className="py-3 px-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-medium text-sm">
+                  {displayName ?? "Cliente desconhecido"}
+                </p>
+                {/* Badge de sugestão por nome na descrição */}
+                {isUnknown && suggestion && (
+                  <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-200 cursor-pointer hover:bg-blue-200"
+                    onClick={() => {
+                      setSelectedClientId(String(suggestion.clientId));
+                      setShowLinkDialog(true);
+                    }}
+                  >
+                    Sugestão: {suggestion.clientName} ({suggestion.confidence}%)
+                  </Badge>
+                )}
+                {/* Badge de match por valor+data */}
+                {isUnknown && !suggestion && possibleMatch && (
+                  <Badge className="text-xs bg-purple-100 text-purple-800 border-purple-200 cursor-pointer hover:bg-purple-200"
+                    onClick={() => {
+                      setSelectedClientId(String(possibleMatch.clientId));
+                      setShowLinkDialog(true);
+                    }}
+                  >
+                    Possível match: {possibleMatch.clientName} — {TYPE_LABELS[possibleMatch.matchType as keyof typeof TYPE_LABELS] ?? possibleMatch.matchType} {fmt(parseFloat(possibleMatch.matchValue))} venc. {possibleMatch.matchDate}
+                  </Badge>
+                )}
+              </div>
+              {charge.description && (
+                <p className="text-xs text-muted-foreground mt-0.5">{charge.description}</p>
               )}
-              Classificar
+              <p className="text-xs text-muted-foreground">
+                Venc: {charge.due_date || charge.dueDate} · Status: {charge.status}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <p className="font-semibold text-sm">
+                {fmt(parseFloat(charge.value ?? "0"))}
+              </p>
+              {isUnknown && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-7 border-blue-300 text-blue-700 hover:bg-blue-50"
+                  onClick={() => setShowLinkDialog(true)}
+                >
+                  Vincular Cliente
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2 flex-wrap items-center">
+            {Object.entries(TYPE_LABELS).map(([v, l]) => (
+              <Button
+                key={v}
+                variant={selectedType === v ? "default" : "outline"}
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => setSelectedType(v)}
+                disabled={loading}
+              >
+                {l}
+              </Button>
+            ))}
+            {selectedType && (
+              <Button
+                size="sm"
+                className="text-xs h-7 ml-auto"
+                onClick={() => onClassify(selectedType)}
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : (
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                )}
+                Classificar
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dialog: Vincular Cliente */}
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Vincular Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="p-3 bg-muted rounded-md text-sm space-y-1">
+              <p><span className="font-medium">Descrição:</span> {charge.description || "(sem descrição)"}</p>
+              <p><span className="font-medium">Valor:</span> {fmt(parseFloat(charge.value ?? "0"))}</p>
+              <p><span className="font-medium">Vencimento:</span> {charge.due_date || charge.dueDate}</p>
+              <p><span className="font-medium">Status:</span> {charge.status}</p>
+            </div>
+            <div className="space-y-1">
+              <Label>Buscar cliente</Label>
+              <Input
+                placeholder="Digite nome ou email..."
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Selecionar cliente</Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o cliente..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {filteredClients.map(c => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name} — {c.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowLinkDialog(false); setSelectedClientId(""); setClientSearch(""); }}>
+              Cancelar
             </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            <Button
+              onClick={handleLinkConfirm}
+              disabled={!selectedClientId || linkLoading}
+            >
+              {linkLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Vincular
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

@@ -871,7 +871,98 @@ export const bpoRouter = router({
           gte(bpoCharges.dueDate, "2025-01-01")
         ));
 
-      return { charges, total: countResult?.count ?? 0 };
+      // Buscar todos os clientes para sugestão automática
+      const localClients = await db.select({
+        id: acTable.id,
+        name: acTable.name,
+        email: acTable.email,
+      }).from(acTable).where(eq(acTable.isActive, 1));
+
+      // Buscar cobranças com cliente vinculado para match por valor+data
+      const [pendingRows] = (await db.execute(sql.raw(`
+        SELECT id, client_id, client_name, client_email, value, due_date, type
+        FROM bpo_charges
+        WHERE client_id IS NOT NULL
+          AND classified_by != 'unclassified'
+          AND due_date >= '2025-01-01'
+        LIMIT 2000
+      `))) as any;
+      const pendingCharges: Array<{
+        id: number; client_id: number; client_name: string; client_email: string;
+        value: string; due_date: string; type: string;
+      }> = Array.isArray(pendingRows) ? pendingRows : [];
+
+      // Helper: normalizar string para comparação
+      const normalize = (s: string) => s.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9 ]/g, " ").trim();
+
+      // Helper: sugestão por nome na descrição
+      const suggestByDescription = (description: string | null): {
+        clientId: number; clientName: string; clientEmail: string; confidence: number;
+      } | null => {
+        if (!description) return null;
+        const descNorm = normalize(description);
+        let best: { clientId: number; clientName: string; clientEmail: string; confidence: number } | null = null;
+        for (const c of localClients) {
+          const nameParts = normalize(c.name).split(" ").filter(p => p.length >= 3);
+          let matches = 0;
+          for (const part of nameParts) {
+            if (descNorm.includes(part)) matches++;
+          }
+          if (matches > 0) {
+            const confidence = Math.round((matches / nameParts.length) * 100);
+            if (!best || confidence > best.confidence) {
+              best = { clientId: c.id, clientName: c.name, clientEmail: c.email, confidence };
+            }
+          }
+        }
+        // Retorna apenas se confiança >= 40%
+        return best && best.confidence >= 40 ? best : null;
+      };
+
+      // Helper: match por valor + data (±7 dias)
+      const matchByValueDate = (value: string, dueDate: string): {
+        clientId: number; clientName: string; clientEmail: string;
+        matchType: string; matchValue: string; matchDate: string;
+      } | null => {
+        const val = parseFloat(value);
+        const date = new Date(dueDate);
+        const matches = pendingCharges.filter(pc => {
+          const pcVal = parseFloat(pc.value);
+          const pcDate = new Date(pc.due_date);
+          const diffDays = Math.abs((date.getTime() - pcDate.getTime()) / (1000 * 60 * 60 * 24));
+          return Math.abs(pcVal - val) < 0.01 && diffDays <= 7;
+        });
+        // Só retorna se houver exatamente 1 match (sem ambiguidade)
+        if (matches.length === 1) {
+          const m = matches[0];
+          return {
+            clientId: m.client_id,
+            clientName: m.client_name,
+            clientEmail: m.client_email,
+            matchType: m.type,
+            matchValue: m.value,
+            matchDate: m.due_date,
+          };
+        }
+        return null;
+      };
+
+      // Enriquecer cada cobrança com sugestões
+      const enriched = charges.map(charge => {
+        const descSuggestion = suggestByDescription(charge.description);
+        const valueDateMatch = !descSuggestion
+          ? matchByValueDate(charge.value, charge.dueDate)
+          : null;
+        return {
+          ...charge,
+          suggestedClient: descSuggestion ?? null,
+          possibleMatch: valueDateMatch ?? null,
+        };
+      });
+
+      return { charges: enriched, total: countResult?.count ?? 0 };
     }),
 
   // ============================================================
@@ -1325,5 +1416,58 @@ export const bpoRouter = router({
         unchanged,
         message: `${classified} cobrança(s) reclassificada(s) automaticamente. ${unchanged} permaneceram como 'Outros'.`,
       };
+    }),
+
+  // ============================================================
+  // VINCULAR CLIENTE — vincula manualmente um cliente a uma cobrança desconhecida
+  // ============================================================
+  linkClient: adminProcedure
+    .input(z.object({
+      chargeId: z.number(),
+      clientId: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Buscar dados do cliente
+      const [client] = await db.select({
+        id: acTable.id,
+        name: acTable.name,
+        email: acTable.email,
+      }).from(acTable).where(eq(acTable.id, input.clientId)).limit(1);
+
+      if (!client) throw new Error("Cliente não encontrado");
+
+      // Atualizar a cobrança com os dados do cliente
+      await db.execute(sql.raw(`
+        UPDATE bpo_charges
+        SET client_id = ${client.id},
+            client_name = '${client.name.replace(/'/g, "''")}',
+            client_email = '${client.email.replace(/'/g, "''")}',
+            updated_at = NOW()
+        WHERE id = ${input.chargeId}
+      `));
+
+      return { success: true, clientName: client.name, clientEmail: client.email };
+    }),
+
+  // ============================================================
+  // LISTAR CLIENTES ATIVOS — para dropdown de vinculação
+  // ============================================================
+  listActiveClients: adminProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const clients = await db.select({
+        id: acTable.id,
+        name: acTable.name,
+        email: acTable.email,
+      }).from(acTable)
+        .where(eq(acTable.isActive, 1))
+        .orderBy(acTable.name);
+
+      return clients;
     }),
 });
