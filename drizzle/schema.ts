@@ -404,6 +404,8 @@ export const bpoCharges = mysqlTable("bpo_charges", {
   paymentLink: text("payment_link"),
   invoiceUrl: text("invoice_url"),
   bankSlipUrl: text("bank_slip_url"),
+  // JSON array de asaasChargeIds vinculados (para split e pagamento parcial)
+  paymentLinks: text("payment_links"),
 
   // Controle de sincronização
   syncedAt: timestamp("synced_at"),

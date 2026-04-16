@@ -1952,3 +1952,15 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Ícone lixeira (excluir) em cada card de cobrança
 - [x] Dialog de criação com campos: cliente, tipo, valor, dia vencimento, mês início, parcelas
 - [x] Dialog de edição com campos: tipo, valor, data vencimento, descrição
+
+## Sistema de Baixa, Pagamento Parcial e Split de PIX (bpoRouter)
+
+- [ ] Adicionar campo `paymentLinks` (text JSON) na tabela `bpo_charges` no schema
+- [ ] Migrar banco com `pnpm db:push`
+- [ ] Procedure `bpo.markAsPaid` — dar baixa manual (receiveInCash no Asaas + status paid no banco)
+- [ ] Procedure `bpo.registerPartialPayment` — registrar pagamento parcial (acumula amountPaid, status partiallyPaid)
+- [ ] Procedure `bpo.splitPayment` — distribuir 1 PIX entre N cobranças bpo_charges
+- [ ] UI: botão "Dar Baixa" em cada card de cobrança (pendente/vencida)
+- [ ] UI: dialog de Pagamento Parcial com campo valor + saldo restante
+- [ ] UI: dialog de Split de PIX na aba Classificar (selecionar cobranças + alocar valores)
+- [ ] Filtro "Parciais" na listagem de cobranças

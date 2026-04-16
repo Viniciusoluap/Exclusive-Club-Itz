@@ -1,0 +1,1 @@
+ALTER TABLE `bpo_charges` ADD `payment_links` text;
