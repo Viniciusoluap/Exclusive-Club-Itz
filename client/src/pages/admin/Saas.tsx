@@ -1324,14 +1324,14 @@ export default function Saas() {
                   className="h-8 text-sm"
                 />
                 <Select
-                  value={editForm.clientId ? String(editForm.clientId) : ""}
-                  onValueChange={(v) => setEditForm(f => ({ ...f, clientId: v ? Number(v) : undefined }))}
+                  value={editForm.clientId ? String(editForm.clientId) : "__keep__"}
+                  onValueChange={(v) => setEditForm(f => ({ ...f, clientId: v && v !== "__keep__" ? Number(v) : undefined }))}
                 >
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="Selecione o cliente..." />
                   </SelectTrigger>
                   <SelectContent className="max-h-56">
-                    <SelectItem value="">— Manter cliente atual —</SelectItem>
+                    <SelectItem value="__keep__">— Manter cliente atual —</SelectItem>
                     {(activeClientsQuery.data ?? []).filter(c =>
                       editClientSearch.length < 2 ||
                       c.name.toLowerCase().includes(editClientSearch.toLowerCase()) ||
