@@ -9,8 +9,7 @@ import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { bpoCharges, allowedClients as acTable } from "../../drizzle/schema";
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
-import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers } from "../_core/asaasService";
-// ============================================================
+import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers, createPixCharge, getOrCreateAsaasCustomer, cancelCharge } from "../_core/asaasService";// ============================================================
 // Helper: normalizar status do Asaas para enum bpo_charges
 // ============================================================
 export function normalizeBpoStatus(
@@ -868,5 +867,174 @@ export const bpoRouter = router({
         .where(eq(bpoCharges.classifiedBy, "unclassified"));
 
       return { charges, total: countResult?.count ?? 0 };
+    }),
+
+  // ============================================================
+  // CRIAR COBRANÇA MANUAL — cria no Asaas e salva em bpo_charges
+  // ============================================================
+  createCharge: adminProcedure
+    .input(z.object({
+      clientId: z.number(),
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]),
+      value: z.number().positive(),
+      dueDay: z.number().min(1).max(31),
+      startMonth: z.string(), // formato YYYY-MM
+      installments: z.number().min(1).max(36).optional().default(1),
+      description: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Buscar dados do cliente
+      const clientResult = await db.select().from(acTable)
+        .where(eq(acTable.id, input.clientId)).limit(1);
+      if (clientResult.length === 0) {
+        throw new Error("Cliente não encontrado");
+      }
+      const client = clientResult[0];
+
+      // Criar/buscar cliente no Asaas
+      const asaasCustomer = await getOrCreateAsaasCustomer({
+        email: client.email,
+        name: client.name,
+        cpfCnpj: client.cpfCnpj ?? undefined,
+        phone: client.phone ?? undefined,
+      });
+
+      const typeLabel: Record<string, string> = {
+        monthly: "Mensalidade",
+        quota_sale: "Venda de Cota",
+        fuel: "Abastecimento",
+        repair: "Reparo",
+        other: "Outros",
+      };
+
+      // Parsear mês/ano de início
+      const [startYear, startMonthStr] = input.startMonth.split("-");
+      const startYearNum = parseInt(startYear);
+      const startMonthNum = parseInt(startMonthStr);
+
+      const createdCharges: string[] = [];
+
+      const totalInstallments = input.type === "quota_sale" ? (input.installments ?? 1) : 1;
+      const installmentValue = totalInstallments > 1
+        ? Math.round((input.value / totalInstallments) * 100) / 100
+        : input.value;
+
+      for (let i = 0; i < totalInstallments; i++) {
+        let parcelMonth = startMonthNum + i;
+        let parcelYear = startYearNum;
+        while (parcelMonth > 12) {
+          parcelMonth -= 12;
+          parcelYear += 1;
+        }
+        const dueDateStr = `${String(parcelYear)}-${String(parcelMonth).padStart(2, "0")}-${String(input.dueDay).padStart(2, "0")}`;
+        const descLabel = totalInstallments > 1
+          ? `${typeLabel[input.type]} - Parcela ${i + 1}/${totalInstallments} - ${client.name}`
+          : input.description || `${typeLabel[input.type]} - ${String(parcelMonth).padStart(2, "0")}/${parcelYear} - ${client.name}`;
+
+        const asaasCharge = await createPixCharge({
+          customerId: asaasCustomer.id,
+          value: installmentValue,
+          dueDate: dueDateStr,
+          description: descLabel,
+        });
+
+        await db.insert(bpoCharges).values({
+          asaasChargeId: asaasCharge.id,
+          asaasCustomerId: asaasCustomer.id,
+          clientId: client.id,
+          clientName: client.name,
+          clientEmail: client.email,
+          value: installmentValue.toString(),
+          dueDate: dueDateStr,
+          status: "pending",
+          type: input.type,
+          classifiedBy: "manual",
+          billingType: "PIX",
+          description: descLabel,
+          paymentLink: asaasCharge.invoiceUrl ?? null,
+          invoiceUrl: asaasCharge.invoiceUrl ?? null,
+          source: "manual",
+        });
+
+        createdCharges.push(asaasCharge.id);
+      }
+
+      return {
+        success: true,
+        message: `${createdCharges.length} cobrança(s) criada(s) com sucesso`,
+        chargeIds: createdCharges,
+      };
+    }),
+
+  // ============================================================
+  // EDITAR COBRANÇA — atualiza tipo, valor e vencimento
+  // ============================================================
+  updateCharge: adminProcedure
+    .input(z.object({
+      chargeId: z.number(),
+      type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]).optional(),
+      value: z.number().positive().optional(),
+      dueDate: z.string().optional(), // YYYY-MM-DD
+      description: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const existing = await db.select().from(bpoCharges)
+        .where(eq(bpoCharges.id, input.chargeId)).limit(1);
+      if (existing.length === 0) {
+        throw new Error("Cobrança não encontrada");
+      }
+
+      const updateData: Record<string, unknown> = {};
+      if (input.type !== undefined) updateData.type = input.type;
+      if (input.value !== undefined) updateData.value = input.value.toString();
+      if (input.dueDate !== undefined) updateData.dueDate = input.dueDate;
+      if (input.description !== undefined) updateData.description = input.description;
+
+      await db.update(bpoCharges)
+        .set(updateData)
+        .where(eq(bpoCharges.id, input.chargeId));
+
+      return { success: true, message: "Cobrança atualizada com sucesso" };
+    }),
+
+  // ============================================================
+  // EXCLUIR COBRANÇA — remove do banco e cancela no Asaas
+  // ============================================================
+  deleteCharge: adminProcedure
+    .input(z.object({
+      chargeId: z.number(),
+      cancelInAsaas: z.boolean().optional().default(true),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const existing = await db.select().from(bpoCharges)
+        .where(eq(bpoCharges.id, input.chargeId)).limit(1);
+      if (existing.length === 0) {
+        throw new Error("Cobrança não encontrada");
+      }
+
+      const charge = existing[0];
+
+      // Cancelar no Asaas se tiver ID e for solicitado
+      if (input.cancelInAsaas && charge.asaasChargeId) {
+        try {
+          await cancelCharge(charge.asaasChargeId);
+        } catch (err) {
+          console.warn("[bpo.deleteCharge] Falha ao cancelar no Asaas:", err);
+          // Continua mesmo se falhar no Asaas
+        }
+      }
+
+      await db.delete(bpoCharges).where(eq(bpoCharges.id, input.chargeId));
+
+      return { success: true, message: "Cobrança excluída com sucesso" };
     }),
 });
