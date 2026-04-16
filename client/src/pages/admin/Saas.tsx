@@ -177,7 +177,7 @@ export default function Saas() {
     onSuccess: (data) => {
       toast.success(data.message);
       setShowCreateDialog(false);
-      setCreateForm({ clientId: "", type: "monthly", value: "", dueDay: "10", startMonth: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`, installments: "1", description: "" });
+      setCreateForm({ clientId: "", type: "monthly", value: "", dueDay: "10", startMonth: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`, installments: "1", description: "", yearlyAdjustment: "none" as "none" | "ipca" | "igpm" | "manual" });
       utils.bpo.getStats.invalidate();
       utils.bpo.listCharges.invalidate();
     },

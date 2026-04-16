@@ -354,4 +354,69 @@ export const expensesRouter = router({
       await db.delete(expenseRecords).where(eq(expenseRecords.id, input.id));
       return { success: true };
     }),
+
+  importFromAsaas: adminProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      // Usar getOrCreateCustomer do asaas.ts que expõe getAsaasApiKey/Url internamente
+      // Replicar lógica de busca de chave diretamente
+      const { getSetting } = await import('../systemSettings');
+      const keyFromDb = await getSetting('asaas_api_key');
+      const apiKey = keyFromDb || process.env.ASAAS_API_KEY || '';
+      if (!apiKey) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'ASAAS_API_KEY não configurada. Configure em /admin/configuracoes' });
+      const apiUrl = apiKey.startsWith('$aact_prod_') ? 'https://api.asaas.com/v3' : 'https://sandbox.asaas.com/api/v3';
+
+      // Buscar transações DEBIT a partir de 01/01/2025
+      const response = await fetch(
+        `${apiUrl}/financialTransactions?type=DEBIT&startDate=2025-01-01&limit=100`,
+        { headers: { 'access_token': apiKey } }
+      );
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Erro ao buscar transações do Asaas: ${err}` });
+      }
+
+      const data = await response.json();
+      const transactions: any[] = data.data || [];
+
+      let imported = 0;
+      for (const tx of transactions) {
+        // Verificar se já existe (deduplicação por asaasPaymentId)
+        const existing = await db.execute(sql`
+          SELECT id FROM expense_records WHERE asaas_payment_id = ${tx.id} LIMIT 1
+        `) as any;
+        const rows = Array.isArray(existing[0]) ? existing[0] : existing;
+        if (rows.length > 0) continue;
+
+        // Classificar automaticamente por descrição
+        let costCenter: string = 'operational';
+        const desc = (tx.description || '').toLowerCase();
+        if (desc.includes('salário') || desc.includes('salario') || desc.includes('folha')) costCenter = 'salary';
+        else if (desc.includes('aluguel') || desc.includes('locação') || desc.includes('locacao')) costCenter = 'rent';
+        else if (desc.includes('pró-labore') || desc.includes('pro labore') || desc.includes('prolabore')) costCenter = 'pro_labore';
+        else if (desc.includes('combustível') || desc.includes('combustivel') || desc.includes('abastecimento')) costCenter = 'fuel_operational';
+        else if (desc.includes('reparo') || desc.includes('manutenção') || desc.includes('manutencao')) costCenter = 'repair';
+
+        await db.execute(sql`
+          INSERT INTO expense_records (cost_center, description, recipient_name, value, due_date, status, asaas_payment_id, created_at, updated_at)
+          VALUES (
+            ${costCenter},
+            ${tx.description || 'Transação Asaas'},
+            ${tx.description || ''},
+            ${Math.abs(tx.value || 0)},
+            ${tx.date || new Date().toISOString().split('T')[0]},
+            'paid',
+            ${tx.id},
+            NOW(),
+            NOW()
+          )
+        `);
+        imported++;
+      }
+
+      return { success: true, imported, total: transactions.length };
+    }),
 });

@@ -3977,7 +3977,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         try {
           const { sql } = await import('drizzle-orm');
           const { inspectionCharges } = await import('../drizzle/schema');
-          const { createCharge, getOrCreateCustomer } = await import('./_core/asaas');
+          const { createCharge } = await import('./_core/asaas');
+          const { getOrCreateAsaasCustomer } = await import('./_core/asaasService');
           
           // Calcular data de vencimento (7 dias padrão)
           const dueDate = input.dueDate || Date.now() + (7 * 24 * 60 * 60 * 1000);
@@ -4017,14 +4018,21 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               });
             }
             
-            // Buscar customer no Asaas (sempre existe e já tem CPF/CNPJ)
-            const customer = await getOrCreateCustomer({
+            // Validar CPF/CNPJ do cliente antes de criar no Asaas
+            if (!inspection.client_cpf_cnpj) {
+              throw new TRPCError({
+                code: 'BAD_REQUEST',
+                message: `Cliente ${inspection.client_name || inspection.client_email} não possui CPF/CNPJ cadastrado. Acesse "Clientes Permitidos", edite o cliente e preencha o CPF/CNPJ antes de criar a cobrança.`,
+              });
+            }
+
+            // Buscar/criar customer no Asaas (versão robusta com cache e CPF/CNPJ)
+            const customer = await getOrCreateAsaasCustomer({
               name: inspection.client_name || inspection.client_email,
               email: inspection.client_email,
+              cpfCnpj: inspection.client_cpf_cnpj,
+              phone: inspection.client_phone,
             });
-            
-            // Usar CPF/CNPJ do Asaas (sempre vem preenchido)
-            const cpfCnpj = customer.cpfCnpj || inspection.client_cpf_cnpj;
             
             // Criar cobrança no Asaas
             const asaasCharge = await createCharge({
@@ -4105,14 +4113,21 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               const quotaShare = quota.quota_type === 'full' ? 1.0 : 0.5;
               const individualAmount = valuePerFullQuota * quotaShare;
               
-              // Buscar customer no Asaas (sempre existe e já tem CPF/CNPJ)
-              const customer = await getOrCreateCustomer({
+              // Validar CPF/CNPJ do cotista antes de criar no Asaas
+              if (!quota.client_cpf_cnpj) {
+                throw new TRPCError({
+                  code: 'BAD_REQUEST',
+                  message: `Cotista ${quota.client_name || quota.client_email} não possui CPF/CNPJ cadastrado. Acesse "Clientes Permitidos", edite o cliente e preencha o CPF/CNPJ antes de criar a cobrança.`,
+                });
+              }
+
+              // Buscar/criar customer no Asaas (versão robusta com cache e CPF/CNPJ)
+              const customer = await getOrCreateAsaasCustomer({
                 name: quota.client_name || quota.client_email,
                 email: quota.client_email,
+                cpfCnpj: quota.client_cpf_cnpj,
+                phone: quota.client_phone,
               });
-              
-              // Usar CPF/CNPJ do Asaas (sempre vem preenchido)
-              const cpfCnpj = customer.cpfCnpj || quota.client_cpf_cnpj;
               
               // Criar cobrança no Asaas
               const asaasCharge = await createCharge({
