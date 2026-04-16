@@ -1850,6 +1850,13 @@ function ExpensesTab() {
     value: "", dueDate: "", status: "pending", notes: "",
   });
 
+  // Estado do dialog de edição
+  const [editingExpense, setEditingExpense] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({
+    costCenter: "operational", description: "", recipientName: "",
+    value: "", dueDate: "", paidDate: "", status: "pending", notes: "",
+  });
+
   const utils = trpc.useUtils();
 
   const expensesQuery = trpc.expenses.list.useQuery(
@@ -1899,6 +1906,39 @@ function ExpensesTab() {
     onError: (err) => toast.error(`Erro: ${err.message}`),
   });
 
+  const updateMutation = trpc.expenses.update.useMutation({
+    onSuccess: () => {
+      toast.success("Despesa atualizada com sucesso");
+      utils.expenses.list.invalidate();
+      utils.expenses.stats.invalidate();
+      setEditingExpense(null);
+    },
+    onError: (err) => toast.error(`Erro: ${err.message}`),
+  });
+
+  const autoClassifyMutationExp = trpc.expenses.autoClassify.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Classificação automática: ${data.updated} despesa(s) classificada(s)`);
+      utils.expenses.list.invalidate();
+      utils.expenses.stats.invalidate();
+    },
+    onError: (err) => toast.error(`Erro: ${err.message}`),
+  });
+
+  const openEdit = (exp: any) => {
+    setEditingExpense(exp);
+    setEditForm({
+      costCenter: exp.costCenter ?? "operational",
+      description: exp.description ?? "",
+      recipientName: exp.recipientName ?? "",
+      value: String(exp.value ?? ""),
+      dueDate: exp.dueDate ?? "",
+      paidDate: exp.paidDate ?? "",
+      status: exp.status ?? "pending",
+      notes: exp.notes ?? "",
+    });
+  };
+
   const stats = expenseStatsQuery.data;
   const expenses = expensesQuery.data?.items ?? [];
 
@@ -1921,7 +1961,18 @@ function ExpensesTab() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => autoClassifyMutationExp.mutate({ onlyUnclassified: true })}
+            disabled={autoClassifyMutationExp.isPending}
+          >
+            {autoClassifyMutationExp.isPending
+              ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              : <Wand2 className="h-4 w-4 mr-2" />}
+            Classificar Automaticamente
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -2087,6 +2138,14 @@ function ExpensesTab() {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="text-xs h-7"
+                        onClick={() => openEdit(exp)}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" />Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="text-xs h-7 text-red-600 hover:text-red-700"
                         onClick={() => {
                           if (confirm("Excluir esta despesa?")) deleteMutation.mutate({ id: exp.id });
@@ -2103,6 +2162,101 @@ function ExpensesTab() {
           })}
         </div>
       )}
+
+      {/* ── Dialog de edição de despesa ── */}
+      {editingExpense && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="p-5 border-b flex items-center justify-between">
+              <h2 className="font-semibold text-base">Editar Despesa</h2>
+              <button onClick={() => setEditingExpense(null)} className="text-muted-foreground hover:text-foreground text-xl leading-none">&times;</button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Centro de Custo *</label>
+                  <Select value={editForm.costCenter} onValueChange={v => setEditForm(f => ({ ...f, costCenter: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(COST_CENTER_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Status</label>
+                  <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="paid">Pago</SelectItem>
+                      <SelectItem value="overdue">Vencido</SelectItem>
+                      <SelectItem value="cancelled">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-medium mb-1 block">Descrição *</label>
+                  <Input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Fornecedor / Beneficiário</label>
+                  <Input value={editForm.recipientName} onChange={e => setEditForm(f => ({ ...f, recipientName: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Valor (R$) *</label>
+                  <Input type="number" step="0.01" value={editForm.value} onChange={e => setEditForm(f => ({ ...f, value: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Vencimento</label>
+                  <Input type="date" value={editForm.dueDate} onChange={e => setEditForm(f => ({ ...f, dueDate: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Data de Pagamento</label>
+                  <Input type="date" value={editForm.paidDate} onChange={e => setEditForm(f => ({ ...f, paidDate: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block">Observações</label>
+                <Input value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} placeholder="Observações opcionais" />
+              </div>
+              {editingExpense.manuallyClassified && (
+                <p className="text-xs text-teal-700 bg-teal-50 px-3 py-1.5 rounded">
+                  ✓ Centro de custo classificado manualmente — não será sobrescrito pela classificação automática
+                </p>
+              )}
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" onClick={() => setEditingExpense(null)}>Cancelar</Button>
+                <Button
+                  onClick={() => {
+                    if (!editForm.description || !editForm.value || !editForm.dueDate) {
+                      toast.error("Preencha Descrição, Valor e Vencimento");
+                      return;
+                    }
+                    updateMutation.mutate({
+                      id: editingExpense.id,
+                      fields: {
+                        costCenter: editForm.costCenter as any,
+                        description: editForm.description,
+                        recipientName: editForm.recipientName || null,
+                        value: parseFloat(editForm.value),
+                        dueDate: editForm.dueDate,
+                        paidDate: editForm.paidDate || null,
+                        status: editForm.status as any,
+                        notes: editForm.notes || null,
+                      },
+                    });
+                  }}
+                  disabled={updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Salvar Alterações
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

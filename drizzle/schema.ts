@@ -313,6 +313,10 @@ export const expenseRecords = mysqlTable("expense_records", {
 	status: mysqlEnum(['pending', 'paid', 'overdue', 'cancelled']).default('pending').notNull(),
 	/** ID do pagamento no Asaas (opcional, para despesas pagas via Asaas) */
 	asaasPaymentId: varchar("asaas_payment_id", { length: 255 }),
+	/** Origem da despesa: transfer=PIX/TED saído, fee=taxa Asaas, bill=boleto pago, manual=cadastro manual */
+	sourceType: mysqlEnum("source_type", ['transfer', 'fee', 'bill', 'manual']).default('manual'),
+	/** Indica se o centro de custo foi classificado manualmente (protege contra reclassificação automática) */
+	manuallyClassified: int("manually_classified").default(0),
 	/** Observações adicionais */
 	notes: text(),
 	/** Usuário que cadastrou */

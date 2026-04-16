@@ -29,6 +29,87 @@ const COST_CENTERS = [
 const STATUSES = ["pending", "paid", "overdue", "cancelled"] as const;
 
 /**
+ * Classifica automaticamente uma despesa com base em palavras-chave na descrição.
+ * Retorna o centro de custo mais adequado.
+ */
+function autoClassify(description: string): string {
+  const d = description.toLowerCase();
+
+  // Taxas Asaas (robô de voz, WhatsApp, SMS, notificação)
+  if (
+    d.includes("taxa de notificação") ||
+    d.includes("taxa de cobrança") ||
+    d.includes("taxa de serviço") ||
+    d.includes("taxa de transferência") ||
+    d.includes("taxa de saque") ||
+    d.includes("taxa de pix") ||
+    d.includes("taxa de ted") ||
+    d.includes("taxa de doc") ||
+    d.includes("taxa de boleto") ||
+    d.includes("taxa de antecipação") ||
+    d.includes("taxa de operação") ||
+    d.includes("taxa de manutenção") ||
+    d.includes("taxa") ||
+    d.includes("fee") ||
+    d.includes("tarifa") ||
+    d.includes("mensalidade asaas") ||
+    d.includes("asaas")
+  ) return "operational";
+
+  // Salários
+  if (
+    d.includes("salário") || d.includes("salario") ||
+    d.includes("folha") || d.includes("pagamento funcionário") ||
+    d.includes("pagamento funcionario") || d.includes("remuneração") ||
+    d.includes("remuneracao") || d.includes("holerite")
+  ) return "salary";
+
+  // Pró-labore
+  if (
+    d.includes("pró-labore") || d.includes("pro labore") ||
+    d.includes("prolabore") || d.includes("pro-labore") ||
+    d.includes("pró labore")
+  ) return "pro_labore";
+
+  // Aluguel
+  if (
+    d.includes("aluguel") || d.includes("locação") ||
+    d.includes("locacao") || d.includes("arrendamento") ||
+    d.includes("aluguer") || d.includes("locação de espaço")
+  ) return "rent";
+
+  // Combustível
+  if (
+    d.includes("combustível") || d.includes("combustivel") ||
+    d.includes("abastecimento") || d.includes("gasolina") ||
+    d.includes("diesel") || d.includes("etanol") || d.includes("gnv")
+  ) return "fuel_operational";
+
+  // Reparos / Manutenção
+  if (
+    d.includes("reparo") || d.includes("manutenção") ||
+    d.includes("manutencao") || d.includes("conserto") ||
+    d.includes("revisão") || d.includes("revisao") ||
+    d.includes("peça") || d.includes("peca") ||
+    d.includes("troca de") || d.includes("instalação") ||
+    d.includes("instalacao") || d.includes("bomba") ||
+    d.includes("motor") || d.includes("mecânico") ||
+    d.includes("mecanico")
+  ) return "repair";
+
+  // Site / tecnologia / marketing
+  if (
+    d.includes("site") || d.includes("manus") ||
+    d.includes("marketing") || d.includes("publicidade") ||
+    d.includes("tecnologia") || d.includes("software") ||
+    d.includes("sistema") || d.includes("domínio") ||
+    d.includes("dominio") || d.includes("hospedagem")
+  ) return "operational";
+
+  return "other";
+}
+
+/**
  * Constrói as condições de filtro de data.
  * Prioridade: dateFrom/dateTo > month+year > year > month
  */
@@ -42,7 +123,6 @@ function buildDateConditions(opts: {
   const conds: string[] = [];
 
   if (dateFrom && dateTo) {
-    // Período customizado tem prioridade máxima
     const from = dateFrom.replace(/'/g, "''");
     const to = dateTo.replace(/'/g, "''");
     conds.push(`due_date >= '${from}' AND due_date <= '${to}'`);
@@ -53,12 +133,15 @@ function buildDateConditions(opts: {
     const to = dateTo.replace(/'/g, "''");
     conds.push(`due_date <= '${to}'`);
   } else {
-    // Filtros legados de mês/ano
+    // Filtros legados de mês/ano — sem filtro = tudo a partir de 2025-01-01
     if (month && month !== "all_months") {
       conds.push(`MONTH(due_date) = ${parseInt(month)}`);
     }
     if (year && year !== "all_years") {
       conds.push(`YEAR(due_date) = ${parseInt(year)}`);
+    } else if (!month || month === "all_months") {
+      // Sem filtro de ano nem mês: mostrar tudo a partir de 2025
+      conds.push(`due_date >= '2025-01-01'`);
     }
   }
 
@@ -72,10 +155,10 @@ export const expensesRouter = router({
       z.object({
         costCenter: z.enum([...COST_CENTERS, "all"]).optional().default("all"),
         status: z.enum([...STATUSES, "all"]).optional().default("all"),
-        month: z.string().optional(),    // "01" a "12" (legado)
-        year: z.string().optional(),     // "2025" (legado)
-        dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // "2025-01-01"
-        dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),   // "2025-12-31"
+        month: z.string().optional(),
+        year: z.string().optional(),
+        dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
         search: z.string().optional(),
         limit: z.number().optional().default(100),
         offset: z.number().optional().default(0),
@@ -95,14 +178,12 @@ export const expensesRouter = router({
       const limit = input?.limit ?? 100;
       const offset = input?.offset ?? 0;
 
-      // Construir query com filtros dinâmicos
       const conditions: string[] = [];
 
       if (costCenter !== "all") {
         conditions.push(`cost_center = '${costCenter}'`);
       }
 
-      // Status com normalização dinâmica de overdue
       if (status === "overdue") {
         conditions.push(`(status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()))`);
       } else if (status === "pending") {
@@ -111,7 +192,6 @@ export const expensesRouter = router({
         conditions.push(`status = '${status}'`);
       }
 
-      // Filtros de data (período customizado tem prioridade sobre mês/ano)
       const dateConds = buildDateConditions({ dateFrom, dateTo, month, year });
       conditions.push(...dateConds);
 
@@ -136,6 +216,8 @@ export const expensesRouter = router({
             ELSE status
           END as status,
           asaas_payment_id,
+          source_type,
+          manually_classified,
           notes,
           created_by,
           created_at,
@@ -147,7 +229,12 @@ export const expensesRouter = router({
       `));
 
       const rows = ((rawResult[0] as unknown as any[]) ?? []) as any[];
-      const total = rows.length;
+
+      // Contar total sem paginação
+      const countResult = await db.execute(sql.raw(`
+        SELECT COUNT(*) as total FROM expense_records ${whereClause}
+      `)) as any;
+      const total = parseInt(((Array.isArray(countResult[0]) ? countResult[0] : countResult)[0] as any)?.total ?? "0");
 
       return {
         items: rows.map((r: any) => ({
@@ -161,6 +248,8 @@ export const expensesRouter = router({
           paidDate: r.paid_date,
           status: r.status as string,
           asaasPaymentId: r.asaas_payment_id,
+          sourceType: r.source_type ?? "manual",
+          manuallyClassified: r.manually_classified === 1,
           notes: r.notes,
           createdBy: r.created_by,
           createdAt: r.created_at,
@@ -192,7 +281,6 @@ export const expensesRouter = router({
         conditions.push(`cost_center = '${costCenter}'`);
       }
 
-      // Filtros de data
       const dateConds = buildDateConditions({ dateFrom, dateTo, month, year });
       conditions.push(...dateConds);
 
@@ -214,7 +302,6 @@ export const expensesRouter = router({
 
       const row = ((statsResult[0] as unknown as any[]) ?? [])[0] ?? {};
 
-      // Totais por centro de custo
       const byCostCenterResult = await db.execute(sql.raw(`
         SELECT
           cost_center,
@@ -274,9 +361,11 @@ export const expensesRouter = router({
         paidDate: input.paidDate ?? null,
         status: input.status ?? "pending",
         asaasPaymentId: input.asaasPaymentId ?? null,
+        sourceType: "manual",
+        manuallyClassified: 1,
         notes: input.notes ?? null,
         createdBy: ctx.user?.id ?? null,
-      });
+      } as any);
 
       return { success: true, id: (result as any)[0]?.insertId };
     }),
@@ -306,7 +395,10 @@ export const expensesRouter = router({
       const { id, fields } = input;
       const updateData: Record<string, any> = {};
 
-      if (fields.costCenter !== undefined) updateData.costCenter = fields.costCenter;
+      if (fields.costCenter !== undefined) {
+        updateData.costCenter = fields.costCenter;
+        updateData.manuallyClassified = 1; // Marcar como classificado manualmente
+      }
       if (fields.description !== undefined) updateData.description = fields.description;
       if (fields.recipientName !== undefined) updateData.recipientName = fields.recipientName;
       if (fields.value !== undefined) updateData.value = fields.value.toFixed(2);
@@ -338,7 +430,7 @@ export const expensesRouter = router({
 
       const today = new Date().toISOString().split("T")[0];
       await db.update(expenseRecords)
-        .set({ status: "paid", paidDate: input.paidDate ?? today })
+        .set({ status: "paid", paidDate: input.paidDate ?? today } as any)
         .where(eq(expenseRecords.id, input.id));
 
       return { success: true };
@@ -355,68 +447,179 @@ export const expensesRouter = router({
       return { success: true };
     }),
 
+  // ── Classificação automática em lote ────────────────────────────────────
+  autoClassify: adminProcedure
+    .input(z.object({
+      onlyUnclassified: z.boolean().optional().default(true),
+    }).optional())
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const onlyUnclassified = input?.onlyUnclassified ?? true;
+
+      // Buscar despesas a classificar (pula as classificadas manualmente)
+      const whereClause = onlyUnclassified
+        ? `WHERE (manually_classified = 0 OR manually_classified IS NULL)`
+        : `WHERE (manually_classified = 0 OR manually_classified IS NULL)`;
+
+      const rows = await db.execute(sql.raw(`
+        SELECT id, description FROM expense_records ${whereClause}
+      `)) as any;
+
+      const items = (Array.isArray(rows[0]) ? rows[0] : rows) as any[];
+      let updated = 0;
+
+      for (const item of items) {
+        const newCostCenter = autoClassify(item.description ?? "");
+        await db.execute(sql.raw(`
+          UPDATE expense_records SET cost_center = '${newCostCenter}' WHERE id = ${item.id}
+        `));
+        updated++;
+      }
+
+      return { success: true, updated, total: items.length };
+    }),
+
+  // ── Importar do Asaas (transfers + taxas) ───────────────────────────────
   importFromAsaas: adminProcedure
     .mutation(async () => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      // Usar getOrCreateCustomer do asaas.ts que expõe getAsaasApiKey/Url internamente
-      // Replicar lógica de busca de chave diretamente
       const { getSetting } = await import('../systemSettings');
       const keyFromDb = await getSetting('asaas_api_key');
       const apiKey = keyFromDb || process.env.ASAAS_API_KEY || '';
-      if (!apiKey) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'ASAAS_API_KEY não configurada. Configure em /admin/configuracoes' });
+      if (!apiKey) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'ASAAS_API_KEY não configurada.' });
       const apiUrl = apiKey.startsWith('$aact_prod_') ? 'https://api.asaas.com/v3' : 'https://sandbox.asaas.com/api/v3';
 
-      // Buscar transações DEBIT a partir de 01/01/2025
-      const response = await fetch(
-        `${apiUrl}/financialTransactions?type=DEBIT&startDate=2025-01-01&limit=100`,
-        { headers: { 'access_token': apiKey } }
-      );
-
-      if (!response.ok) {
-        const err = await response.text();
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Erro ao buscar transações do Asaas: ${err}` });
-      }
-
-      const data = await response.json();
-      const transactions: any[] = data.data || [];
-
       let imported = 0;
-      for (const tx of transactions) {
-        // Verificar se já existe (deduplicação por asaasPaymentId)
-        const existing = await db.execute(sql`
-          SELECT id FROM expense_records WHERE asaas_payment_id = ${tx.id} LIMIT 1
-        `) as any;
-        const rows = Array.isArray(existing[0]) ? existing[0] : existing;
-        if (rows.length > 0) continue;
+      let skipped = 0;
 
-        // Classificar automaticamente por descrição
-        let costCenter: string = 'operational';
-        const desc = (tx.description || '').toLowerCase();
-        if (desc.includes('salário') || desc.includes('salario') || desc.includes('folha')) costCenter = 'salary';
-        else if (desc.includes('aluguel') || desc.includes('locação') || desc.includes('locacao')) costCenter = 'rent';
-        else if (desc.includes('pró-labore') || desc.includes('pro labore') || desc.includes('prolabore')) costCenter = 'pro_labore';
-        else if (desc.includes('combustível') || desc.includes('combustivel') || desc.includes('abastecimento')) costCenter = 'fuel_operational';
-        else if (desc.includes('reparo') || desc.includes('manutenção') || desc.includes('manutencao')) costCenter = 'repair';
+      // ── Fonte 1: Transferências (PIX/TED saídos) ──────────────────────
+      {
+        let offset = 0;
+        const limit = 100;
+        while (true) {
+          const res = await fetch(
+            `${apiUrl}/transfers?startDate=2025-01-01&limit=${limit}&offset=${offset}`,
+            { headers: { 'access_token': apiKey } }
+          );
+          if (!res.ok) break;
+          const data = await res.json();
+          const items: any[] = data.data || [];
+          if (items.length === 0) break;
 
-        await db.execute(sql`
-          INSERT INTO expense_records (cost_center, description, recipient_name, value, due_date, status, asaas_payment_id, created_at, updated_at)
-          VALUES (
-            ${costCenter},
-            ${tx.description || 'Transação Asaas'},
-            ${tx.description || ''},
-            ${Math.abs(tx.value || 0)},
-            ${tx.date || new Date().toISOString().split('T')[0]},
-            'paid',
-            ${tx.id},
-            NOW(),
-            NOW()
-          )
-        `);
-        imported++;
+          for (const tx of items) {
+            if (tx.status === 'CANCELLED' || tx.status === 'FAILED') continue;
+
+            const txId = `transfer_${tx.id}`;
+            const existing = await db.execute(sql.raw(`SELECT id FROM expense_records WHERE asaas_payment_id = '${txId}' LIMIT 1`)) as any;
+            const rows = Array.isArray(existing[0]) ? existing[0] : existing;
+            if (rows.length > 0) { skipped++; continue; }
+
+            const desc = tx.description || tx.operationType || 'Transferência Asaas';
+            const costCenter = autoClassify(desc);
+            const dateStr = (tx.dateCreated || tx.scheduledDate || new Date().toISOString()).split('T')[0];
+            const value = Math.abs(tx.value || tx.netValue || 0);
+            if (value <= 0) continue;
+
+            await db.execute(sql.raw(`
+              INSERT INTO expense_records (cost_center, description, recipient_name, value, due_date, paid_date, status, asaas_payment_id, source_type, manually_classified, created_at, updated_at)
+              VALUES (
+                '${costCenter}',
+                ${JSON.stringify(desc)},
+                ${tx.bankAccount?.bank?.name ? JSON.stringify(tx.bankAccount.bank.name) : 'NULL'},
+                ${value},
+                '${dateStr}',
+                '${dateStr}',
+                'paid',
+                '${txId}',
+                'transfer',
+                0,
+                NOW(),
+                NOW()
+              )
+            `));
+            imported++;
+          }
+
+          if (items.length < limit) break;
+          offset += limit;
+        }
       }
 
-      return { success: true, imported, total: transactions.length };
+      // ── Fonte 2: Taxas Asaas (financialTransactions DEBIT) ────────────
+      {
+        // Tipos que são taxas operacionais do Asaas (não cobranças de clientes)
+        const FEE_TYPES = new Set([
+          'PHONE_CALL_NOTIFICATION_FEE',
+          'INSTANT_TEXT_MESSAGE_FEE',
+          'SMS_FEE',
+          'WHATSAPP_FEE',
+          'NOTIFICATION_FEE',
+          'MONTHLY_FEE',
+          'PAYMENT_FEE',
+          'TRANSFER_FEE',
+          'ANTICIPATION_FEE',
+          'CREDIT_CARD_FEE',
+          'BANK_SLIP_FEE',
+          'PIX_FEE',
+          'SUBSCRIPTION_FEE',
+          'PLATFORM_FEE',
+        ]);
+
+        let offset = 0;
+        const limit = 100;
+        while (true) {
+          const res = await fetch(
+            `${apiUrl}/financialTransactions?type=DEBIT&startDate=2025-01-01&limit=${limit}&offset=${offset}`,
+            { headers: { 'access_token': apiKey } }
+          );
+          if (!res.ok) break;
+          const data = await res.json();
+          const items: any[] = data.data || [];
+          if (items.length === 0) break;
+
+          for (const tx of items) {
+            // Só importar taxas — ignorar débitos que são cobranças de clientes
+            if (!FEE_TYPES.has(tx.type)) continue;
+
+            const txId = `fee_${tx.id}`;
+            const existing = await db.execute(sql.raw(`SELECT id FROM expense_records WHERE asaas_payment_id = '${txId}' LIMIT 1`)) as any;
+            const rows = Array.isArray(existing[0]) ? existing[0] : existing;
+            if (rows.length > 0) { skipped++; continue; }
+
+            const desc = tx.description || `Taxa Asaas: ${tx.type}`;
+            const dateStr = (tx.date || new Date().toISOString()).split('T')[0];
+            const value = Math.abs(tx.value || 0);
+            if (value <= 0) continue;
+
+            await db.execute(sql.raw(`
+              INSERT INTO expense_records (cost_center, description, recipient_name, value, due_date, paid_date, status, asaas_payment_id, source_type, manually_classified, created_at, updated_at)
+              VALUES (
+                'operational',
+                ${JSON.stringify(desc)},
+                'Asaas',
+                ${value},
+                '${dateStr}',
+                '${dateStr}',
+                'paid',
+                '${txId}',
+                'fee',
+                0,
+                NOW(),
+                NOW()
+              )
+            `));
+            imported++;
+          }
+
+          if (items.length < limit) break;
+          offset += limit;
+        }
+      }
+
+      return { success: true, imported, skipped };
     }),
 });

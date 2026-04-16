@@ -1964,3 +1964,31 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] UI: dialog de Pagamento Parcial com campo valor + saldo restante
 - [ ] UI: dialog de Split de PIX na aba Classificar (selecionar cobranças + alocar valores)
 - [ ] Filtro "Parciais" na listagem de cobranças
+
+## 💸 Feature: Reestruturação do Módulo de Despesas
+
+**Problema:** Importação de despesas está incompleta e incorreta
+- Usa apenas `financialTransactions?type=DEBIT&limit=100` (sem paginação)
+- Inclui cobranças de clientes (payments com `customer`) que NÃO são despesas
+- Faltam PIX/TED saídos (endpoint `transfers`)
+- Faltam boletos pagos (endpoint `bills`)
+- Taxas Asaas (PHONE_CALL_FEE, INSTANT_TEXT_MESSAGE_FEE etc.) devem ser `operational`
+- Sem botão de edição manual para corrigir centro de custo
+- Sem classificação automática por palavras-chave
+
+**Solução:**
+- Importar de 3 fontes: `transfers` (PIX/TED saídos) + `financialTransactions?type=DEBIT` (taxas) + `bills` (boletos pagos)
+- Excluir da importação: `payments` com `customer` (são cobranças de clientes)
+- Adicionar campo `source_type` (transfer | fee | bill | manual) na tabela
+- Paginação completa (buscar todas as páginas)
+- Classificação automática por palavras-chave
+- Botão Editar com seleção de centro de custo + botão Classificar Automaticamente
+
+**Tarefas:**
+- [x] Adicionar campo `source_type` na tabela expense_records e rodar pnpm db:push
+- [x] Reescrever importFromAsaas: usar transfers + financialTransactions (taxas), com paginação
+- [x] Implementar autoClassifyExpenses por palavras-chave
+- [x] Adicionar procedure updateExpense no expensesRouter
+- [x] Implementar botão Editar despesa no frontend (dialog com centro de custo)
+- [x] Adicionar botão "Classificar Automaticamente" no frontend
+- [x] Testar importação completa
