@@ -13,7 +13,7 @@ import {
   RefreshCw, Download, Search, ChevronLeft, ChevronRight,
   CheckCircle2, Loader2, RotateCcw, BarChart3, Webhook,
   GitCompare, Receipt, TrendingDown, Activity, AlertCircle,
-  Pencil, Trash2, Plus, CreditCard, Scissors, HandCoins
+  Pencil, Trash2, Plus, CreditCard, Scissors, HandCoins, Wand2
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -277,6 +277,16 @@ export default function Saas() {
       utils.bpo.getStats.invalidate();
     },
     onError: (err) => toast.error(`Erro: ${err.message}`),
+  });
+
+  const autoClassifyMutation = trpc.bpo.autoClassifyAll.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      utils.bpo.listUnclassified.invalidate();
+      utils.bpo.getStats.invalidate();
+      utils.bpo.listCharges.invalidate();
+    },
+    onError: (err) => toast.error(`Erro na classificação automática: ${err.message}`),
   });
 
   const stats = statsQuery.data;
@@ -783,14 +793,29 @@ export default function Saas() {
                 {unclassifiedQuery.data?.total ?? 0} cobrança(s) aguardando classificação
               </p>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-purple-700 border-purple-300 hover:bg-purple-50"
-              onClick={() => { setShowSplitDialog(true); setSplitPixCharge(null); setSplitForm({ pixValue: "", paymentDate: new Date().toISOString().split('T')[0], splits: [] }); setSplitClientId(""); }}
-            >
-              <Scissors className="h-3.5 w-3.5 mr-1" />Split de PIX
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-green-700 border-green-300 hover:bg-green-50"
+                onClick={() => autoClassifyMutation.mutate()}
+                disabled={autoClassifyMutation.isPending}
+              >
+                {autoClassifyMutation.isPending ? (
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />Classificando...</>
+                ) : (
+                  <><Wand2 className="h-3.5 w-3.5 mr-1" />Classificar Auto</>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-purple-700 border-purple-300 hover:bg-purple-50"
+                onClick={() => { setShowSplitDialog(true); setSplitPixCharge(null); setSplitForm({ pixValue: "", paymentDate: new Date().toISOString().split('T')[0], splits: [] }); setSplitClientId(""); }}
+              >
+                <Scissors className="h-3.5 w-3.5 mr-1" />Split de PIX
+              </Button>
+            </div>
           </div>
 
           {unclassifiedQuery.isLoading ? (
