@@ -856,14 +856,20 @@ export const bpoRouter = router({
       if (!db) throw new Error("Database not available");
 
       const charges = await db.select().from(bpoCharges)
-        .where(eq(bpoCharges.classifiedBy, "unclassified"))
+        .where(and(
+          eq(bpoCharges.classifiedBy, "unclassified"),
+          gte(bpoCharges.dueDate, "2025-01-01")
+        ))
         .orderBy(bpoCharges.dueDate)
         .limit(input.limit)
         .offset(input.offset);
 
       const [countResult] = await db.select({ count: sql<number>`COUNT(*)` })
         .from(bpoCharges)
-        .where(eq(bpoCharges.classifiedBy, "unclassified"));
+        .where(and(
+          eq(bpoCharges.classifiedBy, "unclassified"),
+          gte(bpoCharges.dueDate, "2025-01-01")
+        ));
 
       return { charges, total: countResult?.count ?? 0 };
     }),
@@ -1267,7 +1273,8 @@ export const bpoRouter = router({
       const [rows] = (await db.execute(sql.raw(`
         SELECT id, description, external_reference as externalReference
         FROM bpo_charges
-        WHERE type = 'other' OR classified_by = 'unclassified'
+        WHERE (type = 'other' OR classified_by = 'unclassified')
+          AND due_date >= '2025-01-01'
         LIMIT 500
       `))) as any;
 
