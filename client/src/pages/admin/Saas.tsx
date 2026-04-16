@@ -12,8 +12,13 @@ import {
   DollarSign, TrendingUp, Clock, AlertTriangle,
   RefreshCw, Download, Search, ChevronLeft, ChevronRight,
   CheckCircle2, Loader2, RotateCcw, BarChart3, Webhook,
-  GitCompare, Receipt, TrendingDown, Activity, AlertCircle
+  GitCompare, Receipt, TrendingDown, Activity, AlertCircle,
+  Pencil, Trash2, Plus
 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -112,6 +117,78 @@ export default function Saas() {
 
   const utils = trpc.useUtils();
 
+  // ── Dialog: Nova Cobrança ──
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    clientId: "",
+    type: "monthly" as "monthly" | "quota_sale" | "fuel" | "repair" | "other",
+    value: "",
+    dueDay: "10",
+    startMonth: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`,
+    installments: "1",
+    description: "",
+  });
+
+  // ── Dialog: Editar Cobrança ──
+  const [editCharge, setEditCharge] = useState<any>(null);
+  const [editForm, setEditForm] = useState({
+    type: "monthly" as "monthly" | "quota_sale" | "fuel" | "repair" | "other",
+    value: "",
+    dueDate: "",
+    description: "",
+  });
+
+  // ── Lista de clientes para o formulário ──
+  const clientsQuery = trpc.allowedClients.list.useQuery(
+    undefined,
+    { refetchOnWindowFocus: false, enabled: showCreateDialog }
+  );
+
+  const createChargeMutation = trpc.bpo.createCharge.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setShowCreateDialog(false);
+      setCreateForm({ clientId: "", type: "monthly", value: "", dueDay: "10", startMonth: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`, installments: "1", description: "" });
+      utils.bpo.getStats.invalidate();
+      utils.bpo.listCharges.invalidate();
+    },
+    onError: (err) => toast.error(`Erro ao criar cobrança: ${err.message}`),
+  });
+
+  const updateChargeMutation = trpc.bpo.updateCharge.useMutation({
+    onSuccess: () => {
+      toast.success("Cobrança atualizada com sucesso");
+      setEditCharge(null);
+      utils.bpo.listCharges.invalidate();
+    },
+    onError: (err) => toast.error(`Erro ao atualizar: ${err.message}`),
+  });
+
+  const deleteChargeMutation = trpc.bpo.deleteCharge.useMutation({
+    onSuccess: () => {
+      toast.success("Cobrança excluída com sucesso");
+      utils.bpo.getStats.invalidate();
+      utils.bpo.listCharges.invalidate();
+    },
+    onError: (err) => toast.error(`Erro ao excluir: ${err.message}`),
+  });
+
+  function handleEditClick(charge: any) {
+    setEditCharge(charge);
+    setEditForm({
+      type: (charge.type as any) ?? "other",
+      value: String(parseFloat(charge.value ?? "0")),
+      dueDate: charge.due_date ?? "",
+      description: charge.description ?? "",
+    });
+  }
+
+  function handleDeleteClick(charge: any) {
+    if (window.confirm(`Excluir cobrança de ${fmt(parseFloat(charge.value ?? "0"))} de ${charge.client_name ?? "cliente"}? Esta ação também cancelará a cobrança no Asaas.`)) {
+      deleteChargeMutation.mutate({ chargeId: charge.id, cancelInAsaas: true });
+    }
+  }
+
   const importMutation = trpc.bpo.importFromAsaas.useMutation({
     onSuccess: (data) => {
       toast.success(`Importação concluída: ${data.inserted} inseridas, ${data.updated} atualizadas`);
@@ -183,6 +260,14 @@ export default function Saas() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button
+            size="sm"
+            onClick={() => setShowCreateDialog(true)}
+            className="bg-teal-600 hover:bg-teal-700 text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Cobrança
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -415,15 +500,38 @@ export default function Saas() {
                           {charge.paid_date && ` · Pago: ${charge.paid_date}`}
                         </p>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-semibold">{fmt(parseFloat(charge.value ?? "0"))}</p>
-                        {charge.amount_paid &&
-                          parseFloat(charge.amount_paid) > 0 &&
-                          parseFloat(charge.amount_paid) !== parseFloat(charge.value) && (
-                            <p className="text-xs text-muted-foreground">
-                              Pago: {fmt(parseFloat(charge.amount_paid))}
-                            </p>
-                          )}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-right">
+                          <p className="font-semibold">{fmt(parseFloat(charge.value ?? "0"))}</p>
+                          {charge.amount_paid &&
+                            parseFloat(charge.amount_paid) > 0 &&
+                            parseFloat(charge.amount_paid) !== parseFloat(charge.value) && (
+                              <p className="text-xs text-muted-foreground">
+                                Pago: {fmt(parseFloat(charge.amount_paid))}
+                              </p>
+                            )}
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-blue-600"
+                            onClick={() => handleEditClick(charge)}
+                            title="Editar cobrança"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-red-600"
+                            onClick={() => handleDeleteClick(charge)}
+                            disabled={deleteChargeMutation.isPending}
+                            title="Excluir cobrança"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -607,6 +715,226 @@ export default function Saas() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* ─── Dialog: Nova Cobrança ─── */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nova Cobrança</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label>Cliente *</Label>
+              <Select
+                value={createForm.clientId}
+                onValueChange={(v) => setCreateForm(f => ({ ...f, clientId: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o cliente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(clientsQuery.data ?? []).map((c: any) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Tipo *</Label>
+              <Select
+                value={createForm.type}
+                onValueChange={(v) => setCreateForm(f => ({ ...f, type: v as any }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensalidade</SelectItem>
+                  <SelectItem value="quota_sale">Venda de Cota</SelectItem>
+                  <SelectItem value="fuel">Abastecimento</SelectItem>
+                  <SelectItem value="repair">Reparo</SelectItem>
+                  <SelectItem value="other">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Valor (R$) *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0,00"
+                  value={createForm.value}
+                  onChange={(e) => setCreateForm(f => ({ ...f, value: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Dia do Vencimento *</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="31"
+                  placeholder="10"
+                  value={createForm.dueDay}
+                  onChange={(e) => setCreateForm(f => ({ ...f, dueDay: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Mês de Início *</Label>
+                <Input
+                  type="month"
+                  value={createForm.startMonth}
+                  onChange={(e) => setCreateForm(f => ({ ...f, startMonth: e.target.value }))}
+                />
+              </div>
+              {createForm.type === "quota_sale" && (
+                <div className="space-y-1">
+                  <Label>Nº de Parcelas</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="36"
+                    value={createForm.installments}
+                    onChange={(e) => setCreateForm(f => ({ ...f, installments: e.target.value }))}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <Label>Descrição (opcional)</Label>
+              <Input
+                placeholder="Ex: Mensalidade Cota Jet Ski..."
+                value={createForm.description}
+                onChange={(e) => setCreateForm(f => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+
+            {createForm.type === "quota_sale" && parseInt(createForm.installments) > 1 && (
+              <p className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 rounded p-2">
+                Serão criadas <strong>{createForm.installments} cobranças</strong> de{" "}
+                <strong>{fmt(parseFloat(createForm.value || "0") / parseInt(createForm.installments || "1"))}</strong> cada,
+                a partir de {createForm.startMonth}.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancelar</Button>
+            <Button
+              onClick={() => {
+                if (!createForm.clientId) return toast.error("Selecione um cliente");
+                if (!createForm.value || parseFloat(createForm.value) <= 0) return toast.error("Informe um valor válido");
+                createChargeMutation.mutate({
+                  clientId: parseInt(createForm.clientId),
+                  type: createForm.type,
+                  value: parseFloat(createForm.value),
+                  dueDay: parseInt(createForm.dueDay),
+                  startMonth: createForm.startMonth,
+                  installments: parseInt(createForm.installments),
+                  description: createForm.description || undefined,
+                });
+              }}
+              disabled={createChargeMutation.isPending}
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              {createChargeMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Criando...</>
+              ) : (
+                <><Plus className="h-4 w-4 mr-2" />Criar Cobrança</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Dialog: Editar Cobrança ─── */}
+      <Dialog open={!!editCharge} onOpenChange={(open) => { if (!open) setEditCharge(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Cobrança</DialogTitle>
+          </DialogHeader>
+          {editCharge && (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Cliente: <strong>{editCharge.client_name ?? editCharge.client_email ?? "Desconhecido"}</strong>
+              </p>
+
+              <div className="space-y-1">
+                <Label>Tipo</Label>
+                <Select
+                  value={editForm.type}
+                  onValueChange={(v) => setEditForm(f => ({ ...f, type: v as any }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Mensalidade</SelectItem>
+                    <SelectItem value="quota_sale">Venda de Cota</SelectItem>
+                    <SelectItem value="fuel">Abastecimento</SelectItem>
+                    <SelectItem value="repair">Reparo</SelectItem>
+                    <SelectItem value="other">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Valor (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={editForm.value}
+                  onChange={(e) => setEditForm(f => ({ ...f, value: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Data de Vencimento</Label>
+                <Input
+                  type="date"
+                  value={editForm.dueDate}
+                  onChange={(e) => setEditForm(f => ({ ...f, dueDate: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Descrição</Label>
+                <Input
+                  value={editForm.description}
+                  onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditCharge(null)}>Cancelar</Button>
+            <Button
+              onClick={() => {
+                if (!editCharge) return;
+                updateChargeMutation.mutate({
+                  chargeId: editCharge.id,
+                  type: editForm.type,
+                  value: parseFloat(editForm.value),
+                  dueDate: editForm.dueDate || undefined,
+                  description: editForm.description || undefined,
+                });
+              }}
+              disabled={updateChargeMutation.isPending}
+            >
+              {updateChargeMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Salvando...</>
+              ) : (
+                "Salvar Alterações"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

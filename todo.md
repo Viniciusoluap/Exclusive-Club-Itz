@@ -1941,3 +1941,14 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Implementar aba Webhooks na Saas.tsx (log de eventos do Asaas)
 - [x] Implementar aba Reconciliação na Saas.tsx (cobranças pendentes e divergências)
 - [x] Corrigir automations.ts para remover dependências de tabelas removidas
+
+## Botões Criar/Editar/Excluir Cobranças no BPO
+
+- [x] Procedure bpo.createCharge no bpoRouter (criar cobrança manual + Asaas)
+- [x] Procedure bpo.updateCharge no bpoRouter (editar tipo, valor, vencimento)
+- [x] Procedure bpo.deleteCharge no bpoRouter (excluir do banco + cancelar no Asaas)
+- [x] Botão "Nova Cobrança" no cabeçalho da Saas.tsx
+- [x] Ícone lápis (editar) em cada card de cobrança
+- [x] Ícone lixeira (excluir) em cada card de cobrança
+- [x] Dialog de criação com campos: cliente, tipo, valor, dia vencimento, mês início, parcelas
+- [x] Dialog de edição com campos: tipo, valor, data vencimento, descrição
