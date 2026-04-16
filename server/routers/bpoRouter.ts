@@ -335,12 +335,14 @@ export const bpoRouter = router({
         const vesselRow = Array.isArray(vesselRows) ? vesselRows[0] : null;
         if (vesselRow?.id) {
           // Buscar client_ids com cota ativa nessa embarcação, ordenados por quota_number
+          // NOTA: não usar ORDER BY com SELECT DISTINCT em colunas fora do SELECT (MySQL/TiDB error)
           const [quotaRows] = (await db.execute(sql.raw(
-            `SELECT DISTINCT cq.client_id, ac.email
+            `SELECT cq.client_id, ac.email, MIN(cq.quota_number) as quota_number
              FROM client_quotas cq
              JOIN allowed_clients ac ON ac.id = cq.client_id
              WHERE cq.vessel_id = ${vesselRow.id} AND cq.is_active = 1
-             ORDER BY cq.quota_number ASC`
+             GROUP BY cq.client_id, ac.email
+             ORDER BY quota_number ASC`
           ))) as any;
           const quotaEmails: string[] = Array.isArray(quotaRows)
             ? quotaRows.map((r: any) => `'${r.email.replace(/'/g, "''")}'`)
