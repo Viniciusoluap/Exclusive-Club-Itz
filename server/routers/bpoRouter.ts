@@ -7,7 +7,7 @@
 import { z } from "zod";
 import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { bpoCharges, allowedClients as acTable } from "../../drizzle/schema";
+import { bpoCharges, allowedClients as acTable, vessels as vesselsTable } from "../../drizzle/schema";
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers, createPixCharge, getOrCreateAsaasCustomer, cancelCharge, receiveInCash } from "../_core/asaasService";// ============================================================
 // Helper: normalizar status do Asaas para enum bpo_charges
 // ============================================================
@@ -264,6 +264,7 @@ export const bpoRouter = router({
           dateFrom: z.string().optional(),
           dateTo: z.string().optional(),
           search: z.string().optional(),
+          vesselName: z.string().optional(),
           limit: z.number().optional().default(50),
           offset: z.number().optional().default(0),
         })
@@ -323,6 +324,12 @@ export const bpoRouter = router({
         conditions.push(
           `(client_name LIKE '%${searchFilter}%' OR client_email LIKE '%${searchFilter}%' OR description LIKE '%${searchFilter}%')`
         );
+      }
+
+      // Filtro por embarcação
+      const vesselNameFilter = (input?.vesselName ?? "").replace(/'/g, "''");
+      if (vesselNameFilter) {
+        conditions.push(`description LIKE '%${vesselNameFilter}%'`);
       }
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -1455,11 +1462,10 @@ export const bpoRouter = router({
   // ============================================================
   // LISTAR CLIENTES ATIVOS — para dropdown de vinculação
   // ============================================================
-  listActiveClients: adminProcedure
+    listActiveClients: adminProcedure
     .query(async () => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-
       const clients = await db.select({
         id: acTable.id,
         name: acTable.name,
@@ -1467,7 +1473,21 @@ export const bpoRouter = router({
       }).from(acTable)
         .where(eq(acTable.isActive, 1))
         .orderBy(acTable.name);
-
       return clients;
+    }),
+
+  // ============================================================
+  // LISTAR EMBARCAÇÕES — para filtro na aba Cobranças
+  // ============================================================
+  listVesselsForFilter: adminProcedure
+    .query(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const list = await db.select({
+        id: vesselsTable.id,
+        name: vesselsTable.name,
+      }).from(vesselsTable)
+        .orderBy(vesselsTable.name);
+      return list;
     }),
 });

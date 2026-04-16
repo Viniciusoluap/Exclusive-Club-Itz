@@ -72,6 +72,7 @@ export default function Saas() {
   const [yearFilter, setYearFilter] = useState(String(new Date().getFullYear()));
   const [monthFilter, setMonthFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [vesselFilter, setVesselFilter] = useState("all");
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
@@ -81,7 +82,8 @@ export default function Saas() {
     year: yearFilter !== "Todos os anos" ? yearFilter : undefined,
     month: monthFilter !== "all" ? monthFilter : undefined,
     search: search || undefined,
-  }), [statusFilter, typeFilter, yearFilter, monthFilter, search]);
+    vesselName: vesselFilter !== "all" ? vesselFilter : undefined,
+  }), [statusFilter, typeFilter, yearFilter, monthFilter, search, vesselFilter]);
 
   const statsQuery = trpc.bpo.getStats.useQuery(queryFilters, { refetchOnWindowFocus: false });
   const chargesQuery = trpc.bpo.listCharges.useQuery(
@@ -298,6 +300,7 @@ export default function Saas() {
   });
 
   const activeClientsQuery = trpc.bpo.listActiveClients.useQuery(undefined, { refetchOnWindowFocus: false });
+  const vesselsForFilterQuery = trpc.bpo.listVesselsForFilter.useQuery(undefined, { refetchOnWindowFocus: false });
 
   const stats = statsQuery.data;
   const charges = chargesQuery.data?.items ?? [];
@@ -312,6 +315,7 @@ export default function Saas() {
     setYearFilter(String(new Date().getFullYear()));
     setMonthFilter("all");
     setSearch("");
+    setVesselFilter("all");
     setPage(0);
   }
 
@@ -320,7 +324,8 @@ export default function Saas() {
     typeFilter !== "all" ||
     yearFilter !== String(new Date().getFullYear()) ||
     monthFilter !== "all" ||
-    search !== "";
+    search !== "" ||
+    vesselFilter !== "all";
 
   return (
     <div className="space-y-6">
@@ -496,8 +501,8 @@ export default function Saas() {
                 ))}
               </div>
 
-              {/* Busca + Mês + Ano */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Busca + Embarcação + Mês + Ano */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -507,6 +512,18 @@ export default function Saas() {
                     className="pl-9"
                   />
                 </div>
+                <Select
+                  value={vesselFilter}
+                  onValueChange={(v) => { setVesselFilter(v); setPage(0); }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Todas as embarcações" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as embarcações</SelectItem>
+                    {(vesselsForFilterQuery.data ?? []).map((v: any) => (
+                      <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Select
                   value={monthFilter}
                   onValueChange={(v) => { setMonthFilter(v); setPage(0); }}
