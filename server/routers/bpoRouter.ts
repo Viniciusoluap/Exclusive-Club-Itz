@@ -1083,6 +1083,7 @@ export const bpoRouter = router({
       value: z.number().positive().optional(),
       dueDate: z.string().optional(), // YYYY-MM-DD
       description: z.string().optional(),
+      clientId: z.number().optional(), // vincular cliente
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -1092,6 +1093,27 @@ export const bpoRouter = router({
         .where(eq(bpoCharges.id, input.chargeId)).limit(1);
       if (existing.length === 0) {
         throw new Error("Cobrança não encontrada");
+      }
+
+      // Se clientId fornecido, buscar dados do cliente
+      if (input.clientId !== undefined) {
+        const clientRow = await db.select({
+          id: acTable.id,
+          name: acTable.name,
+          email: acTable.email,
+        }).from(acTable).where(eq(acTable.id, input.clientId)).limit(1);
+        if (clientRow.length > 0) {
+          const c = clientRow[0];
+          // Atualizar cobrança com dados do cliente
+          await db.execute(sql.raw(`
+            UPDATE bpo_charges
+            SET client_id = ${c.id},
+                client_name = '${(c.name ?? "").replace(/'/g, "''")}',
+                client_email = '${(c.email ?? "").replace(/'/g, "''")}',
+                updated_at = NOW()
+            WHERE id = ${input.chargeId}
+          `));
+        }
       }
 
       const updateData: Record<string, unknown> = {};
@@ -1466,12 +1488,15 @@ export const bpoRouter = router({
     .query(async () => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+      // Retorna TODOS os clientes cadastrados (ativos e inativos)
+      // para uso no dialog de vinculação manual de cobranças
       const clients = await db.select({
         id: acTable.id,
         name: acTable.name,
         email: acTable.email,
+        cpfCnpj: acTable.cpfCnpj,
+        isActive: acTable.isActive,
       }).from(acTable)
-        .where(eq(acTable.isActive, 1))
         .orderBy(acTable.name);
       return clients;
     }),
