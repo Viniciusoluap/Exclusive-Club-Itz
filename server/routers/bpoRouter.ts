@@ -1254,4 +1254,69 @@ export const bpoRouter = router({
 
       return Array.isArray(rows) ? rows : [];
     }),
+
+  // ============================================================
+  // CLASSIFICAÇÃO AUTOMÁTICA EM LOTE — reclassifica cobranças 'other'
+  // ============================================================
+  autoClassifyAll: adminProcedure
+    .mutation(async () => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Buscar todas as cobranças com tipo 'other' ou classifiedBy 'unclassified'
+      const [rows] = (await db.execute(sql.raw(`
+        SELECT id, description, external_reference as externalReference
+        FROM bpo_charges
+        WHERE type = 'other' OR classified_by = 'unclassified'
+        LIMIT 500
+      `))) as any;
+
+      const charges: Array<{ id: number; description: string | null; externalReference: string | null }> =
+        Array.isArray(rows) ? rows : [];
+
+      const autoClassify = (description: string | null, externalRef: string | null): {
+        type: "monthly" | "quota_sale" | "fuel" | "repair" | "other";
+        classifiedBy: "auto" | "unclassified";
+      } => {
+        const text = `${description || ""} ${externalRef || ""}`.toLowerCase();
+        if (/mensalidade|cota|quota|parcela|contrato|assinatura|subscription/.test(text)) {
+          return { type: "monthly", classifiedBy: "auto" };
+        }
+        if (/abastecimento|combustivel|gasolina|litros|fuel|tanque/.test(text)) {
+          return { type: "fuel", classifiedBy: "auto" };
+        }
+        if (/vistoria|reparo|dano|avaria|reprovacao|conserto|manutencao/.test(text)) {
+          return { type: "repair", classifiedBy: "auto" };
+        }
+        if (/venda|quota_sale|aquisicao|compra.*cota|cota.*compra/.test(text)) {
+          return { type: "quota_sale", classifiedBy: "auto" };
+        }
+        return { type: "other", classifiedBy: "unclassified" };
+      };
+
+      let classified = 0;
+      let unchanged = 0;
+
+      for (const charge of charges) {
+        const { type, classifiedBy } = autoClassify(charge.description, charge.externalReference);
+        if (type !== "other" || classifiedBy === "auto") {
+          await db.execute(sql.raw(`
+            UPDATE bpo_charges
+            SET type = '${type}', classified_by = '${classifiedBy}', updated_at = NOW()
+            WHERE id = ${charge.id}
+          `));
+          classified++;
+        } else {
+          unchanged++;
+        }
+      }
+
+      return {
+        success: true,
+        total: charges.length,
+        classified,
+        unchanged,
+        message: `${classified} cobrança(s) reclassificada(s) automaticamente. ${unchanged} permaneceram como 'Outros'.`,
+      };
+    }),
 });
