@@ -83,7 +83,7 @@ export default function Mensalidades() {
   const [, setLocation] = useLocation();
 
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
-  const [selectedYear, setSelectedYear] = useState<string>(String(CURRENT_YEAR));
+  const [selectedYear, setSelectedYear] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
   // Dialog de mudança de vencimento

@@ -284,7 +284,7 @@ function OverdueChargesCard() {
   // Estado vazio — cliente em dia
   if (!overdueCharges || overdueCharges.length === 0) {
     return (
-      <Card className="border-green-200 bg-green-50/50">
+      <Card className="border-green-200 bg-green-50/50" style={{marginBottom: '30px'}}>
         <CardContent className="py-4 flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
           <div>
@@ -696,7 +696,7 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8" style={{paddingTop: '150px'}}>
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Meu Dashboard</h1>
           <p className="text-gray-600">Acompanhe suas estatísticas e histórico de uso</p>
@@ -838,7 +838,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Ações Rápidas</CardTitle>
+              <CardTitle>Menu Rápido</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-3">
@@ -872,7 +872,7 @@ export default function Dashboard() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle>Informações</CardTitle>
+              <CardTitle>Meu Perfil</CardTitle>
               <Button
                 size="sm"
                 variant="ghost"

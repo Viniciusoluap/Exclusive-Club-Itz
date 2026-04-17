@@ -549,8 +549,10 @@ export const bpoRouter = router({
       const userEmail = ctx.user.email;
       if (!userEmail) return { charges: [] };
 
-      const conditions = [
-        eq(bpoCharges.clientEmail, userEmail),
+      // Usar sql raw para comparação case-insensitive de email
+      const emailLower = userEmail.toLowerCase();
+      const conditions: any[] = [
+        sql`LOWER(${bpoCharges.clientEmail}) = ${emailLower}`,
       ];
 
       if (input.types && input.types.length > 0) {
@@ -573,6 +575,12 @@ export const bpoRouter = router({
         } else {
           conditions.push(gte(bpoCharges.dueDate, `${yearStr}-01-01`));
           conditions.push(lte(bpoCharges.dueDate, `${yearStr}-12-31`));
+        }
+      } else {
+        // Sem filtro de ano: mostrar tudo a partir de 2025-01-01
+        conditions.push(gte(bpoCharges.dueDate, "2025-01-01"));
+        if (input.month) {
+          conditions.push(sql`MONTH(${bpoCharges.dueDate}) = ${input.month}`);
         }
       }
 
