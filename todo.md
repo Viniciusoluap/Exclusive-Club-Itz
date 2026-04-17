@@ -1992,3 +1992,14 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Implementar botão Editar despesa no frontend (dialog com centro de custo)
 - [x] Adicionar botão "Classificar Automaticamente" no frontend
 - [x] Testar importação completa
+
+## 💳 Feature: Página /mensalidades conectada ao BPO Financeiro
+
+**Objetivo:** Exibir cobranças reais de Mensalidade e Venda de Cotas do cliente logado, buscando da tabela bpo_charges (cache Asaas).
+
+**Tarefas:**
+- [x] Criar procedure `bpo.myCharges` no bpoRouter — busca cobranças por email do cliente logado, tipos Mensalidade e Venda de Cotas, com filtros de mês/ano/status
+- [x] Atualizar página /mensalidades para usar `trpc.bpo.myCharges.useQuery`
+- [x] Exibir totalizadores reais: Em Aberto/Vencido e Total Pago
+- [x] Filtros de Mês, Ano e Status funcionando sobre dados reais
+- [x] Ano padrão = "Todos" (>= 2025-01-01)
