@@ -2003,3 +2003,11 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Exibir totalizadores reais: Em Aberto/Vencido e Total Pago
 - [x] Filtros de Mês, Ano e Status funcionando sobre dados reais
 - [x] Ano padrão = "Todos" (>= 2025-01-01)
+
+## 🔄 Feature: Sincronização Automática Asaas + Melhorias Despesas
+
+- [x] Verificar e corrigir webhook Asaas para atualizar bpo_charges em tempo real
+- [x] Implementar cron diário de despesas (7h) — importa transferências e taxas dos últimos 7 dias
+- [x] Garantir cron incremental de cobranças a cada 4h funcionando
+- [x] Adicionar filtro de centro de custo na aba Despesas
+- [x] Implementar paginação completa na aba Despesas

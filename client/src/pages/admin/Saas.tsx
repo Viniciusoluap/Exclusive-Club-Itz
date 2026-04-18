@@ -1841,9 +1841,13 @@ const EXPENSE_STATUS_LABELS: Record<string, { label: string; color: string }> = 
   overdue: { label: "Vencido",  color: "bg-red-100 text-red-800" },
 };
 
+const PER_PAGE_EXPENSES = 50;
+
 function ExpensesTab() {
   const [expYear, setExpYear] = useState("all");
   const [expMonth, setExpMonth] = useState("all");
+  const [expCostCenter, setExpCostCenter] = useState("all");
+  const [expPage, setExpPage] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     costCenter: "operational", description: "", recipientName: "",
@@ -1860,11 +1864,21 @@ function ExpensesTab() {
   const utils = trpc.useUtils();
 
   const expensesQuery = trpc.expenses.list.useQuery(
-    { year: expYear !== "all" ? expYear : undefined, month: expMonth !== "all" ? expMonth.padStart(2, "0") : undefined },
+    {
+      year: expYear !== "all" ? expYear : undefined,
+      month: expMonth !== "all" ? expMonth.padStart(2, "0") : undefined,
+      costCenter: expCostCenter !== "all" ? (expCostCenter as any) : "all",
+      limit: PER_PAGE_EXPENSES,
+      offset: expPage * PER_PAGE_EXPENSES,
+    },
     { refetchOnWindowFocus: false }
   );
   const expenseStatsQuery = trpc.expenses.stats.useQuery(
-    { year: expYear !== "all" ? expYear : undefined, month: expMonth !== "all" ? expMonth.padStart(2, "0") : undefined },
+    {
+      year: expYear !== "all" ? expYear : undefined,
+      month: expMonth !== "all" ? expMonth.padStart(2, "0") : undefined,
+      costCenter: expCostCenter !== "all" ? (expCostCenter as any) : "all",
+    },
     { refetchOnWindowFocus: false }
   );
 
@@ -1941,23 +1955,41 @@ function ExpensesTab() {
 
   const stats = expenseStatsQuery.data;
   const expenses = expensesQuery.data?.items ?? [];
+  const totalExpenses = expensesQuery.data?.total ?? 0;
+  const totalPages = Math.ceil(totalExpenses / PER_PAGE_EXPENSES);
+
+  // Reset page when filters change
+  const resetPage = () => setExpPage(0);
 
   return (
     <div className="space-y-4">
       {/* Filtros */}
       <div className="flex flex-wrap gap-3 items-center justify-between">
         <div className="flex gap-2 flex-wrap">
-          <Select value={expYear} onValueChange={setExpYear}>
+          <Select value={expYear} onValueChange={v => { setExpYear(v); resetPage(); }}>
             <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os anos</SelectItem>
               {["2025","2026","2027"].map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={expMonth} onValueChange={setExpMonth}>
+          <Select value={expMonth} onValueChange={v => { setExpMonth(v); resetPage(); }}>
             <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
               {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={expCostCenter} onValueChange={v => { setExpCostCenter(v); resetPage(); }}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Centro de Custo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os centros</SelectItem>
+              <SelectItem value="salary">Salários</SelectItem>
+              <SelectItem value="rent">Aluguéis</SelectItem>
+              <SelectItem value="pro_labore">Pró-labore</SelectItem>
+              <SelectItem value="fuel_operational">Combustível (Op.)</SelectItem>
+              <SelectItem value="repair">Reparos</SelectItem>
+              <SelectItem value="operational">Custo Operacional</SelectItem>
+              <SelectItem value="other">Outros</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -2104,6 +2136,10 @@ function ExpensesTab() {
           <p className="text-sm">Clique em "+ Nova Despesa" para adicionar</p>
         </div>
       ) : (
+        <>
+        <div className="text-sm text-muted-foreground mb-2">
+          {totalExpenses} despesa(s) encontrada(s){totalPages > 1 ? ` — página ${expPage + 1} de ${totalPages}` : ""}
+        </div>
         <div className="space-y-2">
           {expenses.map((exp: any) => {
             const st = EXPENSE_STATUS_LABELS[exp.status] ?? { label: exp.status, color: "bg-gray-100 text-gray-700" };
@@ -2160,6 +2196,32 @@ function ExpensesTab() {
               </Card>
             );
           })}
+        </div>
+        </>
+      )}
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExpPage(p => Math.max(0, p - 1))}
+            disabled={expPage === 0 || expensesQuery.isLoading}
+          >
+            ← Anterior
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Página {expPage + 1} de {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExpPage(p => Math.min(totalPages - 1, p + 1))}
+            disabled={expPage >= totalPages - 1 || expensesQuery.isLoading}
+          >
+            Próxima →
+          </Button>
         </div>
       )}
 
