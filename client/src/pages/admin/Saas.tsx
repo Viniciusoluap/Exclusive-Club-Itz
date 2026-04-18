@@ -1763,7 +1763,7 @@ function DREByVesselView({ data, vesselName }: { data: any; vesselName?: string 
 
 // ─── DRE Consolidado ─────────────────────────────────────────────────
 
-function DREViewREView({ data }: { data: any }) {
+function DREView({ data }: { data: any }) {
   if (!data) return (
     <div className="text-center py-12 text-muted-foreground">
       <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-30" />
