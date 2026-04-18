@@ -53,7 +53,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-const YEARS = ["Todos os anos", "2024", "2025", "2026", "2027"];
+const YEARS = ["Todos os anos", "2024", "2025", "2026", "2027", "2028", "2029", "2030"];
 const MONTHS = [
   { value: "all", label: "Todos os meses" },
   { value: "1", label: "Janeiro" }, { value: "2", label: "Fevereiro" },
@@ -350,38 +350,7 @@ export default function Saas() {
             <p className="text-sm text-muted-foreground">Gestão de pagamentos e recebimentos</p>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            size="sm"
-            onClick={() => setShowCreateDialog(true)}
-            className="bg-teal-600 hover:bg-teal-700 text-white"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Cobrança
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => importMutation.mutate()}
-            disabled={importMutation.isPending}
-          >
-            {importMutation.isPending
-              ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              : <Download className="h-4 w-4 mr-2" />}
-            Importar Histórico
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => syncMutation.mutate()}
-            disabled={syncMutation.isPending}
-          >
-            {syncMutation.isPending
-              ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              : <RefreshCw className="h-4 w-4 mr-2" />}
-            Sincronizar com Asaas
-          </Button>
-        </div>
+
       </div>
 
       {/* Tabs */}
@@ -404,6 +373,39 @@ export default function Saas() {
 
         {/* ── Tab: Cobranças ── */}
         <TabsContent value="charges" className="space-y-4">
+          {/* Botões de ação — apenas na aba Cobranças */}
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button
+              size="sm"
+              onClick={() => setShowCreateDialog(true)}
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Cobrança
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => importMutation.mutate()}
+              disabled={importMutation.isPending}
+            >
+              {importMutation.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                : <Download className="h-4 w-4 mr-2" />}
+              Importar Histórico
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
+            >
+              {syncMutation.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                : <RefreshCw className="h-4 w-4 mr-2" />}
+              Sincronizar com Asaas
+            </Button>
+          </div>
           {/* Cards de totais — apenas na aba Cobranças */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card>
