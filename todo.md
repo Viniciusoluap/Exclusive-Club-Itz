@@ -2011,3 +2011,11 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Garantir cron incremental de cobranças a cada 4h funcionando
 - [x] Adicionar filtro de centro de custo na aba Despesas
 - [x] Implementar paginação completa na aba Despesas
+
+## 📊 Feature: DRE por Embarcação
+
+- [ ] Criar procedure `bpo.getDreByVessel` — receitas por embarcação (cobranças pagas) + despesas totais por centro de custo + margem líquida
+- [ ] Adicionar select de embarcação na aba DRE (Todas as embarcações ou específica)
+- [ ] Exibir tabela mensal com: Receita Bruta, Despesas por centro de custo, Resultado Líquido
+- [ ] Exibir cards de resumo: Total Receita, Total Despesas, Margem Líquida e % Margem
+- [ ] Gráfico de barras: Receita vs Despesas por mês

@@ -835,6 +835,139 @@ export const bpoRouter = router({
     }),
 
   // ============================================================
+  // DRE POR EMBARCAÇÃO — receitas separadas por vessel
+  // ============================================================
+  getDREByVessel: adminProcedure
+    .input(z.object({
+      year: z.string().optional(),
+      month: z.string().optional(),
+      vesselId: z.number().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      const yearVal = input.year ?? "all";
+      const monthVal = input.month ?? "all";
+
+      // Build date filter for bpo_charges
+      let dateFilter = `due_date >= '2025-01-01'`;
+      if (yearVal !== "all") {
+        dateFilter = `YEAR(bc.due_date) = ${parseInt(yearVal)}`;
+        if (monthVal && monthVal !== "all") {
+          const m = monthVal.padStart(2, "0");
+          dateFilter = `bc.due_date LIKE '${yearVal}-${m}-%'`;
+        }
+      }
+
+      // 1. Receitas por embarcação
+      let revenueRows: any[] = [];
+      if (input.vesselId) {
+        const [rows] = (await db.execute(sql.raw(`
+          SELECT
+            v.id as vessel_id,
+            v.name as vessel_name,
+            COALESCE(bc.type, 'other') as type,
+            COALESCE(SUM(CASE WHEN bc.status IN ('received','confirmed','receivedInCash') THEN CAST(bc.amount_paid AS DECIMAL(10,2)) ELSE 0 END), 0) as received,
+            COALESCE(SUM(CAST(bc.value AS DECIMAL(10,2))), 0) as expected,
+            COUNT(*) as cnt
+          FROM bpo_charges bc
+          INNER JOIN client_quotas cq2 ON LOWER(bc.client_email) = LOWER(cq2.client_email)
+            AND cq2.vessel_id = ${input.vesselId} AND cq2.is_active = 1
+          INNER JOIN vessels v ON v.id = cq2.vessel_id
+          WHERE ${dateFilter}
+          GROUP BY v.id, v.name, COALESCE(bc.type, 'other')
+          ORDER BY received DESC
+        `))) as any;
+        revenueRows = Array.isArray(rows) ? rows : [];
+      } else {
+        const [rows] = (await db.execute(sql.raw(`
+          SELECT
+            v.id as vessel_id,
+            v.name as vessel_name,
+            COALESCE(SUM(CASE WHEN bc.status IN ('received','confirmed','receivedInCash') THEN CAST(bc.amount_paid AS DECIMAL(10,2)) ELSE 0 END), 0) as received,
+            COALESCE(SUM(CAST(bc.value AS DECIMAL(10,2))), 0) as expected,
+            COUNT(*) as cnt
+          FROM bpo_charges bc
+          INNER JOIN client_quotas cq2 ON LOWER(bc.client_email) = LOWER(cq2.client_email) AND cq2.is_active = 1
+          INNER JOIN vessels v ON v.id = cq2.vessel_id
+          WHERE ${dateFilter.replace('bc.', '')}
+          GROUP BY v.id, v.name
+          ORDER BY received DESC
+        `))) as any;
+        revenueRows = Array.isArray(rows) ? rows : [];
+      }
+
+      // 2. Despesas por centro de custo (globais)
+      let expDateFilter = `due_date >= '2025-01-01'`;
+      if (yearVal !== "all") {
+        expDateFilter = `YEAR(due_date) = ${parseInt(yearVal)}`;
+        if (monthVal && monthVal !== "all") {
+          expDateFilter += ` AND MONTH(due_date) = ${parseInt(monthVal)}`;
+        }
+      }
+      const [expRows] = (await db.execute(sql.raw(`
+        SELECT
+          COALESCE(cost_center, 'other') as cost_center,
+          COALESCE(SUM(CASE WHEN status = 'paid' THEN CAST(value AS DECIMAL(10,2)) ELSE 0 END), 0) as paid,
+          COALESCE(SUM(CAST(value AS DECIMAL(10,2))), 0) as total,
+          COUNT(*) as cnt
+        FROM expense_records
+        WHERE ${expDateFilter}
+        GROUP BY COALESCE(cost_center, 'other')
+        ORDER BY paid DESC
+      `))) as any;
+      const expByCenter = Array.isArray(expRows) ? expRows : [];
+
+      const totalRevenue = revenueRows.reduce((s: number, r: any) => s + parseFloat(r.received ?? "0"), 0);
+      const totalExpected = revenueRows.reduce((s: number, r: any) => s + parseFloat(r.expected ?? "0"), 0);
+      const totalExpenses = expByCenter.reduce((s: number, r: any) => s + parseFloat(r.paid ?? "0"), 0);
+      const totalExpensesAll = expByCenter.reduce((s: number, r: any) => s + parseFloat(r.total ?? "0"), 0);
+      const netResult = totalRevenue - totalExpenses;
+
+      const TYPE_LABELS: Record<string, string> = {
+        monthly: "Mensalidades", quota_sale: "Vendas de Cotas",
+        fuel: "Abastecimentos", repair: "Reparos", other: "Outros",
+      };
+      const CC_LABELS: Record<string, string> = {
+        salary: "Salários", rent: "Aluguéis", pro_labore: "Pró-labore",
+        fuel_operational: "Combustível (Op.)", repair: "Reparos",
+        operational: "Custo Operacional", other: "Outros",
+      };
+
+      return {
+        year: yearVal, month: monthVal, vesselId: input.vesselId ?? null,
+        revenueByVessel: input.vesselId
+          ? revenueRows.map((r: any) => ({
+              vesselId: r.vessel_id as number, vesselName: r.vessel_name as string,
+              type: r.type as string, typeLabel: TYPE_LABELS[r.type] ?? r.type,
+              received: parseFloat(r.received ?? "0"),
+              expected: parseFloat(r.expected ?? "0"),
+              count: parseInt(r.cnt ?? "0"),
+            }))
+          : revenueRows.map((r: any) => ({
+              vesselId: r.vessel_id as number, vesselName: r.vessel_name as string,
+              type: null, typeLabel: null,
+              received: parseFloat(r.received ?? "0"),
+              expected: parseFloat(r.expected ?? "0"),
+              count: parseInt(r.cnt ?? "0"),
+            })),
+        expenses: {
+          total: totalExpenses, totalAll: totalExpensesAll,
+          byCenter: expByCenter.map((r: any) => ({
+            costCenter: r.cost_center as string,
+            label: CC_LABELS[r.cost_center] ?? r.cost_center ?? "Outros",
+            paid: parseFloat(r.paid ?? "0"),
+            total: parseFloat(r.total ?? "0"),
+            count: parseInt(r.cnt ?? "0"),
+          })),
+        },
+        totalRevenue, totalExpected, totalExpenses, totalExpensesAll,
+        netResult,
+        margin: totalRevenue > 0 ? (netResult / totalRevenue) * 100 : 0,
+      };
+    }),
+
+  // ============================================================
   // WEBHOOK LOGS — histórico de eventos recebidos do Asaas
   // ============================================================
   listWebhookLogs: adminProcedure

@@ -98,8 +98,13 @@ export default function Saas() {
   // ── DRE ──
   const [dreYear, setDreYear] = useState(String(new Date().getFullYear()));
   const [dreMonth, setDreMonth] = useState("all");
+  const [dreVesselId, setDreVesselId] = useState<number | undefined>(undefined);
   const dreQuery = trpc.bpo.getDRE.useQuery(
     { year: dreYear, month: dreMonth !== "all" ? dreMonth : undefined },
+    { refetchOnWindowFocus: false, enabled: dreVesselId === undefined }
+  );
+  const dreByVesselQuery = trpc.bpo.getDREByVessel.useQuery(
+    { year: dreYear !== "all" ? dreYear : undefined, month: dreMonth !== "all" ? dreMonth : undefined, vesselId: dreVesselId },
     { refetchOnWindowFocus: false }
   );
 
@@ -726,12 +731,26 @@ export default function Saas() {
                 {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" onClick={() => dreQuery.refetch()}>
+            <Select
+              value={dreVesselId !== undefined ? String(dreVesselId) : "all"}
+              onValueChange={(v) => setDreVesselId(v === "all" ? undefined : parseInt(v))}
+            >
+              <SelectTrigger className="w-52"><SelectValue placeholder="Todas as embarcações" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as embarcações</SelectItem>
+                {(vesselsForFilterQuery.data ?? []).map((v: any) => (
+                  <SelectItem key={v.id} value={String(v.id)}>{v.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={() => { dreQuery.refetch(); dreByVesselQuery.refetch(); }}>
               <RefreshCw className="h-3.5 w-3.5 mr-1" />Atualizar
             </Button>
           </div>
-          {dreQuery.isLoading ? (
+          {(dreVesselId !== undefined ? dreByVesselQuery.isLoading : dreQuery.isLoading) ? (
             <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+          ) : dreVesselId !== undefined ? (
+            <DREByVesselView data={dreByVesselQuery.data} vesselName={(vesselsForFilterQuery.data ?? []).find((v: any) => v.id === dreVesselId)?.name} />
           ) : (
             <DREView data={dreQuery.data} />
           )}
@@ -1614,9 +1633,137 @@ function UnclassifiedChargeCard({
   );
 }
 
-// ─── DRE Consolidado ─────────────────────────────────────────────────────────
+//// ─── DRE por Embarcação ─────────────────────────────────────────────────
 
-function DREView({ data }: { data: any }) {
+function DREByVesselView({ data, vesselName }: { data: any; vesselName?: string }) {
+  if (!data) return (
+    <div className="text-center py-12 text-muted-foreground">
+      <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-30" />
+      <p>Nenhum dado disponível para o período selecionado</p>
+    </div>
+  );
+
+  const netPositive = data.netResult >= 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Título da embarcação selecionada */}
+      {vesselName && (
+        <div className="flex items-center gap-2 pb-1 border-b">
+          <Activity className="h-4 w-4 text-teal-600" />
+          <span className="font-semibold text-base text-teal-700">{vesselName}</span>
+          <span className="text-xs text-muted-foreground ml-1">DRE por embarcação</span>
+        </div>
+      )}
+
+      {/* Cards de resumo */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="border-green-200 bg-green-50/40">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="h-4 w-4 text-green-600" />
+              <p className="text-sm font-medium text-green-800">Receita Realizada</p>
+            </div>
+            <p className="text-2xl font-bold text-green-700">{fmt(data.totalRevenue)}</p>
+            <p className="text-xs text-green-600 mt-1">Previsto: {fmt(data.totalExpected)}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-red-200 bg-red-50/40">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingDown className="h-4 w-4 text-red-600" />
+              <p className="text-sm font-medium text-red-800">Despesas Pagas</p>
+            </div>
+            <p className="text-2xl font-bold text-red-700">{fmt(data.totalExpenses)}</p>
+            <p className="text-xs text-red-600 mt-1">Previsto: {fmt(data.totalExpensesAll)}</p>
+          </CardContent>
+        </Card>
+        <Card className={netPositive ? "border-blue-200 bg-blue-50/40" : "border-orange-200 bg-orange-50/40"}>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className={`h-4 w-4 ${netPositive ? "text-blue-600" : "text-orange-600"}`} />
+              <p className={`text-sm font-medium ${netPositive ? "text-blue-800" : "text-orange-800"}`}>Resultado Líquido</p>
+            </div>
+            <p className={`text-2xl font-bold ${netPositive ? "text-blue-700" : "text-orange-700"}`}>{fmt(data.netResult)}</p>
+            <p className={`text-xs mt-1 ${netPositive ? "text-blue-600" : "text-orange-600"}`}>
+              Margem: {data.margin.toFixed(1)}%
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Receitas por tipo na embarcação */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-600" />
+              Receitas da Embarcação
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {data.revenueByVessel.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Sem receitas no período</p>
+            ) : data.revenueByVessel.map((r: any, i: number) => (
+              <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0">
+                <div>
+                  <p className="text-sm font-medium">{r.typeLabel ?? r.vesselName}</p>
+                  <p className="text-xs text-muted-foreground">{r.count} cobrança(s)</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-green-700">{fmt(r.received)}</p>
+                  {r.expected !== r.received && (
+                    <p className="text-xs text-muted-foreground">Prev: {fmt(r.expected)}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div className="flex justify-between pt-2 font-semibold border-t">
+              <span className="text-sm">Total Receitas</span>
+              <span className="text-sm text-green-700">{fmt(data.totalRevenue)}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Despesas por centro de custo (globais) */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-red-600" />
+              Despesas por Centro de Custo
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {data.expenses.byCenter.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Sem despesas no período</p>
+            ) : data.expenses.byCenter.map((e: any) => (
+              <div key={e.costCenter} className="flex items-center justify-between py-1.5 border-b last:border-0">
+                <div>
+                  <p className="text-sm font-medium">{e.label}</p>
+                  <p className="text-xs text-muted-foreground">{e.count} despesa(s)</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-red-700">{fmt(e.paid)}</p>
+                  {e.total !== e.paid && (
+                    <p className="text-xs text-muted-foreground">Prev: {fmt(e.total)}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div className="flex justify-between pt-2 font-semibold border-t">
+              <span className="text-sm">Total Despesas</span>
+              <span className="text-sm text-red-700">{fmt(data.totalExpenses)}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── DRE Consolidado ─────────────────────────────────────────────────
+
+function DREViewREView({ data }: { data: any }) {
   if (!data) return (
     <div className="text-center py-12 text-muted-foreground">
       <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-30" />
