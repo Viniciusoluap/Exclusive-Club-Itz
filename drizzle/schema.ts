@@ -393,7 +393,7 @@ export const bpoCharges = mysqlTable("bpo_charges", {
   ]).notNull().default("pending"),
 
   type: mysqlEnum("type", [
-    "monthly", "quota_sale", "fuel", "repair", "other"
+    "monthly", "quota_sale", "fuel", "repair", "inspection", "other"
   ]).default("other"),
 
   classifiedBy: mysqlEnum("classified_by", [
@@ -428,3 +428,19 @@ export const bpoCharges = mysqlTable("bpo_charges", {
 
 export type BpoCharge = typeof bpoCharges.$inferSelect;
 export type InsertBpoCharge = typeof bpoCharges.$inferInsert;
+
+// Cache de clientes Asaas — evita chamadas repetidas à API
+export const asaasCustomers = mysqlTable("asaas_customers", {
+  id: int().autoincrement().primaryKey(),
+  clientEmail: varchar("client_email", { length: 320 }).notNull(),
+  asaasCustomerId: varchar("asaas_customer_id", { length: 100 }).notNull(),
+  cpfCnpj: varchar("cpf_cnpj", { length: 18 }),
+  name: text("name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  index("asaas_customers_email_unique").on(table.clientEmail),
+  index("asaas_customers_customer_id_idx").on(table.asaasCustomerId),
+]);
+export type AsaasCustomer = typeof asaasCustomers.$inferSelect;
+export type InsertAsaasCustomer = typeof asaasCustomers.$inferInsert;

@@ -2019,3 +2019,20 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] Exibir tabela mensal com: Receita Bruta, Despesas por centro de custo, Resultado Líquido
 - [ ] Exibir cards de resumo: Total Receita, Total Despesas, Margem Líquida e % Margem
 - [ ] Gráfico de barras: Receita vs Despesas por mês
+
+## 🐛 BUG FASE 1: Tabela asaas_customers ausente + Cobranças Reparo/Vistoria não sincronizadas com bpo_charges
+
+- [x] Criar tabela `asaas_customers` no banco de dados (estava faltando, causava erro ao criar cobrança)
+- [x] Adicionar `asaas_customers` ao schema Drizzle para manutenção futura
+- [x] Após criar cobrança de reparo/vistoria em `inspection_charges`, inserir também em `bpo_charges`
+- [ ] Testar criação de cobrança de reparo e vistoria end-to-end
+
+## 🐛 BUG FASE 2: Cobranças vencidas exibidas como Pendentes em Reparos e Danos
+
+- [x] Verificar query de listagem de inspection_charges — lógica de overdue já estava correta no backend
+- [x] Corrigir frontend: contador de pendentes agora inclui vencidas, badge Vencido já funcionava
+
+## 🐛 BUG FASE 3: Baixa manual de abastecimento não refletida no BPO
+
+- [x] Verificar mutation `fuelRecords.markAsPaid` — corrigida para atualizar/inserir em `bpo_charges`
+- [x] Enum `type` de bpo_charges atualizado para incluir `inspection` (via ALTER TABLE + schema Drizzle)

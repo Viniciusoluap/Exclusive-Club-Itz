@@ -2477,6 +2477,16 @@ Nenhuma reserva foi afetada.
 
         try {
           const { sql } = await import('drizzle-orm');
+
+          // 1. Buscar o registro para obter asaas_charge_id
+          const recResult = await db.execute(sql`
+            SELECT id, asaas_charge_id, total_amount, client_email, client_name, due_date
+            FROM fuel_records WHERE id = ${input.id}
+          `) as any;
+          const rec = (Array.isArray(recResult[0]) ? recResult[0][0] : recResult[0]);
+          if (!rec) throw new TRPCError({ code: 'NOT_FOUND', message: 'Registro de abastecimento não encontrado' });
+
+          // 2. Atualizar fuel_records
           await db.execute(sql`
             UPDATE fuel_records 
             SET 
@@ -2486,6 +2496,38 @@ Nenhuma reserva foi afetada.
               manual_payment_note = ${input.note || 'Pagamento recebido manualmente'}
             WHERE id = ${input.id}
           `);
+
+          // 3. Sincronizar com bpo_charges
+          if (rec.asaas_charge_id) {
+            // Se já existe em bpo_charges, atualizar o status
+            await db.execute(sql`
+              UPDATE bpo_charges
+              SET status = 'paid', updated_at = NOW()
+              WHERE asaas_charge_id = ${rec.asaas_charge_id}
+            `);
+          } else {
+            // Não tem asaas_charge_id — inserir como baixa manual no bpo_charges
+            try {
+              const { bpoCharges } = await import('../drizzle/schema');
+              await db.insert(bpoCharges).values({
+                asaasChargeId: null,
+                asaasCustomerId: null,
+                clientId: null,
+                clientName: rec.client_name || null,
+                clientEmail: rec.client_email || null,
+                value: (rec.total_amount || '0').toString(),
+                dueDate: rec.due_date ? new Date(rec.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                status: 'paid',
+                type: 'fuel',
+                classifiedBy: 'manual',
+                billingType: 'PIX',
+                description: `Abastecimento - Baixa manual (ID: ${input.id})`,
+                source: 'manual',
+              });
+            } catch (bpoErr: any) {
+              console.warn('[fuelRecords.markAsPaid] Falha ao inserir em bpo_charges:', bpoErr.message);
+            }
+          }
 
           return { success: true, message: 'Pagamento marcado como recebido' };
         } catch (error: any) {
@@ -4044,7 +4086,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             });
             
             // Salvar no banco
-            await db.insert(inspectionCharges).values({
+            const { insertId: inspectionChargeId } = await db.insert(inspectionCharges).values({
               chargeType: 'inspection',
               inspectionId: input.inspectionId,
               vesselId: null,
@@ -4057,7 +4099,32 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               asaasChargeId: asaasCharge.id,
               paymentStatus: 'pending',
               receiptUrl: null,
-            });
+            }) as any;
+
+            // Sincronizar com bpo_charges para aparecer no BPO Financeiro
+            try {
+              const { bpoCharges } = await import('../drizzle/schema');
+              const { normalizeBpoStatus } = await import('./routers/bpoRouter');
+              await db.insert(bpoCharges).values({
+                asaasChargeId: asaasCharge.id,
+                asaasCustomerId: customer.id,
+                clientId: null,
+                clientName: inspection.client_name || null,
+                clientEmail: inspection.client_email,
+                value: input.amount.toString(),
+                dueDate: dueDateStr,
+                status: 'pending',
+                type: 'inspection',
+                classifiedBy: 'manual',
+                billingType: 'PIX',
+                description: `Conserto de Danos - Vistoria ${new Date(inspection.created_at).toLocaleDateString('pt-BR')}`,
+                paymentLink: asaasCharge.invoiceUrl ?? null,
+                invoiceUrl: asaasCharge.invoiceUrl ?? null,
+                source: 'manual',
+              });
+            } catch (bpoErr: any) {
+              console.warn('[inspectionCharges.create] Falha ao sincronizar com bpo_charges:', bpoErr.message);
+            }
             
             return { 
               success: true, 
@@ -4153,6 +4220,30 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 paymentStatus: 'pending',
                 receiptUrl: input.receiptUrl || null,
               });
+
+              // Sincronizar com bpo_charges para aparecer no BPO Financeiro
+              try {
+                const { bpoCharges } = await import('../drizzle/schema');
+                await db.insert(bpoCharges).values({
+                  asaasChargeId: asaasCharge.id,
+                  asaasCustomerId: customer.id,
+                  clientId: quota.client_id ?? null,
+                  clientName: quota.client_name || null,
+                  clientEmail: quota.client_email,
+                  value: individualAmount.toString(),
+                  dueDate: dueDateStr,
+                  status: 'pending',
+                  type: 'repair',
+                  classifiedBy: 'manual',
+                  billingType: 'PIX',
+                  description: `Reparo da Embarcação: ${vessel.name} - ${input.description}`,
+                  paymentLink: asaasCharge.invoiceUrl ?? null,
+                  invoiceUrl: asaasCharge.invoiceUrl ?? null,
+                  source: 'manual',
+                });
+              } catch (bpoErr: any) {
+                console.warn('[inspectionCharges.create] Falha ao sincronizar reparo com bpo_charges:', bpoErr.message);
+              }
               
               createdCharges.push({
                 clientEmail: quota.client_email,
