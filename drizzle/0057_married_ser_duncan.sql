@@ -1,0 +1,1 @@
+ALTER TABLE `bpo_charges` MODIFY COLUMN `type` enum('monthly','quota_sale','fuel','repair','inspection','other') DEFAULT 'other';

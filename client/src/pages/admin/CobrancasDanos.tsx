@@ -486,7 +486,8 @@ export default function CobrancasDanos() {
     );
   }
 
-  const totalPending = charges?.filter((c: any) => c.payment_status === "pending").length || 0;
+  const totalPending = charges?.filter((c: any) => c.payment_status === "pending" || c.payment_status === "overdue").length || 0;
+  const totalOverdue = charges?.filter((c: any) => c.payment_status === "overdue").length || 0;
   const totalAmount = charges?.reduce((sum: number, c: any) => sum + parseFloat(c.amount || 0), 0) || 0;
 
   return (
@@ -522,7 +523,7 @@ export default function CobrancasDanos() {
           <CardContent>
             <div className="text-2xl font-bold">{charges?.length || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {totalPending} pendentes
+              {totalPending} em aberto {totalOverdue > 0 && <span className="text-destructive font-medium">({totalOverdue} vencidas)</span>}
             </p>
           </CardContent>
         </Card>
