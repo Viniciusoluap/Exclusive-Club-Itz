@@ -2025,7 +2025,14 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Criar tabela `asaas_customers` no banco de dados (estava faltando, causava erro ao criar cobrança)
 - [x] Adicionar `asaas_customers` ao schema Drizzle para manutenção futura
 - [x] Após criar cobrança de reparo/vistoria em `inspection_charges`, inserir também em `bpo_charges`
-- [ ] Testar criação de cobrança de reparo e vistoria end-to-end
+- [x] Testar criação de cobrança de reparo e vistoria end-to-end
+
+## ✅ ETAPA 6: Backfill de cobranças antigas para bpo_charges
+
+- [x] Backfill de 3 inspection_charges sem bpo_charges (status mapeado: paid→received, overdue→overdue)
+- [x] Backfill de 4 fuel_records pagos sem bpo_charges
+- [x] Correção do status 'paid'→'received' no markAsPaid (enum correto do bpo_charges)
+- [x] Schema Drizzle confirmado com 'received' no enum de status
 
 ## 🐛 BUG FASE 2: Cobranças vencidas exibidas como Pendentes em Reparos e Danos
 
