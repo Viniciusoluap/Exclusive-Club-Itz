@@ -2502,7 +2502,7 @@ Nenhuma reserva foi afetada.
             // Se já existe em bpo_charges, atualizar o status
             await db.execute(sql`
               UPDATE bpo_charges
-              SET status = 'paid', updated_at = NOW()
+              SET status = 'received', updated_at = NOW()
               WHERE asaas_charge_id = ${rec.asaas_charge_id}
             `);
           } else {
@@ -2517,7 +2517,7 @@ Nenhuma reserva foi afetada.
                 clientEmail: rec.client_email || null,
                 value: (rec.total_amount || '0').toString(),
                 dueDate: rec.due_date ? new Date(rec.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-                status: 'paid',
+                status: 'received',
                 type: 'fuel',
                 classifiedBy: 'manual',
                 billingType: 'PIX',
