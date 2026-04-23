@@ -1,0 +1,2 @@
+ALTER TABLE `expense_records` MODIFY COLUMN `cost_center` enum('salary','rent','pro_labore','fuel_operational','repair','operational','withdrawal','other') NOT NULL;--> statement-breakpoint
+ALTER TABLE `expense_records` MODIFY COLUMN `source_type` enum('transfer','fee','bill','manual','withdrawal') DEFAULT 'manual';

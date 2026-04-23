@@ -2043,3 +2043,12 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 
 - [x] Verificar mutation `fuelRecords.markAsPaid` — corrigida para atualizar/inserir em `bpo_charges`
 - [x] Enum `type` de bpo_charges atualizado para incluir `inspection` (via ALTER TABLE + schema Drizzle)
+
+## ✅ ETAPA 7: Corrigir despesas subnotificadas (paginação + fontes)
+
+- [x] Janela de sync de despesas ampliada de 7 para 60 dias
+- [x] Fonte 3 adicionada ao syncExpenses: Saques e Antecipações (WITHDRAWAL, ANTICIPATION_CREDIT_DEDUCTION, CHARGEBACK, REFUND)
+- [x] Enum `cost_center` de expense_records atualizado para incluir `withdrawal` (via ALTER TABLE + schema Drizzle)
+- [x] Enum `source_type` de expense_records atualizado para incluir `withdrawal`
+- [x] Frontend Saas.tsx: label e filtro de centro de custo atualizados com "Saque / Retirada"
+- [x] Migração 0058 gerada e registrada no journal do Drizzle
