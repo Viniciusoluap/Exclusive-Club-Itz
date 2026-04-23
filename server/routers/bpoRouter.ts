@@ -800,12 +800,12 @@ export const bpoRouter = router({
       const netResult = totalRevenue - totalExpenses;
       const TYPE_LABELS: Record<string, string> = {
         monthly: "Mensalidades", quota_sale: "Vendas de Cotas",
-        fuel: "Abastecimentos", repair: "Reparos", other: "Outros",
+        fuel: "Abastecimentos", repair: "Reparos", inspection: "Vistorias", other: "Outros",
       };
       const COST_CENTER_LABELS: Record<string, string> = {
         salary: "Salários", rent: "Aluguéis", pro_labore: "Pró-labore",
         fuel_operational: "Abastecimentos (Op.)", repair: "Reparos",
-        operational: "Custo Operacional", other: "Outros",
+        operational: "Custo Operacional", withdrawal: "Saque / Retirada", other: "Outros",
       };
       return {
         year: yearVal, month: monthVal,
@@ -849,8 +849,8 @@ export const bpoRouter = router({
       const yearVal = input.year ?? "all";
       const monthVal = input.month ?? "all";
 
-      // Build date filter for bpo_charges
-      let dateFilter = `due_date >= '2025-01-01'`;
+      // Build date filter for bpo_charges (sempre usa alias bc.)
+      let dateFilter = `bc.due_date >= '2025-01-01'`;
       if (yearVal !== "all") {
         dateFilter = `YEAR(bc.due_date) = ${parseInt(yearVal)}`;
         if (monthVal && monthVal !== "all") {
@@ -860,6 +860,7 @@ export const bpoRouter = router({
       }
 
       // 1. Receitas por embarcação
+      // Usa LEFT JOIN para incluir também cobranças de clientes sem cota ativa (reparos avulsos, etc.)
       let revenueRows: any[] = [];
       if (input.vesselId) {
         const [rows] = (await db.execute(sql.raw(`
@@ -871,27 +872,27 @@ export const bpoRouter = router({
             COALESCE(SUM(CAST(bc.value AS DECIMAL(10,2))), 0) as expected,
             COUNT(*) as cnt
           FROM bpo_charges bc
-          INNER JOIN client_quotas cq2 ON LOWER(bc.client_email) = LOWER(cq2.client_email)
+          LEFT JOIN client_quotas cq2 ON LOWER(bc.client_email) = LOWER(cq2.client_email)
             AND cq2.vessel_id = ${input.vesselId} AND cq2.is_active = 1
-          INNER JOIN vessels v ON v.id = cq2.vessel_id
-          WHERE ${dateFilter}
-          GROUP BY v.id, v.name, COALESCE(bc.type, 'other')
+          LEFT JOIN vessels v ON v.id = cq2.vessel_id
+          WHERE ${dateFilter} AND (cq2.vessel_id = ${input.vesselId} OR cq2.vessel_id IS NULL)
+          GROUP BY COALESCE(v.id, 0), COALESCE(v.name, 'Sem embarcação'), COALESCE(bc.type, 'other')
           ORDER BY received DESC
         `))) as any;
         revenueRows = Array.isArray(rows) ? rows : [];
       } else {
         const [rows] = (await db.execute(sql.raw(`
           SELECT
-            v.id as vessel_id,
-            v.name as vessel_name,
+            COALESCE(v.id, 0) as vessel_id,
+            COALESCE(v.name, 'Sem embarcação') as vessel_name,
             COALESCE(SUM(CASE WHEN bc.status IN ('received','confirmed','receivedInCash') THEN CAST(bc.amount_paid AS DECIMAL(10,2)) ELSE 0 END), 0) as received,
             COALESCE(SUM(CAST(bc.value AS DECIMAL(10,2))), 0) as expected,
             COUNT(*) as cnt
           FROM bpo_charges bc
-          INNER JOIN client_quotas cq2 ON LOWER(bc.client_email) = LOWER(cq2.client_email) AND cq2.is_active = 1
-          INNER JOIN vessels v ON v.id = cq2.vessel_id
-          WHERE ${dateFilter.replace('bc.', '')}
-          GROUP BY v.id, v.name
+          LEFT JOIN client_quotas cq2 ON LOWER(bc.client_email) = LOWER(cq2.client_email) AND cq2.is_active = 1
+          LEFT JOIN vessels v ON v.id = cq2.vessel_id
+          WHERE ${dateFilter}
+          GROUP BY COALESCE(v.id, 0), COALESCE(v.name, 'Sem embarcação')
           ORDER BY received DESC
         `))) as any;
         revenueRows = Array.isArray(rows) ? rows : [];
@@ -926,12 +927,12 @@ export const bpoRouter = router({
 
       const TYPE_LABELS: Record<string, string> = {
         monthly: "Mensalidades", quota_sale: "Vendas de Cotas",
-        fuel: "Abastecimentos", repair: "Reparos", other: "Outros",
+        fuel: "Abastecimentos", repair: "Reparos", inspection: "Vistorias", other: "Outros",
       };
       const CC_LABELS: Record<string, string> = {
         salary: "Salários", rent: "Aluguéis", pro_labore: "Pró-labore",
         fuel_operational: "Combustível (Op.)", repair: "Reparos",
-        operational: "Custo Operacional", other: "Outros",
+        operational: "Custo Operacional", withdrawal: "Saque / Retirada", other: "Outros",
       };
 
       return {

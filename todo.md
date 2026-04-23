@@ -2052,3 +2052,12 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Enum `source_type` de expense_records atualizado para incluir `withdrawal`
 - [x] Frontend Saas.tsx: label e filtro de centro de custo atualizados com "Saque / Retirada"
 - [x] Migração 0058 gerada e registrada no journal do Drizzle
+
+## ✅ ETAPA 8/9: Corrigir DRE com resultado irreal + DRE por embarcação
+
+- [x] `getDRE`: TYPE_LABELS atualizado com `inspection` (Vistorias)
+- [x] `getDRE`: COST_CENTER_LABELS atualizado com `withdrawal` (Saque / Retirada)
+- [x] `getDREByVessel`: TYPE_LABELS e CC_LABELS atualizados com `inspection` e `withdrawal`
+- [x] `getDREByVessel`: query de receita por embarcação corrigida de INNER JOIN para LEFT JOIN (inclui cobranças de clientes sem cota ativa)
+- [x] `getDREByVessel`: dateFilter padronizado com alias `bc.` em ambas as queries
+- [x] Cobranças sem embarcação vinculada agora aparecem como "Sem embarcação" no DRE por embarcação
