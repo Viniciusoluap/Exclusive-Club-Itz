@@ -166,9 +166,9 @@ async function runSyncExpenses(): Promise<void> {
       ? "https://api.asaas.com/v3"
       : "https://sandbox.asaas.com/api/v3";
 
-    // Janela: últimos 7 dias
+    // Janela: últimos 60 dias (ampliada para capturar despesas mais antigas)
     const since = new Date();
-    since.setDate(since.getDate() - 7);
+    since.setDate(since.getDate() - 60);
     const sinceStr = since.toISOString().split("T")[0];
 
     let imported = 0;
@@ -233,7 +233,7 @@ async function runSyncExpenses(): Promise<void> {
       }
     }
 
-    // ── Fonte 2: Taxas Asaas (financialTransactions DEBIT) ────────────────
+    // ── Fonte 2: Taxas Asaas (financialTransactions DEBIT — fees) ──────────
     {
       const FEE_TYPES = new Set([
         "PHONE_CALL_NOTIFICATION_FEE", "INSTANT_TEXT_MESSAGE_FEE", "SMS_FEE",
@@ -281,6 +281,67 @@ async function runSyncExpenses(): Promise<void> {
               'paid',
               '${txId}',
               'fee',
+              0,
+              NOW(),
+              NOW()
+            )
+          `));
+          imported++;
+        }
+
+        if (items.length < limit) break;
+        offset += limit;
+      }
+    }
+
+    // ── Fonte 3: Saques e Antecipações (financialTransactions DEBIT — outros) ──
+    {
+      const WITHDRAWAL_TYPES = new Set([
+        "WITHDRAWAL", "ANTICIPATION_CREDIT_DEDUCTION", "CHARGEBACK_DISPUTE",
+        "CHARGEBACK_REVERSAL", "REFUND", "REFUND_REVERSAL",
+      ]);
+
+      let offset = 0;
+      const limit = 100;
+      while (true) {
+        const res = await fetch(
+          `${apiUrl}/financialTransactions?type=DEBIT&startDate=${sinceStr}&limit=${limit}&offset=${offset}`,
+          { headers: { access_token: apiKey } }
+        );
+        if (!res.ok) break;
+        const data = await res.json();
+        const items: any[] = data.data || [];
+        if (items.length === 0) break;
+
+        for (const tx of items) {
+          if (!WITHDRAWAL_TYPES.has(tx.type)) continue;
+
+          const txId = `withdrawal_${tx.id}`;
+          const existing = await db.execute(
+            sql.raw(`SELECT id FROM expense_records WHERE asaas_payment_id = '${txId}' LIMIT 1`)
+          ) as any;
+          const rows = Array.isArray(existing[0]) ? existing[0] : existing;
+          if (rows.length > 0) { skipped++; continue; }
+
+          const desc = tx.description || `Saque/Antecipação: ${tx.type}`;
+          const dateStr = (tx.date || new Date().toISOString()).split("T")[0];
+          const value = Math.abs(tx.value || 0);
+          if (value <= 0) continue;
+
+          const costCenter = tx.type === "WITHDRAWAL" ? "withdrawal" : "operational";
+
+          await db.execute(sql.raw(`
+            INSERT INTO expense_records (cost_center, description, recipient_name, value, due_date, paid_date, status, asaas_payment_id, source_type, manually_classified, created_at, updated_at)
+            VALUES (
+              '${costCenter}',
+              ${JSON.stringify(desc)},
+              'Asaas',
+              ${value},
+              '${dateStr}',
+              '${dateStr}',
+              'paid',
+              '${txId}',
+              'withdrawal',
               0,
               NOW(),
               NOW()

@@ -1981,7 +1981,7 @@ function ReconciliationView({ data }: { data: any }) {
 const COST_CENTER_LABELS: Record<string, string> = {
   salary: "Salários", rent: "Aluguéis", pro_labore: "Pró-labore",
   fuel_operational: "Combustível (Op.)", repair: "Reparos",
-  operational: "Custo Operacional", other: "Outros",
+  operational: "Custo Operacional", withdrawal: "Saque / Retirada", other: "Outros",
 };
 
 const EXPENSE_STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -2138,6 +2138,7 @@ function ExpensesTab() {
               <SelectItem value="fuel_operational">Combustível (Op.)</SelectItem>
               <SelectItem value="repair">Reparos</SelectItem>
               <SelectItem value="operational">Custo Operacional</SelectItem>
+              <SelectItem value="withdrawal">Saque / Retirada</SelectItem>
               <SelectItem value="other">Outros</SelectItem>
             </SelectContent>
           </Select>
