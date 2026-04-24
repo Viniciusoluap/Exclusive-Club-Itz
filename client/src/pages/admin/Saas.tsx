@@ -37,6 +37,7 @@ const TYPE_LABELS: Record<string, string> = {
   quota_sale: "Venda de Cota",
   fuel:       "Abastecimento",
   repair:     "Reparo",
+  inspection: "Vistoria",
   other:      "Outros",
 };
 
@@ -161,6 +162,10 @@ export default function Saas() {
     value: "",
     paymentDate: new Date().toISOString().split('T')[0],
   });
+
+  // ── Dialog: Gerar PIX Individual ──
+  const [pixLinkCharge, setPixLinkCharge] = useState<any>(null);
+  const [pixLinkResult, setPixLinkResult] = useState<any>(null);
 
   // ── Dialog: Split de PIX ──
   const [showSplitDialog, setShowSplitDialog] = useState(false);
@@ -298,6 +303,14 @@ export default function Saas() {
       utils.bpo.listCharges.invalidate();
     },
     onError: (err) => toast.error(`Erro na classificação automática: ${err.message}`),
+  });
+
+  const generatePixLinkMutation = trpc.bpo.generatePixLink.useMutation({
+    onSuccess: (data) => {
+      setPixLinkResult(data);
+      utils.bpo.listCharges.invalidate();
+    },
+    onError: (err) => toast.error(`Erro ao gerar PIX: ${err.message}`),
   });
 
   const linkClientMutation = trpc.bpo.linkClient.useMutation({
@@ -654,6 +667,27 @@ export default function Saas() {
                               <CreditCard className="h-3.5 w-3.5 mr-1" />Parcial
                             </Button>
                           </>
+                        )}
+                        {/* Botão Gerar PIX Individual */}
+                        {['pending','overdue','partiallyPaid'].includes(charge.status) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-violet-700 hover:text-violet-800 hover:bg-violet-50 px-2"
+                            onClick={() => {
+                              setPixLinkCharge(charge);
+                              setPixLinkResult(null);
+                              generatePixLinkMutation.mutate({ chargeId: charge.id });
+                            }}
+                            disabled={generatePixLinkMutation.isPending && pixLinkCharge?.id === charge.id}
+                            title="Gerar link PIX individual"
+                          >
+                            {generatePixLinkMutation.isPending && pixLinkCharge?.id === charge.id
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                              : <span className="mr-1">PIX</span>
+                            }
+                            {charge.payment_link ? 'Ver PIX' : 'Gerar PIX'}
+                          </Button>
                         )}
                         <Button
                           variant="ghost"
@@ -1434,6 +1468,84 @@ export default function Saas() {
                 "Salvar Alterações"
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Dialog: Resultado do PIX Individual ─── */}
+      <Dialog open={!!pixLinkResult} onOpenChange={(open) => { if (!open) { setPixLinkResult(null); setPixLinkCharge(null); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="text-violet-600">PIX</span> Link de Pagamento Gerado
+            </DialogTitle>
+          </DialogHeader>
+          {pixLinkResult && (
+            <div className="space-y-4 py-2">
+              {pixLinkCharge && (
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-medium">{pixLinkCharge.client_name ?? pixLinkCharge.clientName}</span>
+                  {' — '}
+                  {fmt(parseFloat(pixLinkCharge.value ?? '0'))}
+                  {' — Venc. '}{pixLinkCharge.due_date ?? pixLinkCharge.dueDate}
+                </div>
+              )}
+              {pixLinkResult.reused && (
+                <div className="text-xs text-amber-600 bg-amber-50 rounded px-3 py-1.5">
+                  Link existente reutilizado (cobrança já tinha PIX ativo no Asaas)
+                </div>
+              )}
+              {pixLinkResult.pixQrCode && (
+                <div className="flex justify-center">
+                  <img
+                    src={`data:image/png;base64,${pixLinkResult.pixQrCode}`}
+                    alt="QR Code PIX"
+                    className="w-48 h-48 border rounded"
+                  />
+                </div>
+              )}
+              {pixLinkResult.pixPayload && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Código PIX Copia e Cola:</p>
+                  <div className="flex gap-2">
+                    <Input
+                      readOnly
+                      value={pixLinkResult.pixPayload}
+                      className="text-xs font-mono"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(pixLinkResult.pixPayload);
+                        toast.success('Código PIX copiado!');
+                      }}
+                    >
+                      Copiar
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {pixLinkResult.invoiceUrl && (
+                <a
+                  href={pixLinkResult.invoiceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-center text-sm text-violet-600 underline hover:text-violet-800"
+                >
+                  Abrir fatura no Asaas →
+                </a>
+              )}
+              {!pixLinkResult.pixPayload && !pixLinkResult.invoiceUrl && (
+                <p className="text-sm text-muted-foreground text-center">
+                  PIX criado no Asaas (ID: {pixLinkResult.asaasChargeId})<br/>
+                  O QR Code estará disponível em instantes.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPixLinkResult(null); setPixLinkCharge(null); }}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -2061,3 +2061,12 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] `getDREByVessel`: query de receita por embarcação corrigida de INNER JOIN para LEFT JOIN (inclui cobranças de clientes sem cota ativa)
 - [x] `getDREByVessel`: dateFilter padronizado com alias `bc.` em ambas as queries
 - [x] Cobranças sem embarcação vinculada agora aparecem como "Sem embarcação" no DRE por embarcação
+
+## ✅ ETAPA 10: Split de PIX por cobrança individual
+
+- [x] Procedure `bpo.generatePixLink` criada: cria ou reutiliza link PIX individual por bpo_charge no Asaas
+- [x] Procedure `bpo.generatePixLinkBatch` criada: gera links PIX em lote (até 50 cobranças, rate-limit 300ms)
+- [x] Import `getPixQrCode` adicionado ao bpoRouter
+- [x] Botão "Gerar PIX" / "Ver PIX" adicionado na lista de cobranças do BPO (visível para status pending/overdue/partiallyPaid)
+- [x] Dialog de resultado: exibe QR Code, código PIX copia e cola, e link da fatura no Asaas
+- [x] TYPE_LABELS atualizado com `inspection` no Saas.tsx

@@ -8,7 +8,7 @@ import { z } from "zod";
 import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { bpoCharges, allowedClients as acTable, vessels as vesselsTable, clientQuotas } from "../../drizzle/schema";
-import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers, createPixCharge, getOrCreateAsaasCustomer, cancelCharge, receiveInCash } from "../_core/asaasService";// ============================================================
+import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers, createPixCharge, getOrCreateAsaasCustomer, cancelCharge, receiveInCash, getPixQrCode } from "../_core/asaasService";// ============================================================
 // Helper: normalizar status do Asaas para enum bpo_charges
 // ============================================================
 export function normalizeBpoStatus(
@@ -1709,5 +1709,211 @@ export const bpoRouter = router({
         ORDER BY v.name ASC
       `))) as any;
       return Array.isArray(rows) ? rows : [];
+    }),
+
+  // ============================================================
+  // GERAR LINK PIX INDIVIDUAL — cria ou retorna link PIX por cobrança
+  // Elimina dependência de rateio manual: cada bpo_charge tem seu
+  // próprio asaas_charge_id e payment_link no Asaas.
+  // ============================================================
+  generatePixLink: adminProcedure
+    .input(z.object({
+      chargeId: z.number(),   // ID da bpo_charge
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // 1. Buscar a cobrança
+      const rows = await db.select().from(bpoCharges)
+        .where(eq(bpoCharges.id, input.chargeId)).limit(1);
+      if (rows.length === 0) throw new Error("Cobrança não encontrada");
+      const charge = rows[0];
+
+      // 2. Se já tem asaas_charge_id, verificar se ainda está ativo no Asaas
+      if (charge.asaasChargeId) {
+        try {
+          const existing = await getChargeStatus(charge.asaasChargeId);
+          if (existing && !['CANCELLED', 'REFUNDED'].includes(existing.status ?? '')) {
+            // Retornar o link existente
+            const pixData = await getPixQrCode(charge.asaasChargeId);
+            return {
+              asaasChargeId: charge.asaasChargeId,
+              paymentLink: charge.paymentLink ?? existing.invoiceUrl ?? null,
+              invoiceUrl: existing.invoiceUrl ?? null,
+              pixPayload: pixData.payload ?? null,
+              pixQrCode: pixData.encodedImage ?? null,
+              reused: true,
+            };
+          }
+        } catch (e) {
+          console.warn('[bpo.generatePixLink] Erro ao verificar cobrança existente:', e);
+        }
+      }
+
+      // 3. Garantir que o cliente existe no Asaas
+      if (!charge.clientEmail || !charge.clientName) {
+        throw new Error("Cobrança sem email ou nome do cliente — não é possível criar link PIX");
+      }
+
+      const asaasCustomer = await getOrCreateAsaasCustomer({
+        email: charge.clientEmail,
+        name: charge.clientName,
+      });
+
+      // 4. Criar cobrança PIX individual no Asaas
+      const dueDate = charge.dueDate ?? new Date().toISOString().split('T')[0];
+      const typeLabels: Record<string, string> = {
+        monthly: 'Mensalidade', quota_sale: 'Venda de Cota',
+        fuel: 'Abastecimento', repair: 'Reparo', inspection: 'Vistoria', other: 'Cobrança',
+      };
+      const typeLabel = typeLabels[charge.type ?? 'other'] ?? 'Cobrança';
+      const description = charge.description
+        || `${typeLabel} — Exclusive Club — Venc. ${dueDate}`;
+
+      const newCharge = await createPixCharge({
+        customerId: asaasCustomer.id,
+        value: parseFloat(String(charge.value)),
+        dueDate,
+        description,
+        externalReference: `bpo_charge_${charge.id}`,
+        billingType: 'PIX',
+      });
+
+      // 5. Buscar QR Code PIX
+      let pixPayload: string | null = null;
+      let pixQrCode: string | null = null;
+      try {
+        const pixData = await getPixQrCode(newCharge.id);
+        pixPayload = pixData.payload ?? null;
+        pixQrCode = pixData.encodedImage ?? null;
+      } catch (e) {
+        console.warn('[bpo.generatePixLink] Erro ao buscar QR Code:', e);
+      }
+
+      // 6. Atualizar bpo_charge com o novo asaas_charge_id e payment_link
+      await db.update(bpoCharges)
+        .set({
+          asaasChargeId: newCharge.id,
+          asaasCustomerId: asaasCustomer.id,
+          paymentLink: newCharge.invoiceUrl ?? null,
+          invoiceUrl: newCharge.invoiceUrl ?? null,
+          syncedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(bpoCharges.id, input.chargeId));
+
+      console.log(`[bpo.generatePixLink] PIX criado para bpo_charge #${input.chargeId}: ${newCharge.id}`);
+
+      return {
+        asaasChargeId: newCharge.id,
+        paymentLink: newCharge.invoiceUrl ?? null,
+        invoiceUrl: newCharge.invoiceUrl ?? null,
+        pixPayload,
+        pixQrCode,
+        reused: false,
+      };
+    }),
+
+  // ============================================================
+  // GERAR LINKS PIX EM LOTE — cria links PIX para múltiplas cobranças
+  // ============================================================
+  generatePixLinkBatch: adminProcedure
+    .input(z.object({
+      chargeIds: z.array(z.number()).min(1).max(50),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const results: Array<{
+        chargeId: number;
+        status: 'ok' | 'error' | 'reused';
+        asaasChargeId?: string;
+        paymentLink?: string | null;
+        message?: string;
+      }> = [];
+
+      for (const chargeId of input.chargeIds) {
+        try {
+          const rows = await db.select().from(bpoCharges)
+            .where(eq(bpoCharges.id, chargeId)).limit(1);
+          if (rows.length === 0) {
+            results.push({ chargeId, status: 'error', message: 'Cobrança não encontrada' });
+            continue;
+          }
+          const charge = rows[0];
+
+          // Pular cobranças já pagas
+          if (['received', 'confirmed', 'receivedInCash'].includes(charge.status ?? '')) {
+            results.push({ chargeId, status: 'reused', asaasChargeId: charge.asaasChargeId ?? undefined, paymentLink: charge.paymentLink, message: 'Já paga' });
+            continue;
+          }
+
+          // Reusar link existente se válido
+          if (charge.asaasChargeId) {
+            try {
+              const existing = await getChargeStatus(charge.asaasChargeId);
+              if (existing && !['CANCELLED', 'REFUNDED'].includes(existing.status ?? '')) {
+                results.push({ chargeId, status: 'reused', asaasChargeId: charge.asaasChargeId, paymentLink: charge.paymentLink });
+                continue;
+              }
+            } catch { /* continua para criar novo */ }
+          }
+
+          if (!charge.clientEmail || !charge.clientName) {
+            results.push({ chargeId, status: 'error', message: 'Sem email/nome do cliente' });
+            continue;
+          }
+
+          const asaasCustomer = await getOrCreateAsaasCustomer({
+            email: charge.clientEmail,
+            name: charge.clientName,
+          });
+
+          const dueDate = charge.dueDate ?? new Date().toISOString().split('T')[0];
+          const typeLabels: Record<string, string> = {
+            monthly: 'Mensalidade', quota_sale: 'Venda de Cota',
+            fuel: 'Abastecimento', repair: 'Reparo', inspection: 'Vistoria', other: 'Cobrança',
+          };
+          const typeLabel = typeLabels[charge.type ?? 'other'] ?? 'Cobrança';
+          const description = charge.description || `${typeLabel} — Exclusive Club — Venc. ${dueDate}`;
+
+          const newCharge = await createPixCharge({
+            customerId: asaasCustomer.id,
+            value: parseFloat(String(charge.value)),
+            dueDate,
+            description,
+            externalReference: `bpo_charge_${chargeId}`,
+            billingType: 'PIX',
+          });
+
+          await db.update(bpoCharges)
+            .set({
+              asaasChargeId: newCharge.id,
+              asaasCustomerId: asaasCustomer.id,
+              paymentLink: newCharge.invoiceUrl ?? null,
+              invoiceUrl: newCharge.invoiceUrl ?? null,
+              syncedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(bpoCharges.id, chargeId));
+
+          results.push({ chargeId, status: 'ok', asaasChargeId: newCharge.id, paymentLink: newCharge.invoiceUrl ?? null });
+
+          // Rate limiting: 300ms entre cobranças
+          await new Promise(r => setTimeout(r, 300));
+        } catch (err: any) {
+          results.push({ chargeId, status: 'error', message: err.message });
+        }
+      }
+
+      return {
+        total: input.chargeIds.length,
+        ok: results.filter(r => r.status === 'ok').length,
+        reused: results.filter(r => r.status === 'reused').length,
+        errors: results.filter(r => r.status === 'error').length,
+        results,
+      };
     }),
 });
