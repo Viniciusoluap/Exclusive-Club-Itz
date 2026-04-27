@@ -1473,8 +1473,9 @@ export const bpoRouter = router({
   // ============================================================
   splitPayment: adminProcedure
     .input(z.object({
-      pixValue: z.number(),           // Valor total do PIX recebido
-      asaasChargeId: z.string().optional(), // ID do PIX no Asaas
+      pixValue: z.number(),                   // Valor total do PIX recebido
+      sourceChargeId: z.number().optional(),  // ID da bpo_charge não classificada de origem (será cancelada após split)
+      asaasChargeId: z.string().optional(),   // ID do PIX no Asaas
       paymentDate: z.string().optional(),
       splits: z.array(z.object({
         chargeId: z.number(),         // ID da bpo_charge a quitar
@@ -1537,6 +1538,17 @@ export const bpoRouter = router({
             ? `Quitada (R$ ${newAmountPaid.toFixed(2)})`
             : `Parcial — Saldo: R$ ${remaining.toFixed(2)}`,
         });
+      }
+
+      // Se veio de uma cobrança não classificada, cancelar a cobrança original
+      if (input.sourceChargeId) {
+        await db.update(bpoCharges)
+          .set({
+            status: 'cancelled',
+            description: sql`CONCAT(COALESCE(description, ''), ' [Distribuído via Split de PIX em ${paymentDate}]')`,
+            updatedAt: new Date(),
+          })
+          .where(eq(bpoCharges.id, input.sourceChargeId));
       }
 
       return {

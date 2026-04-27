@@ -169,7 +169,7 @@ export default function Saas() {
 
   // ── Dialog: Split de PIX ──
   const [showSplitDialog, setShowSplitDialog] = useState(false);
-  const [splitPixCharge, setSplitPixCharge] = useState<any>(null); // cobrança do Asaas origem
+  const [splitSourceCharge, setSplitSourceCharge] = useState<any>(null); // cobrança não classificada de origem
   const [splitForm, setSplitForm] = useState({
     pixValue: "",
     paymentDate: new Date().toISOString().split('T')[0],
@@ -181,10 +181,10 @@ export default function Saas() {
     { enabled: showSplitDialog && !!splitClientId && !isNaN(parseInt(splitClientId)), refetchOnWindowFocus: false }
   );
 
-  // ── Lista de clientes para o formulário ──
+  // ── Lista de clientes para o formulário e para o Split de PIX ──
   const clientsQuery = trpc.allowedClients.list.useQuery(
     undefined,
-    { refetchOnWindowFocus: false, enabled: showCreateDialog }
+    { refetchOnWindowFocus: false, enabled: showCreateDialog || showSplitDialog }
   );
 
   const createChargeMutation = trpc.bpo.createCharge.useMutation({
@@ -242,6 +242,7 @@ export default function Saas() {
       setShowSplitDialog(false);
       setSplitForm({ pixValue: "", paymentDate: new Date().toISOString().split('T')[0], splits: [] });
       setSplitClientId("");
+      setSplitSourceCharge(null);
       utils.bpo.getStats.invalidate();
       utils.bpo.listCharges.invalidate();
       utils.bpo.listUnclassified.invalidate();
@@ -893,14 +894,7 @@ export default function Saas() {
                   <><Wand2 className="h-3.5 w-3.5 mr-1" />Classificar Auto</>
                 )}
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-purple-700 border-purple-300 hover:bg-purple-50"
-                onClick={() => { setShowSplitDialog(true); setSplitPixCharge(null); setSplitForm({ pixValue: "", paymentDate: new Date().toISOString().split('T')[0], splits: [] }); setSplitClientId(""); }}
-              >
-                <Scissors className="h-3.5 w-3.5 mr-1" />Split de PIX
-              </Button>
+
             </div>
           </div>
 
@@ -917,18 +911,31 @@ export default function Saas() {
             <div className="space-y-3">
               {(unclassifiedQuery.data?.charges ?? []).map((charge: any) => (
                 <UnclassifiedChargeCard
-                  key={charge.id}
-                  charge={charge}
-                  onClassify={(type) =>
-                    classifyMutation.mutate({ chargeId: charge.id, type: type as "monthly" | "quota_sale" | "fuel" | "repair" | "other" })
-                  }
-                  loading={classifyMutation.isPending}
-                  onLinkClient={(clientId) =>
-                    linkClientMutation.mutate({ chargeId: charge.id, clientId })
-                  }
-                  linkLoading={linkClientMutation.isPending}
-                  activeClients={activeClientsQuery.data ?? []}
-                />
+                   key={charge.id}
+                   charge={charge}
+                   onClassify={(type) =>
+                     classifyMutation.mutate({ chargeId: charge.id, type: type as "monthly" | "quota_sale" | "fuel" | "repair" | "other" })
+                   }
+                   loading={classifyMutation.isPending}
+                   onLinkClient={(clientId) =>
+                     linkClientMutation.mutate({ chargeId: charge.id, clientId })
+                   }
+                   linkLoading={linkClientMutation.isPending}
+                   activeClients={activeClientsQuery.data ?? []}
+                   onSplit={() => {
+                     setSplitSourceCharge(charge);
+                     setSplitForm({
+                       pixValue: String(parseFloat(charge.value ?? '0')),
+                       paymentDate: charge.due_date ?? new Date().toISOString().split('T')[0],
+                       splits: [],
+                     });
+                     // Pré-selecionar o cliente se já estiver vinculado
+                     const clientId = charge.client_id ?? charge.clientId;
+                     if (clientId) setSplitClientId(String(clientId));
+                     else setSplitClientId("");
+                     setShowSplitDialog(true);
+                   }}
+                 />
               ))}
             </div>
           )}
@@ -1225,7 +1232,19 @@ export default function Saas() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">Distribua um pagamento PIX recebido entre múltiplas cobranças.</p>
+            {splitSourceCharge && (
+              <div className="rounded-lg border border-purple-200 bg-purple-50/40 p-3 text-sm">
+                <p className="font-medium text-purple-900">
+                  PIX de origem: {splitSourceCharge.clientName || splitSourceCharge.client_name || splitSourceCharge.clientEmail || splitSourceCharge.client_email || 'Cliente desconhecido'}
+                </p>
+                <p className="text-purple-700 text-xs mt-0.5">
+                  Valor: {fmt(parseFloat(splitSourceCharge.value ?? '0'))} · Venc: {splitSourceCharge.due_date || splitSourceCharge.dueDate}
+                </p>
+              </div>
+            )}
+            {!splitSourceCharge && (
+              <p className="text-sm text-muted-foreground">Distribua um pagamento PIX recebido entre múltiplas cobranças.</p>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -1337,10 +1356,13 @@ export default function Saas() {
                 if (splitForm.splits.length === 0) return toast.error("Adicione ao menos uma cobrança ao split");
                 const totalAllocated = splitForm.splits.reduce((acc, s) => acc + parseFloat(s.amount || "0"), 0);
                 const pixTotal = parseFloat(splitForm.pixValue);
-                if (Math.abs(totalAllocated - pixTotal) > 0.02) return toast.error(`Total alocado (${fmt(totalAllocated)}) difere do PIX (${fmt(pixTotal)})`);
+                // Permite que o total alocado seja menor que o PIX (saldo não alocado fica como tróco)
+                if (totalAllocated > pixTotal + 0.02) return toast.error(`Total alocado (${fmt(totalAllocated)}) excede o PIX (${fmt(pixTotal)})`);
+                if (totalAllocated < 0.01) return toast.error('Informe ao menos um valor a alocar');
                 splitPaymentMutation.mutate({
                   pixValue: pixTotal,
                   paymentDate: splitForm.paymentDate,
+                  sourceChargeId: splitSourceCharge?.id ?? undefined,
                   splits: splitForm.splits.map(s => ({ chargeId: s.chargeId, amount: parseFloat(s.amount || "0") })),
                 });
               }}
@@ -1562,6 +1584,7 @@ function UnclassifiedChargeCard({
   onLinkClient,
   linkLoading,
   activeClients,
+  onSplit,
 }: {
   charge: any;
   onClassify: (type: string) => void;
@@ -1569,6 +1592,7 @@ function UnclassifiedChargeCard({
   onLinkClient: (clientId: number) => void;
   linkLoading: boolean;
   activeClients: Array<{ id: number; name: string; email: string }>;
+  onSplit?: () => void;
 }) {
   const [selectedType, setSelectedType] = useState("");
   const [showLinkDialog, setShowLinkDialog] = useState(false);
@@ -1674,7 +1698,7 @@ function UnclassifiedChargeCard({
             {selectedType && (
               <Button
                 size="sm"
-                className="text-xs h-7 ml-auto"
+                className="text-xs h-7"
                 onClick={() => onClassify(selectedType)}
                 disabled={loading}
               >
@@ -1684,6 +1708,17 @@ function UnclassifiedChargeCard({
                   <CheckCircle2 className="h-3 w-3 mr-1" />
                 )}
                 Classificar
+              </Button>
+            )}
+            {onSplit && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs h-7 ml-auto text-purple-700 border-purple-300 hover:bg-purple-50"
+                onClick={onSplit}
+              >
+                <Scissors className="h-3 w-3 mr-1" />
+                Distribuir como Split
               </Button>
             )}
           </div>

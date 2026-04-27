@@ -2070,3 +2070,14 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Botão "Gerar PIX" / "Ver PIX" adicionado na lista de cobranças do BPO (visível para status pending/overdue/partiallyPaid)
 - [x] Dialog de resultado: exibe QR Code, código PIX copia e cola, e link da fatura no Asaas
 - [x] TYPE_LABELS atualizado com `inspection` no Saas.tsx
+
+## 🐛 CORREÇÃO: Split de PIX (fluxo real)
+
+- [x] Backend: `splitPayment` aceita `sourceChargeId` e cancela cobrança original após distribuição
+- [x] Backend: enum `status` de bpo_charges atualizado com `cancelled`
+- [x] Frontend: `clientsQuery` corrigido para carregar quando `showSplitDialog` estiver aberto
+- [x] Frontend: botão "Split de PIX" fixo removido da barra de ações
+- [x] Frontend: botão "Distribuir como Split" adicionado em cada cobrança não classificada
+- [x] Frontend: ao clicar em "Distribuir como Split", pré-preenche valor do PIX e cliente vinculado
+- [x] Frontend: dialog exibe cobrança de origem e passa sourceChargeId na mutation
+- [x] Frontend: validação permite total alocado menor que PIX (saldo como tróco)
