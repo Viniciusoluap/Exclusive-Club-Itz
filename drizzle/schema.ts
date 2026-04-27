@@ -390,7 +390,7 @@ export const bpoCharges = mysqlTable("bpo_charges", {
   status: mysqlEnum("status", [
     "pending", "received", "confirmed", "overdue",
     "refunded", "receivedInCash", "awaitingChargeback",
-    "detached", "partiallyPaid"
+    "detached", "partiallyPaid", "cancelled"
   ]).notNull().default("pending"),
 
   type: mysqlEnum("type", [

@@ -1,0 +1,1 @@
+ALTER TABLE `bpo_charges` MODIFY COLUMN `status` enum('pending','received','confirmed','overdue','refunded','receivedInCash','awaitingChargeback','detached','partiallyPaid','cancelled') NOT NULL DEFAULT 'pending';

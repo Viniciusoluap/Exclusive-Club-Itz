@@ -414,6 +414,13 @@
       "when": 1776817137544,
       "tag": "0058_rich_sally_floyd",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1777256448692,
+      "tag": "0059_foamy_fenris",
+      "breakpoints": true
     }
   ]
 }
