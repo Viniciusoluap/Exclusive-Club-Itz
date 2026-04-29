@@ -1542,10 +1542,18 @@ export const bpoRouter = router({
 
       // Se veio de uma cobrança não classificada, cancelar a cobrança original
       if (input.sourceChargeId) {
+        // Buscar a descrição atual para concatenar sem usar SQL CONCAT (evita erro de parametrização)
+        const sourceRows = await db.select({ description: bpoCharges.description })
+          .from(bpoCharges)
+          .where(eq(bpoCharges.id, input.sourceChargeId))
+          .limit(1);
+        const currentDesc = sourceRows[0]?.description || '';
+        const newDesc = `${currentDesc} [Distribuído via Split de PIX em ${paymentDate}]`.trim();
+
         await db.update(bpoCharges)
           .set({
             status: 'cancelled',
-            description: sql`CONCAT(COALESCE(description, ''), ' [Distribuído via Split de PIX em ${paymentDate}]')`,
+            description: newDesc,
             updatedAt: new Date(),
           })
           .where(eq(bpoCharges.id, input.sourceChargeId));

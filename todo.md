@@ -2081,3 +2081,9 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Frontend: ao clicar em "Distribuir como Split", pré-preenche valor do PIX e cliente vinculado
 - [x] Frontend: dialog exibe cobrança de origem e passa sourceChargeId na mutation
 - [x] Frontend: validação permite total alocado menor que PIX (saldo como tróco)
+
+## 🐛 BUGS Split de PIX (rodada 2)
+
+- [x] Backend: erro de query SQL no splitPayment corrigido (CONCAT/COALESCE substituído por concatenação JS)
+- [x] Frontend: due_date exibido corretamente nas cobranças do dialog (com descrição real da cobrança)
+- [x] Frontend: todas as datas formatadas no padrão DD/MM/AAAA via função fmtDate
