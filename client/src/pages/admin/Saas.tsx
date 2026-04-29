@@ -45,6 +45,15 @@ function fmt(v: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 }
 
+/** Converte YYYY-MM-DD para DD/MM/AAAA. Retorna o valor original se não for possível converter. */
+function fmtDate(date: string | null | undefined): string {
+  if (!date) return "";
+  // Formato ISO: YYYY-MM-DD
+  const match = String(date).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+  return String(date);
+}
+
 function StatusBadge({ status }: { status: string }) {
   const s = STATUS_LABELS[status] ?? { label: status, color: "bg-gray-100 text-gray-700" };
   return (
@@ -173,7 +182,7 @@ export default function Saas() {
   const [splitForm, setSplitForm] = useState({
     pixValue: "",
     paymentDate: new Date().toISOString().split('T')[0],
-    splits: [] as Array<{ chargeId: number; clientName: string; value: number; chargeValue: number; dueDate: string; amount: string }>,
+    splits: [] as Array<{ chargeId: number; clientName: string; description: string; value: number; chargeValue: number; dueDate: string; amount: string }>,
   });
   const [splitClientId, setSplitClientId] = useState("");
   const pendingChargesQuery = trpc.bpo.getClientPendingCharges.useQuery(
@@ -620,8 +629,8 @@ export default function Saas() {
                           </p>
                         )}
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Venc: {charge.due_date}
-                          {charge.paid_date && ` · Pago: ${charge.paid_date}`}
+Venc: {fmtDate(charge.due_date)}
+                           {charge.paid_date && ` · Pago: ${fmtDate(charge.paid_date)}`}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
@@ -1238,7 +1247,7 @@ export default function Saas() {
                   PIX de origem: {splitSourceCharge.clientName || splitSourceCharge.client_name || splitSourceCharge.clientEmail || splitSourceCharge.client_email || 'Cliente desconhecido'}
                 </p>
                 <p className="text-purple-700 text-xs mt-0.5">
-                  Valor: {fmt(parseFloat(splitSourceCharge.value ?? '0'))} · Venc: {splitSourceCharge.due_date || splitSourceCharge.dueDate}
+                  Valor: {fmt(parseFloat(splitSourceCharge.value ?? '0'))} · Venc: {fmtDate(splitSourceCharge.due_date || splitSourceCharge.dueDate)}
                 </p>
               </div>
             )}
@@ -1291,7 +1300,7 @@ export default function Saas() {
                     <div key={c.id} className={`flex items-center justify-between p-2 rounded border text-sm ${alreadyAdded ? 'bg-green-50 border-green-200' : 'bg-muted/30'}`}>
                       <div>
                         <p className="font-medium">{c.description || TYPE_LABELS[c.type] || c.type}</p>
-                        <p className="text-xs text-muted-foreground">Venc: {c.due_date} · {fmt(parseFloat(c.value ?? "0"))}</p>
+                        <p className="text-xs text-muted-foreground">Venc: {fmtDate(c.due_date)} · {fmt(parseFloat(c.value ?? "0"))}</p>
                       </div>
                       {alreadyAdded ? (
                         <Button size="sm" variant="ghost" className="text-xs text-red-600 h-7"
@@ -1299,7 +1308,7 @@ export default function Saas() {
                         >Remover</Button>
                       ) : (
                         <Button size="sm" variant="outline" className="text-xs h-7"
-                          onClick={() => setSplitForm(f => ({ ...f, splits: [...f.splits, { chargeId: c.id, clientName: c.client_name || "", value: parseFloat(c.value ?? "0"), chargeValue: parseFloat(c.value ?? "0"), dueDate: c.due_date || "", amount: String(c.value ?? "") }] }))}
+                          onClick={() => setSplitForm(f => ({ ...f, splits: [...f.splits, { chargeId: c.id, clientName: c.client_name || "", description: c.description || TYPE_LABELS[c.type] || c.type || `Cobrança #${c.id}`, value: parseFloat(c.value ?? "0"), chargeValue: parseFloat(c.value ?? "0"), dueDate: c.due_date || "", amount: String(c.value ?? "") }] }))}
                         >+ Adicionar</Button>
                       )}
                     </div>
@@ -1314,8 +1323,8 @@ export default function Saas() {
                 {splitForm.splits.map((s, idx) => (
                   <div key={s.chargeId} className="flex items-center gap-2 p-2 rounded border bg-purple-50/40">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{s.clientName || `Cobrança #${s.chargeId}`}</p>
-                      <p className="text-xs text-muted-foreground">Venc: {s.dueDate} · Total: {fmt(s.chargeValue)}</p>
+                      <p className="text-sm font-medium truncate">{s.description || s.clientName || `Cobrança #${s.chargeId}`}</p>
+                      <p className="text-xs text-muted-foreground">Venc: {fmtDate(s.dueDate)} · Total: {fmt(s.chargeValue)}</p>
                     </div>
                     <div className="w-28">
                       <Input
@@ -1509,7 +1518,7 @@ export default function Saas() {
                   <span className="font-medium">{pixLinkCharge.client_name ?? pixLinkCharge.clientName}</span>
                   {' — '}
                   {fmt(parseFloat(pixLinkCharge.value ?? '0'))}
-                  {' — Venc. '}{pixLinkCharge.due_date ?? pixLinkCharge.dueDate}
+                  {' — Venc. '}{fmtDate(pixLinkCharge.due_date ?? pixLinkCharge.dueDate)}
                 </div>
               )}
               {pixLinkResult.reused && (
@@ -1662,7 +1671,7 @@ function UnclassifiedChargeCard({
                 <p className="text-xs text-muted-foreground mt-0.5">{charge.description}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Venc: {charge.due_date || charge.dueDate} · Status: {charge.status}
+                Venc: {fmtDate(charge.due_date || charge.dueDate)} · Status: {charge.status}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -1735,7 +1744,7 @@ function UnclassifiedChargeCard({
             <div className="p-3 bg-muted rounded-md text-sm space-y-1">
               <p><span className="font-medium">Descrição:</span> {charge.description || "(sem descrição)"}</p>
               <p><span className="font-medium">Valor:</span> {fmt(parseFloat(charge.value ?? "0"))}</p>
-              <p><span className="font-medium">Vencimento:</span> {charge.due_date || charge.dueDate}</p>
+              <p><span className="font-medium">Vencimento:</span> {fmtDate(charge.due_date || charge.dueDate)}</p>
               <p><span className="font-medium">Status:</span> {charge.status}</p>
             </div>
             <div className="space-y-1">
@@ -2073,7 +2082,7 @@ function ReconciliationView({ data }: { data: any }) {
                 <div>
                   <p className="text-sm font-medium">{c.clientName || "—"}</p>
                   <p className="text-xs text-muted-foreground font-mono">{c.asaasChargeId}</p>
-                  <p className="text-xs text-muted-foreground">Venc: {c.dueDate} · Último sync: {c.syncedAt ? new Date(c.syncedAt).toLocaleDateString("pt-BR") : "Nunca"}</p>
+                  <p className="text-xs text-muted-foreground">Venc: {fmtDate(c.dueDate)} · Último sync: {c.syncedAt ? new Date(c.syncedAt).toLocaleDateString("pt-BR") : "Nunca"}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-semibold">{fmt(c.value)}</p>
@@ -2105,7 +2114,7 @@ function ReconciliationView({ data }: { data: any }) {
                 <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5 border-b last:border-0">
                   <div>
                     <p className="text-sm font-medium">{c.clientName || c.clientEmail || "—"}</p>
-                    <p className="text-xs text-muted-foreground">Venc: {c.dueDate}</p>
+                    <p className="text-xs text-muted-foreground">Venc: {fmtDate(c.dueDate)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold">{fmt(c.value)}</p>
@@ -2453,7 +2462,7 @@ function ExpensesTab() {
                         </span>
                       </div>
                       {exp.recipientName && <p className="text-xs text-muted-foreground">{exp.recipientName}</p>}
-                      <p className="text-xs text-muted-foreground">Venc: {exp.dueDate}{exp.paidDate ? ` · Pago: ${exp.paidDate}` : ""}</p>
+                      <p className="text-xs text-muted-foreground">Venc: {fmtDate(exp.dueDate)}{exp.paidDate ? ` · Pago: ${fmtDate(exp.paidDate)}` : ""}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-sm">{fmt(parseFloat(String(exp.value ?? 0)))}</p>
