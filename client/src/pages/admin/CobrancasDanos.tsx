@@ -628,7 +628,10 @@ export default function CobrancasDanos() {
                   {charges.map((charge: any) => (
                     <tr key={charge.id} className={`border-b hover:bg-muted/50 ${charge.pending_due_date_request ? 'bg-amber-50' : ''}`}>
                       <td className="p-2">{getTypeBadge(charge.charge_type)}</td>
-                      <td className="p-2">{charge.client_email}</td>
+                      <td className="p-2">
+                        <div className="font-medium">{charge.client_name || charge.client_email}</div>
+                        <div className="text-xs text-muted-foreground">{charge.client_email}</div>
+                      </td>
                       <td className="p-2">{charge.vessel_name}</td>
                       <td className="p-2 font-medium">{formatCurrency(parseFloat(charge.amount))}</td>
                       <td className="p-2">{formatDate(charge.due_date)}</td>
@@ -917,7 +920,7 @@ export default function CobrancasDanos() {
                   {editingCharge.charge_type === 'inspection' ? 'Vistoria' : 'Reparo'} - {editingCharge.vessel_name}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Cliente: {editingCharge.client_email}
+                  Cliente: {editingCharge.client_name || editingCharge.client_email}
                 </p>
               </div>
             )}
@@ -1079,7 +1082,7 @@ export default function CobrancasDanos() {
               <div className="p-4 bg-muted rounded-lg space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Cliente:</span>
-                  <span className="font-medium">{selectedRequest.client_email}</span>
+                  <span className="font-medium">{selectedRequest.client_name || selectedRequest.client_email}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Embarcação:</span>
