@@ -2087,3 +2087,11 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Backend: erro de query SQL no splitPayment corrigido (CONCAT/COALESCE substituído por concatenação JS)
 - [x] Frontend: due_date exibido corretamente nas cobranças do dialog (com descrição real da cobrança)
 - [x] Frontend: todas as datas formatadas no padrão DD/MM/AAAA via função fmtDate
+
+## 🐛 BUGS IDENTIFICADOS (30/04/2026)
+
+- [ ] P1: Baixa em Abastecimento não reflete em bpo_charges (markAsPaid de fuel_records)
+- [ ] P1: Baixa em Reparos não reflete em bpo_charges (markAsPaid de inspection_charges)
+- [ ] P2: Reparos exibindo e-mail em vez de nome do cliente
+- [ ] P3: Cobranças vencidas com status "Pendente" na tela de Reparos
+- [ ] P4: Relatórios com dados incorretos (0 ativos, 38 inativos) — queries usando tabela users em vez de allowed_clients + bpo_charges

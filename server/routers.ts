@@ -2498,35 +2498,58 @@ Nenhuma reserva foi afetada.
           `);
 
           // 3. Sincronizar com bpo_charges
-          if (rec.asaas_charge_id) {
-            // Se já existe em bpo_charges, atualizar o status
-            await db.execute(sql`
-              UPDATE bpo_charges
-              SET status = 'received', updated_at = NOW()
-              WHERE asaas_charge_id = ${rec.asaas_charge_id}
-            `);
-          } else {
-            // Não tem asaas_charge_id — inserir como baixa manual no bpo_charges
-            try {
-              const { bpoCharges } = await import('../drizzle/schema');
+          try {
+            const { bpoCharges } = await import('../drizzle/schema');
+            const dueDate = rec.due_date ? new Date(rec.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            const value = (rec.total_amount || '0').toString();
+            const description = `Abastecimento - Baixa manual (ID: ${input.id})`;
+
+            if (rec.asaas_charge_id) {
+              // Tenta atualizar o registro existente em bpo_charges
+              const updateResult = await db.execute(sql`
+                UPDATE bpo_charges
+                SET status = 'received', updated_at = NOW()
+                WHERE asaas_charge_id = ${rec.asaas_charge_id}
+              `) as any;
+              const affectedRows = updateResult?.[0]?.affectedRows ?? updateResult?.affectedRows ?? 0;
+              // Se não encontrou registro com esse asaas_charge_id, insere um novo
+              if (affectedRows === 0) {
+                await db.insert(bpoCharges).values({
+                  asaasChargeId: rec.asaas_charge_id,
+                  asaasCustomerId: null,
+                  clientId: null,
+                  clientName: rec.client_name || null,
+                  clientEmail: rec.client_email || null,
+                  value,
+                  dueDate,
+                  status: 'received',
+                  type: 'fuel',
+                  classifiedBy: 'manual',
+                  billingType: 'PIX',
+                  description,
+                  source: 'manual',
+                });
+              }
+            } else {
+              // Sem asaas_charge_id — inserir como baixa manual
               await db.insert(bpoCharges).values({
                 asaasChargeId: null,
                 asaasCustomerId: null,
                 clientId: null,
                 clientName: rec.client_name || null,
                 clientEmail: rec.client_email || null,
-                value: (rec.total_amount || '0').toString(),
-                dueDate: rec.due_date ? new Date(rec.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                value,
+                dueDate,
                 status: 'received',
                 type: 'fuel',
                 classifiedBy: 'manual',
                 billingType: 'PIX',
-                description: `Abastecimento - Baixa manual (ID: ${input.id})`,
+                description,
                 source: 'manual',
               });
-            } catch (bpoErr: any) {
-              console.warn('[fuelRecords.markAsPaid] Falha ao inserir em bpo_charges:', bpoErr.message);
             }
+          } catch (bpoErr: any) {
+            console.warn('[fuelRecords.markAsPaid] Falha ao sincronizar bpo_charges:', bpoErr.message);
           }
 
           return { success: true, message: 'Pagamento marcado como recebido' };
@@ -4504,15 +4527,66 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Cobrança não encontrada' });
           }
           
-          // Nota: sincronização com Asaas é feita via webhook e bpo_charges
-          
           // Atualizar status local para "paid"
           await db.update(inspectionCharges)
             .set({ 
               paymentStatus: 'paid',
             })
             .where(eq(inspectionCharges.id, input.chargeId));
-          
+
+          // Sincronizar com bpo_charges
+          try {
+            const { bpoCharges } = await import('../drizzle/schema');
+            const chargeType = charge.charge_type === 'repair' ? 'repair' : 'inspection';
+            const dueDate = charge.due_date ? new Date(charge.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            const value = (charge.amount || '0').toString();
+            const description = charge.description || `${chargeType === 'repair' ? 'Reparo' : 'Vistoria'} - Baixa manual (ID: ${input.chargeId})`;
+
+            if (charge.asaas_charge_id) {
+              const updateResult = await db.execute(sql`
+                UPDATE bpo_charges
+                SET status = 'received', updated_at = NOW()
+                WHERE asaas_charge_id = ${charge.asaas_charge_id}
+              `) as any;
+              const affectedRows = updateResult?.[0]?.affectedRows ?? updateResult?.affectedRows ?? 0;
+              if (affectedRows === 0) {
+                await db.insert(bpoCharges).values({
+                  asaasChargeId: charge.asaas_charge_id,
+                  asaasCustomerId: null,
+                  clientId: null,
+                  clientName: charge.client_name || null,
+                  clientEmail: charge.client_email || null,
+                  value,
+                  dueDate,
+                  status: 'received',
+                  type: chargeType,
+                  classifiedBy: 'manual',
+                  billingType: 'PIX',
+                  description,
+                  source: 'manual',
+                });
+              }
+            } else {
+              await db.insert(bpoCharges).values({
+                asaasChargeId: null,
+                asaasCustomerId: null,
+                clientId: null,
+                clientName: charge.client_name || null,
+                clientEmail: charge.client_email || null,
+                value,
+                dueDate,
+                status: 'received',
+                type: chargeType,
+                classifiedBy: 'manual',
+                billingType: 'PIX',
+                description,
+                source: 'manual',
+              });
+            }
+          } catch (bpoErr: any) {
+            console.warn('[inspectionCharges.markAsPaid] Falha ao sincronizar bpo_charges:', bpoErr.message);
+          }
+
           return { success: true };
         } catch (error: any) {
           console.error('[inspectionCharges.markAsPaid] Error:', error);
