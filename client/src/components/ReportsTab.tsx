@@ -517,8 +517,26 @@ export default function ReportsTab() {
 
         {/* Relatório de Clientes */}
         <TabsContent value="clients" className="space-y-4 pt-6">
+          {/* Nota metodológica */}
+          <div className="text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+            <strong>Metodologia:</strong> Ativo = cliente em <em>allowed_clients</em> com ≥1 cobrança paga (received/receivedInCash/partiallyPaid) no período.
+            Inativo = sem cobrança paga no período. Taxa de Retenção = Ativos / Total de clientes cadastrados × 100.
+          </div>
+
           {/* Métricas de Clientes */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Cadastrados</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">
+                  {(clients as any)?.totalClients || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">allowed_clients</p>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
@@ -527,6 +545,7 @@ export default function ReportsTab() {
                 <div className="text-2xl font-bold text-green-600">
                   {clients?.activeCount || 0}
                 </div>
+                <p className="text-xs text-muted-foreground">com cobrança paga no período</p>
               </CardContent>
             </Card>
 
@@ -538,6 +557,7 @@ export default function ReportsTab() {
                 <div className="text-2xl font-bold text-gray-600">
                   {clients?.inactiveCount || 0}
                 </div>
+                <p className="text-xs text-muted-foreground">sem cobrança paga no período</p>
               </CardContent>
             </Card>
 
@@ -547,8 +567,9 @@ export default function ReportsTab() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
-                  {clients?.retentionRate.toFixed(1) || "0"}%
+                  {clients?.retentionRate?.toFixed(1) || "0"}%
                 </div>
+                <p className="text-xs text-muted-foreground">Ativos / Total</p>
               </CardContent>
             </Card>
 
@@ -558,25 +579,32 @@ export default function ReportsTab() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  {clients?.churnRate.toFixed(1) || "0"}%
+                  {clients?.churnRate?.toFixed(1) || "0"}%
                 </div>
+                <p className="text-xs text-muted-foreground">Inativos / Total</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Top 10 Clientes por Gasto */}
+          {/* Top 10 Clientes por Gasto (bpo_charges) */}
           <Card>
             <CardHeader>
               <CardTitle>Top 10 Clientes por Gasto</CardTitle>
+              <CardDescription>Baseado em cobranças pagas no BPO Financeiro no período selecionado</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {clients?.clientSpending && clients.clientSpending.length > 0 ? (
                   clients.clientSpending.map((client, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <div className="font-semibold">{client.clientName}</div>
-                        <div className="text-sm text-muted-foreground">{client.clientEmail}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                          {idx + 1}
+                        </div>
+                        <div>
+                          <div className="font-semibold">{client.clientName}</div>
+                          <div className="text-sm text-muted-foreground">{client.clientEmail}</div>
+                        </div>
                       </div>
                       <div className="text-lg font-bold text-green-600">
                         {formatCurrency(client.total)}
@@ -585,7 +613,7 @@ export default function ReportsTab() {
                   ))
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    Nenhum dado disponível
+                    Nenhum dado disponível para o período selecionado
                   </div>
                 )}
               </div>
@@ -596,11 +624,31 @@ export default function ReportsTab() {
           <Card>
             <CardHeader>
               <CardTitle>Novos Clientes no Período</CardTitle>
+              <CardDescription>Clientes cadastrados em <em>allowed_clients</em> no período selecionado</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-blue-600">
-                {clients?.newClients?.length || 0} novos clientes
-              </div>
+              {clients?.newClients && (clients.newClients as any[]).length > 0 ? (
+                <div className="space-y-2">
+                  <div className="text-3xl font-bold text-blue-600 mb-4">
+                    {(clients.newClients as any[]).length} novo(s) cliente(s)
+                  </div>
+                  {(clients.newClients as any[]).map((c: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-2 border rounded">
+                      <div>
+                        <div className="font-medium">{c.name || c.email}</div>
+                        <div className="text-xs text-muted-foreground">{c.email}</div>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR') : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Nenhum novo cliente cadastrado no período
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
