@@ -2094,4 +2094,4 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] P1: Baixa em Reparos não reflete em bpo_charges (markAsPaid de inspection_charges)
 - [ ] P2: Reparos exibindo e-mail em vez de nome do cliente
 - [ ] P3: Cobranças vencidas com status "Pendente" na tela de Reparos
-- [ ] P4: Relatórios com dados incorretos (0 ativos, 38 inativos) — queries usando tabela users em vez de allowed_clients + bpo_charges
+- [x] P4: Relatórios com dados incorretos (0 ativos, 38 inativos) — queries reescritas para usar allowed_clients + bpo_charges como fonte de verdade

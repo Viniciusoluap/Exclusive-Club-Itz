@@ -481,29 +481,85 @@ export const reportsRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      const start = new Date(input.startDate).getTime();
-      const end = new Date(input.endDate).getTime();
+      const startStr = input.startDate; // 'YYYY-MM-DD'
+      const endStr = input.endDate;     // 'YYYY-MM-DD'
 
-      // 1. Clientes Ativos vs Inativos
-      const allClients = await db.select().from(allowedClients);
-      
-      const activeClientsData = await db.select({
-        clientEmail: bookings.clientEmail,
-      })
-      .from(bookings)
-      .where(
-        and(
-          gte(bookings.bookingDate, start),
-          lte(bookings.bookingDate, end),
-          eq(bookings.status, 'confirmed')
-        )
-      )
-      .groupBy(bookings.clientEmail);
+      // ── 1. Base: todos os clientes cadastrados em allowed_clients ──────────
+      const allClientsResult = await db.execute(sql`
+        SELECT id, email, name, created_at FROM allowed_clients
+      `) as any;
+      const allClients: Array<{ id: number; email: string; name: string; created_at: string }> =
+        (Array.isArray(allClientsResult[0]) ? allClientsResult[0] : allClientsResult);
+      const totalClients = allClients.length;
 
-      const activeCount = activeClientsData.length;
-      const inactiveCount = allClients.length - activeCount;
+      // ── 2. Clientes Ativos = allowed_clients com ≥1 cobrança paga no período ─
+      const activeResult = await db.execute(sql`
+        SELECT DISTINCT ac.email
+        FROM allowed_clients ac
+        INNER JOIN bpo_charges bc ON LOWER(bc.client_email) = LOWER(ac.email)
+        WHERE bc.status IN ('received', 'receivedInCash', 'partiallyPaid')
+          AND bc.due_date >= ${startStr}
+          AND bc.due_date <= ${endStr}
+      `) as any;
+      const activeEmails: Set<string> = new Set(
+        (Array.isArray(activeResult[0]) ? activeResult[0] : activeResult)
+          .map((r: any) => (r.email || '').toLowerCase())
+      );
+      const activeCount = activeEmails.size;
+      const inactiveCount = Math.max(0, totalClients - activeCount);
 
-      // 2. Frequência de Uso por Cliente
+      // ── 3. Taxa de Retenção = Ativos / Total × 100 ─────────────────────────
+      const retentionRate = totalClients > 0 ? (activeCount / totalClients) * 100 : 0;
+
+      // ── 4. Churn Rate = Inativos / Total × 100 ─────────────────────────────
+      const churnRate = totalClients > 0 ? (inactiveCount / totalClients) * 100 : 0;
+
+      // ── 5. Top 10 Clientes por Gasto (bpo_charges pagas no período) ─────────
+      const clientSpendingResult = await db.execute(sql`
+        SELECT
+          bc.client_email as clientEmail,
+          COALESCE(ac.name, bc.client_name, bc.client_email) as clientName,
+          SUM(bc.amount_paid) as total
+        FROM bpo_charges bc
+        LEFT JOIN allowed_clients ac ON LOWER(ac.email) = LOWER(bc.client_email)
+        WHERE bc.status IN ('received', 'receivedInCash', 'partiallyPaid')
+          AND bc.due_date >= ${startStr}
+          AND bc.due_date <= ${endStr}
+        GROUP BY bc.client_email, ac.name, bc.client_name
+        ORDER BY total DESC
+        LIMIT 10
+      `) as any;
+      const clientSpending = (Array.isArray(clientSpendingResult[0]) ? clientSpendingResult[0] : clientSpendingResult)
+        .map((r: any) => ({
+          clientEmail: r.clientEmail,
+          clientName: r.clientName,
+          total: parseFloat(r.total || 0),
+        }));
+
+      // ── 6. Clientes Inadimplentes (bpo_charges com status pending/overdue vencidas) ─
+      const defaultingResult = await db.execute(sql`
+        SELECT bc.client_email as email,
+               COALESCE(ac.name, bc.client_name, bc.client_email) as name,
+               COUNT(*) as overdue_count
+        FROM bpo_charges bc
+        LEFT JOIN allowed_clients ac ON LOWER(ac.email) = LOWER(bc.client_email)
+        WHERE (bc.status = 'overdue' OR (bc.status = 'pending' AND bc.due_date < CURDATE()))
+        GROUP BY bc.client_email, ac.name, bc.client_name
+        ORDER BY overdue_count DESC
+      `) as any;
+      const defaultingClients = Array.isArray(defaultingResult[0]) ? defaultingResult[0] : defaultingResult;
+
+      // ── 7. Novos Clientes no Período (criados em allowed_clients) ────────────
+      const newClientsResult = await db.execute(sql`
+        SELECT email, name, created_at as createdAt
+        FROM allowed_clients
+        WHERE created_at >= ${startStr}
+          AND created_at <= CONCAT(${endStr}, ' 23:59:59')
+        ORDER BY created_at DESC
+      `) as any;
+      const newClients = Array.isArray(newClientsResult[0]) ? newClientsResult[0] : newClientsResult;
+
+      // ── 8. Frequência de uso (reservas confirmadas no período) ───────────────
       const clientFrequency = await db.select({
         clientEmail: bookings.clientEmail,
         clientName: bookings.clientName,
@@ -512,8 +568,8 @@ export const reportsRouter = router({
       .from(bookings)
       .where(
         and(
-          gte(bookings.bookingDate, start),
-          lte(bookings.bookingDate, end),
+          gte(bookings.bookingDate, new Date(input.startDate).getTime()),
+          lte(bookings.bookingDate, new Date(input.endDate).getTime()),
           eq(bookings.status, 'confirmed')
         )
       )
@@ -521,97 +577,7 @@ export const reportsRouter = router({
       .orderBy(desc(sql`COUNT(*)`))
       .limit(10);
 
-      // 3. Clientes com Maior Gasto
-      const clientSpending = await db.select({
-        clientEmail: fuelRecords.clientEmail,
-        clientName: fuelRecords.clientName,
-        total: sql<number>`SUM(${fuelRecords.totalAmount})`.as('total'),
-      })
-      .from(fuelRecords)
-      .where(
-        and(
-          gte(fuelRecords.createdAt, new Date(start).toISOString()),
-          lte(fuelRecords.createdAt, new Date(end).toISOString()),
-          eq(fuelRecords.paymentStatus, 'paid')
-        )
-      )
-      .groupBy(fuelRecords.clientEmail, fuelRecords.clientName)
-      .orderBy(desc(sql`SUM(${fuelRecords.totalAmount})`))
-      .limit(10);
-
-      // 4. Clientes Inadimplentes (via bpo_charges)
-      const defaultingClients = await db.execute(sql`
-        SELECT bc.client_email as email, COALESCE(ac.name, bc.client_name, bc.client_email) as name, COUNT(*) as overdue_count
-        FROM bpo_charges bc
-        LEFT JOIN allowed_clients ac ON ac.email = bc.client_email
-        WHERE bc.status = 'overdue'
-        GROUP BY bc.client_email, ac.name, bc.client_name
-        ORDER BY overdue_count DESC
-      `) as any;
-
-      // 5. Taxa de Retenção (clientes que reservaram em ambos os períodos)
-      const previousStart = start - (end - start);
-      const previousEnd = start;
-
-      const previousPeriodClients = await db.select({
-        clientEmail: bookings.clientEmail,
-      })
-      .from(bookings)
-      .where(
-        and(
-          gte(bookings.bookingDate, previousStart),
-          lte(bookings.bookingDate, previousEnd),
-          eq(bookings.status, 'confirmed')
-        )
-      )
-      .groupBy(bookings.clientEmail);
-
-      const currentPeriodClients = await db.select({
-        clientEmail: bookings.clientEmail,
-      })
-      .from(bookings)
-      .where(
-        and(
-          gte(bookings.bookingDate, start),
-          lte(bookings.bookingDate, end),
-          eq(bookings.status, 'confirmed')
-        )
-      )
-      .groupBy(bookings.clientEmail);
-
-      const previousEmails = new Set(previousPeriodClients.map(c => c.clientEmail));
-      const retainedCount = currentPeriodClients.filter(c => previousEmails.has(c.clientEmail)).length;
-      const retentionRate = previousPeriodClients.length > 0
-        ? (retainedCount / previousPeriodClients.length) * 100
-        : 0;
-
-      // 6. Novos Clientes por Período
-      const newClients = await db.select({
-        email: allowedClients.email,
-        name: allowedClients.name,
-        createdAt: allowedClients.createdAt,
-      })
-      .from(allowedClients)
-      .where(
-        and(
-          gte(allowedClients.createdAt, new Date(start).toISOString()),
-          lte(allowedClients.createdAt, new Date(end).toISOString())
-        )
-      );
-
-      // 7. Churn Rate
-      const churnedCount = previousPeriodClients.length - retainedCount;
-      const churnRate = previousPeriodClients.length > 0
-        ? (churnedCount / previousPeriodClients.length) * 100
-        : 0;
-
-      // 8. NPS Simulado (baseado em frequência de uso)
-      const avgFrequency = clientFrequency.length > 0
-        ? clientFrequency.reduce((sum, c) => sum + c.count, 0) / clientFrequency.length
-        : 0;
-      const simulatedNPS = Math.min(100, Math.round(avgFrequency * 10));
-
-      // 9. Segmentação por Tipo de Cota
+      // ── 9. Segmentação por Tipo de Cota ─────────────────────────────────────
       const quotaDistribution = await db.select({
         quotaType: clientQuotas.quotaType,
         count: sql<number>`COUNT(*)`.as('count'),
@@ -620,9 +586,16 @@ export const reportsRouter = router({
       .where(eq(clientQuotas.isActive, 1))
       .groupBy(clientQuotas.quotaType);
 
+      // ── 10. NPS Simulado ─────────────────────────────────────────────────────
+      const avgFrequency = clientFrequency.length > 0
+        ? clientFrequency.reduce((sum, c) => sum + c.count, 0) / clientFrequency.length
+        : 0;
+      const simulatedNPS = Math.min(100, Math.round(avgFrequency * 10));
+
       return {
         activeCount,
         inactiveCount,
+        totalClients,
         clientFrequency,
         clientSpending,
         defaultingClients,
