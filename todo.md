@@ -2095,3 +2095,30 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] P2: Reparos exibindo e-mail em vez de nome do cliente
 - [ ] P3: Cobranças vencidas com status "Pendente" na tela de Reparos
 - [x] P4: Relatórios com dados incorretos (0 ativos, 38 inativos) — queries reescritas para usar allowed_clients + bpo_charges como fonte de verdade
+
+## 🔧 ETAPA 1: Bug Split de PIX + Data de Vencimento (02/05/2026)
+
+- [x] Backend: `splitPayment` agora define `classifiedBy = 'manual'` ao cancelar cobrança de origem (remove da fila de não classificadas)
+- [x] Frontend: data de vencimento exibida corretamente no dialog de Split (c.dueDate || c.due_date)
+
+## 🔧 ETAPA 2: Correções P1, P2, P3 (02/05/2026)
+
+- [ ] P1: Dar baixa em fuel_records atualiza bpo_charge correspondente para receivedInCash
+- [ ] P1: Dar baixa em inspection_charges atualiza bpo_charge correspondente para receivedInCash
+- [ ] P2: Tela de Reparos exibe clientName em vez de clientEmail
+- [ ] P3: Status "Vencido" exibido quando due_date < hoje mesmo com status = pending na tela de Reparos
+
+## 🔧 ETAPA 3: Envio de Contrato PDF Dinâmico por E-mail (02/05/2026)
+
+- [ ] Backend: procedure `clients.sendContract` — gera PDF do contrato preenchido com dados do cliente
+- [ ] Backend: dados dinâmicos: cliente (nome, CPF/CNPJ, endereço, telefone), embarcação, cota, condições financeiras
+- [ ] Backend: envio por e-mail com PDF anexado
+- [ ] Backend: registro de `contractSentAt` em allowed_clients
+- [ ] Frontend: botão "Enviar Contrato" na tela de Clientes Autorizados
+
+## 🔧 ETAPA 4: Notificação Extrajudicial por E-mail (02/05/2026)
+
+- [ ] Backend: procedure `clients.sendExtrajudicialNotice` — gera PDF de notificação com débitos em aberto
+- [ ] Backend: texto formal com base no Art. 397 CC e Art. 786 CPC
+- [ ] Backend: envio por e-mail com PDF anexado e registro de log
+- [ ] Frontend: botão "Envio de Notificação" na tela de Clientes Autorizados

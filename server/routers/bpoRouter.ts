@@ -1553,6 +1553,7 @@ export const bpoRouter = router({
         await db.update(bpoCharges)
           .set({
             status: 'cancelled',
+            classifiedBy: 'manual',  // Remove da fila de não classificadas
             description: newDesc,
             updatedAt: new Date(),
           })

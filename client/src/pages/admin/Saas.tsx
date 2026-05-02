@@ -1300,7 +1300,7 @@ Venc: {fmtDate(charge.due_date)}
                     <div key={c.id} className={`flex items-center justify-between p-2 rounded border text-sm ${alreadyAdded ? 'bg-green-50 border-green-200' : 'bg-muted/30'}`}>
                       <div>
                         <p className="font-medium">{c.description || TYPE_LABELS[c.type] || c.type}</p>
-                        <p className="text-xs text-muted-foreground">Venc: {fmtDate(c.due_date)} · {fmt(parseFloat(c.value ?? "0"))}</p>
+                        <p className="text-xs text-muted-foreground">Venc: {fmtDate(c.dueDate || c.due_date)} · {fmt(parseFloat(c.value ?? "0"))}</p>
                       </div>
                       {alreadyAdded ? (
                         <Button size="sm" variant="ghost" className="text-xs text-red-600 h-7"
