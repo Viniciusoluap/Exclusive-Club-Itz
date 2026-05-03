@@ -2090,10 +2090,10 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 
 ## 🐛 BUGS IDENTIFICADOS (30/04/2026)
 
-- [ ] P1: Baixa em Abastecimento não reflete em bpo_charges (markAsPaid de fuel_records)
-- [ ] P1: Baixa em Reparos não reflete em bpo_charges (markAsPaid de inspection_charges)
-- [ ] P2: Reparos exibindo e-mail em vez de nome do cliente
-- [ ] P3: Cobranças vencidas com status "Pendente" na tela de Reparos
+- [x] P1: Baixa em Abastecimento não reflete em bpo_charges (markAsPaid de fuel_records) — já implementado
+- [x] P1: Baixa em Reparos não reflete em bpo_charges (markAsPaid de inspection_charges) — já implementado
+- [x] P2: Reparos exibindo e-mail em vez de nome do cliente — JOIN com allowed_clients adicionado na query listAll
+- [x] P3: Cobranças vencidas com status "Pendente" na tela de Reparos — effective_status já calculado no backend
 - [x] P4: Relatórios com dados incorretos (0 ativos, 38 inativos) — queries reescritas para usar allowed_clients + bpo_charges como fonte de verdade
 
 ## 🔧 ETAPA 1: Bug Split de PIX + Data de Vencimento (02/05/2026)
@@ -2103,10 +2103,10 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 
 ## 🔧 ETAPA 2: Correções P1, P2, P3 (02/05/2026)
 
-- [ ] P1: Dar baixa em fuel_records atualiza bpo_charge correspondente para receivedInCash
-- [ ] P1: Dar baixa em inspection_charges atualiza bpo_charge correspondente para receivedInCash
-- [ ] P2: Tela de Reparos exibe clientName em vez de clientEmail
-- [ ] P3: Status "Vencido" exibido quando due_date < hoje mesmo com status = pending na tela de Reparos
+- [x] P1: Dar baixa em fuel_records atualiza bpo_charge correspondente para receivedInCash
+- [x] P1: Dar baixa em inspection_charges atualiza bpo_charge correspondente para receivedInCash
+- [x] P2: Tela de Reparos exibe clientName em vez de clientEmail
+- [x] P3: Status "Vencido" exibido quando due_date < hoje mesmo com status = pending na tela de Reparos
 
 ## 🔧 ETAPA 3: Envio de Contrato PDF Dinâmico por E-mail (02/05/2026)
 
