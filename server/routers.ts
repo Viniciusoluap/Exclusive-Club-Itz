@@ -4362,6 +4362,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             FROM (
               SELECT 
                 ic.*,
+                COALESCE(ac.name, ic.client_email) AS client_name,
                 CASE
                   WHEN ic.payment_status IN ('paid', 'cancelled') THEN ic.payment_status
                   WHEN ic.payment_status = 'pending' AND ic.due_date < CURDATE() THEN 'overdue'
@@ -4375,6 +4376,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               FROM inspection_charges ic
               LEFT JOIN inspections i ON ic.inspection_id = i.id
               LEFT JOIN due_date_change_requests ddr ON ddr.charge_id = ic.id AND ddr.status = 'pending'
+              LEFT JOIN allowed_clients ac ON ac.email = ic.client_email
               ${innerWhere}
             ) AS sub
             ${statusFilter}
