@@ -2110,15 +2110,15 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 
 ## 🔧 ETAPA 3: Envio de Contrato PDF Dinâmico por E-mail (02/05/2026)
 
-- [ ] Backend: procedure `clients.sendContract` — gera PDF do contrato preenchido com dados do cliente
-- [ ] Backend: dados dinâmicos: cliente (nome, CPF/CNPJ, endereço, telefone), embarcação, cota, condições financeiras
-- [ ] Backend: envio por e-mail com PDF anexado
-- [ ] Backend: registro de `contractSentAt` em allowed_clients
-- [ ] Frontend: botão "Enviar Contrato" na tela de Clientes Autorizados
+- [x] Backend: procedure `contract.sendContract` — gera PDF do contrato preenchido com dados do cliente
+- [x] Backend: dados dinâmicos: cliente (nome, CPF/CNPJ, endereço, telefone), embarcação, cota, condições financeiras
+- [x] Backend: envio por e-mail com PDF anexado
+- [x] Backend: registro de data de envio em allowed_clients (updated_at)
+- [x] Frontend: botão "Enviar Contrato" (FileText azul) na tela de Clientes Autorizados
 
 ## 🔧 ETAPA 4: Notificação Extrajudicial por E-mail (02/05/2026)
 
-- [ ] Backend: procedure `clients.sendExtrajudicialNotice` — gera PDF de notificação com débitos em aberto
-- [ ] Backend: texto formal com base no Art. 397 CC e Art. 786 CPC
-- [ ] Backend: envio por e-mail com PDF anexado e registro de log
-- [ ] Frontend: botão "Envio de Notificação" na tela de Clientes Autorizados
+- [x] Backend: procedure `notification.sendNotification` — gera PDF de notificação com débitos em aberto
+- [x] Backend: texto formal com base no Art. 397 CC e Art. 786 CPC
+- [x] Backend: envio por e-mail com PDF anexado e número de notificação único
+- [x] Frontend: botão "Envio de Notificação" (Bell laranja) na tela de Clientes Autorizados

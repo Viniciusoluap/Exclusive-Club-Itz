@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { APP_LOGO, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, Fuel, HardDrive, Loader2, Menu, Pencil, Plus, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
+import { BarChart3, Bell, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, FileText, Fuel, HardDrive, Loader2, Menu, Pencil, Plus, Send, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -194,6 +194,32 @@ export default function Admin() {
     contract2Url: "",
     documentUrl: "",
     quotas: []
+  });
+
+  // Contract & Notification State
+  const [contractClientId, setContractClientId] = useState<number | null>(null);
+  const [notificationClientId, setNotificationClientId] = useState<number | null>(null);
+
+  const sendContractMutation = trpc.contract.sendContract.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Contrato enviado para ${data.sentTo}!`);
+      setContractClientId(null);
+    },
+    onError: (err) => {
+      toast.error(`Erro ao enviar contrato: ${err.message}`);
+      setContractClientId(null);
+    },
+  });
+
+  const sendNotificationMutation = trpc.notification.sendNotification.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Notificação extrajudicial enviada para ${data.sentTo}! (${data.debtCount} débito(s) — R$ ${data.totalDebt.toFixed(2).replace('.', ',')})`);
+      setNotificationClientId(null);
+    },
+    onError: (err) => {
+      toast.error(`Erro ao enviar notificação: ${err.message}`);
+      setNotificationClientId(null);
+    },
   });
 
   // Vessel Management State
@@ -848,6 +874,44 @@ export default function Admin() {
                             }
                           >
                             {client.isActive ? "Desativar" : "Ativar"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title="Enviar Contrato por E-mail"
+                            disabled={contractClientId === client.id || sendContractMutation.isPending}
+                            onClick={() => {
+                              if (confirm(`Enviar contrato por e-mail para ${client.name} (${client.email})?`)) {
+                                setContractClientId(client.id);
+                                sendContractMutation.mutate({ clientId: client.id });
+                              }
+                            }}
+                            className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                          >
+                            {contractClientId === client.id && sendContractMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <FileText className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title="Enviar Notificação Extrajudicial"
+                            disabled={notificationClientId === client.id || sendNotificationMutation.isPending}
+                            onClick={() => {
+                              if (confirm(`Enviar notificação extrajudicial de débitos por e-mail para ${client.name} (${client.email})?`)) {
+                                setNotificationClientId(client.id);
+                                sendNotificationMutation.mutate({ clientId: client.id });
+                              }
+                            }}
+                            className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                          >
+                            {notificationClientId === client.id && sendNotificationMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Bell className="h-4 w-4" />
+                            )}
                           </Button>
                           <Button
                             variant="destructive"
