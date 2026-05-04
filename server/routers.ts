@@ -5,6 +5,8 @@ import { backupRouter } from "./routers/backupRouter";
 import { reportsRouter } from "./routers/reportsRouter";
 import { expensesRouter } from "./routers/expensesRouter";
 import { bpoRouter } from "./routers/bpoRouter";
+import { contractRouter } from "./routers/contractRouter";
+import { notificationRouter } from "./routers/notificationRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -60,6 +62,8 @@ export const appRouter = router({
   reports: reportsRouter,
   expenses: expensesRouter,
   bpo: bpoRouter,
+  contract: contractRouter,
+  notification: notificationRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
