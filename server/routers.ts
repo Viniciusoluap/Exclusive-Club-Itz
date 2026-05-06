@@ -2505,7 +2505,7 @@ Nenhuma reserva foi afetada.
           try {
             const { bpoCharges } = await import('../drizzle/schema');
             const dueDate = rec.due_date ? new Date(rec.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-            const value = (rec.total_amount || '0').toString();
+            const value = ((rec.total_amount || 0) / 100).toFixed(2);
             const description = `Abastecimento - Baixa manual (ID: ${input.id})`;
 
             if (rec.asaas_charge_id) {
@@ -4545,7 +4545,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             const { bpoCharges } = await import('../drizzle/schema');
             const chargeType = charge.charge_type === 'repair' ? 'repair' : 'inspection';
             const dueDate = charge.due_date ? new Date(charge.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-            const value = (charge.amount || '0').toString();
+            const value = ((charge.amount || 0) / 100).toFixed(2);
             const description = charge.description || `${chargeType === 'repair' ? 'Reparo' : 'Vistoria'} - Baixa manual (ID: ${input.chargeId})`;
 
             if (charge.asaas_charge_id) {

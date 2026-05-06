@@ -2122,3 +2122,39 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Backend: texto formal com base no Art. 397 CC e Art. 786 CPC
 - [x] Backend: envio por e-mail com PDF anexado e número de notificação único
 - [x] Frontend: botão "Envio de Notificação" (Bell laranja) na tela de Clientes Autorizados
+
+## 🔧 FASE 1: Bug Valor R$ 23.330 + Status Vencido em Reparos (04/05/2026)
+
+- [x] A1: Corrigir conversão de valor na baixa manual de abastecimento (R$ 23.330 → R$ 233,30)
+- [x] A2: Corrigir status vencido em CobrancasDanos — cobranças com due_date < hoje devem exibir "Vencido"
+
+## 🔧 FASE 2: Sincronização bpo_charges — Reparos e Abastecimento (04/05/2026)
+
+- [ ] A3: Revisar e corrigir procedure markAsPaid de inspection_charges para garantir atualização em bpo_charges
+- [ ] A4: Revisar e corrigir procedure markAsPaid de fuel_records para garantir atualização em bpo_charges
+
+## 🔧 FASE 3: Migrar PDF de Puppeteer para gerador sem Chrome (04/05/2026)
+
+- [ ] B1: Migrar contractRouter para usar pdfkit/html-pdf-node sem dependência de Chromium
+- [ ] B2: Migrar notificationRouter para usar pdfkit/html-pdf-node sem dependência de Chromium
+
+## 🔧 FASE 4: Saldo Herdado + Comprovante (04/05/2026)
+
+- [ ] C1: Corrigir query de Saldo Herdado para buscar último mês com saldo registrado (não apenas mês anterior exato)
+- [ ] C2: Corrigir comprovante para exibir arquivo enviado pelo admin (receipt_url) em vez de link Asaas
+
+## 🔧 FASE 5: Campos Endereço e RG no Cadastro do Cliente (04/05/2026)
+
+- [ ] D1: Adicionar campos address, rg, neighborhood, city, state, zip_code na tabela allowed_clients
+- [ ] D1: Rodar migration pnpm db:push
+- [ ] D1: Adicionar campos no formulário de edição de cliente (Admin.tsx)
+- [ ] D1: Usar campos no template do contrato PDF
+
+## 🔧 FASE 6: Auditoria e Correção das Abas de Relatórios (04/05/2026)
+
+- [ ] E1: Dashboard Executivo — corrigir para usar dados reais
+- [ ] E1: Relatório Financeiro — corrigir para usar dados reais de bpo_charges
+- [ ] E1: Ocupação — corrigir para usar dados reais de bookings
+- [ ] E1: Manutenção — corrigir para usar dados reais de maintenance_records
+- [ ] E1: Combustível — corrigir para usar dados reais de fuel_records
+- [ ] E1: Sazonalidade — corrigir para usar dados reais de bookings por mês
