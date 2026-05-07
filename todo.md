@@ -2158,3 +2158,6 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] E1: Manutenção — corrigir para usar dados reais de maintenance_records
 - [ ] E1: Combustível — corrigir para usar dados reais de fuel_records
 - [ ] E1: Sazonalidade — corrigir para usar dados reais de bookings por mês
+
+- [x] B1: Migrar contractRouter.ts de Puppeteer para weasyprint (htmlToPdf helper)
+- [x] B2: Migrar notificationRouter.ts de Puppeteer para weasyprint (htmlToPdf helper)
