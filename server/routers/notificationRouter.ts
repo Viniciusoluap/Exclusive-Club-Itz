@@ -9,6 +9,7 @@ import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { sql } from "drizzle-orm";
 import { sendEmail } from "../_core/emailService";
+import { htmlToPdf } from "../_core/htmlToPdf";
 
 // ============================================================
 // Helper: formatar moeda BRL
@@ -383,27 +384,10 @@ export const notificationRouter = router({
         notificationNumber,
       });
 
-      // 5. Gerar PDF via Puppeteer
+      // 5. Gerar PDF via weasyprint (sem dependência de Chrome)
       let pdfBuffer: Buffer;
       try {
-        const puppeteer = await import("puppeteer");
-        const browser = await puppeteer.default.launch({
-          headless: true,
-          args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-          ],
-        });
-        const page = await browser.newPage();
-        await page.setContent(html, { waitUntil: "networkidle0" });
-        const pdfUint8 = await page.pdf({
-          format: "A4",
-          printBackground: true,
-          margin: { top: "0mm", right: "0mm", bottom: "0mm", left: "0mm" },
-        });
-        await browser.close();
-        pdfBuffer = Buffer.from(pdfUint8);
+        pdfBuffer = await htmlToPdf(html);
       } catch (pdfErr: any) {
         throw new Error(`Erro ao gerar PDF: ${pdfErr.message}`);
       }
