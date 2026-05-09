@@ -421,6 +421,13 @@
       "when": 1777256448692,
       "tag": "0059_foamy_fenris",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "5",
+      "when": 1778199051233,
+      "tag": "0060_wide_ben_urich",
+      "breakpoints": true
     }
   ]
 }
