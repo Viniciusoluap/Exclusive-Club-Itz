@@ -433,37 +433,30 @@ export async function updateUserEmail(userId: number, email: string) {
 // ============================================================================
 
 /**
- * Busca o orçamento mensal do mês anterior
+ * Busca o orçamento do último mês anterior com registro em fuel_budget
+ * Corrigido: busca o mês mais recente ANTES do mês atual, não apenas o mês imediatamente anterior.
+ * Isso evita saldo herdado zerado quando há meses sem registro (ex: pula de março para maio).
  * @param monthYear - Formato: YYYY-MM
- * @returns monthlyBudgetId do mês anterior ou null
+ * @returns monthlyBudgetId do último mês anterior com registro, ou null
  */
-export async function getPreviousMonthBudget(monthYear: string): Promise<number | null> {
+export async function getPreviousMonthBudget(monthYear: string): Promise<{ id: number; monthYear: string } | null> {
   const db = await getDb();
   if (!db) return null;
 
-  const [year, month] = monthYear.split('-').map(Number);
-  
-  // Calcular mês anterior
-  let prevYear = year;
-  let prevMonth = month - 1;
-  
-  if (prevMonth === 0) {
-    prevMonth = 12;
-    prevYear = year - 1;
-  }
-  
-  const prevMonthYear = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
-  
-  // Buscar id do fuel_budget do mês anterior
-  const { fuelBudget } = await import('../drizzle/schema');
-  const { eq } = await import('drizzle-orm');
-  
-  const result = await db.select()
-    .from(fuelBudget)
-    .where(eq(fuelBudget.monthYear, prevMonthYear))
-    .limit(1);
-  
-  return result.length > 0 ? result[0].id : null;
+  const { sql } = await import('drizzle-orm');
+
+  // Busca o último mês com registro em fuel_budget que seja estritamente anterior ao mês atual
+  const result = await db.execute(sql`
+    SELECT id, month_year
+    FROM fuel_budget
+    WHERE month_year < ${monthYear}
+    ORDER BY month_year DESC
+    LIMIT 1
+  `) as any;
+
+  const row = Array.isArray(result[0]) ? result[0][0] : result[0];
+  // Retorna objeto com id e month_year para que calculateCurrentBalance use o mês correto
+  return row ? { id: row.id, monthYear: row.month_year } : null;
 }
 
 /**
@@ -528,22 +521,13 @@ export async function calculateCurrentGallonStock(gallonNumber: number, monthYea
   const db = await getDb();
   if (!db) return 0;
 
-  // 1. Buscar estoque final do mês anterior
-  const prevMonthBudgetId = await getPreviousMonthBudget(monthYear);
+  // 1. Buscar estoque final do último mês anterior com registro
+  const prevMonthRecord = await getPreviousMonthBudget(monthYear);
   let inheritedStock = 0;
   
-  if (prevMonthBudgetId) {
-    const [prevYear, prevMonth] = monthYear.split('-').map(Number);
-    let actualPrevMonth = prevMonth - 1;
-    let actualPrevYear = prevYear;
-    
-    if (actualPrevMonth === 0) {
-      actualPrevMonth = 12;
-      actualPrevYear = prevYear - 1;
-    }
-    
-    const prevMonthYear = `${actualPrevYear}-${String(actualPrevMonth).padStart(2, '0')}`;
-    inheritedStock = await calculateGallonFinalStock(gallonNumber, prevMonthYear);
+  if (prevMonthRecord) {
+    // Usa o month_year real do registro encontrado (não calcula aritmeticamente)
+    inheritedStock = await calculateGallonFinalStock(gallonNumber, prevMonthRecord.monthYear);
   }
   
   // 2. Calcular compras e consumos do mês atual
@@ -591,22 +575,13 @@ export async function calculateMonthFinalBalance(monthYear: string): Promise<num
 
   const { sql } = await import('drizzle-orm');
   
-  // 1. Buscar saldo herdado do mês anterior (recursivo)
-  const prevMonthBudgetId = await getPreviousMonthBudget(monthYear);
+  // 1. Buscar saldo herdado do último mês anterior com registro (recursivo)
+  const prevMonthRecord = await getPreviousMonthBudget(monthYear);
   let inheritedBalance = 0;
   
-  if (prevMonthBudgetId) {
-    const [year, month] = monthYear.split('-').map(Number);
-    let prevMonth = month - 1;
-    let prevYear = year;
-    
-    if (prevMonth === 0) {
-      prevMonth = 12;
-      prevYear = year - 1;
-    }
-    
-    const prevMonthYear = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
-    inheritedBalance = await calculateMonthFinalBalance(prevMonthYear); // Recursão
+  if (prevMonthRecord) {
+    // Usa o month_year real do registro encontrado (não calcula aritmeticamente)
+    inheritedBalance = await calculateMonthFinalBalance(prevMonthRecord.monthYear); // Recursão
   }
   
   // 2. Calcular orçamento (soma das compras)
@@ -649,22 +624,13 @@ export async function calculateCurrentBalance(monthYear: string): Promise<{
   const db = await getDb();
   if (!db) return { inherited: 0, budget: 0, spent: 0, current: 0 };
 
-  // 1. Buscar saldo final do mês anterior
-  const prevMonthBudgetId = await getPreviousMonthBudget(monthYear);
+  // 1. Buscar saldo final do último mês anterior com registro
+  const prevMonthRecord = await getPreviousMonthBudget(monthYear);
   let inheritedBalance = 0;
   
-  if (prevMonthBudgetId) {
-    const [prevYear, prevMonth] = monthYear.split('-').map(Number);
-    let actualPrevMonth = prevMonth - 1;
-    let actualPrevYear = prevYear;
-    
-    if (actualPrevMonth === 0) {
-      actualPrevMonth = 12;
-      actualPrevYear = prevYear - 1;
-    }
-    
-    const prevMonthYear = `${actualPrevYear}-${String(actualPrevMonth).padStart(2, '0')}`;
-    inheritedBalance = await calculateMonthFinalBalance(prevMonthYear);
+  if (prevMonthRecord) {
+    // Usa o month_year real do registro encontrado (não calcula aritmeticamente)
+    inheritedBalance = await calculateMonthFinalBalance(prevMonthRecord.monthYear);
   }
   
   // 2. Calcular orçamento e gasto do mês atual

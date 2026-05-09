@@ -258,11 +258,11 @@ export default function PagamentoDanos() {
                               </Button>
                             )}
 
-                            {isPaid(charge.status) && charge.invoiceUrl && (
+                            {isPaid(charge.status) && (charge.receiptUrl || charge.invoiceUrl) && (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => window.open(charge.invoiceUrl!, "_blank")}
+                                onClick={() => window.open((charge.receiptUrl || charge.invoiceUrl)!, "_blank")}
                                 className="whitespace-nowrap"
                               >
                                 <ExternalLink className="w-3 h-3 mr-1" />

@@ -2140,8 +2140,8 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 
 ## 🔧 FASE 4: Saldo Herdado + Comprovante (04/05/2026)
 
-- [ ] C1: Corrigir query de Saldo Herdado para buscar último mês com saldo registrado (não apenas mês anterior exato)
-- [ ] C2: Corrigir comprovante para exibir arquivo enviado pelo admin (receipt_url) em vez de link Asaas
+- [x] C1: Corrigir query de Saldo Herdado para buscar último mês com saldo registrado (não apenas mês anterior exato)
+- [x] C2: Corrigir comprovante para exibir arquivo enviado pelo admin (receipt_url) em vez de link Asaas
 
 ## 🔧 FASE 5: Campos Endereço e RG no Cadastro do Cliente (04/05/2026)
 

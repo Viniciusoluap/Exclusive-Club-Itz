@@ -584,13 +584,49 @@ export const bpoRouter = router({
         }
       }
 
+      // Buscar cobranças com receiptUrl real via JOIN com fuel_records e inspection_charges
       const rows = await db
         .select()
         .from(bpoCharges)
         .where(and(...conditions))
         .orderBy(bpoCharges.dueDate);
 
-      return { charges: rows };
+      if (rows.length === 0) return { charges: [] };
+
+      // Enriquecer com receiptUrl real das tabelas de origem
+      const { fuelRecords: frTable, inspectionCharges: icTable } = await import('../../drizzle/schema');
+      const { inArray: inArr } = await import('drizzle-orm');
+      const asaasIds = rows
+        .map(r => r.asaasChargeId)
+        .filter((id): id is string => !!id);
+
+      // Mapear asaas_charge_id → receipt_url de fuel_records e inspection_charges
+      const receiptMap = new Map<string, string>();
+      if (asaasIds.length > 0) {
+        const fuelReceipts = await db
+          .select({ asaasChargeId: frTable.asaasChargeId, receiptUrl: frTable.receiptUrl })
+          .from(frTable)
+          .where(inArr(frTable.asaasChargeId, asaasIds));
+        for (const r of fuelReceipts) {
+          if (r.asaasChargeId && r.receiptUrl) receiptMap.set(r.asaasChargeId, r.receiptUrl);
+        }
+
+        const inspReceipts = await db
+          .select({ asaasChargeId: icTable.asaasChargeId, receiptUrl: icTable.receiptUrl })
+          .from(icTable)
+          .where(inArr(icTable.asaasChargeId, asaasIds));
+        for (const r of inspReceipts) {
+          if (r.asaasChargeId && r.receiptUrl) receiptMap.set(r.asaasChargeId, r.receiptUrl);
+        }
+      }
+
+      // Mesclar receiptUrl real nas cobranças
+      const enrichedRows = rows.map(r => ({
+        ...r,
+        receiptUrl: (r.asaasChargeId && receiptMap.get(r.asaasChargeId)) || r.receiptUrl || null,
+      }));
+
+      return { charges: enrichedRows };
     }),
 
   // ============================================================
