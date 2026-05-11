@@ -2145,10 +2145,10 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 
 ## 🔧 FASE 5: Campos Endereço e RG no Cadastro do Cliente (04/05/2026)
 
-- [ ] D1: Adicionar campos address, rg, neighborhood, city, state, zip_code na tabela allowed_clients
-- [ ] D1: Rodar migration pnpm db:push
-- [ ] D1: Adicionar campos no formulário de edição de cliente (Admin.tsx)
-- [ ] D1: Usar campos no template do contrato PDF
+- [x] D1: Adicionar campos address, rg, neighborhood, city, state, zip_code na tabela allowed_clients
+- [x] D1: Rodar migration pnpm db:push
+- [x] D1: Adicionar campos no formulário de edição de cliente (Admin.tsx)
+- [x] D1: Usar campos no template do contrato PDF
 
 ## 🔧 FASE 6: Auditoria e Correção das Abas de Relatórios (04/05/2026)
 
