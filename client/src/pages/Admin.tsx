@@ -181,6 +181,12 @@ export default function Admin() {
     name: string;
     phone: string;
     cpfCnpj?: string;
+    rg?: string;
+    address?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
     contractUrl?: string;
     contract2Url?: string;
     documentUrl?: string;
@@ -190,6 +196,12 @@ export default function Admin() {
     name: "", 
     phone: "",
     cpfCnpj: "",
+    rg: "",
+    address: "",
+    neighborhood: "",
+    city: "",
+    state: "",
+    zipCode: "",
     contractUrl: "",
     contract2Url: "",
     documentUrl: "",
@@ -420,6 +432,12 @@ export default function Admin() {
       name: client.name,
       phone: client.phone || "",
       cpfCnpj: client.cpfCnpj || "",
+      rg: client.rg || "",
+      address: client.address || "",
+      neighborhood: client.neighborhood || "",
+      city: client.city || "",
+      state: client.state || "",
+      zipCode: client.zipCode || "",
       contractUrl: client.contractUrl || "",
       contract2Url: client.contract2Url || "",
       documentUrl: client.documentUrl || "",
@@ -1344,6 +1362,68 @@ export default function Admin() {
               <p className="text-xs text-muted-foreground mt-1">
                 Obrigatório para gerar cobranças de reparos
               </p>
+            </div>
+            <div>
+              <Label htmlFor="rg">RG</Label>
+              <Input
+                id="rg"
+                value={clientForm.rg || ""}
+                onChange={(e) => setClientForm({ ...clientForm, rg: e.target.value })}
+                placeholder="00.000.000-0"
+              />
+            </div>
+
+            {/* Endereço */}
+            <div className="border-t pt-4 space-y-3">
+              <div className="font-medium text-sm">Endereço</div>
+              <div>
+                <Label htmlFor="address">Logradouro</Label>
+                <Input
+                  id="address"
+                  value={clientForm.address || ""}
+                  onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
+                  placeholder="Rua, Av., número..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="neighborhood">Bairro</Label>
+                <Input
+                  id="neighborhood"
+                  value={clientForm.neighborhood || ""}
+                  onChange={(e) => setClientForm({ ...clientForm, neighborhood: e.target.value })}
+                  placeholder="Bairro"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="city">Cidade</Label>
+                  <Input
+                    id="city"
+                    value={clientForm.city || ""}
+                    onChange={(e) => setClientForm({ ...clientForm, city: e.target.value })}
+                    placeholder="Cidade"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="state">UF</Label>
+                  <Input
+                    id="state"
+                    value={clientForm.state || ""}
+                    onChange={(e) => setClientForm({ ...clientForm, state: e.target.value.toUpperCase().slice(0, 2) })}
+                    placeholder="SP"
+                    maxLength={2}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="zipCode">CEP</Label>
+                <Input
+                  id="zipCode"
+                  value={clientForm.zipCode || ""}
+                  onChange={(e) => setClientForm({ ...clientForm, zipCode: e.target.value })}
+                  placeholder="00000-000"
+                />
+              </div>
             </div>
             
             {/* Campos de Upload de Documentos */}

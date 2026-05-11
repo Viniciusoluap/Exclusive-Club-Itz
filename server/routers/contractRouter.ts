@@ -38,8 +38,14 @@ function fmtDate(dateStr: string | null | undefined): string {
 function generateContractHtml(data: {
   clientName: string;
   clientCpfCnpj: string;
+  clientRg?: string;
   clientPhone: string;
   clientEmail: string;
+  clientAddress?: string;
+  clientNeighborhood?: string;
+  clientCity?: string;
+  clientState?: string;
+  clientZipCode?: string;
   boatName: string;
   boatDescription: string;
   quotaType: string;
@@ -54,8 +60,14 @@ function generateContractHtml(data: {
   const {
     clientName,
     clientCpfCnpj,
+    clientRg,
     clientPhone,
     clientEmail,
+    clientAddress,
+    clientNeighborhood,
+    clientCity,
+    clientState,
+    clientZipCode,
     boatName,
     boatDescription,
     quotaType,
@@ -154,18 +166,17 @@ function generateContractHtml(data: {
       <div class="field"><label>CPF/CNPJ</label><span>${clientCpfCnpj || "___________________________"}</span></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>RG</label><span>___________________________</span></div>
+      <div class="field"><label>RG</label><span>${clientRg || "___________________________"}</span></div>
       <div class="field"><label>Telefone</label><span>${clientPhone || "___________________________"}</span></div>
       <div class="field"><label>E-mail</label><span>${clientEmail}</span></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Endereço</label><span>_______________________________________________</span></div>
-      <div class="field"><label>Bairro</label><span>___________________________</span></div>
+      <div class="field"><label>Endereço</label><span>${clientAddress || "_______________________________________________"}</span></div>
+      <div class="field"><label>Bairro</label><span>${clientNeighborhood || "___________________________"}</span></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Número</label><span>__________</span></div>
-      <div class="field"><label>CEP</label><span>___________________________</span></div>
-      <div class="field"><label>Cidade/UF</label><span>Imperatriz/MA</span></div>
+      <div class="field"><label>CEP</label><span>${clientZipCode || "___________________________"}</span></div>
+      <div class="field"><label>Cidade/UF</label><span>${clientCity && clientState ? `${clientCity}/${clientState}` : clientCity || "Imperatriz/MA"}</span></div>
     </div>
   </div>
 
@@ -516,8 +527,14 @@ export const contractRouter = router({
       const html = generateContractHtml({
         clientName: client.name,
         clientCpfCnpj: client.cpf_cnpj || "",
+        clientRg: client.rg || undefined,
         clientPhone: client.phone || "",
         clientEmail: client.email,
+        clientAddress: client.address || undefined,
+        clientNeighborhood: client.neighborhood || undefined,
+        clientCity: client.city || undefined,
+        clientState: client.state || undefined,
+        clientZipCode: client.zip_code || undefined,
         boatName: quota.vessel_name,
         boatDescription: quota.vessel_description || "",
         quotaType,

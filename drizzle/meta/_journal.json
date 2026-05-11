@@ -428,6 +428,13 @@
       "when": 1778199051233,
       "tag": "0060_wide_ben_urich",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "5",
+      "when": 1778434466080,
+      "tag": "0061_left_vance_astro",
+      "breakpoints": true
     }
   ]
 }

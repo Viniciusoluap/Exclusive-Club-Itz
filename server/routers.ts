@@ -99,6 +99,12 @@ export const appRouter = router({
         name: z.string().min(1),
         phone: z.string().optional(),
         cpfCnpj: z.string().optional(),
+        rg: z.string().optional(),
+        address: z.string().optional(),
+        neighborhood: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().max(2).optional(),
+        zipCode: z.string().optional(),
         quotas: z.array(z.object({
           vesselId: z.number(),
           quotaNumber: z.number().min(1).max(10), // 1-7 para lancha, 1-6 para jetski
@@ -133,6 +139,12 @@ export const appRouter = router({
           name: input.name,
           phone: input.phone,
           cpfCnpj: input.cpfCnpj,
+          rg: input.rg,
+          address: input.address,
+          neighborhood: input.neighborhood,
+          city: input.city,
+          state: input.state,
+          zipCode: input.zipCode,
         });
         
         // Get the created client ID
@@ -175,6 +187,12 @@ export const appRouter = router({
         name: z.string().min(1).optional(),
         phone: z.string().optional(),
         cpfCnpj: z.string().optional(),
+        rg: z.string().optional(),
+        address: z.string().optional(),
+        neighborhood: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().max(2).optional(),
+        zipCode: z.string().optional(),
         contractUrl: z.string().optional(),
         contract2Url: z.string().optional(),
         documentUrl: z.string().optional(),
