@@ -2151,13 +2151,12 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] D1: Usar campos no template do contrato PDF
 
 ## 🔧 FASE 6: Auditoria e Correção das Abas de Relatórios (04/05/2026)
-
-- [ ] E1: Dashboard Executivo — corrigir para usar dados reais
-- [ ] E1: Relatório Financeiro — corrigir para usar dados reais de bpo_charges
-- [ ] E1: Ocupação — corrigir para usar dados reais de bookings
-- [ ] E1: Manutenção — corrigir para usar dados reais de maintenance_records
-- [ ] E1: Combustível — corrigir para usar dados reais de fuel_records
-- [ ] E1: Sazonalidade — corrigir para usar dados reais de bookings por mês
+- [x] E1: Dashboard Executivo — já usa dados reais (alertas de manutenção, inadimplência, reservas)
+- [x] E1: Relatório Financeiro — corrigido: totalAmount dividido por 100 (centavos → reais)
+- [x] E1: Ocupação — já usa dados reais de bookings
+- [x] E1: Manutenção — já usa dados reais de maintenance_records
+- [x] E1: Combustível — já usa dados reais de fuel_records (litros e preço por litro)
+- [x] E1: Sazonalidade — já usa dados reais de bookings por mês (totalAmount já dividia por 100)s
 
 - [x] B1: Migrar contractRouter.ts de Puppeteer para weasyprint (htmlToPdf helper)
 - [x] B2: Migrar notificationRouter.ts de Puppeteer para weasyprint (htmlToPdf helper)

@@ -31,6 +31,8 @@ export const reportsRouter = router({
           eq(fuelRecords.paymentStatus, 'paid')
         )
       );
+      // total_amount em fuel_records está em centavos — converter para reais
+      const fuelRevenueTotal = parseFloat(String(fuelRevenue[0]?.total || 0)) / 100;
 
       const bpoRevenue = await db.execute(sql`
         SELECT SUM(amount_paid) as total FROM bpo_charges
@@ -40,7 +42,7 @@ export const reportsRouter = router({
       `) as any;
       const bpoRevenueTotal = parseFloat((Array.isArray(bpoRevenue[0]) ? bpoRevenue[0][0] : bpoRevenue[0])?.total || 0);
 
-      const totalRevenue = parseFloat(String(fuelRevenue[0]?.total || 0)) + bpoRevenueTotal;
+      const totalRevenue = fuelRevenueTotal + bpoRevenueTotal;
 
       // 2. Ticket Médio por Cliente
       const clientsWithRevenue = await db.select({
@@ -57,12 +59,13 @@ export const reportsRouter = router({
       )
       .groupBy(fuelRecords.clientEmail);
 
+      // total_amount em fuel_records está em centavos — converter para reais
       const avgTicket = clientsWithRevenue.length > 0
-        ? clientsWithRevenue.reduce((sum, c) => sum + parseFloat(String(c.total || 0)), 0) / clientsWithRevenue.length
+        ? clientsWithRevenue.reduce((sum, c) => sum + parseFloat(String(c.total || 0)) / 100, 0) / clientsWithRevenue.length
         : 0;
 
-      // 3. Receita por Embarcação
-      const revenueByVessel = await db.select({
+      // 3. Receita por Embarcação (total_amount em centavos → reais)
+      const revenueByVesselRaw = await db.select({
         vesselName: fuelRecords.vesselName,
         total: sql<number>`SUM(${fuelRecords.totalAmount})`.as('total'),
       })
@@ -75,6 +78,7 @@ export const reportsRouter = router({
         )
       )
       .groupBy(fuelRecords.vesselName);
+      const revenueByVessel = revenueByVesselRaw.map(r => ({ vesselName: r.vesselName, total: parseFloat(String(r.total || 0)) / 100 }));
 
       // 4. Receita por Tipo de Cota (aproximação: baseado em clientes com cotas)
       const quotaClients = await db.select({
@@ -103,7 +107,8 @@ export const reportsRouter = router({
 
       for (const client of clientsWithRevenue) {
         const quotaType = emailToQuotaType.get(client.clientEmail);
-        const total = parseFloat(String(client.total || 0));
+        // total_amount em centavos → reais
+        const total = parseFloat(String(client.total || 0)) / 100;
         if (quotaType === 'full') {
           fullQuotaRevenue += total;
         } else if (quotaType === 'half') {
@@ -146,7 +151,8 @@ export const reportsRouter = router({
         )
       );
 
-      const fuelCostTotal = fuelCost[0]?.total || 0;
+      // total_amount em centavos → reais
+      const fuelCostTotal = parseFloat(String(fuelCost[0]?.total || 0)) / 100;
       const fuelVsRevenue = totalRevenue > 0 ? (fuelCostTotal / totalRevenue) * 100 : 0;
 
       // 8. Projeção de Receita (30/60/90 dias) - baseado em média mensal
@@ -158,7 +164,7 @@ export const reportsRouter = router({
 
       // 9. Sazonalidade de Receita (por mês)
       const monthlyRevenue = await db.execute(sql`
-        SELECT DATE_FORMAT(created_at, '%Y-%m') as month, SUM(total_amount) as total
+        SELECT DATE_FORMAT(created_at, '%Y-%m') as month, SUM(total_amount) / 100 as total
         FROM fuel_records
         WHERE created_at >= ${new Date(start).toISOString()}
           AND created_at <= ${new Date(end).toISOString()}
@@ -166,8 +172,8 @@ export const reportsRouter = router({
         GROUP BY month
       `) as any;
 
-      // 10. LTV por Cliente (Lifetime Value)
-      const clientLTV = await db.select({
+      // 10. LTV por Cliente (Lifetime Value) — total_amount em centavos → reais
+      const clientLTVRaw = await db.select({
         clientEmail: fuelRecords.clientEmail,
         clientName: fuelRecords.clientName,
         total: sql<number>`SUM(${fuelRecords.totalAmount})`.as('total'),
@@ -177,6 +183,7 @@ export const reportsRouter = router({
       .groupBy(fuelRecords.clientEmail, fuelRecords.clientName)
       .orderBy(desc(sql`SUM(${fuelRecords.totalAmount})`))
       .limit(10);
+      const clientLTV = clientLTVRaw.map(c => ({ ...c, total: parseFloat(String(c.total || 0)) / 100 }));
 
       return {
         totalRevenue,
@@ -877,7 +884,7 @@ export const reportsRouter = router({
 
       // 2. Receita por Mês
       const revenueByMonth = await db.execute(sql`
-        SELECT DATE_FORMAT(created_at, '%Y-%m') as month, SUM(total_amount) as total
+        SELECT DATE_FORMAT(created_at, '%Y-%m') as month, SUM(total_amount) / 100 as total
         FROM fuel_records
         WHERE created_at >= ${new Date(start).toISOString()}
           AND created_at <= ${new Date(end).toISOString()}
