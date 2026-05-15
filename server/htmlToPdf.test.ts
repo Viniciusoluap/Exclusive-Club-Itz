@@ -1,5 +1,5 @@
 /**
- * Teste do helper htmlToPdf — verifica que weasyprint gera PDF sem Chrome
+ * Teste do helper htmlToPdf — verifica que Puppeteer + Chromium gera PDF corretamente
  */
 import { describe, expect, it } from "vitest";
 import { htmlToPdf } from "./_core/htmlToPdf";
@@ -26,7 +26,7 @@ describe("htmlToPdf", () => {
     // Verificar assinatura PDF (%PDF-)
     const header = pdfBuffer.slice(0, 5).toString("ascii");
     expect(header).toBe("%PDF-");
-  }, 30000); // timeout de 30s pois weasyprint pode demorar
+  }, 60000); // timeout de 60s pois Puppeteer pode demorar ao iniciar
 
   it("gera PDF com tabelas e estilos CSS", async () => {
     const html = `<!DOCTYPE html>
@@ -57,5 +57,5 @@ describe("htmlToPdf", () => {
     expect(pdfBuffer.length).toBeGreaterThan(1000);
     const header = pdfBuffer.slice(0, 5).toString("ascii");
     expect(header).toBe("%PDF-");
-  }, 30000);
+  }, 60000);
 });

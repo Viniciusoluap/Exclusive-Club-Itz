@@ -1,47 +1,80 @@
 /**
- * htmlToPdf.ts — Converte HTML para PDF usando weasyprint (sem Chrome/Puppeteer)
+ * htmlToPdf.ts — Converte HTML para PDF usando Puppeteer + Chromium
  *
- * weasyprint é uma ferramenta Python que converte HTML/CSS para PDF com
- * suporte completo a CSS, fontes e layout de página A4.
- *
- * Uso:
- *   const pdfBuffer = await htmlToPdf(htmlString);
+ * Detecta automaticamente o executável do Chromium disponível no sistema,
+ * sem necessidade de configuração manual. Usa o mesmo padrão do inspectionPDF.ts.
  */
-import { exec } from "child_process";
-import { promises as fs } from "fs";
-import { tmpdir } from "os";
-import { join } from "path";
-import { promisify } from "util";
-
-const execAsync = promisify(exec);
+import { existsSync } from "fs";
+import puppeteer from "puppeteer";
 
 /**
- * Converte uma string HTML em um Buffer PDF usando weasyprint.
- * Não requer Chrome/Chromium instalado.
+ * Detecta o caminho do executável do Chromium disponível no sistema.
+ * Tenta múltiplos caminhos conhecidos em ordem de preferência.
+ */
+function findChromiumExecutable(): string {
+  // Variável de ambiente tem prioridade máxima
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+
+  // Lista de caminhos conhecidos em ordem de preferência
+  const candidates = [
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "/usr/lib/chromium-browser/chromium-browser",
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/snap/bin/chromium",
+    "/opt/google/chrome/chrome",
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  // Fallback: deixar o puppeteer tentar encontrar por conta própria
+  return "";
+}
+
+/**
+ * Converte uma string HTML em um Buffer PDF usando Puppeteer + Chromium.
  *
  * @param html - String HTML completa (com <!DOCTYPE html> e estilos inline)
  * @returns Buffer com o conteúdo do PDF gerado
  */
 export async function htmlToPdf(html: string): Promise<Buffer> {
-  const tmpId = `ec-pdf-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const htmlPath = join(tmpdir(), `${tmpId}.html`);
-  const pdfPath = join(tmpdir(), `${tmpId}.pdf`);
+  const executablePath = findChromiumExecutable();
+
+  const launchOptions: Parameters<typeof puppeteer.launch>[0] = {
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+  };
+
+  if (executablePath) {
+    launchOptions.executablePath = executablePath;
+  }
+
+  const browser = await puppeteer.launch(launchOptions);
 
   try {
-    // Escrever HTML em arquivo temporário
-    await fs.writeFile(htmlPath, html, "utf-8");
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
 
-    // Executar weasyprint para converter HTML → PDF
-    await execAsync(`weasyprint "${htmlPath}" "${pdfPath}"`, {
-      timeout: 30000, // 30 segundos de timeout
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20px",
+        right: "20px",
+        bottom: "20px",
+        left: "20px",
+      },
     });
 
-    // Ler o PDF gerado
-    const pdfBuffer = await fs.readFile(pdfPath);
-    return pdfBuffer;
+    return Buffer.from(pdfBuffer);
   } finally {
-    // Limpar arquivos temporários (sem lançar erros se falhar)
-    fs.unlink(htmlPath).catch(() => {});
-    fs.unlink(pdfPath).catch(() => {});
+    await browser.close();
   }
 }
