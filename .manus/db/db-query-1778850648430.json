@@ -1,0 +1,34 @@
+{
+  "query": "SELECT id, value, status, amount_paid, paid_date, description\nFROM bpo_charges\nWHERE id IN (226, 225, 30002)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, value, status, amount_paid, paid_date, description\nFROM bpo_charges\nWHERE id IN (226, 225, 30002)",
+  "rows": [
+    {
+      "id": "226",
+      "value": "900.00",
+      "status": "receivedInCash",
+      "amount_paid": "900.00",
+      "paid_date": "2026-04-16",
+      "description": "Parcela 1 de 12. Mensalidade Cota Focker [Baixa manual: quitado via PIX #30002 de R$ 1.400,00 em 16/04/2026]"
+    },
+    {
+      "id": "225",
+      "value": "900.00",
+      "status": "partiallyPaid",
+      "amount_paid": "500.00",
+      "paid_date": "2026-04-16",
+      "description": "Parcela 2 de 12. Mensalidade Cota Focker [Pagamento parcial: R$ 500,00 via PIX #30002 de R$ 1.400,00 em 16/04/2026]"
+    },
+    {
+      "id": "30002",
+      "value": "1400.00",
+      "status": "received",
+      "amount_paid": "1400.00",
+      "paid_date": "2026-04-16",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-04-30] [Distribuído via Split de PIX em 2026-05-02]"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvalue\tstatus\tamount_paid\tpaid_date\tdescription\n226\t900.00\treceivedInCash\t900.00\t2026-04-16\tParcela 1 de 12. Mensalidade Cota Focker [Baixa manual: quitado via PIX #30002 de R$ 1.400,00 em 16/04/2026]\n225\t900.00\tpartiallyPaid\t500.00\t2026-04-16\tParcela 2 de 12. Mensalidade Cota Focker [Pagamento parcial: R$ 500,00 via PIX #30002 de R$ 1.400,00 em 16/04/2026]\n30002\t1400.00\treceived\t1400.00\t2026-04-16\tCobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-04-30] [Distribuído via Split de PIX em 2026-05-02]\n",
+  "stderr": "",
+  "execution_time_ms": 261
+}

@@ -1,0 +1,73 @@
+{
+  "query": "SELECT id, client_name, value, status, amount_paid, paid_date, LEFT(description, 80) as desc_resumo\nFROM bpo_charges\nWHERE id IN (31, 510001, 226, 225, 30002, 540003, 720001)\nORDER BY id",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, client_name, value, status, amount_paid, paid_date, LEFT(description, 80) as desc_resumo\nFROM bpo_charges\nWHERE id IN (31, 510001, 226, 225, 30002, 540003, 720001)\nORDER BY id",
+  "rows": [
+    {
+      "id": "31",
+      "client_name": "LUCAS SANTOS MIRANDA",
+      "value": "961.46",
+      "status": "receivedInCash",
+      "amount_paid": "961.46",
+      "paid_date": "2026-05-08",
+      "desc_resumo": "Venda de Cota - Parcela 2/25 - LUCAS SANTOS MIRANDA [Baixa manual: quitado via P"
+    },
+    {
+      "id": "225",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "partiallyPaid",
+      "amount_paid": "500.00",
+      "paid_date": "2026-04-16",
+      "desc_resumo": "Parcela 2 de 12. Mensalidade Cota Focker [Pagamento parcial: R$ 500,00 via PIX #"
+    },
+    {
+      "id": "226",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "receivedInCash",
+      "amount_paid": "900.00",
+      "paid_date": "2026-04-16",
+      "desc_resumo": "Parcela 1 de 12. Mensalidade Cota Focker [Baixa manual: quitado via PIX #30002 d"
+    },
+    {
+      "id": "30002",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "1400.00",
+      "status": "cancelled",
+      "amount_paid": "1400.00",
+      "paid_date": "2026-04-16",
+      "desc_resumo": "Cobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split"
+    },
+    {
+      "id": "510001",
+      "client_name": "LUCAS SANTOS MIRANDA",
+      "value": "962.00",
+      "status": "cancelled",
+      "amount_paid": "962.00",
+      "paid_date": "2026-05-08",
+      "desc_resumo": "Cobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split"
+    },
+    {
+      "id": "540003",
+      "client_name": "Francisco Claudio Araujo da Silva",
+      "value": "169.29",
+      "status": "receivedInCash",
+      "amount_paid": "169.29",
+      "paid_date": "2026-05-14",
+      "desc_resumo": "Abastecimento - Focker 215 150HP - 24.85L [Baixa manual: quitado via PIX #720001"
+    },
+    {
+      "id": "720001",
+      "client_name": "Francisco Claudio Araujo da Silva",
+      "value": "169.29",
+      "status": "cancelled",
+      "amount_paid": "169.29",
+      "paid_date": "2026-05-14",
+      "desc_resumo": "Cobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tvalue\tstatus\tamount_paid\tpaid_date\tdesc_resumo\n31\tLUCAS SANTOS MIRANDA\t961.46\treceivedInCash\t961.46\t2026-05-08\tVenda de Cota - Parcela 2/25 - LUCAS SANTOS MIRANDA [Baixa manual: quitado via P\n225\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\tpartiallyPaid\t500.00\t2026-04-16\tParcela 2 de 12. Mensalidade Cota Focker [Pagamento parcial: R$ 500,00 via PIX #\n226\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\treceivedInCash\t900.00\t2026-04-16\tParcela 1 de 12. Mensalidade Cota Focker [Baixa manual: quitado via PIX #30002 d\n30002\tMHAMED FEIZ HUSSEIN YASSIN\t1400.00\tcancelled\t1400.00\t2026-04-16\tCobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split\n510001\tLUCAS SANTOS MIRANDA\t962.00\tcancelled\t962.00\t2026-05-08\tCobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split\n540003\tFrancisco Claudio Araujo da Silva\t169.29\treceivedInCash\t169.29\t2026-05-14\tAbastecimento - Focker 215 150HP - 24.85L [Baixa manual: quitado via PIX #720001\n720001\tFrancisco Claudio Araujo da Silva\t169.29\tcancelled\t169.29\t2026-05-14\tCobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split\n",
+  "stderr": "",
+  "execution_time_ms": 258
+}

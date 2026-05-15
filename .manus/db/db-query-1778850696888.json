@@ -1,0 +1,9 @@
+{
+  "query": "-- Dar baixa na cobrança de abastecimento do Francisco Claudio (R$ 169,29)\nUPDATE bpo_charges \nSET status = 'receivedInCash', \n    amount_paid = 169.29, \n    paid_date = '2026-05-14',\n    description = CONCAT(description, ' [Baixa manual: quitado via PIX #720001 de R$ 169,29 em 14/05/2026]')\nWHERE id = 540003 AND client_name LIKE '%Francisco Claudio%' AND status = 'overdue';\n\n-- Cancelar o PIX duplicado do Francisco Claudio\nUPDATE bpo_charges \nSET status = 'cancelled',\n    description = CONCAT(description, ' [CANCELADO: baixa aplicada na cobrança #540003 - Abastecimento R$ 169,29]')\nWHERE id = 720001 AND client_name LIKE '%Francisco Claudio%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute -- Dar baixa na cobrança de abastecimento do Francisco Claudio (R$ 169,29)\nUPDATE bpo_charges \nSET status = 'receivedInCash', \n    amount_paid = 169.29, \n    paid_date = '2026-05-14',\n    description = CONCAT(description, ' [Baixa manual: quitado via PIX #720001 de R$ 169,29 em 14/05/2026]')\nWHERE id = 540003 AND client_name LIKE '%Francisco Claudio%' AND status = 'overdue';\n\n-- Cancelar o PIX duplicado do Francisco Claudio\nUPDATE bpo_charges \nSET status = 'cancelled',\n    description = CONCAT(description, ' [CANCELADO: baixa aplicada na cobrança #540003 - Abastecimento R$ 169,29]')\nWHERE id = 720001 AND client_name LIKE '%Francisco Claudio%'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 279
+}

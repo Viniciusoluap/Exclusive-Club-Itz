@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE bpo_charges \nSET status = 'receivedInCash', \n    amount_paid = 961.46, \n    paid_date = '2026-05-08',\n    description = CONCAT(description, ' [Baixa manual: quitado via PIX #510001 de R$ 962,00 em 08/05/2026]')\nWHERE id = 31 AND client_name LIKE '%LUCAS%' AND status = 'overdue'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute UPDATE bpo_charges \nSET status = 'receivedInCash', \n    amount_paid = 961.46, \n    paid_date = '2026-05-08',\n    description = CONCAT(description, ' [Baixa manual: quitado via PIX #510001 de R$ 962,00 em 08/05/2026]')\nWHERE id = 31 AND client_name LIKE '%LUCAS%' AND status = 'overdue'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 2015
+}

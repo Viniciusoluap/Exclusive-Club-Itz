@@ -1,0 +1,60 @@
+{
+  "query": "SELECT id, client_name, value, status, type, description, due_date, paid_date\nFROM bpo_charges\nWHERE client_name LIKE '%MHAMED%'\n  AND description LIKE '%Pix recebido%'\n  AND status IN ('received', 'confirmed', 'receivedInCash')\nORDER BY due_date DESC\nLIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, client_name, value, status, type, description, due_date, paid_date\nFROM bpo_charges\nWHERE client_name LIKE '%MHAMED%'\n  AND description LIKE '%Pix recebido%'\n  AND status IN ('received', 'confirmed', 'receivedInCash')\nORDER BY due_date DESC\nLIMIT 5",
+  "rows": [
+    {
+      "id": "30002",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "1400.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-04-30] [Distribuído via Split de PIX em 2026-05-02]",
+      "due_date": "2026-04-16",
+      "paid_date": "2026-04-16"
+    },
+    {
+      "id": "50",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "468.57",
+      "status": "received",
+      "type": "repair",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido.",
+      "due_date": "2026-03-02",
+      "paid_date": "2026-03-02"
+    },
+    {
+      "id": "49",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "25.71",
+      "status": "received",
+      "type": "repair",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido.",
+      "due_date": "2026-03-02",
+      "paid_date": "2026-03-02"
+    },
+    {
+      "id": "83",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "700.00",
+      "status": "received",
+      "type": "monthly",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido.",
+      "due_date": "2026-02-20",
+      "paid_date": "2026-02-20"
+    },
+    {
+      "id": "123",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "257.14",
+      "status": "received",
+      "type": "fuel",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido.",
+      "due_date": "2026-01-16",
+      "paid_date": "2026-01-16"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tvalue\tstatus\ttype\tdescription\tdue_date\tpaid_date\n30002\tMHAMED FEIZ HUSSEIN YASSIN\t1400.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-04-30] [Distribuído via Split de PIX em 2026-05-02]\t2026-04-16\t2026-04-16\n50\tMHAMED FEIZ HUSSEIN YASSIN\t468.57\treceived\trepair\tCobrança gerada automaticamente a partir de Pix recebido.\t2026-03-02\t2026-03-02\n49\tMHAMED FEIZ HUSSEIN YASSIN\t25.71\treceived\trepair\tCobrança gerada automaticamente a partir de Pix recebido.\t2026-03-02\t2026-03-02\n83\tMHAMED FEIZ HUSSEIN YASSIN\t700.00\treceived\tmonthly\tCobrança gerada automaticamente a partir de Pix recebido.\t2026-02-20\t2026-02-20\n123\tMHAMED FEIZ HUSSEIN YASSIN\t257.14\treceived\tfuel\tCobrança gerada automaticamente a partir de Pix recebido.\t2026-01-16\t2026-01-16\n",
+  "stderr": "",
+  "execution_time_ms": 268
+}

@@ -751,38 +751,171 @@ export const bpoRouter = router({
 
   // ============================================================
   // CLASSIFICAÇÃO MANUAL — admin reclassifica cobranças 'other'
+  // Quando a cobrança já está paga (PIX recebido), dá baixa automática
+  // na cobrança pendente correspondente do mesmo cliente
   // ============================================================
   manualClassify: adminProcedure
     .input(z.object({
       chargeId: z.number(),
       type: z.enum(["monthly", "quota_sale", "fuel", "repair", "other"]),
       clientEmail: z.string().email().optional(),
+      targetChargeId: z.number().optional(), // ID da cobrança pendente a quitar (quando há múltiplas opções)
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
-      const updateData: Record<string, any> = {
-        type: input.type,
-        classifiedBy: "manual",
-      };
+      // 1. Buscar a cobrança sendo classificada
+      const sourceRows = await db.select().from(bpoCharges)
+        .where(eq(bpoCharges.id, input.chargeId)).limit(1);
+      if (sourceRows.length === 0) throw new Error("Cobrança não encontrada");
+      const sourceCharge = sourceRows[0];
 
-      if (input.clientEmail) {
-        updateData.clientEmail = input.clientEmail;
-        const { allowedClients: acTable } = await import("../../drizzle/schema");
-        const clientResult = await db.select().from(acTable)
-          .where(eq(acTable.email, input.clientEmail)).limit(1);
-        if (clientResult.length > 0) {
-          updateData.clientId = clientResult[0].id;
-          updateData.clientName = clientResult[0].name;
+      // 2. Verificar se a cobrança já está paga (PIX recebido)
+      const isAlreadyPaid = isPaidStatus(sourceCharge.status ?? '');
+      const pixValue = parseFloat(String(sourceCharge.value ?? '0'));
+
+      // 3. Se NÃO está paga ou tipo é 'other', apenas classificar (comportamento antigo)
+      if (!isAlreadyPaid || input.type === 'other') {
+        const updateData: Record<string, any> = {
+          type: input.type,
+          classifiedBy: "manual",
+        };
+        if (input.clientEmail) {
+          updateData.clientEmail = input.clientEmail;
+          const clientResult = await db.select().from(acTable)
+            .where(eq(acTable.email, input.clientEmail)).limit(1);
+          if (clientResult.length > 0) {
+            updateData.clientId = clientResult[0].id;
+            updateData.clientName = clientResult[0].name;
+          }
         }
+        await db.update(bpoCharges)
+          .set(updateData)
+          .where(eq(bpoCharges.id, input.chargeId));
+        return { success: true, action: 'classified_only' };
       }
 
+      // 4. PIX já recebido + tipo específico → buscar cobranças pendentes do mesmo cliente
+      const clientId = sourceCharge.clientId;
+      if (!clientId) {
+        // Sem cliente vinculado, apenas classificar
+        await db.update(bpoCharges)
+          .set({ type: input.type, classifiedBy: "manual" })
+          .where(eq(bpoCharges.id, input.chargeId));
+        return { success: true, action: 'classified_only', reason: 'no_client_linked' };
+      }
+
+      // 5. Buscar cobranças pendentes do mesmo cliente com o mesmo tipo
+      const [pendingRows] = (await db.execute(sql.raw(`
+        SELECT id, value, amount_paid as amountPaid, due_date as dueDate, description, status
+        FROM bpo_charges
+        WHERE client_id = ${clientId}
+          AND type = '${input.type}'
+          AND status IN ('pending', 'overdue', 'partiallyPaid')
+          AND id != ${input.chargeId}
+        ORDER BY due_date ASC
+        LIMIT 20
+      `))) as any;
+
+      const pendingCharges: Array<{ id: number; value: string; amountPaid: string; dueDate: string; description: string; status: string }> =
+        Array.isArray(pendingRows) ? pendingRows : [];
+
+      // 6. Se não há cobranças pendentes, apenas classificar
+      if (pendingCharges.length === 0) {
+        await db.update(bpoCharges)
+          .set({ type: input.type, classifiedBy: "manual" })
+          .where(eq(bpoCharges.id, input.chargeId));
+        return { success: true, action: 'classified_only', reason: 'no_pending_charges' };
+      }
+
+      // 7. Se o admin especificou qual cobrança quitar, usar essa
+      let targetCharge = input.targetChargeId
+        ? pendingCharges.find(c => c.id === input.targetChargeId)
+        : null;
+
+      // 8. Se não especificou, buscar match por valor (tolerância de 5%)
+      if (!targetCharge) {
+        const tolerance = 0.05; // 5%
+        targetCharge = pendingCharges.find(c => {
+          const chargeValue = parseFloat(String(c.value));
+          const currentPaid = parseFloat(String(c.amountPaid || '0'));
+          const remaining = chargeValue - currentPaid;
+          return Math.abs(remaining - pixValue) / remaining <= tolerance;
+        });
+      }
+
+      // 9. Se ainda não encontrou match, pegar a mais antiga com valor menor ou igual ao PIX
+      if (!targetCharge) {
+        targetCharge = pendingCharges.find(c => {
+          const chargeValue = parseFloat(String(c.value));
+          const currentPaid = parseFloat(String(c.amountPaid || '0'));
+          const remaining = chargeValue - currentPaid;
+          return remaining <= pixValue + 0.01;
+        });
+      }
+
+      // 10. Se não encontrou nenhuma cobrança compatível, retornar lista para o admin escolher
+      if (!targetCharge) {
+        // Apenas classificar e retornar aviso
+        await db.update(bpoCharges)
+          .set({ type: input.type, classifiedBy: "manual" })
+          .where(eq(bpoCharges.id, input.chargeId));
+        return {
+          success: true,
+          action: 'classified_only',
+          reason: 'no_value_match',
+          pendingCharges: pendingCharges.map(c => ({
+            id: c.id,
+            value: c.value,
+            dueDate: c.dueDate,
+            description: c.description,
+          })),
+          message: `Classificado como ${input.type}, mas nenhuma cobrança pendente com valor compatível foi encontrada. Use o Split para distribuir manualmente.`,
+        };
+      }
+
+      // 11. DAR BAIXA na cobrança pendente encontrada
+      const targetValue = parseFloat(String(targetCharge.value));
+      const targetCurrentPaid = parseFloat(String(targetCharge.amountPaid || '0'));
+      const amountToApply = Math.min(pixValue, targetValue - targetCurrentPaid);
+      const newAmountPaid = targetCurrentPaid + amountToApply;
+      const isFullyPaid = newAmountPaid >= targetValue - 0.01;
+      const paymentDate = sourceCharge.paidDate || new Date().toISOString().split('T')[0];
+
       await db.update(bpoCharges)
-        .set(updateData)
+        .set({
+          status: isFullyPaid ? 'receivedInCash' : 'partiallyPaid',
+          amountPaid: newAmountPaid.toFixed(2),
+          paidDate: isFullyPaid ? paymentDate : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(bpoCharges.id, targetCharge.id));
+
+      // 12. CANCELAR a cobrança do PIX (origem) — já foi distribuída
+      const currentDesc = sourceCharge.description || '';
+      const newDesc = `${currentDesc} [Baixa automática: quitou cobrança #${targetCharge.id} em ${paymentDate}]`.trim();
+
+      await db.update(bpoCharges)
+        .set({
+          status: 'cancelled',
+          type: input.type,
+          classifiedBy: 'manual',
+          description: newDesc,
+          updatedAt: new Date(),
+        })
         .where(eq(bpoCharges.id, input.chargeId));
 
-      return { success: true };
+      return {
+        success: true,
+        action: 'auto_settled',
+        settledChargeId: targetCharge.id,
+        settledValue: amountToApply,
+        isFullyPaid,
+        message: isFullyPaid
+          ? `Cobrança #${targetCharge.id} quitada automaticamente (R$ ${amountToApply.toFixed(2)}). PIX cancelado.`
+          : `Pagamento parcial de R$ ${amountToApply.toFixed(2)} aplicado na cobrança #${targetCharge.id}. PIX cancelado.`,
+      };
     }),
 
   // ============================================================

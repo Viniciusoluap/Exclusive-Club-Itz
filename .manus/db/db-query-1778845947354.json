@@ -1,0 +1,65 @@
+{
+  "query": "SELECT id, client_name, value, status, type, description, due_date, paid_date, amount_paid\nFROM bpo_charges\nWHERE client_id = 2850001\n  AND type = 'quota_sale'\n  AND status IN ('pending', 'overdue', 'partiallyPaid')\nORDER BY due_date ASC\nLIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, client_name, value, status, type, description, due_date, paid_date, amount_paid\nFROM bpo_charges\nWHERE client_id = 2850001\n  AND type = 'quota_sale'\n  AND status IN ('pending', 'overdue', 'partiallyPaid')\nORDER BY due_date ASC\nLIMIT 5",
+  "rows": [
+    {
+      "id": "31",
+      "client_name": "LUCAS SANTOS MIRANDA",
+      "value": "961.46",
+      "status": "overdue",
+      "type": "quota_sale",
+      "description": "Venda de Cota - Parcela 2/25 - LUCAS SANTOS MIRANDA",
+      "due_date": "2026-04-15",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "30",
+      "client_name": "LUCAS SANTOS MIRANDA",
+      "value": "961.46",
+      "status": "pending",
+      "type": "quota_sale",
+      "description": "Venda de Cota - Parcela 3/25 - LUCAS SANTOS MIRANDA",
+      "due_date": "2026-05-15",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "29",
+      "client_name": "LUCAS SANTOS MIRANDA",
+      "value": "961.46",
+      "status": "pending",
+      "type": "quota_sale",
+      "description": "Venda de Cota - Parcela 4/25 - LUCAS SANTOS MIRANDA",
+      "due_date": "2026-06-15",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "28",
+      "client_name": "LUCAS SANTOS MIRANDA",
+      "value": "961.46",
+      "status": "pending",
+      "type": "quota_sale",
+      "description": "Venda de Cota - Parcela 5/25 - LUCAS SANTOS MIRANDA",
+      "due_date": "2026-07-15",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "27",
+      "client_name": "LUCAS SANTOS MIRANDA",
+      "value": "961.46",
+      "status": "pending",
+      "type": "quota_sale",
+      "description": "Venda de Cota - Parcela 6/25 - LUCAS SANTOS MIRANDA",
+      "due_date": "2026-08-15",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tvalue\tstatus\ttype\tdescription\tdue_date\tpaid_date\tamount_paid\n31\tLUCAS SANTOS MIRANDA\t961.46\toverdue\tquota_sale\tVenda de Cota - Parcela 2/25 - LUCAS SANTOS MIRANDA\t2026-04-15\tNULL\t0.00\n30\tLUCAS SANTOS MIRANDA\t961.46\tpending\tquota_sale\tVenda de Cota - Parcela 3/25 - LUCAS SANTOS MIRANDA\t2026-05-15\tNULL\t0.00\n29\tLUCAS SANTOS MIRANDA\t961.46\tpending\tquota_sale\tVenda de Cota - Parcela 4/25 - LUCAS SANTOS MIRANDA\t2026-06-15\tNULL\t0.00\n28\tLUCAS SANTOS MIRANDA\t961.46\tpending\tquota_sale\tVenda de Cota - Parcela 5/25 - LUCAS SANTOS MIRANDA\t2026-07-15\tNULL\t0.00\n27\tLUCAS SANTOS MIRANDA\t961.46\tpending\tquota_sale\tVenda de Cota - Parcela 6/25 - LUCAS SANTOS MIRANDA\t2026-08-15\tNULL\t0.00\n",
+  "stderr": "",
+  "execution_time_ms": 267
+}

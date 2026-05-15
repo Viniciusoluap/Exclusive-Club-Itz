@@ -1,0 +1,175 @@
+{
+  "query": "SELECT id, client_name, value, status, type, description, due_date, paid_date, amount_paid\nFROM bpo_charges\nWHERE client_name LIKE '%MHAMED%'\n  AND (type = 'monthly' OR description LIKE '%Pix recebido%')\n  AND status IN ('pending', 'overdue', 'received', 'confirmed', 'receivedInCash', 'partiallyPaid')\nORDER BY due_date ASC\nLIMIT 15",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, client_name, value, status, type, description, due_date, paid_date, amount_paid\nFROM bpo_charges\nWHERE client_name LIKE '%MHAMED%'\n  AND (type = 'monthly' OR description LIKE '%Pix recebido%')\n  AND status IN ('pending', 'overdue', 'received', 'confirmed', 'receivedInCash', 'partiallyPaid')\nORDER BY due_date ASC\nLIMIT 15",
+  "rows": [
+    {
+      "id": "717",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "400.00",
+      "status": "received",
+      "type": "monthly",
+      "description": "MENSALIDADE LANCHA ",
+      "due_date": "2024-12-20",
+      "paid_date": "2024-12-20",
+      "amount_paid": "400.00"
+    },
+    {
+      "id": "716",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "700.00",
+      "status": "receivedInCash",
+      "type": "monthly",
+      "description": "MENSALIDADE DA LANCHA",
+      "due_date": "2025-01-20",
+      "paid_date": "2025-01-22",
+      "amount_paid": "700.00"
+    },
+    {
+      "id": "671",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "700.00",
+      "status": "receivedInCash",
+      "type": "monthly",
+      "description": "MENSALIDADE DA LANCHA",
+      "due_date": "2025-02-20",
+      "paid_date": "2025-02-26",
+      "amount_paid": "700.00"
+    },
+    {
+      "id": "656",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "700.00",
+      "status": "receivedInCash",
+      "type": "monthly",
+      "description": "MENSALIDADE DA LANCHA",
+      "due_date": "2025-03-20",
+      "paid_date": "2025-03-27",
+      "amount_paid": "700.00"
+    },
+    {
+      "id": "647",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "700.00",
+      "status": "receivedInCash",
+      "type": "monthly",
+      "description": "MENSALIDADE DA LANCHA",
+      "due_date": "2025-04-20",
+      "paid_date": "2025-04-23",
+      "amount_paid": "700.00"
+    },
+    {
+      "id": "631",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "700.00",
+      "status": "receivedInCash",
+      "type": "monthly",
+      "description": "MENSALIDADE DA LANCHA",
+      "due_date": "2025-05-20",
+      "paid_date": "2025-05-23",
+      "amount_paid": "700.00"
+    },
+    {
+      "id": "603",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "700.00",
+      "status": "receivedInCash",
+      "type": "monthly",
+      "description": "MENSALIDADE DA LANCHA",
+      "due_date": "2025-06-20",
+      "paid_date": "2025-06-25",
+      "amount_paid": "700.00"
+    },
+    {
+      "id": "545",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "99.20",
+      "status": "received",
+      "type": "fuel",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido.",
+      "due_date": "2025-07-08",
+      "paid_date": "2025-07-08",
+      "amount_paid": "99.20"
+    },
+    {
+      "id": "570",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "700.00",
+      "status": "receivedInCash",
+      "type": "monthly",
+      "description": "MENSALIDADE DA LANCHA",
+      "due_date": "2025-07-20",
+      "paid_date": "2025-07-22",
+      "amount_paid": "700.00"
+    },
+    {
+      "id": "535",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "700.00",
+      "status": "receivedInCash",
+      "type": "monthly",
+      "description": "MENSALIDADE DA LANCHA",
+      "due_date": "2025-08-20",
+      "paid_date": "2025-08-14",
+      "amount_paid": "700.00"
+    },
+    {
+      "id": "462",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "307.00",
+      "status": "received",
+      "type": "monthly",
+      "description": "Mensalidade Focker",
+      "due_date": "2025-09-15",
+      "paid_date": "2025-09-15",
+      "amount_paid": "307.00"
+    },
+    {
+      "id": "465",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "393.00",
+      "status": "receivedInCash",
+      "type": "monthly",
+      "description": "MENSALIDADE DA LANCHA",
+      "due_date": "2025-09-20",
+      "paid_date": "2025-08-14",
+      "amount_paid": "393.00"
+    },
+    {
+      "id": "405",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "54.73",
+      "status": "received",
+      "type": "fuel",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido.",
+      "due_date": "2025-09-24",
+      "paid_date": "2025-09-24",
+      "amount_paid": "54.73"
+    },
+    {
+      "id": "373",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "700.00",
+      "status": "received",
+      "type": "monthly",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido.",
+      "due_date": "2025-10-21",
+      "paid_date": "2025-10-21",
+      "amount_paid": "700.00"
+    },
+    {
+      "id": "385",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "700.00",
+      "status": "receivedInCash",
+      "type": "monthly",
+      "description": "MENSALIDADE DA LANCHA",
+      "due_date": "2025-11-20",
+      "paid_date": "2025-11-28",
+      "amount_paid": "700.00"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tvalue\tstatus\ttype\tdescription\tdue_date\tpaid_date\tamount_paid\n717\tMHAMED FEIZ HUSSEIN YASSIN\t400.00\treceived\tmonthly\tMENSALIDADE LANCHA \t2024-12-20\t2024-12-20\t400.00\n716\tMHAMED FEIZ HUSSEIN YASSIN\t700.00\treceivedInCash\tmonthly\tMENSALIDADE DA LANCHA\t2025-01-20\t2025-01-22\t700.00\n671\tMHAMED FEIZ HUSSEIN YASSIN\t700.00\treceivedInCash\tmonthly\tMENSALIDADE DA LANCHA\t2025-02-20\t2025-02-26\t700.00\n656\tMHAMED FEIZ HUSSEIN YASSIN\t700.00\treceivedInCash\tmonthly\tMENSALIDADE DA LANCHA\t2025-03-20\t2025-03-27\t700.00\n647\tMHAMED FEIZ HUSSEIN YASSIN\t700.00\treceivedInCash\tmonthly\tMENSALIDADE DA LANCHA\t2025-04-20\t2025-04-23\t700.00\n631\tMHAMED FEIZ HUSSEIN YASSIN\t700.00\treceivedInCash\tmonthly\tMENSALIDADE DA LANCHA\t2025-05-20\t2025-05-23\t700.00\n603\tMHAMED FEIZ HUSSEIN YASSIN\t700.00\treceivedInCash\tmonthly\tMENSALIDADE DA LANCHA\t2025-06-20\t2025-06-25\t700.00\n545\tMHAMED FEIZ HUSSEIN YASSIN\t99.20\treceived\tfuel\tCobrança gerada automaticamente a partir de Pix recebido.\t2025-07-08\t2025-07-08\t99.20\n570\tMHAMED FEIZ HUSSEIN YASSIN\t700.00\treceivedInCash\tmonthly\tMENSALIDADE DA LANCHA\t2025-07-20\t2025-07-22\t700.00\n535\tMHAMED FEIZ HUSSEIN YASSIN\t700.00\treceivedInCash\tmonthly\tMENSALIDADE DA LANCHA\t2025-08-20\t2025-08-14\t700.00\n462\tMHAMED FEIZ HUSSEIN YASSIN\t307.00\treceived\tmonthly\tMensalidade Focker\t2025-09-15\t2025-09-15\t307.00\n465\tMHAMED FEIZ HUSSEIN YASSIN\t393.00\treceivedInCash\tmonthly\tMENSALIDADE DA LANCHA\t2025-09-20\t2025-08-14\t393.00\n405\tMHAMED FEIZ HUSSEIN YASSIN\t54.73\treceived\tfuel\tCobrança gerada automaticamente a partir de Pix recebido.\t2025-09-24\t2025-09-24\t54.73\n373\tMHAMED FEIZ HUSSEIN YASSIN\t700.00\treceived\tmonthly\tCobrança gerada automaticamente a partir de Pix recebido.\t2025-10-21\t2025-10-21\t700.00\n385\tMHAMED FEIZ HUSSEIN YASSIN\t700.00\treceivedInCash\tmonthly\tMENSALIDADE DA LANCHA\t2025-11-20\t2025-11-28\t700.00\n",
+  "stderr": "",
+  "execution_time_ms": 273
+}

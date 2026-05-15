@@ -1,0 +1,19 @@
+{
+  "query": "SELECT id, client_name, value, status, amount_paid, paid_date, description\nFROM bpo_charges\nWHERE id = 31",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, client_name, value, status, amount_paid, paid_date, description\nFROM bpo_charges\nWHERE id = 31",
+  "rows": [
+    {
+      "id": "31",
+      "client_name": "LUCAS SANTOS MIRANDA",
+      "value": "961.46",
+      "status": "receivedInCash",
+      "amount_paid": "961.46",
+      "paid_date": "2026-05-08",
+      "description": "Venda de Cota - Parcela 2/25 - LUCAS SANTOS MIRANDA [Baixa manual: quitado via PIX #510001 de R$ 962,00 em 08/05/2026]"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tvalue\tstatus\tamount_paid\tpaid_date\tdescription\n31\tLUCAS SANTOS MIRANDA\t961.46\treceivedInCash\t961.46\t2026-05-08\tVenda de Cota - Parcela 2/25 - LUCAS SANTOS MIRANDA [Baixa manual: quitado via PIX #510001 de R$ 962,00 em 08/05/2026]\n",
+  "stderr": "",
+  "execution_time_ms": 336
+}

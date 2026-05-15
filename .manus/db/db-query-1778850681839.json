@@ -1,0 +1,55 @@
+{
+  "query": "-- Cobranças pendentes do Francisco Claudio\nSELECT id, client_name, value, status, type, description, due_date\nFROM bpo_charges\nWHERE client_name LIKE '%Francisco Claudio%'\n  AND status IN ('pending', 'overdue', 'partiallyPaid')\nORDER BY due_date ASC\nLIMIT 5;\n\n-- Cobranças pendentes de P V G Freitas\nSELECT id, client_name, value, status, type, description, due_date\nFROM bpo_charges\nWHERE client_name LIKE '%P V G Freitas%'\n  AND status IN ('pending', 'overdue', 'partiallyPaid')\nORDER BY due_date ASC\nLIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute -- Cobranças pendentes do Francisco Claudio\nSELECT id, client_name, value, status, type, description, due_date\nFROM bpo_charges\nWHERE client_name LIKE '%Francisco Claudio%'\n  AND status IN ('pending', 'overdue', 'partiallyPaid')\nORDER BY due_date ASC\nLIMIT 5;\n\n-- Cobranças pendentes de P V G Freitas\nSELECT id, client_name, value, status, type, description, due_date\nFROM bpo_charges\nWHERE client_name LIKE '%P V G Freitas%'\n  AND status IN ('pending', 'overdue', 'partiallyPaid')\nORDER BY due_date ASC\nLIMIT 5",
+  "rows": [
+    {
+      "id": "540001",
+      "client_name": "Francisco Claudio",
+      "value": "300.00",
+      "status": "overdue",
+      "type": "inspection",
+      "description": "Conserto de Danos - Vistoria 10/05/2026",
+      "due_date": "2026-05-11"
+    },
+    {
+      "id": "540003",
+      "client_name": "Francisco Claudio Araujo da Silva",
+      "value": "169.29",
+      "status": "overdue",
+      "type": "fuel",
+      "description": "Abastecimento - Focker 215 150HP - 24.85L",
+      "due_date": "2026-05-11"
+    },
+    {
+      "id": "197",
+      "client_name": "Francisco Claudio Araujo da Silva",
+      "value": "475.00",
+      "status": "pending",
+      "type": "monthly",
+      "description": "Parcela 10 de 12. Mensalidade 1/2 Cota Focker",
+      "due_date": "2026-10-15"
+    },
+    {
+      "id": "196",
+      "client_name": "Francisco Claudio Araujo da Silva",
+      "value": "475.00",
+      "status": "pending",
+      "type": "monthly",
+      "description": "Parcela 11 de 12. Mensalidade 1/2 Cota Focker",
+      "due_date": "2026-11-15"
+    }
+  ],
+  "messages": [
+    "630005\tFrancisco Claudio Araujo da Silva\t862.00\tpending\trepair\tReparo da Embarcação: Focker 215 150HP - Reparos da Focker",
+    "1 - Pintura externa completa",
+    "2 - Adesivos novos",
+    "3 - Entrada do ajuste do trim",
+    "4 - Painel novo do sonar",
+    "5 - Pneus da carretinha",
+    "6 - Limpeza da cabine",
+    "7 - Segunda parcela do estofado da lancha\t2026-05-19"
+  ],
+  "stdout": "id\tclient_name\tvalue\tstatus\ttype\tdescription\tdue_date\n540001\tFrancisco Claudio\t300.00\toverdue\tinspection\tConserto de Danos - Vistoria 10/05/2026\t2026-05-11\n540003\tFrancisco Claudio Araujo da Silva\t169.29\toverdue\tfuel\tAbastecimento - Focker 215 150HP - 24.85L\t2026-05-11\n630005\tFrancisco Claudio Araujo da Silva\t862.00\tpending\trepair\tReparo da Embarcação: Focker 215 150HP - Reparos da Focker\n1 - Pintura externa completa\n2 - Adesivos novos\n3 - Entrada do ajuste do trim\n4 - Painel novo do sonar\n5 - Pneus da carretinha\n6 - Limpeza da cabine\n7 - Segunda parcela do estofado da lancha\t2026-05-19\n197\tFrancisco Claudio Araujo da Silva\t475.00\tpending\tmonthly\tParcela 10 de 12. Mensalidade 1/2 Cota Focker\t2026-10-15\n196\tFrancisco Claudio Araujo da Silva\t475.00\tpending\tmonthly\tParcela 11 de 12. Mensalidade 1/2 Cota Focker\t2026-11-15\n",
+  "stderr": "",
+  "execution_time_ms": 287
+}

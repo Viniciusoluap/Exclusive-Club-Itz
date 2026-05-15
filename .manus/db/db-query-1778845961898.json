@@ -1,0 +1,120 @@
+{
+  "query": "SELECT id, client_name, value, status, type, description, due_date, paid_date, amount_paid\nFROM bpo_charges\nWHERE client_name LIKE '%MHAMED%'\n  AND type = 'monthly'\n  AND status IN ('pending', 'overdue', 'partiallyPaid')\nORDER BY due_date ASC\nLIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, client_name, value, status, type, description, due_date, paid_date, amount_paid\nFROM bpo_charges\nWHERE client_name LIKE '%MHAMED%'\n  AND type = 'monthly'\n  AND status IN ('pending', 'overdue', 'partiallyPaid')\nORDER BY due_date ASC\nLIMIT 10",
+  "rows": [
+    {
+      "id": "226",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "overdue",
+      "type": "monthly",
+      "description": "Parcela 1 de 12. Mensalidade Cota Focker",
+      "due_date": "2026-01-20",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "225",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "overdue",
+      "type": "monthly",
+      "description": "Parcela 2 de 12. Mensalidade Cota Focker",
+      "due_date": "2026-02-20",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "224",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "overdue",
+      "type": "monthly",
+      "description": "Parcela 3 de 12. Mensalidade Cota Focker",
+      "due_date": "2026-03-20",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "223",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "overdue",
+      "type": "monthly",
+      "description": "Parcela 4 de 12. Mensalidade Cota Focker",
+      "due_date": "2026-04-20",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "222",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "pending",
+      "type": "monthly",
+      "description": "Parcela 5 de 12. Mensalidade Cota Focker",
+      "due_date": "2026-05-20",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "221",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "pending",
+      "type": "monthly",
+      "description": "Parcela 6 de 12. Mensalidade Cota Focker",
+      "due_date": "2026-06-20",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "220",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "pending",
+      "type": "monthly",
+      "description": "Parcela 7 de 12. Mensalidade Cota Focker",
+      "due_date": "2026-07-20",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "219",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "pending",
+      "type": "monthly",
+      "description": "Parcela 8 de 12. Mensalidade Cota Focker",
+      "due_date": "2026-08-20",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "218",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "pending",
+      "type": "monthly",
+      "description": "Parcela 9 de 12. Mensalidade Cota Focker",
+      "due_date": "2026-09-20",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    },
+    {
+      "id": "217",
+      "client_name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "value": "900.00",
+      "status": "pending",
+      "type": "monthly",
+      "description": "Parcela 10 de 12. Mensalidade Cota Focker",
+      "due_date": "2026-10-20",
+      "paid_date": "NULL",
+      "amount_paid": "0.00"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tvalue\tstatus\ttype\tdescription\tdue_date\tpaid_date\tamount_paid\n226\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\toverdue\tmonthly\tParcela 1 de 12. Mensalidade Cota Focker\t2026-01-20\tNULL\t0.00\n225\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\toverdue\tmonthly\tParcela 2 de 12. Mensalidade Cota Focker\t2026-02-20\tNULL\t0.00\n224\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\toverdue\tmonthly\tParcela 3 de 12. Mensalidade Cota Focker\t2026-03-20\tNULL\t0.00\n223\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\toverdue\tmonthly\tParcela 4 de 12. Mensalidade Cota Focker\t2026-04-20\tNULL\t0.00\n222\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\tpending\tmonthly\tParcela 5 de 12. Mensalidade Cota Focker\t2026-05-20\tNULL\t0.00\n221\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\tpending\tmonthly\tParcela 6 de 12. Mensalidade Cota Focker\t2026-06-20\tNULL\t0.00\n220\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\tpending\tmonthly\tParcela 7 de 12. Mensalidade Cota Focker\t2026-07-20\tNULL\t0.00\n219\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\tpending\tmonthly\tParcela 8 de 12. Mensalidade Cota Focker\t2026-08-20\tNULL\t0.00\n218\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\tpending\tmonthly\tParcela 9 de 12. Mensalidade Cota Focker\t2026-09-20\tNULL\t0.00\n217\tMHAMED FEIZ HUSSEIN YASSIN\t900.00\tpending\tmonthly\tParcela 10 de 12. Mensalidade Cota Focker\t2026-10-20\tNULL\t0.00\n",
+  "stderr": "",
+  "execution_time_ms": 270
+}

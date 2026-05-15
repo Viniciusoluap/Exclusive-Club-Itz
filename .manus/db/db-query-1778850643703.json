@@ -1,0 +1,9 @@
+{
+  "query": "-- Dar baixa completa na Parcela 1 (R$ 900)\nUPDATE bpo_charges \nSET status = 'receivedInCash', \n    amount_paid = 900.00, \n    paid_date = '2026-04-16',\n    description = CONCAT(description, ' [Baixa manual: quitado via PIX #30002 de R$ 1.400,00 em 16/04/2026]')\nWHERE id = 226 AND client_name LIKE '%MHAMED%' AND status = 'overdue';\n\n-- Aplicar pagamento parcial na Parcela 2 (R$ 500 dos R$ 900 restantes)\nUPDATE bpo_charges \nSET status = 'partiallyPaid', \n    amount_paid = 500.00, \n    paid_date = '2026-04-16',\n    description = CONCAT(description, ' [Pagamento parcial: R$ 500,00 via PIX #30002 de R$ 1.400,00 em 16/04/2026]')\nWHERE id = 225 AND client_name LIKE '%MHAMED%' AND status = 'overdue'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute -- Dar baixa completa na Parcela 1 (R$ 900)\nUPDATE bpo_charges \nSET status = 'receivedInCash', \n    amount_paid = 900.00, \n    paid_date = '2026-04-16',\n    description = CONCAT(description, ' [Baixa manual: quitado via PIX #30002 de R$ 1.400,00 em 16/04/2026]')\nWHERE id = 226 AND client_name LIKE '%MHAMED%' AND status = 'overdue';\n\n-- Aplicar pagamento parcial na Parcela 2 (R$ 500 dos R$ 900 restantes)\nUPDATE bpo_charges \nSET status = 'partiallyPaid', \n    amount_paid = 500.00, \n    paid_date = '2026-04-16',\n    description = CONCAT(description, ' [Pagamento parcial: R$ 500,00 via PIX #30002 de R$ 1.400,00 em 16/04/2026]')\nWHERE id = 225 AND client_name LIKE '%MHAMED%' AND status = 'overdue'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 274
+}

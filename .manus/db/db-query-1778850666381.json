@@ -1,0 +1,190 @@
+{
+  "query": "SELECT \n  bc.id,\n  bc.client_name,\n  bc.value,\n  bc.status,\n  bc.type,\n  bc.description,\n  bc.due_date\nFROM bpo_charges bc\nWHERE bc.description LIKE '%Pix recebido%'\n  AND bc.status IN ('received', 'confirmed')\n  AND bc.type = 'other'\n  AND bc.id NOT IN (510001, 30002)\nORDER BY bc.due_date DESC\nLIMIT 20",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT \n  bc.id,\n  bc.client_name,\n  bc.value,\n  bc.status,\n  bc.type,\n  bc.description,\n  bc.due_date\nFROM bpo_charges bc\nWHERE bc.description LIKE '%Pix recebido%'\n  AND bc.status IN ('received', 'confirmed')\n  AND bc.type = 'other'\n  AND bc.id NOT IN (510001, 30002)\nORDER BY bc.due_date DESC\nLIMIT 20",
+  "rows": [
+    {
+      "id": "720001",
+      "client_name": "Francisco Claudio Araujo da Silva",
+      "value": "169.29",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-05-15]",
+      "due_date": "2026-05-14"
+    },
+    {
+      "id": "690002",
+      "client_name": "P V G Freitas",
+      "value": "1000.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido.",
+      "due_date": "2026-05-14"
+    },
+    {
+      "id": "690001",
+      "client_name": "P V G Freitas",
+      "value": "1000.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido.",
+      "due_date": "2026-05-14"
+    },
+    {
+      "id": "660001",
+      "client_name": "NULL",
+      "value": "150.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido.",
+      "due_date": "2026-05-13"
+    },
+    {
+      "id": "570001",
+      "client_name": "NULL",
+      "value": "430.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo",
+      "due_date": "2026-05-11"
+    },
+    {
+      "id": "540002",
+      "client_name": "NULL",
+      "value": "450.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo",
+      "due_date": "2026-05-10"
+    },
+    {
+      "id": "480001",
+      "client_name": "Mateus Rehbein",
+      "value": "475.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-05-08]",
+      "due_date": "2026-05-08"
+    },
+    {
+      "id": "450001",
+      "client_name": "Vinicius Freitas",
+      "value": "62.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: Empréstimo",
+      "due_date": "2026-05-07"
+    },
+    {
+      "id": "390003",
+      "client_name": "NULL",
+      "value": "100.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo",
+      "due_date": "2026-05-06"
+    },
+    {
+      "id": "360001",
+      "client_name": "Ronaldo Bianchini",
+      "value": "137.60",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-05-07]",
+      "due_date": "2026-05-05"
+    },
+    {
+      "id": "330001",
+      "client_name": "NULL",
+      "value": "110.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo",
+      "due_date": "2026-05-04"
+    },
+    {
+      "id": "300004",
+      "client_name": "P V G Freitas",
+      "value": "490.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo",
+      "due_date": "2026-05-03"
+    },
+    {
+      "id": "210001",
+      "client_name": "Prospecta Construcoes E Avaliacao Imobiliaria Ltda",
+      "value": "688.22",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: emprestimo",
+      "due_date": "2026-05-02"
+    },
+    {
+      "id": "1",
+      "client_name": "Prospecta Construcoes E Avaliacao Imobiliaria Ltda",
+      "value": "400.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo",
+      "due_date": "2026-04-03"
+    },
+    {
+      "id": "3",
+      "client_name": "Prospecta Construcoes E Avaliacao Imobiliaria Ltda",
+      "value": "186.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: emprestimo",
+      "due_date": "2026-03-25"
+    },
+    {
+      "id": "46",
+      "client_name": "Vinicius Freitas",
+      "value": "500.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo",
+      "due_date": "2026-03-16"
+    },
+    {
+      "id": "47",
+      "client_name": "P V G Freitas",
+      "value": "800.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. EMPRESTIMO",
+      "due_date": "2026-03-12"
+    },
+    {
+      "id": "48",
+      "client_name": "Prospecta Construcoes E Avaliacao Imobiliaria Ltda",
+      "value": "1000.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo",
+      "due_date": "2026-03-09"
+    },
+    {
+      "id": "104",
+      "client_name": "Prospecta Construcoes E Avaliacao Imobiliaria Ltda",
+      "value": "615.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: enprestimo",
+      "due_date": "2026-02-08"
+    },
+    {
+      "id": "105",
+      "client_name": "Prospecta Construcoes E Avaliacao Imobiliaria Ltda",
+      "value": "400.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo",
+      "due_date": "2026-02-07"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tvalue\tstatus\ttype\tdescription\tdue_date\n720001\tFrancisco Claudio Araujo da Silva\t169.29\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-05-15]\t2026-05-14\n690002\tP V G Freitas\t1000.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido.\t2026-05-14\n690001\tP V G Freitas\t1000.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido.\t2026-05-14\n660001\tNULL\t150.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido.\t2026-05-13\n570001\tNULL\t430.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo\t2026-05-11\n540002\tNULL\t450.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo\t2026-05-10\n480001\tMateus Rehbein\t475.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-05-08]\t2026-05-08\n450001\tVinicius Freitas\t62.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: Empréstimo\t2026-05-07\n390003\tNULL\t100.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo\t2026-05-06\n360001\tRonaldo Bianchini\t137.60\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-05-07]\t2026-05-05\n330001\tNULL\t110.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo\t2026-05-04\n300004\tP V G Freitas\t490.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo\t2026-05-03\n210001\tProspecta Construcoes E Avaliacao Imobiliaria Ltda\t688.22\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: emprestimo\t2026-05-02\n1\tProspecta Construcoes E Avaliacao Imobiliaria Ltda\t400.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo\t2026-04-03\n3\tProspecta Construcoes E Avaliacao Imobiliaria Ltda\t186.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: emprestimo\t2026-03-25\n46\tVinicius Freitas\t500.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo\t2026-03-16\n47\tP V G Freitas\t800.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. EMPRESTIMO\t2026-03-12\n48\tProspecta Construcoes E Avaliacao Imobiliaria Ltda\t1000.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo\t2026-03-09\n104\tProspecta Construcoes E Avaliacao Imobiliaria Ltda\t615.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: enprestimo\t2026-02-08\n105\tProspecta Construcoes E Avaliacao Imobiliaria Ltda\t400.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. Mensagem: Emprestimo\t2026-02-07\n",
+  "stderr": "",
+  "execution_time_ms": 267
+}

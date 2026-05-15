@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE bpo_charges \nSET status = 'cancelled',\n    description = CONCAT(description, ' [CANCELADO: baixa aplicada na cobrança #31 - Venda de Cota Parcela 2/25]')\nWHERE id = 510001 AND client_name LIKE '%LUCAS%'",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute UPDATE bpo_charges \nSET status = 'cancelled',\n    description = CONCAT(description, ' [CANCELADO: baixa aplicada na cobrança #31 - Venda de Cota Parcela 2/25]')\nWHERE id = 510001 AND client_name LIKE '%LUCAS%'",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 325
+}

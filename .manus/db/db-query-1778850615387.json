@@ -1,0 +1,20 @@
+{
+  "query": "SELECT id, client_name, value, status, type, description, due_date, paid_date\nFROM bpo_charges\nWHERE client_name LIKE '%LUCAS%'\n  AND description LIKE '%Pix recebido%'\n  AND value BETWEEN 950 AND 975\nORDER BY due_date DESC\nLIMIT 5",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute SELECT id, client_name, value, status, type, description, due_date, paid_date\nFROM bpo_charges\nWHERE client_name LIKE '%LUCAS%'\n  AND description LIKE '%Pix recebido%'\n  AND value BETWEEN 950 AND 975\nORDER BY due_date DESC\nLIMIT 5",
+  "rows": [
+    {
+      "id": "510001",
+      "client_name": "LUCAS SANTOS MIRANDA",
+      "value": "962.00",
+      "status": "received",
+      "type": "other",
+      "description": "Cobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-05-10]",
+      "due_date": "2026-05-08",
+      "paid_date": "2026-05-08"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\tvalue\tstatus\ttype\tdescription\tdue_date\tpaid_date\n510001\tLUCAS SANTOS MIRANDA\t962.00\treceived\tother\tCobrança gerada automaticamente a partir de Pix recebido. [Distribuído via Split de PIX em 2026-05-10]\t2026-05-08\t2026-05-08\n",
+  "stderr": "",
+  "execution_time_ms": 269
+}
