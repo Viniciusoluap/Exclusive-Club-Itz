@@ -297,9 +297,16 @@ export default function Saas() {
   });
 
   const classifyMutation = trpc.bpo.manualClassify.useMutation({
-    onSuccess: () => {
-      toast.success("Cobrança classificada");
+    onSuccess: (data: any) => {
+      if (data.action === 'auto_settled') {
+        toast.success(data.message || `Cobrança quitada automaticamente!`, { duration: 6000 });
+      } else if (data.reason === 'no_value_match') {
+        toast.info(data.message || 'Classificado, mas use o Split para vincular ao pagamento pendente.', { duration: 6000 });
+      } else {
+        toast.success("Cobrança classificada");
+      }
       utils.bpo.listUnclassified.invalidate();
+      utils.bpo.listCharges.invalidate();
       utils.bpo.getStats.invalidate();
     },
     onError: (err) => toast.error(`Erro: ${err.message}`),

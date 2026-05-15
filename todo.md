@@ -2160,3 +2160,9 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 
 - [x] B1: Migrar contractRouter.ts de Puppeteer para weasyprint (htmlToPdf helper)
 - [x] B2: Migrar notificationRouter.ts de Puppeteer para weasyprint (htmlToPdf helper)
+
+## 🐛 BUG CRÍTICO: Split de Pagamento PIX não dá baixa na cobrança existente (15/05/2026)
+- [ ] F1: Investigar fluxo de split de pagamento / classificação de PIX no backend
+- [ ] F2: Identificar por que o sistema cria cobrança "Outros" em vez de dar baixa na cobrança existente
+- [ ] F3: Corrigir o fluxo para que a classificação vincule corretamente ao bpo_charges existente
+- [ ] F4: Definir estratégia para corrigir os dados incorretos já existentes no banco
