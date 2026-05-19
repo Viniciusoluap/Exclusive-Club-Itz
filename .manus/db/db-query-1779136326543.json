@@ -1,0 +1,19 @@
+{
+  "query": "\nSELECT id, openId, name, email, role, createdAt, lastSignedIn\nFROM users\nWHERE name LIKE '%Lucas%' OR email LIKE '%limir%' OR email LIKE '%lucas%'\nORDER BY id;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT id, openId, name, email, role, createdAt, lastSignedIn\nFROM users\nWHERE name LIKE '%Lucas%' OR email LIKE '%limir%' OR email LIKE '%lucas%'\nORDER BY id;\n",
+  "rows": [
+    {
+      "id": "32820001",
+      "openId": "8n27t9aKP2reMwa8CYUqVf",
+      "name": "limiransafg",
+      "email": "limiransafg@gmail.com",
+      "role": "user",
+      "createdAt": "2026-04-06 15:34:29",
+      "lastSignedIn": "2026-05-18 16:58:12"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\trole\tcreatedAt\tlastSignedIn\n32820001\t8n27t9aKP2reMwa8CYUqVf\tlimiransafg\tlimiransafg@gmail.com\tuser\t2026-04-06 15:34:29\t2026-05-18 16:58:12\n",
+  "stderr": "",
+  "execution_time_ms": 264
+}

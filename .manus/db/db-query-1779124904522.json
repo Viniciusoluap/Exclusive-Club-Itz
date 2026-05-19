@@ -1,0 +1,322 @@
+{
+  "query": "\nSELECT \n  ac.id AS client_id,\n  ac.email,\n  ac.name,\n  ac.is_active,\n  COUNT(cq.id) AS total_quotas,\n  GROUP_CONCAT(CONCAT(cq.id, '|v', cq.vessel_id, '|#', cq.quota_number, '|', cq.quota_type, '|active=', cq.is_active) SEPARATOR ', ') AS quotas_detail\nFROM allowed_clients ac\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id\nGROUP BY ac.id, ac.email, ac.name, ac.is_active\nORDER BY ac.id;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  ac.id AS client_id,\n  ac.email,\n  ac.name,\n  ac.is_active,\n  COUNT(cq.id) AS total_quotas,\n  GROUP_CONCAT(CONCAT(cq.id, '|v', cq.vessel_id, '|#', cq.quota_number, '|', cq.quota_type, '|active=', cq.is_active) SEPARATOR ', ') AS quotas_detail\nFROM allowed_clients ac\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id\nGROUP BY ac.id, ac.email, ac.name, ac.is_active\nORDER BY ac.id;\n",
+  "rows": [
+    {
+      "client_id": "60001",
+      "email": "diogodosberto@hotmail.com",
+      "name": "DIOGO DOS REIS BERTO",
+      "is_active": "0",
+      "total_quotas": "2",
+      "quotas_detail": "3780004|v3|#1|half|active=1, 3780005|v4|#2|half|active=1"
+    },
+    {
+      "client_id": "60002",
+      "email": "diogobritolemos@gmail.com",
+      "name": "Diogo de Lemos Brito",
+      "is_active": "0",
+      "total_quotas": "2",
+      "quotas_detail": "3810002|v3|#2|half|active=1, 3810003|v4|#2|half|active=1"
+    },
+    {
+      "client_id": "60003",
+      "email": "motomais.acailandia@gmail.com",
+      "name": "EDILSON DA CONCEICAO COSTA",
+      "is_active": "0",
+      "total_quotas": "1",
+      "quotas_detail": "2220008|v3|#2|half|active=1"
+    },
+    {
+      "client_id": "60005",
+      "email": "Erinaldo7717@gmail.com",
+      "name": "ERINALDO ALVES SILVA",
+      "is_active": "0",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "60006",
+      "email": "via.vips@hotmail.com",
+      "name": "Erisvaldo Alves da Silva",
+      "is_active": "1",
+      "total_quotas": "1",
+      "quotas_detail": "2220013|v4|#3|half|active=1"
+    },
+    {
+      "client_id": "60008",
+      "email": "filippeamurta@gmail.com",
+      "name": "Filippe Augusto V B Murta",
+      "is_active": "0",
+      "total_quotas": "1",
+      "quotas_detail": "2220012|v4|#6|full|active=1"
+    },
+    {
+      "client_id": "60009",
+      "email": "Franciscoclaudio293@gmail.com",
+      "name": "Francisco Claudio Araujo da Silva",
+      "is_active": "1",
+      "total_quotas": "1",
+      "quotas_detail": "2220023|v4|#3|half|active=1"
+    },
+    {
+      "client_id": "60010",
+      "email": "Kaioaraujo2233@icloud.com",
+      "name": "KAIO RICHARD GOMES DE ARAUJO",
+      "is_active": "0",
+      "total_quotas": "1",
+      "quotas_detail": "2220020|v3|#3|half|active=1"
+    },
+    {
+      "client_id": "60011",
+      "email": "laecio.silversat@gmail.com",
+      "name": "Laecio Sousa Silva",
+      "is_active": "1",
+      "total_quotas": "1",
+      "quotas_detail": "2220007|v4|#7|half|active=1"
+    },
+    {
+      "client_id": "60012",
+      "email": "gabnercorporation@gmail.com",
+      "name": "Luciano Gabriel",
+      "is_active": "0",
+      "total_quotas": "1",
+      "quotas_detail": "3720004|v3|#3|half|active=1"
+    },
+    {
+      "client_id": "60013",
+      "email": "Mhamedfeiz@hotmail.com",
+      "name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "is_active": "1",
+      "total_quotas": "1",
+      "quotas_detail": "2220014|v4|#5|full|active=1"
+    },
+    {
+      "client_id": "60014",
+      "email": "Teteu_rehbein@icloud.com",
+      "name": "Mateus Rehbein",
+      "is_active": "1",
+      "total_quotas": "1",
+      "quotas_detail": "2220015|v4|#4|half|active=1"
+    },
+    {
+      "client_id": "60015",
+      "email": "rbq1992@gmail.com",
+      "name": "Ronaldo Bianchini",
+      "is_active": "1",
+      "total_quotas": "1",
+      "quotas_detail": "2220016|v4|#4|half|active=1"
+    },
+    {
+      "client_id": "90005",
+      "email": "Rodrigosantana.14300@gmail.com",
+      "name": "RODRIGO SANTANA SILVA",
+      "is_active": "0",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "1740002",
+      "email": "Andrezzacarvalhof@gmail.com",
+      "name": "MARIA ANDREZZA FRANCO DE CARVALHO",
+      "is_active": "0",
+      "total_quotas": "1",
+      "quotas_detail": "2220022|v3|#1|half|active=1"
+    },
+    {
+      "client_id": "1740003",
+      "email": "cesarmarcus886@gmail.com",
+      "name": "MARCUS CESAR COTRIM VAZ JUNIOR",
+      "is_active": "0",
+      "total_quotas": "1",
+      "quotas_detail": "2910001|v3|#4|half|active=1"
+    },
+    {
+      "client_id": "1830001",
+      "email": "lsccsilva@outlook.com",
+      "name": "Laercio Oliveira",
+      "is_active": "1",
+      "total_quotas": "1",
+      "quotas_detail": "2220003|v4|#7|half|active=1"
+    },
+    {
+      "client_id": "1860001",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "name": "Vinicius Freitas",
+      "is_active": "1",
+      "total_quotas": "2",
+      "quotas_detail": "3720009|v3|#6|full|active=1, 3720010|v4|#1|half|active=1"
+    },
+    {
+      "client_id": "1890001",
+      "email": "Stenioteixeirats1@gmail.com",
+      "name": "Stenio Teixeira",
+      "is_active": "1",
+      "total_quotas": "1",
+      "quotas_detail": "3780003|v4|#1|half|active=1"
+    },
+    {
+      "client_id": "2670001",
+      "email": "felipee.santana@outlook.com",
+      "name": "FELIPE SANTOS SANTANA",
+      "is_active": "0",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "2670003",
+      "email": "vinibomdemaiszi@gmail.com",
+      "name": "VINICIUS FERREIRA DA SILVA",
+      "is_active": "0",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "2670005",
+      "email": "ernanyoimp@gmail.com",
+      "name": "ERNANI OLIVEIRA ALVES",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "2670006",
+      "email": "emerson_setubal@hotmail.com",
+      "name": "EMERSON SETUBAL SOARES",
+      "is_active": "0",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "2820001",
+      "email": "everton.lago@gmail.com",
+      "name": "Everton Costa Lago",
+      "is_active": "0",
+      "total_quotas": "1",
+      "quotas_detail": "3000004|v3|#4|half|active=1"
+    },
+    {
+      "client_id": "2850001",
+      "email": "Limiransafg@gmail.com",
+      "name": "LUCAS SANTOS MIRANDA",
+      "is_active": "0",
+      "total_quotas": "2",
+      "quotas_detail": "3870001|v3|#5|full|active=1, 3870002|v4|#1|half|active=1"
+    },
+    {
+      "client_id": "3270083",
+      "email": "asaas_cus_000166492836@sem-email.local",
+      "name": "Vanessa Ribeiro De Almeida",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3270084",
+      "email": "asaas_cus_000166490081@sem-email.local",
+      "name": "59.725.241 Ryan Gustavo Dos Santos Morreiro",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3270085",
+      "email": "asaas_cus_000165761899@sem-email.local",
+      "name": "P V G Freitas",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3270086",
+      "email": "asaas_cus_000162220931@sem-email.local",
+      "name": "Clinica Dr Stenio Teixeira Ltda",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3270087",
+      "email": "asaas_cus_000152854928@sem-email.local",
+      "name": "54877743 Laercio Oliveira Da Silv",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3270088",
+      "email": "asaas_cus_000145252041@sem-email.local",
+      "name": "Murta E Murta Ltda",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3270089",
+      "email": "asaas_cus_000138560339@sem-email.local",
+      "name": "Caio Rehbein Santos",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3270090",
+      "email": "asaas_cus_000137603739@sem-email.local",
+      "name": "Efficaz Promocao De Vendas",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3270091",
+      "email": "asaas_cus_000136030553@sem-email.local",
+      "name": "Reis Comercio E Servicos Ltda",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3270092",
+      "email": "asaas_cus_000135643300@sem-email.local",
+      "name": "Prospecta Construcoes E Avaliacao Imobiliaria Ltda",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3270093",
+      "email": "asaas_cus_000132711509@sem-email.local",
+      "name": "Garage Marina Premium",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3270094",
+      "email": "asaas_cus_000132152901@sem-email.local",
+      "name": "Manoel Matheus Araujo Ferreira",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3300024",
+      "email": "asaas_cus_000132093974@sem-email.local",
+      "name": "Tatuape A S R Ltda. - Epp",
+      "is_active": "1",
+      "total_quotas": "0",
+      "quotas_detail": "NULL"
+    },
+    {
+      "client_id": "3510001",
+      "email": "Leohrodrigues88@gmail.com",
+      "name": "LEONARDO BARROS DA SILVA",
+      "is_active": "1",
+      "total_quotas": "1",
+      "quotas_detail": "3780006|v4|#6|full|active=1"
+    }
+  ],
+  "messages": [],
+  "stdout": "client_id\temail\tname\tis_active\ttotal_quotas\tquotas_detail\n60001\tdiogodosberto@hotmail.com\tDIOGO DOS REIS BERTO\t0\t2\t3780004|v3|#1|half|active=1, 3780005|v4|#2|half|active=1\n60002\tdiogobritolemos@gmail.com\tDiogo de Lemos Brito\t0\t2\t3810002|v3|#2|half|active=1, 3810003|v4|#2|half|active=1\n60003\tmotomais.acailandia@gmail.com\tEDILSON DA CONCEICAO COSTA\t0\t1\t2220008|v3|#2|half|active=1\n60005\tErinaldo7717@gmail.com\tERINALDO ALVES SILVA\t0\t0\tNULL\n60006\tvia.vips@hotmail.com\tErisvaldo Alves da Silva\t1\t1\t2220013|v4|#3|half|active=1\n60008\tfilippeamurta@gmail.com\tFilippe Augusto V B Murta\t0\t1\t2220012|v4|#6|full|active=1\n60009\tFranciscoclaudio293@gmail.com\tFrancisco Claudio Araujo da Silva\t1\t1\t2220023|v4|#3|half|active=1\n60010\tKaioaraujo2233@icloud.com\tKAIO RICHARD GOMES DE ARAUJO\t0\t1\t2220020|v3|#3|half|active=1\n60011\tlaecio.silversat@gmail.com\tLaecio Sousa Silva\t1\t1\t2220007|v4|#7|half|active=1\n60012\tgabnercorporation@gmail.com\tLuciano Gabriel\t0\t1\t3720004|v3|#3|half|active=1\n60013\tMhamedfeiz@hotmail.com\tMHAMED FEIZ HUSSEIN YASSIN\t1\t1\t2220014|v4|#5|full|active=1\n60014\tTeteu_rehbein@icloud.com\tMateus Rehbein\t1\t1\t2220015|v4|#4|half|active=1\n60015\trbq1992@gmail.com\tRonaldo Bianchini\t1\t1\t2220016|v4|#4|half|active=1\n90005\tRodrigosantana.14300@gmail.com\tRODRIGO SANTANA SILVA\t0\t0\tNULL\n1740002\tAndrezzacarvalhof@gmail.com\tMARIA ANDREZZA FRANCO DE CARVALHO\t0\t1\t2220022|v3|#1|half|active=1\n1740003\tcesarmarcus886@gmail.com\tMARCUS CESAR COTRIM VAZ JUNIOR\t0\t1\t2910001|v3|#4|half|active=1\n1830001\tlsccsilva@outlook.com\tLaercio Oliveira\t1\t1\t2220003|v4|#7|half|active=1\n1860001\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\t1\t2\t3720009|v3|#6|full|active=1, 3720010|v4|#1|half|active=1\n1890001\tStenioteixeirats1@gmail.com\tStenio Teixeira\t1\t1\t3780003|v4|#1|half|active=1\n2670001\tfelipee.santana@outlook.com\tFELIPE SANTOS SANTANA\t0\t0\tNULL\n2670003\tvinibomdemaiszi@gmail.com\tVINICIUS FERREIRA DA SILVA\t0\t0\tNULL\n2670005\ternanyoimp@gmail.com\tERNANI OLIVEIRA ALVES\t1\t0\tNULL\n2670006\temerson_setubal@hotmail.com\tEMERSON SETUBAL SOARES\t0\t0\tNULL\n2820001\teverton.lago@gmail.com\tEverton Costa Lago\t0\t1\t3000004|v3|#4|half|active=1\n2850001\tLimiransafg@gmail.com\tLUCAS SANTOS MIRANDA\t0\t2\t3870001|v3|#5|full|active=1, 3870002|v4|#1|half|active=1\n3270083\tasaas_cus_000166492836@sem-email.local\tVanessa Ribeiro De Almeida\t1\t0\tNULL\n3270084\tasaas_cus_000166490081@sem-email.local\t59.725.241 Ryan Gustavo Dos Santos Morreiro\t1\t0\tNULL\n3270085\tasaas_cus_000165761899@sem-email.local\tP V G Freitas\t1\t0\tNULL\n3270086\tasaas_cus_000162220931@sem-email.local\tClinica Dr Stenio Teixeira Ltda\t1\t0\tNULL\n3270087\tasaas_cus_000152854928@sem-email.local\t54877743 Laercio Oliveira Da Silv\t1\t0\tNULL\n3270088\tasaas_cus_000145252041@sem-email.local\tMurta E Murta Ltda\t1\t0\tNULL\n3270089\tasaas_cus_000138560339@sem-email.local\tCaio Rehbein Santos\t1\t0\tNULL\n3270090\tasaas_cus_000137603739@sem-email.local\tEfficaz Promocao De Vendas\t1\t0\tNULL\n3270091\tasaas_cus_000136030553@sem-email.local\tReis Comercio E Servicos Ltda\t1\t0\tNULL\n3270092\tasaas_cus_000135643300@sem-email.local\tProspecta Construcoes E Avaliacao Imobiliaria Ltda\t1\t0\tNULL\n3270093\tasaas_cus_000132711509@sem-email.local\tGarage Marina Premium\t1\t0\tNULL\n3270094\tasaas_cus_000132152901@sem-email.local\tManoel Matheus Araujo Ferreira\t1\t0\tNULL\n3300024\tasaas_cus_000132093974@sem-email.local\tTatuape A S R Ltda. - Epp\t1\t0\tNULL\n3510001\tLeohrodrigues88@gmail.com\tLEONARDO BARROS DA SILVA\t1\t1\t3780006|v4|#6|full|active=1\n",
+  "stderr": "",
+  "execution_time_ms": 986
+}

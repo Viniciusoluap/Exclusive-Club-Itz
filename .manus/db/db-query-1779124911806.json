@@ -1,0 +1,80 @@
+{
+  "query": "\nSELECT \n  ac.id AS client_id,\n  ac.email,\n  ac.name,\n  ac.is_active AS client_active,\n  COUNT(cq.id) AS total_quotas_active\nFROM allowed_clients ac\nINNER JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE ac.is_active = 0\nGROUP BY ac.id, ac.email, ac.name, ac.is_active\nORDER BY ac.name;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  ac.id AS client_id,\n  ac.email,\n  ac.name,\n  ac.is_active AS client_active,\n  COUNT(cq.id) AS total_quotas_active\nFROM allowed_clients ac\nINNER JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE ac.is_active = 0\nGROUP BY ac.id, ac.email, ac.name, ac.is_active\nORDER BY ac.name;\n",
+  "rows": [
+    {
+      "client_id": "60002",
+      "email": "diogobritolemos@gmail.com",
+      "name": "Diogo de Lemos Brito",
+      "client_active": "0",
+      "total_quotas_active": "2"
+    },
+    {
+      "client_id": "60001",
+      "email": "diogodosberto@hotmail.com",
+      "name": "DIOGO DOS REIS BERTO",
+      "client_active": "0",
+      "total_quotas_active": "2"
+    },
+    {
+      "client_id": "60003",
+      "email": "motomais.acailandia@gmail.com",
+      "name": "EDILSON DA CONCEICAO COSTA",
+      "client_active": "0",
+      "total_quotas_active": "1"
+    },
+    {
+      "client_id": "2820001",
+      "email": "everton.lago@gmail.com",
+      "name": "Everton Costa Lago",
+      "client_active": "0",
+      "total_quotas_active": "1"
+    },
+    {
+      "client_id": "60008",
+      "email": "filippeamurta@gmail.com",
+      "name": "Filippe Augusto V B Murta",
+      "client_active": "0",
+      "total_quotas_active": "1"
+    },
+    {
+      "client_id": "60010",
+      "email": "Kaioaraujo2233@icloud.com",
+      "name": "KAIO RICHARD GOMES DE ARAUJO",
+      "client_active": "0",
+      "total_quotas_active": "1"
+    },
+    {
+      "client_id": "2850001",
+      "email": "Limiransafg@gmail.com",
+      "name": "LUCAS SANTOS MIRANDA",
+      "client_active": "0",
+      "total_quotas_active": "2"
+    },
+    {
+      "client_id": "60012",
+      "email": "gabnercorporation@gmail.com",
+      "name": "Luciano Gabriel",
+      "client_active": "0",
+      "total_quotas_active": "1"
+    },
+    {
+      "client_id": "1740003",
+      "email": "cesarmarcus886@gmail.com",
+      "name": "MARCUS CESAR COTRIM VAZ JUNIOR",
+      "client_active": "0",
+      "total_quotas_active": "1"
+    },
+    {
+      "client_id": "1740002",
+      "email": "Andrezzacarvalhof@gmail.com",
+      "name": "MARIA ANDREZZA FRANCO DE CARVALHO",
+      "client_active": "0",
+      "total_quotas_active": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "client_id\temail\tname\tclient_active\ttotal_quotas_active\n60002\tdiogobritolemos@gmail.com\tDiogo de Lemos Brito\t0\t2\n60001\tdiogodosberto@hotmail.com\tDIOGO DOS REIS BERTO\t0\t2\n60003\tmotomais.acailandia@gmail.com\tEDILSON DA CONCEICAO COSTA\t0\t1\n2820001\teverton.lago@gmail.com\tEverton Costa Lago\t0\t1\n60008\tfilippeamurta@gmail.com\tFilippe Augusto V B Murta\t0\t1\n60010\tKaioaraujo2233@icloud.com\tKAIO RICHARD GOMES DE ARAUJO\t0\t1\n2850001\tLimiransafg@gmail.com\tLUCAS SANTOS MIRANDA\t0\t2\n60012\tgabnercorporation@gmail.com\tLuciano Gabriel\t0\t1\n1740003\tcesarmarcus886@gmail.com\tMARCUS CESAR COTRIM VAZ JUNIOR\t0\t1\n1740002\tAndrezzacarvalhof@gmail.com\tMARIA ANDREZZA FRANCO DE CARVALHO\t0\t1\n",
+  "stderr": "",
+  "execution_time_ms": 267
+}

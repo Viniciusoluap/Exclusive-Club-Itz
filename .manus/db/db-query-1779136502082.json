@@ -1,0 +1,28 @@
+{
+  "query": "\n-- Buscar Gilson em allowed_clients por nome\nSELECT id, name, email, is_active FROM allowed_clients\nWHERE name LIKE '%Gilson%' OR name LIKE '%gilson%';\n\n-- Verificar se há algum allowed_client com email icloud similar\nSELECT id, name, email, is_active FROM allowed_clients\nWHERE email LIKE '%icloud%' OR email LIKE '%privaterelay%';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Buscar Gilson em allowed_clients por nome\nSELECT id, name, email, is_active FROM allowed_clients\nWHERE name LIKE '%Gilson%' OR name LIKE '%gilson%';\n\n-- Verificar se há algum allowed_client com email icloud similar\nSELECT id, name, email, is_active FROM allowed_clients\nWHERE email LIKE '%icloud%' OR email LIKE '%privaterelay%';\n",
+  "rows": [
+    {
+      "id": "60010",
+      "name": "KAIO RICHARD GOMES DE ARAUJO",
+      "email": "Kaioaraujo2233@icloud.com",
+      "is_active": "0"
+    },
+    {
+      "id": "60014",
+      "name": "Mateus Rehbein",
+      "email": "Teteu_rehbein@icloud.com",
+      "is_active": "1"
+    },
+    {
+      "id": "1860001",
+      "name": "Vinicius Freitas",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "is_active": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tis_active\n60010\tKAIO RICHARD GOMES DE ARAUJO\tKaioaraujo2233@icloud.com\t0\n60014\tMateus Rehbein\tTeteu_rehbein@icloud.com\t1\n1860001\tVinicius Freitas\tv6h2sw5vmn@privaterelay.appleid.com\t1\n",
+  "stderr": "",
+  "execution_time_ms": 276
+}

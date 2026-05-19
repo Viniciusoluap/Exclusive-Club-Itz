@@ -1,0 +1,115 @@
+{
+  "query": "\n-- Mostrar o que o admin vê vs o que está no banco para os clientes com is_active=0\nSELECT \n  id,\n  name,\n  email,\n  is_active,\n  CASE WHEN is_active = 1 THEN 'ATIVO' ELSE 'INATIVO no banco' END AS status_banco\nFROM allowed_clients\nWHERE is_active = 0\nORDER BY name;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Mostrar o que o admin vê vs o que está no banco para os clientes com is_active=0\nSELECT \n  id,\n  name,\n  email,\n  is_active,\n  CASE WHEN is_active = 1 THEN 'ATIVO' ELSE 'INATIVO no banco' END AS status_banco\nFROM allowed_clients\nWHERE is_active = 0\nORDER BY name;\n",
+  "rows": [
+    {
+      "id": "60002",
+      "name": "Diogo de Lemos Brito",
+      "email": "diogobritolemos@gmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "60001",
+      "name": "DIOGO DOS REIS BERTO",
+      "email": "diogodosberto@hotmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "60003",
+      "name": "EDILSON DA CONCEICAO COSTA",
+      "email": "motomais.acailandia@gmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "2670006",
+      "name": "EMERSON SETUBAL SOARES",
+      "email": "emerson_setubal@hotmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "60005",
+      "name": "ERINALDO ALVES SILVA",
+      "email": "Erinaldo7717@gmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "2820001",
+      "name": "Everton Costa Lago",
+      "email": "everton.lago@gmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "2670001",
+      "name": "FELIPE SANTOS SANTANA",
+      "email": "felipee.santana@outlook.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "60008",
+      "name": "Filippe Augusto V B Murta",
+      "email": "filippeamurta@gmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "60010",
+      "name": "KAIO RICHARD GOMES DE ARAUJO",
+      "email": "Kaioaraujo2233@icloud.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "2850001",
+      "name": "LUCAS SANTOS MIRANDA",
+      "email": "Limiransafg@gmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "60012",
+      "name": "Luciano Gabriel",
+      "email": "gabnercorporation@gmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "1740003",
+      "name": "MARCUS CESAR COTRIM VAZ JUNIOR",
+      "email": "cesarmarcus886@gmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "1740002",
+      "name": "MARIA ANDREZZA FRANCO DE CARVALHO",
+      "email": "Andrezzacarvalhof@gmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "90005",
+      "name": "RODRIGO SANTANA SILVA",
+      "email": "Rodrigosantana.14300@gmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    },
+    {
+      "id": "2670003",
+      "name": "VINICIUS FERREIRA DA SILVA",
+      "email": "vinibomdemaiszi@gmail.com",
+      "is_active": "0",
+      "status_banco": "INATIVO no banco"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tis_active\tstatus_banco\n60002\tDiogo de Lemos Brito\tdiogobritolemos@gmail.com\t0\tINATIVO no banco\n60001\tDIOGO DOS REIS BERTO\tdiogodosberto@hotmail.com\t0\tINATIVO no banco\n60003\tEDILSON DA CONCEICAO COSTA\tmotomais.acailandia@gmail.com\t0\tINATIVO no banco\n2670006\tEMERSON SETUBAL SOARES\temerson_setubal@hotmail.com\t0\tINATIVO no banco\n60005\tERINALDO ALVES SILVA\tErinaldo7717@gmail.com\t0\tINATIVO no banco\n2820001\tEverton Costa Lago\teverton.lago@gmail.com\t0\tINATIVO no banco\n2670001\tFELIPE SANTOS SANTANA\tfelipee.santana@outlook.com\t0\tINATIVO no banco\n60008\tFilippe Augusto V B Murta\tfilippeamurta@gmail.com\t0\tINATIVO no banco\n60010\tKAIO RICHARD GOMES DE ARAUJO\tKaioaraujo2233@icloud.com\t0\tINATIVO no banco\n2850001\tLUCAS SANTOS MIRANDA\tLimiransafg@gmail.com\t0\tINATIVO no banco\n60012\tLuciano Gabriel\tgabnercorporation@gmail.com\t0\tINATIVO no banco\n1740003\tMARCUS CESAR COTRIM VAZ JUNIOR\tcesarmarcus886@gmail.com\t0\tINATIVO no banco\n1740002\tMARIA ANDREZZA FRANCO DE CARVALHO\tAndrezzacarvalhof@gmail.com\t0\tINATIVO no banco\n90005\tRODRIGO SANTANA SILVA\tRodrigosantana.14300@gmail.com\t0\tINATIVO no banco\n2670003\tVINICIUS FERREIRA DA SILVA\tvinibomdemaiszi@gmail.com\t0\tINATIVO no banco\n",
+  "stderr": "",
+  "execution_time_ms": 263
+}

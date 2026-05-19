@@ -1,0 +1,15 @@
+{
+  "query": "\n-- Verificar quantos clientes retorna a query getAllowedClients (todos) vs getActiveAllowedClients (apenas ativos)\nSELECT \n  COUNT(*) AS total_clientes,\n  SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS ativos,\n  SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inativos\nFROM allowed_clients;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificar quantos clientes retorna a query getAllowedClients (todos) vs getActiveAllowedClients (apenas ativos)\nSELECT \n  COUNT(*) AS total_clientes,\n  SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS ativos,\n  SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) AS inativos\nFROM allowed_clients;\n",
+  "rows": [
+    {
+      "total_clientes": "39",
+      "ativos": "24",
+      "inativos": "15"
+    }
+  ],
+  "messages": [],
+  "stdout": "total_clientes\tativos\tinativos\n39\t24\t15\n",
+  "stderr": "",
+  "execution_time_ms": 265
+}

@@ -1,0 +1,17 @@
+{
+  "query": "\n-- Verificar clientes ativos com cotas que NÃO têm login no sistema (não aparecem em users)\nSELECT \n  ac.id,\n  ac.name,\n  ac.email AS email_cadastrado,\n  COUNT(cq.id) AS total_quotas,\n  'SEM LOGIN NO SISTEMA' AS situacao\nFROM allowed_clients ac\nLEFT JOIN users u ON LOWER(u.email) = LOWER(ac.email)\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE ac.is_active = 1 AND u.id IS NULL AND cq.id IS NOT NULL\nGROUP BY ac.id, ac.name, ac.email\nORDER BY ac.name;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificar clientes ativos com cotas que NÃO têm login no sistema (não aparecem em users)\nSELECT \n  ac.id,\n  ac.name,\n  ac.email AS email_cadastrado,\n  COUNT(cq.id) AS total_quotas,\n  'SEM LOGIN NO SISTEMA' AS situacao\nFROM allowed_clients ac\nLEFT JOIN users u ON LOWER(u.email) = LOWER(ac.email)\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE ac.is_active = 1 AND u.id IS NULL AND cq.id IS NOT NULL\nGROUP BY ac.id, ac.name, ac.email\nORDER BY ac.name;\n",
+  "rows": [
+    {
+      "id": "60014",
+      "name": "Mateus Rehbein",
+      "email_cadastrado": "Teteu_rehbein@icloud.com",
+      "total_quotas": "1",
+      "situacao": "SEM LOGIN NO SISTEMA"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail_cadastrado\ttotal_quotas\tsituacao\n60014\tMateus Rehbein\tTeteu_rehbein@icloud.com\t1\tSEM LOGIN NO SISTEMA\n",
+  "stderr": "",
+  "execution_time_ms": 264
+}

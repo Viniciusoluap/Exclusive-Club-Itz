@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+import PDFDocument from 'pdfkit';
 import { sendEmail } from './emailService';
 import { ENV } from './env';
 
@@ -259,33 +259,142 @@ function generateInspectionHTML(data: InspectionData): string {
 }
 
 export async function generateInspectionPDF(data: InspectionData): Promise<Buffer> {
-  const html = generateInspectionHTML(data);
-  
-  const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/lib/chromium-browser/chromium-browser',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
+    const buffers: Buffer[] = [];
+
+    doc.on('data', (chunk: Buffer) => buffers.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const approvedCount = Object.values(data.formData).filter(v => v === 'APROVADO').length;
+    const totalFields = Object.keys(data.formData).length;
+    const approvalRate = totalFields > 0 ? ((approvedCount / totalFields) * 100).toFixed(0) : '0';
+    const failedItems = Object.entries(data.formData)
+      .filter(([_, status]) => status === 'REPROVADO')
+      .map(([field]) => field);
+
+    const BLUE = '#0891b2';
+    const RED = '#ef4444';
+    const GREEN = '#10b981';
+    const GRAY = '#6b7280';
+    const pageW = doc.page.width - 100;
+
+    // Header
+    doc.fillColor(BLUE).fontSize(20).font('Helvetica-Bold').text('EXCLUSIVE CLUB', { align: 'center' });
+    doc.fillColor(GRAY).fontSize(10).font('Helvetica').text('Sistema de Compartilhamento de Embarcações', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.moveTo(50, doc.y).lineTo(50 + pageW, doc.y).strokeColor(BLUE).lineWidth(2).stroke();
+    doc.moveDown(0.8);
+
+    // Title
+    doc.fillColor('#1f2937').fontSize(16).font('Helvetica-Bold').text('Relatório de Vistoria', { align: 'center' });
+    doc.moveDown(1);
+
+    // Info grid
+    const infoY = doc.y;
+    doc.rect(50, infoY, pageW, 90).fillColor('#f9fafb').fill();
+    doc.rect(50, infoY, pageW, 90).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+
+    const col1X = 60;
+    const col2X = 50 + pageW / 2 + 10;
+    let infoLineY = infoY + 12;
+    const lineH = 20;
+
+    const infoItems: Array<[string, string]> = [
+      ['Embarcação', data.vesselName],
+      ['Tipo', data.vesselType === 'jet' || data.vesselType === 'jetski' ? 'Jet Ski' : 'Lancha'],
+      ['Cliente', data.clientName],
+    ];
+    const infoItems2: Array<[string, string]> = [
+      ['Data da Vistoria', new Date(data.inspectionDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })],
+      ['Horário', new Date(data.inspectionDate).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })],
+      ['Vistoriado por', data.inspectedBy || 'N/A'],
+    ];
+
+    for (let i = 0; i < infoItems.length; i++) {
+      doc.fillColor(GRAY).fontSize(8).font('Helvetica').text(infoItems[i][0].toUpperCase(), col1X, infoLineY + i * lineH);
+      doc.fillColor('#1f2937').fontSize(10).font('Helvetica-Bold').text(infoItems[i][1], col1X, infoLineY + i * lineH + 9, { width: pageW / 2 - 20, lineBreak: false });
+    }
+    for (let i = 0; i < infoItems2.length; i++) {
+      doc.fillColor(GRAY).fontSize(8).font('Helvetica').text(infoItems2[i][0].toUpperCase(), col2X, infoLineY + i * lineH);
+      doc.fillColor('#1f2937').fontSize(10).font('Helvetica-Bold').text(infoItems2[i][1], col2X, infoLineY + i * lineH + 9, { width: pageW / 2 - 20, lineBreak: false });
+    }
+
+    doc.y = infoY + 90 + 15;
+
+    // Approval rate summary box
+    const summaryY = doc.y;
+    const summaryH = 60;
+    doc.rect(50, summaryY, pageW, summaryH).fillColor(BLUE).fill();
+    doc.fillColor('#ffffff').fontSize(11).font('Helvetica').text('Taxa de Aprovação', 50, summaryY + 10, { width: pageW, align: 'center' });
+    doc.fillColor('#ffffff').fontSize(28).font('Helvetica-Bold').text(`${approvalRate}%`, 50, summaryY + 24, { width: pageW, align: 'center' });
+    doc.fillColor('rgba(255,255,255,0.85)').fontSize(9).font('Helvetica').text(`${approvedCount} de ${totalFields} itens aprovados`, 50, summaryY + 48, { width: pageW, align: 'center' });
+    doc.y = summaryY + summaryH + 15;
+
+    // Items table
+    const headerY = doc.y;
+    doc.rect(50, headerY, pageW * 0.65, 20).fillColor('#f3f4f6').fill();
+    doc.rect(50 + pageW * 0.65, headerY, pageW * 0.35, 20).fillColor('#f3f4f6').fill();
+    doc.rect(50, headerY, pageW, 20).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+    doc.fillColor('#374151').fontSize(9).font('Helvetica-Bold').text('Item de Inspeção', 56, headerY + 5, { width: pageW * 0.65 - 12, lineBreak: false });
+    doc.fillColor('#374151').fontSize(9).font('Helvetica-Bold').text('Status', 50 + pageW * 0.65 + 4, headerY + 5, { width: pageW * 0.35 - 8, align: 'center', lineBreak: false });
+
+    let rowY = headerY + 20;
+    let rowIndex = 0;
+    for (const [field, status] of Object.entries(data.formData)) {
+      const isApproved = status === 'APROVADO';
+      const rowH = 18;
+      const bgColor = rowIndex % 2 === 0 ? '#ffffff' : '#f9fafb';
+      doc.rect(50, rowY, pageW, rowH).fillColor(bgColor).fill();
+      doc.rect(50, rowY, pageW, rowH).strokeColor('#e5e7eb').lineWidth(0.3).stroke();
+      doc.fillColor('#1f2937').fontSize(8.5).font('Helvetica').text(field, 56, rowY + 4, { width: pageW * 0.65 - 12, lineBreak: false });
+      doc.fillColor(isApproved ? GREEN : RED).fontSize(8.5).font('Helvetica-Bold').text(isApproved ? 'APROVADO' : 'REPROVADO', 50 + pageW * 0.65 + 4, rowY + 4, { width: pageW * 0.35 - 8, align: 'center', lineBreak: false });
+      rowY += rowH;
+      rowIndex++;
+    }
+    doc.y = rowY + 10;
+
+    // Failed items
+    if (failedItems.length > 0) {
+      const failY = doc.y;
+      const failH = failedItems.length * 16 + 40;
+      doc.rect(50, failY, pageW, failH).fillColor('#fee2e2').fill();
+      doc.rect(50, failY, 4, failH).fillColor(RED).fill();
+      doc.fillColor('#991b1b').fontSize(10).font('Helvetica-Bold').text(`Itens Reprovados (${failedItems.length})`, 62, failY + 10);
+      let itemY = failY + 26;
+      for (const item of failedItems) {
+        doc.fillColor('#7f1d1d').fontSize(9).font('Helvetica').text(`• ${item}`, 70, itemY, { width: pageW - 30, lineBreak: false });
+        itemY += 16;
+      }
+      doc.y = failY + failH + 10;
+    }
+
+    // Notes
+    if (data.notes) {
+      const notesY = doc.y;
+      const notesText = data.notes;
+      const notesH = doc.heightOfString(notesText, { width: pageW - 24, fontSize: 9 }) + 40;
+      doc.rect(50, notesY, pageW, notesH).fillColor('#fef3c7').fill();
+      doc.rect(50, notesY, 4, notesH).fillColor('#f59e0b').fill();
+      doc.fillColor('#92400e').fontSize(10).font('Helvetica-Bold').text('Observações', 62, notesY + 10);
+      doc.fillColor('#78350f').fontSize(9).font('Helvetica').text(notesText, 62, notesY + 26, { width: pageW - 24, lineGap: 1 });
+      doc.y = notesY + notesH + 10;
+    }
+
+    // Footer
+    doc.moveDown(1);
+    doc.moveTo(50, doc.y).lineTo(50 + pageW, doc.y).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+    doc.moveDown(0.5);
+    doc.fillColor(GRAY).fontSize(9).font('Helvetica-Bold').text(`Vistoria realizada por: ${data.inspectedBy}`, { align: 'center' });
+    doc.fillColor(GRAY).fontSize(8).font('Helvetica').text(
+      `Relatório gerado automaticamente em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`,
+      { align: 'center' }
+    );
+    doc.fillColor(GRAY).fontSize(8).text(`© ${new Date().getFullYear()} Exclusive Club - Todos os direitos reservados`, { align: 'center' });
+
+    doc.end();
   });
-
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px',
-      },
-    });
-
-    return Buffer.from(pdfBuffer);
-  } finally {
-    await browser.close();
-  }
 }
 
 export async function sendInspectionReportEmail(

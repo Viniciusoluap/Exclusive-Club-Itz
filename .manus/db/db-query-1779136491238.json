@@ -1,0 +1,154 @@
+{
+  "query": "\n-- Usuários que fizeram login recentemente (últimos 30 dias)\nSELECT id, openId, name, email, role, lastSignedIn\nFROM users\nWHERE lastSignedIn >= DATE_SUB(NOW(), INTERVAL 30 DAY)\nORDER BY lastSignedIn DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Usuários que fizeram login recentemente (últimos 30 dias)\nSELECT id, openId, name, email, role, lastSignedIn\nFROM users\nWHERE lastSignedIn >= DATE_SUB(NOW(), INTERVAL 30 DAY)\nORDER BY lastSignedIn DESC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "id": "1260005",
+      "openId": "QVXr52rUXMqo6Wm8x2n4vP",
+      "name": "ernany oliveira",
+      "email": "ernanyoimp@gmail.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-18 17:18:08"
+    },
+    {
+      "id": "32820001",
+      "openId": "8n27t9aKP2reMwa8CYUqVf",
+      "name": "limiransafg",
+      "email": "limiransafg@gmail.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-18 16:58:12"
+    },
+    {
+      "id": "1",
+      "openId": "fCNJikpeuBxzy42NrCqy3y",
+      "name": "Vinicius Freitas",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "role": "admin",
+      "lastSignedIn": "2026-05-18 14:22:56"
+    },
+    {
+      "id": "9900001",
+      "openId": "9qtwAFsRtjYKnEkX4om4h3",
+      "name": "Laécio Silversat",
+      "email": "laecio.silversat@gmail.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-17 13:19:02"
+    },
+    {
+      "id": "42930001",
+      "openId": "UvGAPcQLuJTnJCdXPc5Ckc",
+      "name": "Gilson de jesus ribeiro Ribeiro",
+      "email": "gilsonribeiro39@icloud.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-15 20:31:44"
+    },
+    {
+      "id": "1440001",
+      "openId": "bGXdWgh4SPoBCWzHupVM3H",
+      "name": "Diogo Brito",
+      "email": "diogobritolemos@gmail.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-15 14:04:12"
+    },
+    {
+      "id": "33810089",
+      "openId": "TDb4yB9pGB78LmdVRhLRkL",
+      "name": "Louise Freitas",
+      "email": "atendimentogrupoefficaz@gmail.com",
+      "role": "employee",
+      "lastSignedIn": "2026-05-14 21:47:25"
+    },
+    {
+      "id": "390043",
+      "openId": "G2EoTyU43fSvXvpdGf26Np",
+      "name": "Vinicius",
+      "email": "paulovinicius92@hotmail.com",
+      "role": "employee",
+      "lastSignedIn": "2026-05-14 20:34:55"
+    },
+    {
+      "id": "29820001",
+      "openId": "VT25VHTGgsUMVgmBAViUwn",
+      "name": "Francisco Claudio",
+      "email": "franciscoclaudio293@gmail.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-14 19:32:08"
+    },
+    {
+      "id": "41040001",
+      "openId": "FCsJzpZ8wRK38cVEYSV25y",
+      "name": "Leonardo Barros",
+      "email": "leohrodrigues88@gmail.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-12 21:06:14"
+    },
+    {
+      "id": "1350001",
+      "openId": "hDYSnedwquJMU8X8cNvvK5",
+      "name": "mhamedfeiz",
+      "email": "mhamedfeiz@hotmail.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-12 18:49:52"
+    },
+    {
+      "id": "1650059",
+      "openId": "h7bJZ2VAE2mqmkqE7r7NJo",
+      "name": "Erisvaldo Silva",
+      "email": "via.vips@hotmail.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-11 19:46:35"
+    },
+    {
+      "id": "41700001",
+      "openId": "JMLEkVFcDS9ar8DftCY95Z",
+      "name": "Alexandre Miguel",
+      "email": "wdfxrpb84y@privaterelay.appleid.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-10 20:02:05"
+    },
+    {
+      "id": "1710001",
+      "openId": "9LpFxVudChzWWZTMZvzbyW",
+      "name": "Gabner Corporation",
+      "email": "gabnercorporation@gmail.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-07 12:34:47"
+    },
+    {
+      "id": "37470001",
+      "openId": "myMUG8UwYsFMd8RXekjeET",
+      "name": "eduardomadsson",
+      "email": "eduardomadsson@gmail.com",
+      "role": "employee",
+      "lastSignedIn": "2026-05-03 21:35:52"
+    },
+    {
+      "id": "9180001",
+      "openId": "9FReJc4aqVaEznmsLfJupz",
+      "name": "lsccsilva",
+      "email": "lsccsilva@outlook.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-03 12:06:43"
+    },
+    {
+      "id": "1500001",
+      "openId": "dojpNuswan3BWxGKvSbF9k",
+      "name": "ronaldo bianchini",
+      "email": "rbq1992@gmail.com",
+      "role": "user",
+      "lastSignedIn": "2026-05-02 14:47:36"
+    },
+    {
+      "id": "1590001",
+      "openId": "WoTmppUJEHZyJkeADD7FeC",
+      "name": "Erisvaldo Alves",
+      "email": "erisvaldo1308@gmail.com",
+      "role": "user",
+      "lastSignedIn": "2026-04-26 17:25:10"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\topenId\tname\temail\trole\tlastSignedIn\n1260005\tQVXr52rUXMqo6Wm8x2n4vP\ternany oliveira\ternanyoimp@gmail.com\tuser\t2026-05-18 17:18:08\n32820001\t8n27t9aKP2reMwa8CYUqVf\tlimiransafg\tlimiransafg@gmail.com\tuser\t2026-05-18 16:58:12\n1\tfCNJikpeuBxzy42NrCqy3y\tVinicius Freitas\tv6h2sw5vmn@privaterelay.appleid.com\tadmin\t2026-05-18 14:22:56\n9900001\t9qtwAFsRtjYKnEkX4om4h3\tLaécio Silversat\tlaecio.silversat@gmail.com\tuser\t2026-05-17 13:19:02\n42930001\tUvGAPcQLuJTnJCdXPc5Ckc\tGilson de jesus ribeiro Ribeiro\tgilsonribeiro39@icloud.com\tuser\t2026-05-15 20:31:44\n1440001\tbGXdWgh4SPoBCWzHupVM3H\tDiogo Brito\tdiogobritolemos@gmail.com\tuser\t2026-05-15 14:04:12\n33810089\tTDb4yB9pGB78LmdVRhLRkL\tLouise Freitas\tatendimentogrupoefficaz@gmail.com\temployee\t2026-05-14 21:47:25\n390043\tG2EoTyU43fSvXvpdGf26Np\tVinicius\tpaulovinicius92@hotmail.com\temployee\t2026-05-14 20:34:55\n29820001\tVT25VHTGgsUMVgmBAViUwn\tFrancisco Claudio\tfranciscoclaudio293@gmail.com\tuser\t2026-05-14 19:32:08\n41040001\tFCsJzpZ8wRK38cVEYSV25y\tLeonardo Barros\tleohrodrigues88@gmail.com\tuser\t2026-05-12 21:06:14\n1350001\thDYSnedwquJMU8X8cNvvK5\tmhamedfeiz\tmhamedfeiz@hotmail.com\tuser\t2026-05-12 18:49:52\n1650059\th7bJZ2VAE2mqmkqE7r7NJo\tErisvaldo Silva\tvia.vips@hotmail.com\tuser\t2026-05-11 19:46:35\n41700001\tJMLEkVFcDS9ar8DftCY95Z\tAlexandre Miguel\twdfxrpb84y@privaterelay.appleid.com\tuser\t2026-05-10 20:02:05\n1710001\t9LpFxVudChzWWZTMZvzbyW\tGabner Corporation\tgabnercorporation@gmail.com\tuser\t2026-05-07 12:34:47\n37470001\tmyMUG8UwYsFMd8RXekjeET\teduardomadsson\teduardomadsson@gmail.com\temployee\t2026-05-03 21:35:52\n9180001\t9FReJc4aqVaEznmsLfJupz\tlsccsilva\tlsccsilva@outlook.com\tuser\t2026-05-03 12:06:43\n1500001\tdojpNuswan3BWxGKvSbF9k\tronaldo bianchini\trbq1992@gmail.com\tuser\t2026-05-02 14:47:36\n1590001\tWoTmppUJEHZyJkeADD7FeC\tErisvaldo Alves\terisvaldo1308@gmail.com\tuser\t2026-04-26 17:25:10\n",
+  "stderr": "",
+  "execution_time_ms": 259
+}

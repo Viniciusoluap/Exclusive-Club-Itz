@@ -1,0 +1,19 @@
+{
+  "query": "\n-- Email no users: limiransafg@gmail.com (minúsculo)\n-- Email no allowed_clients: Limiransafg@gmail.com (com L maiúsculo)\n-- Verificar se a busca por email é case-sensitive\n\nSELECT \n  ac.id AS client_id,\n  ac.email AS email_allowed_clients,\n  ac.is_active,\n  u.email AS email_users,\n  u.id AS user_id,\n  BINARY ac.email = BINARY u.email AS emails_identicos_case_sensitive,\n  LOWER(ac.email) = LOWER(u.email) AS emails_identicos_case_insensitive\nFROM allowed_clients ac\nJOIN users u ON LOWER(u.email) = LOWER(ac.email)\nWHERE LOWER(ac.email) = 'limiransafg@gmail.com';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Email no users: limiransafg@gmail.com (minúsculo)\n-- Email no allowed_clients: Limiransafg@gmail.com (com L maiúsculo)\n-- Verificar se a busca por email é case-sensitive\n\nSELECT \n  ac.id AS client_id,\n  ac.email AS email_allowed_clients,\n  ac.is_active,\n  u.email AS email_users,\n  u.id AS user_id,\n  BINARY ac.email = BINARY u.email AS emails_identicos_case_sensitive,\n  LOWER(ac.email) = LOWER(u.email) AS emails_identicos_case_insensitive\nFROM allowed_clients ac\nJOIN users u ON LOWER(u.email) = LOWER(ac.email)\nWHERE LOWER(ac.email) = 'limiransafg@gmail.com';\n",
+  "rows": [
+    {
+      "client_id": "2850001",
+      "email_allowed_clients": "Limiransafg@gmail.com",
+      "is_active": "0",
+      "email_users": "limiransafg@gmail.com",
+      "user_id": "32820001",
+      "emails_identicos_case_sensitive": "0",
+      "emails_identicos_case_insensitive": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "client_id\temail_allowed_clients\tis_active\temail_users\tuser_id\temails_identicos_case_sensitive\temails_identicos_case_insensitive\n2850001\tLimiransafg@gmail.com\t0\tlimiransafg@gmail.com\t32820001\t0\t1\n",
+  "stderr": "",
+  "execution_time_ms": 263
+}

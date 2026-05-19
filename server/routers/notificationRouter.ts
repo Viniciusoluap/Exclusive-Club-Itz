@@ -9,7 +9,7 @@ import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { sql } from "drizzle-orm";
 import { sendEmail } from "../_core/emailService";
-import { htmlToPdf } from "../_core/htmlToPdf";
+import { generateNotificationPdf } from "../_core/htmlToPdf";
 
 // ============================================================
 // Helper: formatar moeda BRL
@@ -373,21 +373,18 @@ export const notificationRouter = router({
       });
       const notificationNumber = `EC-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${input.clientId}`;
 
-      // 4. Gerar HTML
-      const html = generateNotificationHtml({
-        clientName: client.name,
-        clientCpfCnpj: client.cpf_cnpj || "",
-        clientEmail: client.email,
-        debts,
-        totalDebt,
-        notificationDate,
-        notificationNumber,
-      });
-
-      // 5. Gerar PDF via weasyprint (sem dependência de Chrome)
+      // 4. Gerar PDF diretamente com PDFKit (sem Chrome/Puppeteer)
       let pdfBuffer: Buffer;
       try {
-        pdfBuffer = await htmlToPdf(html);
+        pdfBuffer = await generateNotificationPdf({
+          clientName: client.name,
+          clientCpfCnpj: client.cpf_cnpj || "",
+          clientEmail: client.email,
+          debts,
+          totalDebt,
+          notificationDate,
+          notificationNumber,
+        });
       } catch (pdfErr: any) {
         throw new Error(`Erro ao gerar PDF: ${pdfErr.message}`);
       }

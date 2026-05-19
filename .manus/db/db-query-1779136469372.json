@@ -1,0 +1,90 @@
+{
+  "query": "\n-- Todos os clientes ativos que têm cotas E têm login no sistema\n-- Verificar quais têm divergência de capitalização no email\nSELECT \n  ac.id,\n  ac.name,\n  ac.email AS email_cadastrado,\n  u.email AS email_login,\n  BINARY ac.email = u.email AS emails_identicos,\n  COUNT(cq.id) AS total_quotas\nFROM allowed_clients ac\nJOIN users u ON LOWER(u.email) = LOWER(ac.email)\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE ac.is_active = 1\nGROUP BY ac.id, ac.name, ac.email, u.email\nORDER BY emails_identicos ASC, ac.name;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Todos os clientes ativos que têm cotas E têm login no sistema\n-- Verificar quais têm divergência de capitalização no email\nSELECT \n  ac.id,\n  ac.name,\n  ac.email AS email_cadastrado,\n  u.email AS email_login,\n  BINARY ac.email = u.email AS emails_identicos,\n  COUNT(cq.id) AS total_quotas\nFROM allowed_clients ac\nJOIN users u ON LOWER(u.email) = LOWER(ac.email)\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE ac.is_active = 1\nGROUP BY ac.id, ac.name, ac.email, u.email\nORDER BY emails_identicos ASC, ac.name;\n",
+  "rows": [
+    {
+      "id": "60009",
+      "name": "Francisco Claudio Araujo da Silva",
+      "email_cadastrado": "Franciscoclaudio293@gmail.com",
+      "email_login": "franciscoclaudio293@gmail.com",
+      "emails_identicos": "0",
+      "total_quotas": "1"
+    },
+    {
+      "id": "3510001",
+      "name": "LEONARDO BARROS DA SILVA",
+      "email_cadastrado": "Leohrodrigues88@gmail.com",
+      "email_login": "leohrodrigues88@gmail.com",
+      "emails_identicos": "0",
+      "total_quotas": "1"
+    },
+    {
+      "id": "60013",
+      "name": "MHAMED FEIZ HUSSEIN YASSIN",
+      "email_cadastrado": "Mhamedfeiz@hotmail.com",
+      "email_login": "mhamedfeiz@hotmail.com",
+      "emails_identicos": "0",
+      "total_quotas": "1"
+    },
+    {
+      "id": "1890001",
+      "name": "Stenio Teixeira",
+      "email_cadastrado": "Stenioteixeirats1@gmail.com",
+      "email_login": "stenioteixeirats1@gmail.com",
+      "emails_identicos": "0",
+      "total_quotas": "1"
+    },
+    {
+      "id": "60006",
+      "name": "Erisvaldo Alves da Silva",
+      "email_cadastrado": "via.vips@hotmail.com",
+      "email_login": "via.vips@hotmail.com",
+      "emails_identicos": "1",
+      "total_quotas": "1"
+    },
+    {
+      "id": "2670005",
+      "name": "ERNANI OLIVEIRA ALVES",
+      "email_cadastrado": "ernanyoimp@gmail.com",
+      "email_login": "ernanyoimp@gmail.com",
+      "emails_identicos": "1",
+      "total_quotas": "0"
+    },
+    {
+      "id": "60011",
+      "name": "Laecio Sousa Silva",
+      "email_cadastrado": "laecio.silversat@gmail.com",
+      "email_login": "laecio.silversat@gmail.com",
+      "emails_identicos": "1",
+      "total_quotas": "1"
+    },
+    {
+      "id": "1830001",
+      "name": "Laercio Oliveira",
+      "email_cadastrado": "lsccsilva@outlook.com",
+      "email_login": "lsccsilva@outlook.com",
+      "emails_identicos": "1",
+      "total_quotas": "1"
+    },
+    {
+      "id": "60015",
+      "name": "Ronaldo Bianchini",
+      "email_cadastrado": "rbq1992@gmail.com",
+      "email_login": "rbq1992@gmail.com",
+      "emails_identicos": "1",
+      "total_quotas": "1"
+    },
+    {
+      "id": "1860001",
+      "name": "Vinicius Freitas",
+      "email_cadastrado": "v6h2sw5vmn@privaterelay.appleid.com",
+      "email_login": "v6h2sw5vmn@privaterelay.appleid.com",
+      "emails_identicos": "1",
+      "total_quotas": "4"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail_cadastrado\temail_login\temails_identicos\ttotal_quotas\n60009\tFrancisco Claudio Araujo da Silva\tFranciscoclaudio293@gmail.com\tfranciscoclaudio293@gmail.com\t0\t1\n3510001\tLEONARDO BARROS DA SILVA\tLeohrodrigues88@gmail.com\tleohrodrigues88@gmail.com\t0\t1\n60013\tMHAMED FEIZ HUSSEIN YASSIN\tMhamedfeiz@hotmail.com\tmhamedfeiz@hotmail.com\t0\t1\n1890001\tStenio Teixeira\tStenioteixeirats1@gmail.com\tstenioteixeirats1@gmail.com\t0\t1\n60006\tErisvaldo Alves da Silva\tvia.vips@hotmail.com\tvia.vips@hotmail.com\t1\t1\n2670005\tERNANI OLIVEIRA ALVES\ternanyoimp@gmail.com\ternanyoimp@gmail.com\t1\t0\n60011\tLaecio Sousa Silva\tlaecio.silversat@gmail.com\tlaecio.silversat@gmail.com\t1\t1\n1830001\tLaercio Oliveira\tlsccsilva@outlook.com\tlsccsilva@outlook.com\t1\t1\n60015\tRonaldo Bianchini\trbq1992@gmail.com\trbq1992@gmail.com\t1\t1\n1860001\tVinicius Freitas\tv6h2sw5vmn@privaterelay.appleid.com\tv6h2sw5vmn@privaterelay.appleid.com\t1\t4\n",
+  "stderr": "",
+  "execution_time_ms": 258
+}

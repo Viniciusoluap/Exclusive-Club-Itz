@@ -10,7 +10,7 @@ import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { sql } from "drizzle-orm";
 import { sendEmail } from "../_core/emailService";
-import { htmlToPdf } from "../_core/htmlToPdf";
+import { generateContractPdf } from "../_core/htmlToPdf";
 
 // ============================================================
 // Helper: formatar moeda BRL
@@ -523,34 +523,31 @@ export const contractRouter = router({
         year: "numeric",
       });
 
-      // 5. Gerar HTML do contrato
-      const html = generateContractHtml({
-        clientName: client.name,
-        clientCpfCnpj: client.cpf_cnpj || "",
-        clientRg: client.rg || undefined,
-        clientPhone: client.phone || "",
-        clientEmail: client.email,
-        clientAddress: client.address || undefined,
-        clientNeighborhood: client.neighborhood || undefined,
-        clientCity: client.city || undefined,
-        clientState: client.state || undefined,
-        clientZipCode: client.zip_code || undefined,
-        boatName: quota.vessel_name,
-        boatDescription: quota.vessel_description || "",
-        quotaType,
-        quotaNumber: quota.quota_number,
-        quotaPercentage,
-        totalQuotas,
-        adhesionValue,
-        monthlyFee,
-        installments,
-        contractDate,
-      });
-
-      // 6. Gerar PDF via weasyprint (sem dependência de Chrome)
+      // 5. Gerar PDF diretamente com PDFKit (sem Chrome/Puppeteer)
       let pdfBuffer: Buffer;
       try {
-        pdfBuffer = await htmlToPdf(html);
+        pdfBuffer = await generateContractPdf({
+          clientName: client.name,
+          clientCpfCnpj: client.cpf_cnpj || "",
+          clientRg: client.rg || undefined,
+          clientPhone: client.phone || "",
+          clientEmail: client.email,
+          clientAddress: client.address || undefined,
+          clientNeighborhood: client.neighborhood || undefined,
+          clientCity: client.city || undefined,
+          clientState: client.state || undefined,
+          clientZipCode: client.zip_code || undefined,
+          boatName: quota.vessel_name,
+          boatDescription: quota.vessel_description || "",
+          quotaType,
+          quotaNumber: quota.quota_number,
+          quotaPercentage,
+          totalQuotas,
+          adhesionValue,
+          monthlyFee,
+          installments,
+          contractDate,
+        });
       } catch (pdfErr: any) {
         throw new Error(`Erro ao gerar PDF: ${pdfErr.message}`);
       }

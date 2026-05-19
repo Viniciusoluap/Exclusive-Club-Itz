@@ -1,0 +1,19 @@
+{
+  "query": "\n-- Verificar Leonardo no users e allowed_clients\nSELECT \n  ac.id AS client_id,\n  ac.name,\n  ac.email AS email_cadastrado,\n  ac.is_active,\n  u.email AS email_login,\n  u.id AS user_id,\n  BINARY ac.email = u.email AS case_match\nFROM allowed_clients ac\nLEFT JOIN users u ON LOWER(u.email) = LOWER(ac.email)\nWHERE ac.id = 3510001;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificar Leonardo no users e allowed_clients\nSELECT \n  ac.id AS client_id,\n  ac.name,\n  ac.email AS email_cadastrado,\n  ac.is_active,\n  u.email AS email_login,\n  u.id AS user_id,\n  BINARY ac.email = u.email AS case_match\nFROM allowed_clients ac\nLEFT JOIN users u ON LOWER(u.email) = LOWER(ac.email)\nWHERE ac.id = 3510001;\n",
+  "rows": [
+    {
+      "client_id": "3510001",
+      "name": "LEONARDO BARROS DA SILVA",
+      "email_cadastrado": "Leohrodrigues88@gmail.com",
+      "is_active": "1",
+      "email_login": "leohrodrigues88@gmail.com",
+      "user_id": "41040001",
+      "case_match": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "client_id\tname\temail_cadastrado\tis_active\temail_login\tuser_id\tcase_match\n3510001\tLEONARDO BARROS DA SILVA\tLeohrodrigues88@gmail.com\t1\tleohrodrigues88@gmail.com\t41040001\t0\n",
+  "stderr": "",
+  "execution_time_ms": 264
+}

@@ -1,0 +1,8 @@
+{
+  "query": "\n-- Buscar Lucas na tabela users (login OAuth)\nSELECT id, open_id AS openId, name, email, role, created_at, last_signed_in\nFROM users\nWHERE name LIKE '%Lucas%' OR email LIKE '%limir%' OR email LIKE '%lucas%'\nORDER BY id;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Buscar Lucas na tabela users (login OAuth)\nSELECT id, open_id AS openId, name, email, role, created_at, last_signed_in\nFROM users\nWHERE name LIKE '%Lucas%' OR email LIKE '%limir%' OR email LIKE '%lucas%'\nORDER BY id;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 3: Unknown column 'open_id' in 'field list'"
+  ]
+}

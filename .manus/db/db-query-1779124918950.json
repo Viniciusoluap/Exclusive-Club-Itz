@@ -1,0 +1,154 @@
+{
+  "query": "\n-- Clientes ativos SEM cotas (não deveriam ver mensagem de erro, mas podem)\nSELECT \n  ac.id AS client_id,\n  ac.email,\n  ac.name,\n  'ATIVO SEM COTA' AS situacao\nFROM allowed_clients ac\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE ac.is_active = 1 AND cq.id IS NULL\n\nUNION ALL\n\n-- Clientes INATIVOS com cotas ativas (causa raiz do bug)\nSELECT \n  ac.id AS client_id,\n  ac.email,\n  ac.name,\n  'INATIVO COM COTA' AS situacao\nFROM allowed_clients ac\nINNER JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE ac.is_active = 0\nGROUP BY ac.id, ac.email, ac.name\n\nORDER BY situacao, name;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Clientes ativos SEM cotas (não deveriam ver mensagem de erro, mas podem)\nSELECT \n  ac.id AS client_id,\n  ac.email,\n  ac.name,\n  'ATIVO SEM COTA' AS situacao\nFROM allowed_clients ac\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE ac.is_active = 1 AND cq.id IS NULL\n\nUNION ALL\n\n-- Clientes INATIVOS com cotas ativas (causa raiz do bug)\nSELECT \n  ac.id AS client_id,\n  ac.email,\n  ac.name,\n  'INATIVO COM COTA' AS situacao\nFROM allowed_clients ac\nINNER JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE ac.is_active = 0\nGROUP BY ac.id, ac.email, ac.name\n\nORDER BY situacao, name;\n",
+  "rows": [
+    {
+      "client_id": "3270087",
+      "email": "asaas_cus_000152854928@sem-email.local",
+      "name": "54877743 Laercio Oliveira Da Silv",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3270084",
+      "email": "asaas_cus_000166490081@sem-email.local",
+      "name": "59.725.241 Ryan Gustavo Dos Santos Morreiro",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3270089",
+      "email": "asaas_cus_000138560339@sem-email.local",
+      "name": "Caio Rehbein Santos",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3270086",
+      "email": "asaas_cus_000162220931@sem-email.local",
+      "name": "Clinica Dr Stenio Teixeira Ltda",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3270090",
+      "email": "asaas_cus_000137603739@sem-email.local",
+      "name": "Efficaz Promocao De Vendas",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "2670005",
+      "email": "ernanyoimp@gmail.com",
+      "name": "ERNANI OLIVEIRA ALVES",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3270093",
+      "email": "asaas_cus_000132711509@sem-email.local",
+      "name": "Garage Marina Premium",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3270094",
+      "email": "asaas_cus_000132152901@sem-email.local",
+      "name": "Manoel Matheus Araujo Ferreira",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3270088",
+      "email": "asaas_cus_000145252041@sem-email.local",
+      "name": "Murta E Murta Ltda",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3270085",
+      "email": "asaas_cus_000165761899@sem-email.local",
+      "name": "P V G Freitas",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3270092",
+      "email": "asaas_cus_000135643300@sem-email.local",
+      "name": "Prospecta Construcoes E Avaliacao Imobiliaria Ltda",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3270091",
+      "email": "asaas_cus_000136030553@sem-email.local",
+      "name": "Reis Comercio E Servicos Ltda",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3300024",
+      "email": "asaas_cus_000132093974@sem-email.local",
+      "name": "Tatuape A S R Ltda. - Epp",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "3270083",
+      "email": "asaas_cus_000166492836@sem-email.local",
+      "name": "Vanessa Ribeiro De Almeida",
+      "situacao": "ATIVO SEM COTA"
+    },
+    {
+      "client_id": "60002",
+      "email": "diogobritolemos@gmail.com",
+      "name": "Diogo de Lemos Brito",
+      "situacao": "INATIVO COM COTA"
+    },
+    {
+      "client_id": "60001",
+      "email": "diogodosberto@hotmail.com",
+      "name": "DIOGO DOS REIS BERTO",
+      "situacao": "INATIVO COM COTA"
+    },
+    {
+      "client_id": "60003",
+      "email": "motomais.acailandia@gmail.com",
+      "name": "EDILSON DA CONCEICAO COSTA",
+      "situacao": "INATIVO COM COTA"
+    },
+    {
+      "client_id": "2820001",
+      "email": "everton.lago@gmail.com",
+      "name": "Everton Costa Lago",
+      "situacao": "INATIVO COM COTA"
+    },
+    {
+      "client_id": "60008",
+      "email": "filippeamurta@gmail.com",
+      "name": "Filippe Augusto V B Murta",
+      "situacao": "INATIVO COM COTA"
+    },
+    {
+      "client_id": "60010",
+      "email": "Kaioaraujo2233@icloud.com",
+      "name": "KAIO RICHARD GOMES DE ARAUJO",
+      "situacao": "INATIVO COM COTA"
+    },
+    {
+      "client_id": "2850001",
+      "email": "Limiransafg@gmail.com",
+      "name": "LUCAS SANTOS MIRANDA",
+      "situacao": "INATIVO COM COTA"
+    },
+    {
+      "client_id": "60012",
+      "email": "gabnercorporation@gmail.com",
+      "name": "Luciano Gabriel",
+      "situacao": "INATIVO COM COTA"
+    },
+    {
+      "client_id": "1740003",
+      "email": "cesarmarcus886@gmail.com",
+      "name": "MARCUS CESAR COTRIM VAZ JUNIOR",
+      "situacao": "INATIVO COM COTA"
+    },
+    {
+      "client_id": "1740002",
+      "email": "Andrezzacarvalhof@gmail.com",
+      "name": "MARIA ANDREZZA FRANCO DE CARVALHO",
+      "situacao": "INATIVO COM COTA"
+    }
+  ],
+  "messages": [],
+  "stdout": "client_id\temail\tname\tsituacao\n3270087\tasaas_cus_000152854928@sem-email.local\t54877743 Laercio Oliveira Da Silv\tATIVO SEM COTA\n3270084\tasaas_cus_000166490081@sem-email.local\t59.725.241 Ryan Gustavo Dos Santos Morreiro\tATIVO SEM COTA\n3270089\tasaas_cus_000138560339@sem-email.local\tCaio Rehbein Santos\tATIVO SEM COTA\n3270086\tasaas_cus_000162220931@sem-email.local\tClinica Dr Stenio Teixeira Ltda\tATIVO SEM COTA\n3270090\tasaas_cus_000137603739@sem-email.local\tEfficaz Promocao De Vendas\tATIVO SEM COTA\n2670005\ternanyoimp@gmail.com\tERNANI OLIVEIRA ALVES\tATIVO SEM COTA\n3270093\tasaas_cus_000132711509@sem-email.local\tGarage Marina Premium\tATIVO SEM COTA\n3270094\tasaas_cus_000132152901@sem-email.local\tManoel Matheus Araujo Ferreira\tATIVO SEM COTA\n3270088\tasaas_cus_000145252041@sem-email.local\tMurta E Murta Ltda\tATIVO SEM COTA\n3270085\tasaas_cus_000165761899@sem-email.local\tP V G Freitas\tATIVO SEM COTA\n3270092\tasaas_cus_000135643300@sem-email.local\tProspecta Construcoes E Avaliacao Imobiliaria Ltda\tATIVO SEM COTA\n3270091\tasaas_cus_000136030553@sem-email.local\tReis Comercio E Servicos Ltda\tATIVO SEM COTA\n3300024\tasaas_cus_000132093974@sem-email.local\tTatuape A S R Ltda. - Epp\tATIVO SEM COTA\n3270083\tasaas_cus_000166492836@sem-email.local\tVanessa Ribeiro De Almeida\tATIVO SEM COTA\n60002\tdiogobritolemos@gmail.com\tDiogo de Lemos Brito\tINATIVO COM COTA\n60001\tdiogodosberto@hotmail.com\tDIOGO DOS REIS BERTO\tINATIVO COM COTA\n60003\tmotomais.acailandia@gmail.com\tEDILSON DA CONCEICAO COSTA\tINATIVO COM COTA\n2820001\teverton.lago@gmail.com\tEverton Costa Lago\tINATIVO COM COTA\n60008\tfilippeamurta@gmail.com\tFilippe Augusto V B Murta\tINATIVO COM COTA\n60010\tKaioaraujo2233@icloud.com\tKAIO RICHARD GOMES DE ARAUJO\tINATIVO COM COTA\n2850001\tLimiransafg@gmail.com\tLUCAS SANTOS MIRANDA\tINATIVO COM COTA\n60012\tgabnercorporation@gmail.com\tLuciano Gabriel\tINATIVO COM COTA\n1740003\tcesarmarcus886@gmail.com\tMARCUS CESAR COTRIM VAZ JUNIOR\tINATIVO COM COTA\n1740002\tAndrezzacarvalhof@gmail.com\tMARIA ANDREZZA FRANCO DE CARVALHO\tINATIVO COM COTA\n",
+  "stderr": "",
+  "execution_time_ms": 273
+}

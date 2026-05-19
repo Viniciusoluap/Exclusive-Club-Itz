@@ -1,0 +1,16 @@
+{
+  "query": "\n-- Testar se a comparação direta (como o Drizzle faz) é case-sensitive no banco\nSELECT \n  email,\n  email = 'limiransafg@gmail.com' AS match_minusculo,\n  email = 'Limiransafg@gmail.com' AS match_maiusculo,\n  BINARY email = 'limiransafg@gmail.com' AS binary_match_minusculo\nFROM allowed_clients\nWHERE id = 2850001;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Testar se a comparação direta (como o Drizzle faz) é case-sensitive no banco\nSELECT \n  email,\n  email = 'limiransafg@gmail.com' AS match_minusculo,\n  email = 'Limiransafg@gmail.com' AS match_maiusculo,\n  BINARY email = 'limiransafg@gmail.com' AS binary_match_minusculo\nFROM allowed_clients\nWHERE id = 2850001;\n",
+  "rows": [
+    {
+      "email": "Limiransafg@gmail.com",
+      "match_minusculo": "1",
+      "match_maiusculo": "1",
+      "binary_match_minusculo": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "email\tmatch_minusculo\tmatch_maiusculo\tbinary_match_minusculo\nLimiransafg@gmail.com\t1\t1\t0\n",
+  "stderr": "",
+  "execution_time_ms": 271
+}

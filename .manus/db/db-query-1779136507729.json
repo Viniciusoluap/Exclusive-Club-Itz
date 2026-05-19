@@ -1,0 +1,21 @@
+{
+  "query": "\n-- Diogo Brito fez login em 2026-05-15 e está INATIVO no allowed_clients\n-- Verificar o que ele vê ao entrar no sistema\nSELECT \n  u.id AS user_id,\n  u.name AS user_name,\n  u.email AS user_email,\n  u.lastSignedIn,\n  ac.id AS client_id,\n  ac.name AS client_name,\n  ac.email AS client_email,\n  ac.is_active,\n  COUNT(cq.id) AS total_quotas\nFROM users u\nLEFT JOIN allowed_clients ac ON LOWER(ac.email) = LOWER(u.email)\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE u.email = 'diogobritolemos@gmail.com'\nGROUP BY u.id, u.name, u.email, u.lastSignedIn, ac.id, ac.name, ac.email, ac.is_active;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Diogo Brito fez login em 2026-05-15 e está INATIVO no allowed_clients\n-- Verificar o que ele vê ao entrar no sistema\nSELECT \n  u.id AS user_id,\n  u.name AS user_name,\n  u.email AS user_email,\n  u.lastSignedIn,\n  ac.id AS client_id,\n  ac.name AS client_name,\n  ac.email AS client_email,\n  ac.is_active,\n  COUNT(cq.id) AS total_quotas\nFROM users u\nLEFT JOIN allowed_clients ac ON LOWER(ac.email) = LOWER(u.email)\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE u.email = 'diogobritolemos@gmail.com'\nGROUP BY u.id, u.name, u.email, u.lastSignedIn, ac.id, ac.name, ac.email, ac.is_active;\n",
+  "rows": [
+    {
+      "user_id": "1440001",
+      "user_name": "Diogo Brito",
+      "user_email": "diogobritolemos@gmail.com",
+      "lastSignedIn": "2026-05-15 14:04:12",
+      "client_id": "60002",
+      "client_name": "Diogo de Lemos Brito",
+      "client_email": "diogobritolemos@gmail.com",
+      "is_active": "0",
+      "total_quotas": "2"
+    }
+  ],
+  "messages": [],
+  "stdout": "user_id\tuser_name\tuser_email\tlastSignedIn\tclient_id\tclient_name\tclient_email\tis_active\ttotal_quotas\n1440001\tDiogo Brito\tdiogobritolemos@gmail.com\t2026-05-15 14:04:12\t60002\tDiogo de Lemos Brito\tdiogobritolemos@gmail.com\t0\t2\n",
+  "stderr": "",
+  "execution_time_ms": 269
+}

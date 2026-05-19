@@ -1,0 +1,17 @@
+{
+  "query": "\n-- Simular o que allowedClientProcedure faz para Diogo Brito:\n-- 1. Busca allowed_client por email\n-- 2. Verifica is_active\n-- Resultado: is_active = 0 → lança FORBIDDEN → frontend recebe undefined → exibe \"sem cotas\"\nSELECT \n  ac.id,\n  ac.email,\n  ac.name,\n  ac.is_active,\n  CASE \n    WHEN ac.is_active = 0 THEN 'BLOQUEADO pelo allowedClientProcedure (FORBIDDEN)'\n    ELSE 'PERMITIDO'\n  END AS acesso_myQuotas\nFROM allowed_clients ac\nWHERE LOWER(ac.email) = 'diogobritolemos@gmail.com';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Simular o que allowedClientProcedure faz para Diogo Brito:\n-- 1. Busca allowed_client por email\n-- 2. Verifica is_active\n-- Resultado: is_active = 0 → lança FORBIDDEN → frontend recebe undefined → exibe \"sem cotas\"\nSELECT \n  ac.id,\n  ac.email,\n  ac.name,\n  ac.is_active,\n  CASE \n    WHEN ac.is_active = 0 THEN 'BLOQUEADO pelo allowedClientProcedure (FORBIDDEN)'\n    ELSE 'PERMITIDO'\n  END AS acesso_myQuotas\nFROM allowed_clients ac\nWHERE LOWER(ac.email) = 'diogobritolemos@gmail.com';\n",
+  "rows": [
+    {
+      "id": "60002",
+      "email": "diogobritolemos@gmail.com",
+      "name": "Diogo de Lemos Brito",
+      "is_active": "0",
+      "acesso_myQuotas": "BLOQUEADO pelo allowedClientProcedure (FORBIDDEN)"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\tis_active\tacesso_myQuotas\n60002\tdiogobritolemos@gmail.com\tDiogo de Lemos Brito\t0\tBLOQUEADO pelo allowedClientProcedure (FORBIDDEN)\n",
+  "stderr": "",
+  "execution_time_ms": 260
+}

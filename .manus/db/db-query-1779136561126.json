@@ -1,0 +1,100 @@
+{
+  "query": "\n-- RESUMO FINAL: clientes que veem \"sem cotas\" por estarem inativos mas terem cotas cadastradas\n-- E que já fizeram login no sistema (confirmando que estão tentando acessar)\nSELECT \n  ac.id AS client_id,\n  ac.name,\n  ac.email AS email_cadastrado,\n  ac.is_active,\n  COUNT(cq.id) AS cotas_ativas,\n  u.lastSignedIn AS ultimo_login,\n  CASE WHEN u.id IS NOT NULL THEN 'SIM' ELSE 'NÃO' END AS tem_login\nFROM allowed_clients ac\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nLEFT JOIN users u ON LOWER(u.email) = LOWER(ac.email)\nWHERE ac.is_active = 0\nGROUP BY ac.id, ac.name, ac.email, ac.is_active, u.lastSignedIn, u.id\nHAVING cotas_ativas > 0\nORDER BY ultimo_login DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- RESUMO FINAL: clientes que veem \"sem cotas\" por estarem inativos mas terem cotas cadastradas\n-- E que já fizeram login no sistema (confirmando que estão tentando acessar)\nSELECT \n  ac.id AS client_id,\n  ac.name,\n  ac.email AS email_cadastrado,\n  ac.is_active,\n  COUNT(cq.id) AS cotas_ativas,\n  u.lastSignedIn AS ultimo_login,\n  CASE WHEN u.id IS NOT NULL THEN 'SIM' ELSE 'NÃO' END AS tem_login\nFROM allowed_clients ac\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nLEFT JOIN users u ON LOWER(u.email) = LOWER(ac.email)\nWHERE ac.is_active = 0\nGROUP BY ac.id, ac.name, ac.email, ac.is_active, u.lastSignedIn, u.id\nHAVING cotas_ativas > 0\nORDER BY ultimo_login DESC;\n",
+  "rows": [
+    {
+      "client_id": "2850001",
+      "name": "LUCAS SANTOS MIRANDA",
+      "email_cadastrado": "Limiransafg@gmail.com",
+      "is_active": "0",
+      "cotas_ativas": "2",
+      "ultimo_login": "2026-05-18 16:58:12",
+      "tem_login": "SIM"
+    },
+    {
+      "client_id": "60002",
+      "name": "Diogo de Lemos Brito",
+      "email_cadastrado": "diogobritolemos@gmail.com",
+      "is_active": "0",
+      "cotas_ativas": "2",
+      "ultimo_login": "2026-05-15 14:04:12",
+      "tem_login": "SIM"
+    },
+    {
+      "client_id": "60012",
+      "name": "Luciano Gabriel",
+      "email_cadastrado": "gabnercorporation@gmail.com",
+      "is_active": "0",
+      "cotas_ativas": "1",
+      "ultimo_login": "2026-05-07 12:34:47",
+      "tem_login": "SIM"
+    },
+    {
+      "client_id": "60003",
+      "name": "EDILSON DA CONCEICAO COSTA",
+      "email_cadastrado": "motomais.acailandia@gmail.com",
+      "is_active": "0",
+      "cotas_ativas": "1",
+      "ultimo_login": "2026-01-31 19:18:16",
+      "tem_login": "SIM"
+    },
+    {
+      "client_id": "1740003",
+      "name": "MARCUS CESAR COTRIM VAZ JUNIOR",
+      "email_cadastrado": "cesarmarcus886@gmail.com",
+      "is_active": "0",
+      "cotas_ativas": "1",
+      "ultimo_login": "2025-12-17 12:26:48",
+      "tem_login": "SIM"
+    },
+    {
+      "client_id": "60010",
+      "name": "KAIO RICHARD GOMES DE ARAUJO",
+      "email_cadastrado": "Kaioaraujo2233@icloud.com",
+      "is_active": "0",
+      "cotas_ativas": "1",
+      "ultimo_login": "NULL",
+      "tem_login": "NÃO"
+    },
+    {
+      "client_id": "1740002",
+      "name": "MARIA ANDREZZA FRANCO DE CARVALHO",
+      "email_cadastrado": "Andrezzacarvalhof@gmail.com",
+      "is_active": "0",
+      "cotas_ativas": "1",
+      "ultimo_login": "NULL",
+      "tem_login": "NÃO"
+    },
+    {
+      "client_id": "60001",
+      "name": "DIOGO DOS REIS BERTO",
+      "email_cadastrado": "diogodosberto@hotmail.com",
+      "is_active": "0",
+      "cotas_ativas": "2",
+      "ultimo_login": "NULL",
+      "tem_login": "NÃO"
+    },
+    {
+      "client_id": "60008",
+      "name": "Filippe Augusto V B Murta",
+      "email_cadastrado": "filippeamurta@gmail.com",
+      "is_active": "0",
+      "cotas_ativas": "1",
+      "ultimo_login": "NULL",
+      "tem_login": "NÃO"
+    },
+    {
+      "client_id": "2820001",
+      "name": "Everton Costa Lago",
+      "email_cadastrado": "everton.lago@gmail.com",
+      "is_active": "0",
+      "cotas_ativas": "1",
+      "ultimo_login": "NULL",
+      "tem_login": "NÃO"
+    }
+  ],
+  "messages": [],
+  "stdout": "client_id\tname\temail_cadastrado\tis_active\tcotas_ativas\tultimo_login\ttem_login\n2850001\tLUCAS SANTOS MIRANDA\tLimiransafg@gmail.com\t0\t2\t2026-05-18 16:58:12\tSIM\n60002\tDiogo de Lemos Brito\tdiogobritolemos@gmail.com\t0\t2\t2026-05-15 14:04:12\tSIM\n60012\tLuciano Gabriel\tgabnercorporation@gmail.com\t0\t1\t2026-05-07 12:34:47\tSIM\n60003\tEDILSON DA CONCEICAO COSTA\tmotomais.acailandia@gmail.com\t0\t1\t2026-01-31 19:18:16\tSIM\n1740003\tMARCUS CESAR COTRIM VAZ JUNIOR\tcesarmarcus886@gmail.com\t0\t1\t2025-12-17 12:26:48\tSIM\n60010\tKAIO RICHARD GOMES DE ARAUJO\tKaioaraujo2233@icloud.com\t0\t1\tNULL\tNÃO\n1740002\tMARIA ANDREZZA FRANCO DE CARVALHO\tAndrezzacarvalhof@gmail.com\t0\t1\tNULL\tNÃO\n60001\tDIOGO DOS REIS BERTO\tdiogodosberto@hotmail.com\t0\t2\tNULL\tNÃO\n60008\tFilippe Augusto V B Murta\tfilippeamurta@gmail.com\t0\t1\tNULL\tNÃO\n2820001\tEverton Costa Lago\teverton.lago@gmail.com\t0\t1\tNULL\tNÃO\n",
+  "stderr": "",
+  "execution_time_ms": 266
+}

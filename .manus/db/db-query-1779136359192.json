@@ -1,0 +1,16 @@
+{
+  "query": "\n-- Simular exatamente o que getAllowedClientByEmail faz com email minúsculo do OAuth\nSELECT id, email, name, is_active\nFROM allowed_clients\nWHERE email = 'limiransafg@gmail.com'\nLIMIT 1;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Simular exatamente o que getAllowedClientByEmail faz com email minúsculo do OAuth\nSELECT id, email, name, is_active\nFROM allowed_clients\nWHERE email = 'limiransafg@gmail.com'\nLIMIT 1;\n",
+  "rows": [
+    {
+      "id": "2850001",
+      "email": "Limiransafg@gmail.com",
+      "name": "LUCAS SANTOS MIRANDA",
+      "is_active": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\tis_active\n2850001\tLimiransafg@gmail.com\tLUCAS SANTOS MIRANDA\t0\n",
+  "stderr": "",
+  "execution_time_ms": 267
+}

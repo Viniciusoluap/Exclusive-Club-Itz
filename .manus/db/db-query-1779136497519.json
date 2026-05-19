@@ -1,0 +1,43 @@
+{
+  "query": "\n-- Verificar se Gilson e Alexandre têm cadastro em allowed_clients\nSELECT \n  u.id AS user_id,\n  u.name AS user_name,\n  u.email AS user_email,\n  u.lastSignedIn,\n  ac.id AS client_id,\n  ac.name AS client_name,\n  ac.email AS client_email,\n  ac.is_active,\n  COUNT(cq.id) AS total_quotas\nFROM users u\nLEFT JOIN allowed_clients ac ON LOWER(ac.email) = LOWER(u.email)\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE u.email IN ('gilsonribeiro39@icloud.com', 'wdfxrpb84y@privaterelay.appleid.com', 'erisvaldo1308@gmail.com')\nGROUP BY u.id, u.name, u.email, u.lastSignedIn, ac.id, ac.name, ac.email, ac.is_active;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificar se Gilson e Alexandre têm cadastro em allowed_clients\nSELECT \n  u.id AS user_id,\n  u.name AS user_name,\n  u.email AS user_email,\n  u.lastSignedIn,\n  ac.id AS client_id,\n  ac.name AS client_name,\n  ac.email AS client_email,\n  ac.is_active,\n  COUNT(cq.id) AS total_quotas\nFROM users u\nLEFT JOIN allowed_clients ac ON LOWER(ac.email) = LOWER(u.email)\nLEFT JOIN client_quotas cq ON cq.client_id = ac.id AND cq.is_active = 1\nWHERE u.email IN ('gilsonribeiro39@icloud.com', 'wdfxrpb84y@privaterelay.appleid.com', 'erisvaldo1308@gmail.com')\nGROUP BY u.id, u.name, u.email, u.lastSignedIn, ac.id, ac.name, ac.email, ac.is_active;\n",
+  "rows": [
+    {
+      "user_id": "42930001",
+      "user_name": "Gilson de jesus ribeiro Ribeiro",
+      "user_email": "gilsonribeiro39@icloud.com",
+      "lastSignedIn": "2026-05-15 20:31:44",
+      "client_id": "NULL",
+      "client_name": "NULL",
+      "client_email": "NULL",
+      "is_active": "NULL",
+      "total_quotas": "0"
+    },
+    {
+      "user_id": "1590001",
+      "user_name": "Erisvaldo Alves",
+      "user_email": "erisvaldo1308@gmail.com",
+      "lastSignedIn": "2026-04-26 17:25:10",
+      "client_id": "NULL",
+      "client_name": "NULL",
+      "client_email": "NULL",
+      "is_active": "NULL",
+      "total_quotas": "0"
+    },
+    {
+      "user_id": "41700001",
+      "user_name": "Alexandre Miguel",
+      "user_email": "wdfxrpb84y@privaterelay.appleid.com",
+      "lastSignedIn": "2026-05-10 20:02:05",
+      "client_id": "NULL",
+      "client_name": "NULL",
+      "client_email": "NULL",
+      "is_active": "NULL",
+      "total_quotas": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "user_id\tuser_name\tuser_email\tlastSignedIn\tclient_id\tclient_name\tclient_email\tis_active\ttotal_quotas\n42930001\tGilson de jesus ribeiro Ribeiro\tgilsonribeiro39@icloud.com\t2026-05-15 20:31:44\tNULL\tNULL\tNULL\tNULL\t0\n1590001\tErisvaldo Alves\terisvaldo1308@gmail.com\t2026-04-26 17:25:10\tNULL\tNULL\tNULL\tNULL\t0\n41700001\tAlexandre Miguel\twdfxrpb84y@privaterelay.appleid.com\t2026-05-10 20:02:05\tNULL\tNULL\tNULL\tNULL\t0\n",
+  "stderr": "",
+  "execution_time_ms": 257
+}
