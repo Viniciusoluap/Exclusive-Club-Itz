@@ -2166,3 +2166,30 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [ ] F2: Identificar por que o sistema cria cobrança "Outros" em vez de dar baixa na cobrança existente
 - [ ] F3: Corrigir o fluxo para que a classificação vincule corretamente ao bpo_charges existente
 - [ ] F4: Definir estratégia para corrigir os dados incorretos já existentes no banco
+
+## 🐛 BUG CORRIGIDO: Erro de PDF com Puppeteer/Chrome
+====================================================================================
+
+**Problema:**
+- Botão 🔔 (Notificação Extrajudicial) e 📄 (Contrato) exibiam erro:
+  "Could not find Chrome (ver. 142.0.7444.175)"
+- Puppeteer v24 não inclui Chrome embutido e o Cloud Run (produção) não tem Chromium
+- Erro persistia mesmo após tentativas anteriores de correção
+
+**Causa Raiz:**
+- `htmlToPdf.ts` usava Puppeteer para renderizar HTML → PDF via Chrome headless
+- Cloud Run é Node.js only — sem Chrome, sem Python, sem binários nativos externos
+- Cada deploy perdia o cache do Puppeteer (`/root/.cache/puppeteer/chrome/`)
+
+**Solução Definitiva:**
+- Substituição completa de Puppeteer por PDFKit (já instalado no projeto)
+- PDFKit é 100% Node.js — funciona em qualquer ambiente sem dependências externas
+- Reescrita dos três geradores afetados:
+
+- [x] Reescrever `server/_core/htmlToPdf.ts` com `generateNotificationPdf()` via PDFKit
+- [x] Reescrever `server/_core/htmlToPdf.ts` com `generateContractPdf()` via PDFKit
+- [x] Reescrever `server/_core/inspectionPDF.ts` com `generateInspectionPDF()` via PDFKit
+- [x] Atualizar `server/routers/notificationRouter.ts` para usar `generateNotificationPdf()`
+- [x] Atualizar `server/routers/contractRouter.ts` para usar `generateContractPdf()`
+- [x] Criar testes vitest em `server/pdf.generation.test.ts` — 3/3 passando ✅
+- [ ] Criar checkpoint
