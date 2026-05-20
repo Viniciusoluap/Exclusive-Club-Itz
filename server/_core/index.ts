@@ -315,3 +315,10 @@ startServer().catch(console.error);
 import("../cronJobs").then(({ registerCronJobs }) => {
   registerCronJobs();
 }).catch(err => console.error("[CronJobs] Falha ao registrar:", err));
+
+// Job diário: atualizar cobranças vencidas para status 'overdue' às 00:05
+import("../jobs/updateOverdueStatus").then(({ scheduleUpdateOverdueStatus, runUpdateOverdueStatus }) => {
+  scheduleUpdateOverdueStatus();
+  // Executar imediatamente na inicialização para corrigir registros históricos
+  runUpdateOverdueStatus().catch(err => console.error("[updateOverdueStatus] Erro na execução inicial:", err));
+}).catch(err => console.error("[updateOverdueStatus] Falha ao registrar job:", err));

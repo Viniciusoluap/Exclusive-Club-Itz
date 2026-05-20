@@ -1,0 +1,184 @@
+{
+  "query": "\nSELECT \n  TABLE_NAME,\n  COLUMN_NAME,\n  COLUMN_TYPE,\n  COLUMN_DEFAULT\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE TABLE_SCHEMA = DATABASE()\n  AND (\n    COLUMN_NAME LIKE '%status%'\n    OR COLUMN_NAME LIKE '%payment%'\n    OR COLUMN_NAME LIKE '%state%'\n  )\nORDER BY TABLE_NAME, COLUMN_NAME;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  TABLE_NAME,\n  COLUMN_NAME,\n  COLUMN_TYPE,\n  COLUMN_DEFAULT\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE TABLE_SCHEMA = DATABASE()\n  AND (\n    COLUMN_NAME LIKE '%status%'\n    OR COLUMN_NAME LIKE '%payment%'\n    OR COLUMN_NAME LIKE '%state%'\n  )\nORDER BY TABLE_NAME, COLUMN_NAME;\n",
+  "rows": [
+    {
+      "TABLE_NAME": "allowed_clients",
+      "COLUMN_NAME": "state",
+      "COLUMN_TYPE": "varchar(2)",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "asaas_payments",
+      "COLUMN_NAME": "asaas_payment_id",
+      "COLUMN_TYPE": "varchar(255)",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "asaas_payments",
+      "COLUMN_NAME": "payment_date",
+      "COLUMN_TYPE": "date",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "asaas_payments",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "varchar(50)",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "backup_history",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('running','success','failed')",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "bookings",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','confirmed','used','cancelled')",
+      "COLUMN_DEFAULT": "confirmed"
+    },
+    {
+      "TABLE_NAME": "bpo_charges",
+      "COLUMN_NAME": "payment_link",
+      "COLUMN_TYPE": "text",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "bpo_charges",
+      "COLUMN_NAME": "payment_links",
+      "COLUMN_TYPE": "text",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "bpo_charges",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','received','confirmed','overdue','refunded','receivedInCash','awaitingChargeback','detached','partiallyPaid','cancelled')",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "due_date_change_requests",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','approved','rejected')",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "expense_records",
+      "COLUMN_NAME": "asaas_payment_id",
+      "COLUMN_TYPE": "varchar(255)",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "expense_records",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','paid','overdue','cancelled')",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "financial_charges",
+      "COLUMN_NAME": "asaas_payment_id",
+      "COLUMN_TYPE": "varchar(255)",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "financial_charges",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "varchar(10)",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "fuel_records",
+      "COLUMN_NAME": "manual_payment_note",
+      "COLUMN_TYPE": "text",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "fuel_records",
+      "COLUMN_NAME": "payment_status",
+      "COLUMN_TYPE": "enum('pending','paid','cancelled','overdue')",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "fuel_records",
+      "COLUMN_NAME": "payment_url",
+      "COLUMN_TYPE": "text",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "fuel_records",
+      "COLUMN_NAME": "sync_status",
+      "COLUMN_TYPE": "enum('pending','synced','failed','manual')",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "inspection_charges",
+      "COLUMN_NAME": "payment_status",
+      "COLUMN_TYPE": "enum('pending','paid','overdue')",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "inspections",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('approved','rejected')",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "maintenances",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('scheduled','in_progress','completed','cancelled')",
+      "COLUMN_DEFAULT": "scheduled"
+    },
+    {
+      "TABLE_NAME": "subscription_charges",
+      "COLUMN_NAME": "asaas_payment_id",
+      "COLUMN_TYPE": "varchar(64)",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "subscription_charges",
+      "COLUMN_NAME": "payment_links",
+      "COLUMN_TYPE": "text",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "subscription_charges",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','paid','overdue','cancelled','partial')",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "subscriptions",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('active','paused','cancelled')",
+      "COLUMN_DEFAULT": "active"
+    },
+    {
+      "TABLE_NAME": "unclassified_charges",
+      "COLUMN_NAME": "asaas_payment_id",
+      "COLUMN_TYPE": "varchar(255)",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "unclassified_charges",
+      "COLUMN_NAME": "asaas_status",
+      "COLUMN_TYPE": "varchar(50)",
+      "COLUMN_DEFAULT": "PENDING"
+    },
+    {
+      "TABLE_NAME": "unclassified_charges",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','paid','overdue','cancelled')",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "webhook_logs",
+      "COLUMN_NAME": "asaas_payment_id",
+      "COLUMN_TYPE": "varchar(255)",
+      "COLUMN_DEFAULT": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\tCOLUMN_NAME\tCOLUMN_TYPE\tCOLUMN_DEFAULT\nallowed_clients\tstate\tvarchar(2)\tNULL\nasaas_payments\tasaas_payment_id\tvarchar(255)\tNULL\nasaas_payments\tpayment_date\tdate\tNULL\nasaas_payments\tstatus\tvarchar(50)\tpending\nbackup_history\tstatus\tenum('running','success','failed')\tNULL\nbookings\tstatus\tenum('pending','confirmed','used','cancelled')\tconfirmed\nbpo_charges\tpayment_link\ttext\tNULL\nbpo_charges\tpayment_links\ttext\tNULL\nbpo_charges\tstatus\tenum('pending','received','confirmed','overdue','refunded','receivedInCash','awaitingChargeback','detached','partiallyPaid','cancelled')\tpending\ndue_date_change_requests\tstatus\tenum('pending','approved','rejected')\tpending\nexpense_records\tasaas_payment_id\tvarchar(255)\tNULL\nexpense_records\tstatus\tenum('pending','paid','overdue','cancelled')\tpending\nfinancial_charges\tasaas_payment_id\tvarchar(255)\tNULL\nfinancial_charges\tstatus\tvarchar(10)\tNULL\nfuel_records\tmanual_payment_note\ttext\tNULL\nfuel_records\tpayment_status\tenum('pending','paid','cancelled','overdue')\tpending\nfuel_records\tpayment_url\ttext\tNULL\nfuel_records\tsync_status\tenum('pending','synced','failed','manual')\tpending\ninspection_charges\tpayment_status\tenum('pending','paid','overdue')\tpending\ninspections\tstatus\tenum('approved','rejected')\tNULL\nmaintenances\tstatus\tenum('scheduled','in_progress','completed','cancelled')\tscheduled\nsubscription_charges\tasaas_payment_id\tvarchar(64)\tNULL\nsubscription_charges\tpayment_links\ttext\tNULL\nsubscription_charges\tstatus\tenum('pending','paid','overdue','cancelled','partial')\tpending\nsubscriptions\tstatus\tenum('active','paused','cancelled')\tactive\nunclassified_charges\tasaas_payment_id\tvarchar(255)\tNULL\nunclassified_charges\tasaas_status\tvarchar(50)\tPENDING\nunclassified_charges\tstatus\tenum('pending','paid','overdue','cancelled')\tpending\nwebhook_logs\tasaas_payment_id\tvarchar(255)\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 264
+}

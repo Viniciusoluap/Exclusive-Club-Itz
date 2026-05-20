@@ -1,0 +1,15 @@
+{
+  "query": "\n-- bookings: confirmadas mas com data passada (deveriam ser 'used' ou 'expired'?)\nSELECT COUNT(*) as reservas_confirmadas_passadas,\n       MIN(booking_date) as mais_antiga,\n       MAX(booking_date) as mais_recente\nFROM bookings\nWHERE status = 'confirmed' AND booking_date < CURDATE();\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- bookings: confirmadas mas com data passada (deveriam ser 'used' ou 'expired'?)\nSELECT COUNT(*) as reservas_confirmadas_passadas,\n       MIN(booking_date) as mais_antiga,\n       MAX(booking_date) as mais_recente\nFROM bookings\nWHERE status = 'confirmed' AND booking_date < CURDATE();\n",
+  "rows": [
+    {
+      "reservas_confirmadas_passadas": "0",
+      "mais_antiga": "NULL",
+      "mais_recente": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "reservas_confirmadas_passadas\tmais_antiga\tmais_recente\n0\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 268
+}

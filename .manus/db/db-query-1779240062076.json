@@ -1,0 +1,64 @@
+{
+  "query": "\nSELECT \n  TABLE_NAME,\n  COLUMN_NAME,\n  COLUMN_TYPE,\n  COLUMN_DEFAULT\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE TABLE_SCHEMA = DATABASE()\n  AND (\n    COLUMN_NAME LIKE '%status%'\n    OR COLUMN_NAME LIKE '%payment%'\n    OR COLUMN_NAME LIKE '%state%'\n  )\n  AND TABLE_NAME NOT IN ('allowed_clients','asaas_payments','backup_history','bookings','bpo_charges','due_date_change_requests','expense_records','financial_charges','fuel_records','inspection_charges','inspections')\nORDER BY TABLE_NAME, COLUMN_NAME;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  TABLE_NAME,\n  COLUMN_NAME,\n  COLUMN_TYPE,\n  COLUMN_DEFAULT\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE TABLE_SCHEMA = DATABASE()\n  AND (\n    COLUMN_NAME LIKE '%status%'\n    OR COLUMN_NAME LIKE '%payment%'\n    OR COLUMN_NAME LIKE '%state%'\n  )\n  AND TABLE_NAME NOT IN ('allowed_clients','asaas_payments','backup_history','bookings','bpo_charges','due_date_change_requests','expense_records','financial_charges','fuel_records','inspection_charges','inspections')\nORDER BY TABLE_NAME, COLUMN_NAME;\n",
+  "rows": [
+    {
+      "TABLE_NAME": "maintenances",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('scheduled','in_progress','completed','cancelled')",
+      "COLUMN_DEFAULT": "scheduled"
+    },
+    {
+      "TABLE_NAME": "subscription_charges",
+      "COLUMN_NAME": "asaas_payment_id",
+      "COLUMN_TYPE": "varchar(64)",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "subscription_charges",
+      "COLUMN_NAME": "payment_links",
+      "COLUMN_TYPE": "text",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "subscription_charges",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','paid','overdue','cancelled','partial')",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "subscriptions",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('active','paused','cancelled')",
+      "COLUMN_DEFAULT": "active"
+    },
+    {
+      "TABLE_NAME": "unclassified_charges",
+      "COLUMN_NAME": "asaas_payment_id",
+      "COLUMN_TYPE": "varchar(255)",
+      "COLUMN_DEFAULT": "NULL"
+    },
+    {
+      "TABLE_NAME": "unclassified_charges",
+      "COLUMN_NAME": "asaas_status",
+      "COLUMN_TYPE": "varchar(50)",
+      "COLUMN_DEFAULT": "PENDING"
+    },
+    {
+      "TABLE_NAME": "unclassified_charges",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "enum('pending','paid','overdue','cancelled')",
+      "COLUMN_DEFAULT": "pending"
+    },
+    {
+      "TABLE_NAME": "webhook_logs",
+      "COLUMN_NAME": "asaas_payment_id",
+      "COLUMN_TYPE": "varchar(255)",
+      "COLUMN_DEFAULT": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "TABLE_NAME\tCOLUMN_NAME\tCOLUMN_TYPE\tCOLUMN_DEFAULT\nmaintenances\tstatus\tenum('scheduled','in_progress','completed','cancelled')\tscheduled\nsubscription_charges\tasaas_payment_id\tvarchar(64)\tNULL\nsubscription_charges\tpayment_links\ttext\tNULL\nsubscription_charges\tstatus\tenum('pending','paid','overdue','cancelled','partial')\tpending\nsubscriptions\tstatus\tenum('active','paused','cancelled')\tactive\nunclassified_charges\tasaas_payment_id\tvarchar(255)\tNULL\nunclassified_charges\tasaas_status\tvarchar(50)\tPENDING\nunclassified_charges\tstatus\tenum('pending','paid','overdue','cancelled')\tpending\nwebhook_logs\tasaas_payment_id\tvarchar(255)\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 263
+}
