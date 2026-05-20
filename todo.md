@@ -2200,3 +2200,8 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Corrigido: fuelRecords.create agora insere imediatamente em bpo_charges com type="fuel" e valor correto
 - [x] Corrigido: 4 registros históricos corrigidos no banco (Vinicius R$28,46 / Diogo R$221,41 / Lucas R$254,47 / Erisvaldo R$41,79)
 - [x] Verificado: webhook do Asaas não sobrescreve o type ao atualizar status de pagamento
+
+## 🐛 BUG CORRIGIDO: Cobranças vencidas aparecendo como Pendente (20/05/2026)
+- [x] Causa raiz: CASE SQL no listAll não tratava payment_status='overdue' salvo no banco — caía no ELSE 'pending'
+- [x] Corrigido: adicionado WHEN ic.payment_status = 'overdue' THEN 'overdue' nas procedures listAll, myCharges e myRepairs
+- [x] Impacto: 27 cobranças com due_date jan/mar 2026 agora exibem "Vencido" corretamente
