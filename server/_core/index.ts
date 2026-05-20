@@ -27,13 +27,41 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+async function setupInitialAdmin() {
+  const { ENV } = await import("./env");
+  if (!ENV.initialAdminEmail || !ENV.initialAdminPassword) return;
+
+  const { getUserByEmail, createUser, updateUserPasswordHash } = await import("../db");
+  const { hashPassword } = await import("./oauth");
+  const { nanoid } = await import("nanoid");
+
+  const passwordHash = await hashPassword(ENV.initialAdminPassword);
+  const existing = await getUserByEmail(ENV.initialAdminEmail);
+
+  if (!existing) {
+    await createUser({
+      openId: `admin-${nanoid()}`,
+      email: ENV.initialAdminEmail,
+      name: ENV.initialAdminName,
+      passwordHash,
+      role: "admin",
+      loginMethod: "credentials",
+      lastSignedIn: new Date().toISOString(),
+    });
+    console.log(`[Setup] Admin criado: ${ENV.initialAdminEmail}`);
+  } else if (existing.role === "admin") {
+    await updateUserPasswordHash(existing.id, passwordHash);
+    console.log(`[Setup] Senha do admin atualizada: ${ENV.initialAdminEmail}`);
+  }
+}
+
 async function startServer() {
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  // OAuth callback under /api/oauth/callback
+  // Auth routes (login, change-password, admin set-user-password)
   registerOAuthRoutes(app);
 
   // Upload receipt endpoint
@@ -304,8 +332,11 @@ async function startServer() {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
+  server.listen(port, async () => {
     console.log(`Server running on http://localhost:${port}/`);
+    await setupInitialAdmin().catch(err =>
+      console.error("[Setup] Erro ao configurar admin inicial:", err)
+    );
   });
 }
 
