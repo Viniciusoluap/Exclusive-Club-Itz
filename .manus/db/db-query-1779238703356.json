@@ -1,0 +1,190 @@
+{
+  "query": "\n-- Verificar na inspection_charges\nSELECT 'inspection_charges' as tabela, id, client_email, amount, due_date, payment_status,\n  CASE\n    WHEN payment_status IN ('paid', 'cancelled') THEN payment_status\n    WHEN payment_status = 'pending' AND due_date < CURDATE() THEN 'overdue'\n    ELSE 'pending'\n  END AS effective_status\nFROM inspection_charges\nWHERE client_email IN (\n  'diogodosberto@hotmail.com',\n  'Andrezzacarvalhof@gmail.com',\n  'Rodrigosantana.14300@gmail.com',\n  'Kaioaraujo2233@icloud.com',\n  'motomais.acailandia@gmail.com',\n  'filippeamurta@gmail.com'\n)\nORDER BY due_date DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificar na inspection_charges\nSELECT 'inspection_charges' as tabela, id, client_email, amount, due_date, payment_status,\n  CASE\n    WHEN payment_status IN ('paid', 'cancelled') THEN payment_status\n    WHEN payment_status = 'pending' AND due_date < CURDATE() THEN 'overdue'\n    ELSE 'pending'\n  END AS effective_status\nFROM inspection_charges\nWHERE client_email IN (\n  'diogodosberto@hotmail.com',\n  'Andrezzacarvalhof@gmail.com',\n  'Rodrigosantana.14300@gmail.com',\n  'Kaioaraujo2233@icloud.com',\n  'motomais.acailandia@gmail.com',\n  'filippeamurta@gmail.com'\n)\nORDER BY due_date DESC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "tabela": "inspection_charges",
+      "id": "1590018",
+      "client_email": "Andrezzacarvalhof@gmail.com",
+      "amount": "274.17",
+      "due_date": "2026-05-19 03:17:31",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1590015",
+      "client_email": "motomais.acailandia@gmail.com",
+      "amount": "274.17",
+      "due_date": "2026-05-19 03:17:31",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1590013",
+      "client_email": "diogodosberto@hotmail.com",
+      "amount": "274.17",
+      "due_date": "2026-05-19 03:17:31",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1590016",
+      "client_email": "Kaioaraujo2233@icloud.com",
+      "amount": "274.17",
+      "due_date": "2026-05-19 03:17:31",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1590004",
+      "client_email": "filippeamurta@gmail.com",
+      "amount": "1724.00",
+      "due_date": "2026-05-19 03:10:39",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1590001",
+      "client_email": "diogodosberto@hotmail.com",
+      "amount": "862.00",
+      "due_date": "2026-05-19 03:10:39",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1500003",
+      "client_email": "motomais.acailandia@gmail.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1500001",
+      "client_email": "diogodosberto@hotmail.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1500004",
+      "client_email": "Kaioaraujo2233@icloud.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1500006",
+      "client_email": "Andrezzacarvalhof@gmail.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1470003",
+      "client_email": "motomais.acailandia@gmail.com",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1470001",
+      "client_email": "diogodosberto@hotmail.com",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1470007",
+      "client_email": "Andrezzacarvalhof@gmail.com",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1470005",
+      "client_email": "Kaioaraujo2233@icloud.com",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "pending",
+      "effective_status": "overdue"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "990004",
+      "client_email": "filippeamurta@gmail.com",
+      "amount": "25.71",
+      "due_date": "2026-03-31 00:00:00",
+      "payment_status": "overdue",
+      "effective_status": "pending"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "990001",
+      "client_email": "diogodosberto@hotmail.com",
+      "amount": "12.86",
+      "due_date": "2026-03-31 00:00:00",
+      "payment_status": "overdue",
+      "effective_status": "pending"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1050003",
+      "client_email": "motomais.acailandia@gmail.com",
+      "amount": "248.00",
+      "due_date": "2026-03-09 13:39:39",
+      "payment_status": "overdue",
+      "effective_status": "pending"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1050001",
+      "client_email": "diogodosberto@hotmail.com",
+      "amount": "248.00",
+      "due_date": "2026-03-09 13:39:39",
+      "payment_status": "overdue",
+      "effective_status": "pending"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1050007",
+      "client_email": "Andrezzacarvalhof@gmail.com",
+      "amount": "248.00",
+      "due_date": "2026-03-09 13:39:39",
+      "payment_status": "overdue",
+      "effective_status": "pending"
+    },
+    {
+      "tabela": "inspection_charges",
+      "id": "1050005",
+      "client_email": "Kaioaraujo2233@icloud.com",
+      "amount": "248.00",
+      "due_date": "2026-03-09 13:39:39",
+      "payment_status": "overdue",
+      "effective_status": "pending"
+    }
+  ],
+  "messages": [],
+  "stdout": "tabela\tid\tclient_email\tamount\tdue_date\tpayment_status\teffective_status\ninspection_charges\t1590018\tAndrezzacarvalhof@gmail.com\t274.17\t2026-05-19 03:17:31\tpending\toverdue\ninspection_charges\t1590015\tmotomais.acailandia@gmail.com\t274.17\t2026-05-19 03:17:31\tpending\toverdue\ninspection_charges\t1590013\tdiogodosberto@hotmail.com\t274.17\t2026-05-19 03:17:31\tpending\toverdue\ninspection_charges\t1590016\tKaioaraujo2233@icloud.com\t274.17\t2026-05-19 03:17:31\tpending\toverdue\ninspection_charges\t1590004\tfilippeamurta@gmail.com\t1724.00\t2026-05-19 03:10:39\tpending\toverdue\ninspection_charges\t1590001\tdiogodosberto@hotmail.com\t862.00\t2026-05-19 03:10:39\tpending\toverdue\ninspection_charges\t1500003\tmotomais.acailandia@gmail.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\ninspection_charges\t1500001\tdiogodosberto@hotmail.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\ninspection_charges\t1500004\tKaioaraujo2233@icloud.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\ninspection_charges\t1500006\tAndrezzacarvalhof@gmail.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\ninspection_charges\t1470003\tmotomais.acailandia@gmail.com\t102.55\t2026-04-20 00:00:00\tpending\toverdue\ninspection_charges\t1470001\tdiogodosberto@hotmail.com\t102.55\t2026-04-20 00:00:00\tpending\toverdue\ninspection_charges\t1470007\tAndrezzacarvalhof@gmail.com\t102.55\t2026-04-20 00:00:00\tpending\toverdue\ninspection_charges\t1470005\tKaioaraujo2233@icloud.com\t102.55\t2026-04-20 00:00:00\tpending\toverdue\ninspection_charges\t990004\tfilippeamurta@gmail.com\t25.71\t2026-03-31 00:00:00\toverdue\tpending\ninspection_charges\t990001\tdiogodosberto@hotmail.com\t12.86\t2026-03-31 00:00:00\toverdue\tpending\ninspection_charges\t1050003\tmotomais.acailandia@gmail.com\t248.00\t2026-03-09 13:39:39\toverdue\tpending\ninspection_charges\t1050001\tdiogodosberto@hotmail.com\t248.00\t2026-03-09 13:39:39\toverdue\tpending\ninspection_charges\t1050007\tAndrezzacarvalhof@gmail.com\t248.00\t2026-03-09 13:39:39\toverdue\tpending\ninspection_charges\t1050005\tKaioaraujo2233@icloud.com\t248.00\t2026-03-09 13:39:39\toverdue\tpending\n",
+  "stderr": "",
+  "execution_time_ms": 261
+}

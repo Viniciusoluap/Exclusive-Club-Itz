@@ -4416,6 +4416,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 COALESCE(ac.name, ic.client_email) AS client_name,
                 CASE
                   WHEN ic.payment_status IN ('paid', 'cancelled') THEN ic.payment_status
+                  WHEN ic.payment_status = 'overdue' THEN 'overdue'
                   WHEN ic.payment_status = 'pending' AND ic.due_date < CURDATE() THEN 'overdue'
                   ELSE 'pending'
                 END AS effective_status,
@@ -4686,7 +4687,12 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               ic.id as charge_id,
               ic.amount,
               ic.due_date,
-              ic.payment_status,
+              CASE
+                WHEN ic.payment_status IN ('paid', 'cancelled') THEN ic.payment_status
+                WHEN ic.payment_status = 'overdue' THEN 'overdue'
+                WHEN ic.payment_status = 'pending' AND ic.due_date < CURDATE() THEN 'overdue'
+                ELSE ic.payment_status
+              END AS payment_status,
               ic.asaas_charge_id,
               ic.receipt_url,
               ic.failed_items
@@ -4811,7 +4817,12 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               ic.description,
               ic.amount,
               ic.due_date as dueDate,
-              ic.payment_status as paymentStatus,
+              CASE
+                WHEN ic.payment_status IN ('paid', 'cancelled') THEN ic.payment_status
+                WHEN ic.payment_status = 'overdue' THEN 'overdue'
+                WHEN ic.payment_status = 'pending' AND ic.due_date < CURDATE() THEN 'overdue'
+                ELSE ic.payment_status
+              END AS paymentStatus,
               ic.receipt_url as receiptUrl,
               ic.receipt_url as photoUrl,
               ic.asaas_charge_id as asaasChargeId,

@@ -1,0 +1,160 @@
+{
+  "query": "\nSELECT \n  id,\n  client_email,\n  amount,\n  due_date,\n  payment_status,\n  CASE\n    WHEN payment_status IN ('paid', 'cancelled') THEN payment_status\n    WHEN payment_status = 'pending' AND due_date < CURDATE() THEN 'overdue'\n    ELSE 'pending'\n  END AS effective_status,\n  CURDATE() as hoje,\n  (due_date < CURDATE()) as esta_vencido\nFROM inspection_charges\nWHERE payment_status = 'pending'\nORDER BY due_date ASC\nLIMIT 15;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  id,\n  client_email,\n  amount,\n  due_date,\n  payment_status,\n  CASE\n    WHEN payment_status IN ('paid', 'cancelled') THEN payment_status\n    WHEN payment_status = 'pending' AND due_date < CURDATE() THEN 'overdue'\n    ELSE 'pending'\n  END AS effective_status,\n  CURDATE() as hoje,\n  (due_date < CURDATE()) as esta_vencido\nFROM inspection_charges\nWHERE payment_status = 'pending'\nORDER BY due_date ASC\nLIMIT 15;\n",
+  "rows": [
+    {
+      "id": "1470003",
+      "client_email": "motomais.acailandia@gmail.com",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1470006",
+      "client_email": "gabnercorporation@gmail.com",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1470005",
+      "client_email": "Kaioaraujo2233@icloud.com",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1470002",
+      "client_email": "diogobritolemos@gmail.com",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1470007",
+      "client_email": "Andrezzacarvalhof@gmail.com",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1470001",
+      "client_email": "diogodosberto@hotmail.com",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1470008",
+      "client_email": "cesarmarcus886@gmail.com",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1500004",
+      "client_email": "Kaioaraujo2233@icloud.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1500009",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1500003",
+      "client_email": "motomais.acailandia@gmail.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1500006",
+      "client_email": "Andrezzacarvalhof@gmail.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1500002",
+      "client_email": "diogobritolemos@gmail.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1500005",
+      "client_email": "gabnercorporation@gmail.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1500007",
+      "client_email": "cesarmarcus886@gmail.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    },
+    {
+      "id": "1500001",
+      "client_email": "diogodosberto@hotmail.com",
+      "amount": "87.50",
+      "due_date": "2026-05-09 18:48:40",
+      "payment_status": "pending",
+      "effective_status": "overdue",
+      "hoje": "2026-05-20",
+      "esta_vencido": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_email\tamount\tdue_date\tpayment_status\teffective_status\thoje\testa_vencido\n1470003\tmotomais.acailandia@gmail.com\t102.55\t2026-04-20 00:00:00\tpending\toverdue\t2026-05-20\t1\n1470006\tgabnercorporation@gmail.com\t102.55\t2026-04-20 00:00:00\tpending\toverdue\t2026-05-20\t1\n1470005\tKaioaraujo2233@icloud.com\t102.55\t2026-04-20 00:00:00\tpending\toverdue\t2026-05-20\t1\n1470002\tdiogobritolemos@gmail.com\t102.55\t2026-04-20 00:00:00\tpending\toverdue\t2026-05-20\t1\n1470007\tAndrezzacarvalhof@gmail.com\t102.55\t2026-04-20 00:00:00\tpending\toverdue\t2026-05-20\t1\n1470001\tdiogodosberto@hotmail.com\t102.55\t2026-04-20 00:00:00\tpending\toverdue\t2026-05-20\t1\n1470008\tcesarmarcus886@gmail.com\t102.55\t2026-04-20 00:00:00\tpending\toverdue\t2026-05-20\t1\n1500004\tKaioaraujo2233@icloud.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\t2026-05-20\t1\n1500009\tv6h2sw5vmn@privaterelay.appleid.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\t2026-05-20\t1\n1500003\tmotomais.acailandia@gmail.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\t2026-05-20\t1\n1500006\tAndrezzacarvalhof@gmail.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\t2026-05-20\t1\n1500002\tdiogobritolemos@gmail.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\t2026-05-20\t1\n1500005\tgabnercorporation@gmail.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\t2026-05-20\t1\n1500007\tcesarmarcus886@gmail.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\t2026-05-20\t1\n1500001\tdiogodosberto@hotmail.com\t87.50\t2026-05-09 18:48:40\tpending\toverdue\t2026-05-20\t1\n",
+  "stderr": "",
+  "execution_time_ms": 265
+}

@@ -1,0 +1,28 @@
+{
+  "query": "\nSELECT payment_status, COUNT(*) as total, MIN(due_date) as mais_antiga, MAX(due_date) as mais_recente\nFROM inspection_charges\nGROUP BY payment_status\nORDER BY payment_status;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT payment_status, COUNT(*) as total, MIN(due_date) as mais_antiga, MAX(due_date) as mais_recente\nFROM inspection_charges\nGROUP BY payment_status\nORDER BY payment_status;\n",
+  "rows": [
+    {
+      "payment_status": "pending",
+      "total": "36",
+      "mais_antiga": "2026-04-20 00:00:00",
+      "mais_recente": "2026-05-19 03:17:31"
+    },
+    {
+      "payment_status": "paid",
+      "total": "26",
+      "mais_antiga": "2025-02-25 00:00:00",
+      "mais_recente": "2026-05-09 18:48:40"
+    },
+    {
+      "payment_status": "overdue",
+      "total": "27",
+      "mais_antiga": "2026-01-05 00:00:00",
+      "mais_recente": "2026-03-31 00:00:00"
+    }
+  ],
+  "messages": [],
+  "stdout": "payment_status\ttotal\tmais_antiga\tmais_recente\npending\t36\t2026-04-20 00:00:00\t2026-05-19 03:17:31\npaid\t26\t2025-02-25 00:00:00\t2026-05-09 18:48:40\noverdue\t27\t2026-01-05 00:00:00\t2026-03-31 00:00:00\n",
+  "stderr": "",
+  "execution_time_ms": 261
+}

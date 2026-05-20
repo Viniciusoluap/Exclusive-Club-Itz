@@ -1,0 +1,8 @@
+{
+  "query": "\nSELECT \n  id,\n  client_name,\n  client_email,\n  amount,\n  due_date,\n  payment_status,\n  CASE\n    WHEN payment_status IN ('paid', 'cancelled') THEN payment_status\n    WHEN payment_status = 'pending' AND due_date < CURDATE() THEN 'overdue'\n    ELSE 'pending'\n  END AS effective_status,\n  CURDATE() as hoje\nFROM inspection_charges\nWHERE payment_status = 'pending'\nORDER BY due_date ASC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  id,\n  client_name,\n  client_email,\n  amount,\n  due_date,\n  payment_status,\n  CASE\n    WHEN payment_status IN ('paid', 'cancelled') THEN payment_status\n    WHEN payment_status = 'pending' AND due_date < CURDATE() THEN 'overdue'\n    ELSE 'pending'\n  END AS effective_status,\n  CURDATE() as hoje\nFROM inspection_charges\nWHERE payment_status = 'pending'\nORDER BY due_date ASC\nLIMIT 20;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 2: Unknown column 'client_name' in 'field list'"
+  ]
+}
