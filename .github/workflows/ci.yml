@@ -11,22 +11,25 @@ jobs:
     name: Build & Type Check
     runs-on: ubuntu-latest
 
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "pnpm"
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --ignore-scripts=false
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
 
       - name: Type check
         run: pnpm check
