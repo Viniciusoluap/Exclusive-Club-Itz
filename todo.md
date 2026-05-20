@@ -2205,3 +2205,9 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Causa raiz: CASE SQL no listAll não tratava payment_status='overdue' salvo no banco — caía no ELSE 'pending'
 - [x] Corrigido: adicionado WHEN ic.payment_status = 'overdue' THEN 'overdue' nas procedures listAll, myCharges e myRepairs
 - [x] Impacto: 27 cobranças com due_date jan/mar 2026 agora exibem "Vencido" corretamente
+
+## ✅ IMPLEMENTADO: Job Diário de Atualização de Status (overdue)
+- [x] Criado server/jobs/updateOverdueStatus.ts — atualiza inspection_charges, bpo_charges e fuel_records
+- [x] Job agendado às 00:05 UTC via node-cron
+- [x] Execução imediata na inicialização do servidor (corrigiu 79 registros históricos)
+- [x] 4 testes automatizados passando
