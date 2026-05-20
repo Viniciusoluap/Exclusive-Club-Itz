@@ -1,21 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
-import { ENV } from "./_core/env";
+
+const ADMIN_OPEN_ID = "admin-test-id";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
-function createUserContext(openId: string, email: string, name: string): TrpcContext {
+function createUserContext(openId: string, email: string, name: string, role: "admin" | "user" | "employee" = "user"): TrpcContext {
   const user: AuthenticatedUser = {
     id: 1,
     openId,
     email,
     name,
-    loginMethod: "manus",
-    role: openId === ENV.ownerOpenId ? "admin" : "user",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    lastSignedIn: new Date(),
+    loginMethod: "credentials",
+    role,
+    passwordHash: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastSignedIn: new Date().toISOString(),
   };
 
   return {
@@ -29,9 +31,8 @@ function createUserContext(openId: string, email: string, name: string): TrpcCon
 }
 
 describe("Segurança de Acesso Admin", () => {
-  it("deve permitir que owner acesse rotas admin", async () => {
-    // Create context with owner's openId
-    const ctx = createUserContext(ENV.ownerOpenId, "owner@example.com", "Owner");
+  it("deve permitir que admin acesse rotas admin", async () => {
+    const ctx = createUserContext(ADMIN_OPEN_ID, "owner@example.com", "Owner", "admin");
     const caller = appRouter.createCaller(ctx);
 
     // Should be able to access admin routes
@@ -86,8 +87,8 @@ describe("Segurança de Acesso Admin", () => {
     ).rejects.toThrow();
   });
 
-  it("deve permitir que owner crie clientes", async () => {
-    const ctx = createUserContext(ENV.ownerOpenId, "owner@example.com", "Owner");
+  it("deve permitir que admin crie clientes", async () => {
+    const ctx = createUserContext(ADMIN_OPEN_ID, "owner@example.com", "Owner", "admin");
     const caller = appRouter.createCaller(ctx);
 
     const testEmail = `test-owner-create-${Date.now()}@example.com`;
@@ -101,13 +102,11 @@ describe("Segurança de Acesso Admin", () => {
     expect(result.success).toBe(true);
   });
 
-  it("deve verificar que role é atribuído corretamente baseado em ownerOpenId", () => {
-    // Owner context
-    const ownerCtx = createUserContext(ENV.ownerOpenId, "owner@example.com", "Owner");
-    expect(ownerCtx.user?.role).toBe("admin");
+  it("deve verificar que role é atribuído corretamente", () => {
+    const adminCtx = createUserContext(ADMIN_OPEN_ID, "owner@example.com", "Owner", "admin");
+    expect(adminCtx.user?.role).toBe("admin");
 
-    // Regular user context
-    const userCtx = createUserContext("other-id", "user@example.com", "User");
+    const userCtx = createUserContext("other-id", "user@example.com", "User", "user");
     expect(userCtx.user?.role).toBe("user");
   });
 });
