@@ -1,0 +1,60 @@
+{
+  "query": "\nSELECT ic.id, ic.client_email, ac.name as ac_name\nFROM inspection_charges ic\nLEFT JOIN allowed_clients ac ON ac.email = ic.client_email\nWHERE ic.client_email LIKE '%vini%' OR ac.name LIKE '%vini%'\nLIMIT 10;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT ic.id, ic.client_email, ac.name as ac_name\nFROM inspection_charges ic\nLEFT JOIN allowed_clients ac ON ac.email = ic.client_email\nWHERE ic.client_email LIKE '%vini%' OR ac.name LIKE '%vini%'\nLIMIT 10;\n",
+  "rows": [
+    {
+      "id": "1590020",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "ac_name": "Vinicius Freitas"
+    },
+    {
+      "id": "1590011",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "ac_name": "Vinicius Freitas"
+    },
+    {
+      "id": "1500009",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "ac_name": "Vinicius Freitas"
+    },
+    {
+      "id": "1500008",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "ac_name": "Vinicius Freitas"
+    },
+    {
+      "id": "1470009",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "ac_name": "Vinicius Freitas"
+    },
+    {
+      "id": "1050011",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "ac_name": "Vinicius Freitas"
+    },
+    {
+      "id": "1050010",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "ac_name": "Vinicius Freitas"
+    },
+    {
+      "id": "1050009",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "ac_name": "Vinicius Freitas"
+    },
+    {
+      "id": "990011",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "ac_name": "Vinicius Freitas"
+    },
+    {
+      "id": "930011",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "ac_name": "Vinicius Freitas"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_email\tac_name\n1590020\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n1590011\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n1500009\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n1500008\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n1470009\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n1050011\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n1050010\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n1050009\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n990011\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n930011\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n",
+  "stderr": "",
+  "execution_time_ms": 262
+}

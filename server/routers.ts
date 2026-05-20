@@ -4399,7 +4399,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           }
           if (input?.clientSearch && input.clientSearch.trim()) {
             const escaped = input.clientSearch.replace(/'/g, "''");
-            innerFilters.push(`(ic.client_email LIKE '%${escaped}%' OR ic.client_name LIKE '%${escaped}%')`);
+            innerFilters.push(`(ic.client_email LIKE '%${escaped}%' OR ac.name LIKE '%${escaped}%')`);
           }
           const innerWhere = innerFilters.length > 0 ? `WHERE ${innerFilters.join(' AND ')}` : '';
 
