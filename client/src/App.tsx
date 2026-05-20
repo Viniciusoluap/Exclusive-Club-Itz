@@ -6,7 +6,6 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import WhatsAppButton from "./components/WhatsAppButton";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
-import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Galeria from "./pages/Galeria";
 import Reservas from "./pages/Reservas";
@@ -38,7 +37,6 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
-      <Route path={"/login"} component={Login} />
       <Route path={"/redirect"} component={RoleRedirect} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/galeria"} component={Galeria} />
