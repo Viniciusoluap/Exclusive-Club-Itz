@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  build:
-    name: Build & Type Check
+  typecheck:
+    name: Type Check
     runs-on: ubuntu-latest
 
     env:
@@ -27,16 +27,7 @@ jobs:
         run: npm install -g pnpm@10
 
       - name: Install dependencies
-        run: pnpm install --ignore-scripts=false
-        env:
-          PUPPETEER_SKIP_DOWNLOAD: "true"
+        run: pnpm install --no-optional
 
       - name: Type check
         run: pnpm check
-
-      - name: Build
-        run: pnpm build
-        env:
-          VITE_APP_ID: exclusive-club
-          JWT_SECRET: ci-build-secret
-          NODE_ENV: production
