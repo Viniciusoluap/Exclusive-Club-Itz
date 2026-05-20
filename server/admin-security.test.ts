@@ -13,9 +13,10 @@ function createUserContext(openId: string, email: string, name: string): TrpcCon
     name,
     loginMethod: "manus",
     role: openId === ENV.ownerOpenId ? "admin" : "user",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    lastSignedIn: new Date(),
+    passwordHash: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastSignedIn: new Date().toISOString(),
   };
 
   return {

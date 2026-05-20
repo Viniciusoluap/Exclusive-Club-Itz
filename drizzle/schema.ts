@@ -233,6 +233,7 @@ export const users = mysqlTable("users", {
 	email: varchar({ length: 320 }),
 	loginMethod: varchar({ length: 64 }),
 	role: mysqlEnum(['user','admin','employee']).default('user').notNull(),
+	passwordHash: varchar("password_hash", { length: 255 }),
 	createdAt: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),
 	updatedAt: timestamp({ mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 	lastSignedIn: timestamp({ mode: 'string' }).default('CURRENT_TIMESTAMP').notNull(),

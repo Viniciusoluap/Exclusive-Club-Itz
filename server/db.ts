@@ -104,6 +104,32 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateUserPasswordHash(userId: number, passwordHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+}
+
+export async function getAdminCount() {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.select().from(users).where(eq(users.role, "admin"));
+  return result.length;
+}
+
+export async function createUser(user: InsertUser) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(users).values(user);
+}
+
 // Allowed Clients
 export async function getAllowedClients() {
   const db = await getDb();
