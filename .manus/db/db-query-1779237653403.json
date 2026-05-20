@@ -1,0 +1,9 @@
+{
+  "query": "\n-- Corrigir os 4 abastecimentos com type=other e valor errado\n-- Cruzar com fuel_records para pegar o valor correto\n\nUPDATE bpo_charges bc\nJOIN fuel_records fr ON bc.asaas_charge_id = fr.asaas_charge_id\nSET \n  bc.type = 'fuel',\n  bc.value = fr.total_amount / 100\nWHERE bc.id IN (900001, 900002, 900003, 900004)\n  AND bc.description LIKE 'Abastecimento%';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Corrigir os 4 abastecimentos com type=other e valor errado\n-- Cruzar com fuel_records para pegar o valor correto\n\nUPDATE bpo_charges bc\nJOIN fuel_records fr ON bc.asaas_charge_id = fr.asaas_charge_id\nSET \n  bc.type = 'fuel',\n  bc.value = fr.total_amount / 100\nWHERE bc.id IN (900001, 900002, 900003, 900004)\n  AND bc.description LIKE 'Abastecimento%';\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 275
+}

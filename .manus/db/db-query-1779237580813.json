@@ -1,0 +1,50 @@
+{
+  "query": "\n-- Abastecimentos salvos com type=other em vez de type=fuel\nSELECT \n  id,\n  client_email,\n  client_name,\n  type,\n  value / 100 as valor_reais,\n  status,\n  due_date,\n  description\nFROM bpo_charges\nWHERE description LIKE 'Abastecimento%'\n  AND type = 'other'\nORDER BY created_at DESC\nLIMIT 30;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Abastecimentos salvos com type=other em vez de type=fuel\nSELECT \n  id,\n  client_email,\n  client_name,\n  type,\n  value / 100 as valor_reais,\n  status,\n  due_date,\n  description\nFROM bpo_charges\nWHERE description LIKE 'Abastecimento%'\n  AND type = 'other'\nORDER BY created_at DESC\nLIMIT 30;\n",
+  "rows": [
+    {
+      "id": "900002",
+      "client_email": "Limiransafg@gmail.com",
+      "client_name": "LUCAS SANTOS MIRANDA",
+      "type": "other",
+      "valor_reais": "2.544700",
+      "status": "pending",
+      "due_date": "2026-05-20",
+      "description": "Abastecimento - Focker 215 150HP - 38.08L"
+    },
+    {
+      "id": "900003",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "client_name": "Vinicius Freitas",
+      "type": "other",
+      "valor_reais": "0.284600",
+      "status": "pending",
+      "due_date": "2026-05-20",
+      "description": "Abastecimento - Focker 215 150HP - 2.88L"
+    },
+    {
+      "id": "900004",
+      "client_email": "via.vips@hotmail.com",
+      "client_name": "Erisvaldo Alves da Silva",
+      "type": "other",
+      "valor_reais": "0.417900",
+      "status": "pending",
+      "due_date": "2026-05-20",
+      "description": "Abastecimento - Focker 215 150HP - 4.96L"
+    },
+    {
+      "id": "900001",
+      "client_email": "diogobritolemos@gmail.com",
+      "client_name": "Diogo de Lemos Brito",
+      "type": "other",
+      "valor_reais": "2.214100",
+      "status": "pending",
+      "due_date": "2026-05-20",
+      "description": "Abastecimento - Focker 215 150HP - 32.93L"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_email\tclient_name\ttype\tvalor_reais\tstatus\tdue_date\tdescription\n900002\tLimiransafg@gmail.com\tLUCAS SANTOS MIRANDA\tother\t2.544700\tpending\t2026-05-20\tAbastecimento - Focker 215 150HP - 38.08L\n900003\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\tother\t0.284600\tpending\t2026-05-20\tAbastecimento - Focker 215 150HP - 2.88L\n900004\tvia.vips@hotmail.com\tErisvaldo Alves da Silva\tother\t0.417900\tpending\t2026-05-20\tAbastecimento - Focker 215 150HP - 4.96L\n900001\tdiogobritolemos@gmail.com\tDiogo de Lemos Brito\tother\t2.214100\tpending\t2026-05-20\tAbastecimento - Focker 215 150HP - 32.93L\n",
+  "stderr": "",
+  "execution_time_ms": 273
+}

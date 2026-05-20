@@ -1,0 +1,20 @@
+{
+  "query": "\n-- Verificar o registro específico do abastecimento de R$28,46\nSELECT \n  id,\n  client_email,\n  type,\n  value / 100 as valor_reais,\n  status,\n  due_date,\n  asaas_charge_id,\n  description\nFROM bpo_charges\nWHERE id = 900003;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificar o registro específico do abastecimento de R$28,46\nSELECT \n  id,\n  client_email,\n  type,\n  value / 100 as valor_reais,\n  status,\n  due_date,\n  asaas_charge_id,\n  description\nFROM bpo_charges\nWHERE id = 900003;\n",
+  "rows": [
+    {
+      "id": "900003",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "type": "other",
+      "valor_reais": "0.284600",
+      "status": "pending",
+      "due_date": "2026-05-20",
+      "asaas_charge_id": "pay_dokgkl7e0qecp1y6",
+      "description": "Abastecimento - Focker 215 150HP - 2.88L"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_email\ttype\tvalor_reais\tstatus\tdue_date\tasaas_charge_id\tdescription\n900003\tv6h2sw5vmn@privaterelay.appleid.com\tother\t0.284600\tpending\t2026-05-20\tpay_dokgkl7e0qecp1y6\tAbastecimento - Focker 215 150HP - 2.88L\n",
+  "stderr": "",
+  "execution_time_ms": 259
+}

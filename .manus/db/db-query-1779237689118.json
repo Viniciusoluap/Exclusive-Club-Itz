@@ -1,0 +1,9 @@
+{
+  "query": "\n-- Corrigir: dividir por 100 para chegar ao valor correto em reais\n-- 22141.00 / 100 = 221.41 ✅ (R$ 221,41 para Diogo)\n-- 25447.00 / 100 = 254.47 ✅ (R$ 254,47 para Lucas)\n-- 2846.00 / 100 = 28.46 ✅ (R$ 28,46 para Vinicius)\n-- 4179.00 / 100 = 41.79 ✅ (R$ 41,79 para Erisvaldo)\nUPDATE bpo_charges\nSET value = value / 100\nWHERE id IN (900001, 900002, 900003, 900004)\n  AND type = 'fuel';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Corrigir: dividir por 100 para chegar ao valor correto em reais\n-- 22141.00 / 100 = 221.41 ✅ (R$ 221,41 para Diogo)\n-- 25447.00 / 100 = 254.47 ✅ (R$ 254,47 para Lucas)\n-- 2846.00 / 100 = 28.46 ✅ (R$ 28,46 para Vinicius)\n-- 4179.00 / 100 = 41.79 ✅ (R$ 41,79 para Erisvaldo)\nUPDATE bpo_charges\nSET value = value / 100\nWHERE id IN (900001, 900002, 900003, 900004)\n  AND type = 'fuel';\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 268
+}

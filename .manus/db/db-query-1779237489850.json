@@ -1,0 +1,22 @@
+{
+  "query": "\nSELECT id, name, email, is_active\nFROM allowed_clients\nWHERE name LIKE '%Vinicius%' OR email LIKE '%vinicius%' OR email LIKE '%freitas%' OR email LIKE '%privaterelay%'\nORDER BY id;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT id, name, email, is_active\nFROM allowed_clients\nWHERE name LIKE '%Vinicius%' OR email LIKE '%vinicius%' OR email LIKE '%freitas%' OR email LIKE '%privaterelay%'\nORDER BY id;\n",
+  "rows": [
+    {
+      "id": "1860001",
+      "name": "Vinicius Freitas",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "is_active": "1"
+    },
+    {
+      "id": "2670003",
+      "name": "VINICIUS FERREIRA DA SILVA",
+      "email": "vinibomdemaiszi@gmail.com",
+      "is_active": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\tis_active\n1860001\tVinicius Freitas\tv6h2sw5vmn@privaterelay.appleid.com\t1\n2670003\tVINICIUS FERREIRA DA SILVA\tvinibomdemaiszi@gmail.com\t0\n",
+  "stderr": "",
+  "execution_time_ms": 262
+}

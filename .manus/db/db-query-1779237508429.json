@@ -1,0 +1,46 @@
+{
+  "query": "\n-- Simular exatamente o que a procedure faz com o email do Vinicius\nSELECT \n  fr.id,\n  fr.vessel_name as vesselName,\n  fr.liters / 100 as liters,\n  fr.total_amount / 100 as totalAmount,\n  fr.payment_status as paymentStatus,\n  fr.client_email,\n  fr.created_at as createdAt\nFROM fuel_records fr\nLEFT JOIN bookings b ON fr.booking_id = b.id\nWHERE fr.client_email = 'v6h2sw5vmn@privaterelay.appleid.com'\nORDER BY fr.created_at DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Simular exatamente o que a procedure faz com o email do Vinicius\nSELECT \n  fr.id,\n  fr.vessel_name as vesselName,\n  fr.liters / 100 as liters,\n  fr.total_amount / 100 as totalAmount,\n  fr.payment_status as paymentStatus,\n  fr.client_email,\n  fr.created_at as createdAt\nFROM fuel_records fr\nLEFT JOIN bookings b ON fr.booking_id = b.id\nWHERE fr.client_email = 'v6h2sw5vmn@privaterelay.appleid.com'\nORDER BY fr.created_at DESC;\n",
+  "rows": [
+    {
+      "id": "2220002",
+      "vesselName": "Focker 215 150HP",
+      "liters": "2.8800",
+      "totalAmount": "28.4600",
+      "paymentStatus": "pending",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "createdAt": "2026-05-19 16:45:37"
+    },
+    {
+      "id": "2100001",
+      "vesselName": "JETSKI SEADOO GTI SE 130HP",
+      "liters": "35.0000",
+      "totalAmount": "233.3000",
+      "paymentStatus": "paid",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "createdAt": "2026-05-03 20:54:41"
+    },
+    {
+      "id": "1890001",
+      "vesselName": "Focker 215 150HP",
+      "liters": "20.0400",
+      "totalAmount": "136.0500",
+      "paymentStatus": "paid",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "createdAt": "2026-03-17 15:46:12"
+    },
+    {
+      "id": "1830001",
+      "vesselName": "Focker 215 150HP",
+      "liters": "16.3500",
+      "totalAmount": "112.8400",
+      "paymentStatus": "paid",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "createdAt": "2026-02-25 18:46:14"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvesselName\tliters\ttotalAmount\tpaymentStatus\tclient_email\tcreatedAt\n2220002\tFocker 215 150HP\t2.8800\t28.4600\tpending\tv6h2sw5vmn@privaterelay.appleid.com\t2026-05-19 16:45:37\n2100001\tJETSKI SEADOO GTI SE 130HP\t35.0000\t233.3000\tpaid\tv6h2sw5vmn@privaterelay.appleid.com\t2026-05-03 20:54:41\n1890001\tFocker 215 150HP\t20.0400\t136.0500\tpaid\tv6h2sw5vmn@privaterelay.appleid.com\t2026-03-17 15:46:12\n1830001\tFocker 215 150HP\t16.3500\t112.8400\tpaid\tv6h2sw5vmn@privaterelay.appleid.com\t2026-02-25 18:46:14\n",
+  "stderr": "",
+  "execution_time_ms": 261
+}

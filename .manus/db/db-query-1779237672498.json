@@ -1,0 +1,18 @@
+{
+  "query": "\n-- Verificar o schema da tabela bpo_charges para entender a unidade do campo value\nSHOW COLUMNS FROM bpo_charges WHERE Field = 'value';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificar o schema da tabela bpo_charges para entender a unidade do campo value\nSHOW COLUMNS FROM bpo_charges WHERE Field = 'value';\n",
+  "rows": [
+    {
+      "Field": "value",
+      "Type": "decimal(10,2)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nvalue\tdecimal(10,2)\tNO\t\tNULL\t\n",
+  "stderr": "",
+  "execution_time_ms": 261
+}

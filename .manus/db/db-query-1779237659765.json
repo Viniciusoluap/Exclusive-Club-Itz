@@ -1,0 +1,42 @@
+{
+  "query": "\n-- Verificar os asaas_charge_id dos 4 registros problemáticos\nSELECT bc.id, bc.asaas_charge_id, bc.type, bc.value/100 as valor_atual,\n       fr.asaas_charge_id as fr_charge_id, fr.total_amount/100 as valor_correto\nFROM bpo_charges bc\nLEFT JOIN fuel_records fr ON bc.asaas_charge_id = fr.asaas_charge_id\nWHERE bc.id IN (900001, 900002, 900003, 900004);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificar os asaas_charge_id dos 4 registros problemáticos\nSELECT bc.id, bc.asaas_charge_id, bc.type, bc.value/100 as valor_atual,\n       fr.asaas_charge_id as fr_charge_id, fr.total_amount/100 as valor_correto\nFROM bpo_charges bc\nLEFT JOIN fuel_records fr ON bc.asaas_charge_id = fr.asaas_charge_id\nWHERE bc.id IN (900001, 900002, 900003, 900004);\n",
+  "rows": [
+    {
+      "id": "900001",
+      "asaas_charge_id": "pay_t1k9gh04z88hltyk",
+      "type": "fuel",
+      "valor_atual": "2.214100",
+      "fr_charge_id": "pay_t1k9gh04z88hltyk",
+      "valor_correto": "221.4100"
+    },
+    {
+      "id": "900002",
+      "asaas_charge_id": "pay_xtkwai13f1kcy11y",
+      "type": "fuel",
+      "valor_atual": "2.544700",
+      "fr_charge_id": "pay_xtkwai13f1kcy11y",
+      "valor_correto": "254.4700"
+    },
+    {
+      "id": "900003",
+      "asaas_charge_id": "pay_dokgkl7e0qecp1y6",
+      "type": "fuel",
+      "valor_atual": "0.284600",
+      "fr_charge_id": "pay_dokgkl7e0qecp1y6",
+      "valor_correto": "28.4600"
+    },
+    {
+      "id": "900004",
+      "asaas_charge_id": "pay_bld64dm37nvamjl9",
+      "type": "fuel",
+      "valor_atual": "0.417900",
+      "fr_charge_id": "pay_bld64dm37nvamjl9",
+      "valor_correto": "41.7900"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tasaas_charge_id\ttype\tvalor_atual\tfr_charge_id\tvalor_correto\n900001\tpay_t1k9gh04z88hltyk\tfuel\t2.214100\tpay_t1k9gh04z88hltyk\t221.4100\n900002\tpay_xtkwai13f1kcy11y\tfuel\t2.544700\tpay_xtkwai13f1kcy11y\t254.4700\n900003\tpay_dokgkl7e0qecp1y6\tfuel\t0.284600\tpay_dokgkl7e0qecp1y6\t28.4600\n900004\tpay_bld64dm37nvamjl9\tfuel\t0.417900\tpay_bld64dm37nvamjl9\t41.7900\n",
+  "stderr": "",
+  "execution_time_ms": 270
+}

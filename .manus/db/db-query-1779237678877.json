@@ -1,0 +1,38 @@
+{
+  "query": "\n-- Verificar os valores após a correção\nSELECT id, client_name, type, value as valor_em_reais, description\nFROM bpo_charges\nWHERE id IN (900001, 900002, 900003, 900004);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificar os valores após a correção\nSELECT id, client_name, type, value as valor_em_reais, description\nFROM bpo_charges\nWHERE id IN (900001, 900002, 900003, 900004);\n",
+  "rows": [
+    {
+      "id": "900001",
+      "client_name": "Diogo de Lemos Brito",
+      "type": "fuel",
+      "valor_em_reais": "22141.00",
+      "description": "Abastecimento - Focker 215 150HP - 32.93L"
+    },
+    {
+      "id": "900002",
+      "client_name": "LUCAS SANTOS MIRANDA",
+      "type": "fuel",
+      "valor_em_reais": "25447.00",
+      "description": "Abastecimento - Focker 215 150HP - 38.08L"
+    },
+    {
+      "id": "900003",
+      "client_name": "Vinicius Freitas",
+      "type": "fuel",
+      "valor_em_reais": "2846.00",
+      "description": "Abastecimento - Focker 215 150HP - 2.88L"
+    },
+    {
+      "id": "900004",
+      "client_name": "Erisvaldo Alves da Silva",
+      "type": "fuel",
+      "valor_em_reais": "4179.00",
+      "description": "Abastecimento - Focker 215 150HP - 4.96L"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_name\ttype\tvalor_em_reais\tdescription\n900001\tDiogo de Lemos Brito\tfuel\t22141.00\tAbastecimento - Focker 215 150HP - 32.93L\n900002\tLUCAS SANTOS MIRANDA\tfuel\t25447.00\tAbastecimento - Focker 215 150HP - 38.08L\n900003\tVinicius Freitas\tfuel\t2846.00\tAbastecimento - Focker 215 150HP - 2.88L\n900004\tErisvaldo Alves da Silva\tfuel\t4179.00\tAbastecimento - Focker 215 150HP - 4.96L\n",
+  "stderr": "",
+  "execution_time_ms": 269
+}

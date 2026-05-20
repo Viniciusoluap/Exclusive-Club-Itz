@@ -1,0 +1,9 @@
+{
+  "query": "\n-- Corrigir os valores: estão com 100x menos que o correto\n-- valor_atual * 100 = valor_correto\nUPDATE bpo_charges\nSET value = value * 100\nWHERE id IN (900001, 900002, 900003, 900004)\n  AND type = 'fuel';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Corrigir os valores: estão com 100x menos que o correto\n-- valor_atual * 100 = valor_correto\nUPDATE bpo_charges\nSET value = value * 100\nWHERE id IN (900001, 900002, 900003, 900004)\n  AND type = 'fuel';\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 267
+}

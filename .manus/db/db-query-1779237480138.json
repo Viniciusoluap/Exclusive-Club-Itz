@@ -1,0 +1,58 @@
+{
+  "query": "\nSELECT \n  fr.id,\n  fr.client_email,\n  fr.client_name,\n  fr.vessel_name,\n  fr.total_amount / 100 as total_reais,\n  fr.booking_id,\n  fr.is_operational,\n  fr.created_at,\n  b.client_email as booking_client_email,\n  b.client_name as booking_client_name\nFROM fuel_records fr\nLEFT JOIN bookings b ON fr.booking_id = b.id\nWHERE fr.client_name LIKE '%Vinicius%' OR fr.client_email LIKE '%vinicius%' OR fr.client_email LIKE '%freitas%'\nORDER BY fr.created_at DESC\nLIMIT 20;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT \n  fr.id,\n  fr.client_email,\n  fr.client_name,\n  fr.vessel_name,\n  fr.total_amount / 100 as total_reais,\n  fr.booking_id,\n  fr.is_operational,\n  fr.created_at,\n  b.client_email as booking_client_email,\n  b.client_name as booking_client_name\nFROM fuel_records fr\nLEFT JOIN bookings b ON fr.booking_id = b.id\nWHERE fr.client_name LIKE '%Vinicius%' OR fr.client_email LIKE '%vinicius%' OR fr.client_email LIKE '%freitas%'\nORDER BY fr.created_at DESC\nLIMIT 20;\n",
+  "rows": [
+    {
+      "id": "2220002",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "client_name": "Vinicius Freitas",
+      "vessel_name": "Focker 215 150HP",
+      "total_reais": "28.4600",
+      "booking_id": "5520001",
+      "is_operational": "0",
+      "created_at": "2026-05-19 16:45:37",
+      "booking_client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "booking_client_name": "Vinicius Freitas"
+    },
+    {
+      "id": "2100001",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "client_name": "Vinicius Freitas",
+      "vessel_name": "JETSKI SEADOO GTI SE 130HP",
+      "total_reais": "233.3000",
+      "booking_id": "5700001",
+      "is_operational": "0",
+      "created_at": "2026-05-03 20:54:41",
+      "booking_client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "booking_client_name": "Vinicius Freitas"
+    },
+    {
+      "id": "1890001",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "client_name": "Vinicius Freitas",
+      "vessel_name": "Focker 215 150HP",
+      "total_reais": "136.0500",
+      "booking_id": "4170002",
+      "is_operational": "0",
+      "created_at": "2026-03-17 15:46:12",
+      "booking_client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "booking_client_name": "Vinicius Freitas"
+    },
+    {
+      "id": "1830001",
+      "client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "client_name": "Vinicius Freitas",
+      "vessel_name": "Focker 215 150HP",
+      "total_reais": "112.8400",
+      "booking_id": "4170003",
+      "is_operational": "0",
+      "created_at": "2026-02-25 18:46:14",
+      "booking_client_email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "booking_client_name": "Vinicius Freitas"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tclient_email\tclient_name\tvessel_name\ttotal_reais\tbooking_id\tis_operational\tcreated_at\tbooking_client_email\tbooking_client_name\n2220002\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\tFocker 215 150HP\t28.4600\t5520001\t0\t2026-05-19 16:45:37\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n2100001\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\tJETSKI SEADOO GTI SE 130HP\t233.3000\t5700001\t0\t2026-05-03 20:54:41\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n1890001\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\tFocker 215 150HP\t136.0500\t4170002\t0\t2026-03-17 15:46:12\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n1830001\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\tFocker 215 150HP\t112.8400\t4170003\t0\t2026-02-25 18:46:14\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\n",
+  "stderr": "",
+  "execution_time_ms": 299
+}

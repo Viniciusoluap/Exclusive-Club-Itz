@@ -1,0 +1,26 @@
+{
+  "query": "\n-- Verificar qual openId o Vinicius usa atualmente (o mais recente)\nSELECT id, email, name, openId, loginMethod, lastSignedIn\nFROM users\nWHERE email = 'v6h2sw5vmn@privaterelay.appleid.com'\nORDER BY lastSignedIn DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Verificar qual openId o Vinicius usa atualmente (o mais recente)\nSELECT id, email, name, openId, loginMethod, lastSignedIn\nFROM users\nWHERE email = 'v6h2sw5vmn@privaterelay.appleid.com'\nORDER BY lastSignedIn DESC;\n",
+  "rows": [
+    {
+      "id": "1",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "name": "Vinicius Freitas",
+      "openId": "fCNJikpeuBxzy42NrCqy3y",
+      "loginMethod": "apple",
+      "lastSignedIn": "2026-05-20 00:37:30"
+    },
+    {
+      "id": "35010007",
+      "email": "v6h2sw5vmn@privaterelay.appleid.com",
+      "name": "Vinicius Freitas",
+      "openId": "ViDocNXbmfCbRNAmutpo2t",
+      "loginMethod": "apple",
+      "lastSignedIn": "2026-04-18 02:41:20"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\temail\tname\topenId\tloginMethod\tlastSignedIn\n1\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\tfCNJikpeuBxzy42NrCqy3y\tapple\t2026-05-20 00:37:30\n35010007\tv6h2sw5vmn@privaterelay.appleid.com\tVinicius Freitas\tViDocNXbmfCbRNAmutpo2t\tapple\t2026-04-18 02:41:20\n",
+  "stderr": "",
+  "execution_time_ms": 263
+}

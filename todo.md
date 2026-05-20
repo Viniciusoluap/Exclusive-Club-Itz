@@ -2193,3 +2193,10 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Atualizar `server/routers/contractRouter.ts` para usar `generateContractPdf()`
 - [x] Criar testes vitest em `server/pdf.generation.test.ts` — 3/3 passando ✅
 - [ ] Criar checkpoint
+
+## 🐛 BUG CORRIGIDO: Abastecimentos não apareciam na tela do cliente (19/05/2026)
+- [x] Identificado: abastecimentos não eram inseridos em bpo_charges ao criar (dependia de importação manual do Asaas)
+- [x] Identificado: quando sincronizados via webhook, type ficava como "other" e valor errado (100x menor)
+- [x] Corrigido: fuelRecords.create agora insere imediatamente em bpo_charges com type="fuel" e valor correto
+- [x] Corrigido: 4 registros históricos corrigidos no banco (Vinicius R$28,46 / Diogo R$221,41 / Lucas R$254,47 / Erisvaldo R$41,79)
+- [x] Verificado: webhook do Asaas não sobrescreve o type ao atualizar status de pagamento
