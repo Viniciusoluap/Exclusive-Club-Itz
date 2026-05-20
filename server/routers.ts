@@ -2050,7 +2050,36 @@ Nenhuma reserva foi afetada.
         
         console.log('[fuelRecords.create] Abastecimento salvo no banco com sync_status:', syncStatus);
 
-        // Nota: cobranças de abastecimento são gerenciadas via bpo_charges (importação do Asaas)
+        // Sincronizar imediatamente com bpo_charges para aparecer na tela do cliente
+        if (!input.isOperational && asaasChargeId) {
+          try {
+            const { bpoCharges: bpoChargesTable } = await import('../drizzle/schema');
+            const dueDateStr = asaas.formatDateForAsaas(dueDate);
+            const valueInReais = (totalAmount / 100).toFixed(2);
+            await database.execute(`
+              INSERT INTO bpo_charges (
+                asaas_charge_id, asaas_customer_id, client_id, client_name, client_email,
+                value, due_date, status, type, classified_by, billing_type, description,
+                payment_link, invoice_url, source
+              ) VALUES (
+                '${asaasChargeId}', ${asaasCustomerId ? `'${asaasCustomerId}'` : 'NULL'}, NULL,
+                '${(booking.client_name || '').replace(/'/g, "''")}', '${(booking.client_email || '').replace(/'/g, "''")}',
+                ${valueInReais}, '${dueDateStr}', 'pending', 'fuel', 'manual', 'PIX',
+                'Abastecimento - ${(booking.vessel_name_actual || '').replace(/'/g, "''")} - ${finalLiters.toFixed(2)}L',
+                ${paymentUrl ? `'${paymentUrl}'` : 'NULL'}, ${paymentUrl ? `'${paymentUrl}'` : 'NULL'}, 'manual'
+              )
+              ON DUPLICATE KEY UPDATE
+                type = 'fuel',
+                value = ${valueInReais},
+                client_name = '${(booking.client_name || '').replace(/'/g, "''")}',
+                client_email = '${(booking.client_email || '').replace(/'/g, "''")}',
+                description = 'Abastecimento - ${(booking.vessel_name_actual || '').replace(/'/g, "''")} - ${finalLiters.toFixed(2)}L'
+            `);
+            console.log('[fuelRecords.create] ✅ bpo_charges sincronizado com type=fuel');
+          } catch (bpoErr: any) {
+            console.warn('[fuelRecords.create] Falha ao sincronizar bpo_charges:', bpoErr.message);
+          }
+        }
 
         return { 
           success: true,
