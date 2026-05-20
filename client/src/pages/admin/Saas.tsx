@@ -2159,6 +2159,7 @@ function ExpensesTab() {
   const [expYear, setExpYear] = useState("all");
   const [expMonth, setExpMonth] = useState("all");
   const [expCostCenter, setExpCostCenter] = useState("all");
+  const [expStatus, setExpStatus] = useState("all");
   const [expPage, setExpPage] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -2180,6 +2181,7 @@ function ExpensesTab() {
       year: expYear !== "all" ? expYear : undefined,
       month: expMonth !== "all" ? expMonth.padStart(2, "0") : undefined,
       costCenter: expCostCenter !== "all" ? (expCostCenter as any) : "all",
+      status: expStatus !== "all" ? (expStatus as any) : "all",
       limit: PER_PAGE_EXPENSES,
       offset: expPage * PER_PAGE_EXPENSES,
     },
@@ -2303,6 +2305,16 @@ function ExpensesTab() {
               <SelectItem value="operational">Custo Operacional</SelectItem>
               <SelectItem value="withdrawal">Saque / Retirada</SelectItem>
               <SelectItem value="other">Outros</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={expStatus} onValueChange={v => { setExpStatus(v); resetPage(); }}>
+            <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              <SelectItem value="pending">Pendente</SelectItem>
+              <SelectItem value="paid">Pago</SelectItem>
+              <SelectItem value="overdue">Vencido</SelectItem>
+              <SelectItem value="cancelled">Cancelado</SelectItem>
             </SelectContent>
           </Select>
         </div>
