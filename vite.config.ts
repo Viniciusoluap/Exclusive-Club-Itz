@@ -1,16 +1,20 @@
-import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import fs from "node:fs";
+import { createRequire } from "module";
 import path from "path";
 import { defineConfig } from "vite";
-import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
-
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+// Manus runtime plugin — disponível apenas no ambiente Manus.
+// Carregado de forma opcional para que o build também funcione fora do Manus.
+const require = createRequire(import.meta.url);
+let manusPlugin: any = null;
+try {
+  const { vitePluginManusRuntime } = require("vite-plugin-manus-runtime");
+  manusPlugin = vitePluginManusRuntime();
+} catch { /* não disponível fora do Manus */ }
 
 export default defineConfig({
-  plugins,
+  plugins: [react(), tailwindcss(), ...(manusPlugin ? [manusPlugin] : [])],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),

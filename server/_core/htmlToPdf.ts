@@ -182,7 +182,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
         case "warningBox": {
           const wStartY = doc.y;
           const wText = section.content || "";
-          const wLines = doc.heightOfString(wText, { width: pageW - 24, fontSize: 9 });
+          const wLines = doc.heightOfString(wText, { width: pageW - 24 });
           const wH = wLines + 24;
 
           doc.rect(50, wStartY, pageW, wH).fillColor("#fff3cd").fill();

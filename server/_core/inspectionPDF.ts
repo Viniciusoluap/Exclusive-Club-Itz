@@ -374,7 +374,7 @@ export async function generateInspectionPDF(data: InspectionData): Promise<Buffe
     if (data.notes) {
       const notesY = doc.y;
       const notesText = data.notes;
-      const notesH = doc.heightOfString(notesText, { width: pageW - 24, fontSize: 9 }) + 40;
+      const notesH = doc.heightOfString(notesText, { width: pageW - 24 }) + 40;
       doc.rect(50, notesY, pageW, notesH).fillColor('#fef3c7').fill();
       doc.rect(50, notesY, 4, notesH).fillColor('#f59e0b').fill();
       doc.fillColor('#92400e').fontSize(10).font('Helvetica-Bold').text('Observações', 62, notesY + 10);
