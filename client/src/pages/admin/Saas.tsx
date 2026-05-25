@@ -508,7 +508,7 @@ export default function Saas() {
                   { v: "pending", l: "Pendentes" },
                   { v: "paid", l: "Pagas" },
                   { v: "overdue", l: "Vencidas" },
-                  { v: "receivedInCash", l: "Parciais" },
+                  { v: "partiallyPaid", l: "Parciais" },
                 ].map(({ v, l }) => (
                   <Button
                     key={v}

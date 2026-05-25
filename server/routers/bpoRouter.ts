@@ -1626,6 +1626,56 @@ export const bpoRouter = router({
         })
         .where(eq(bpoCharges.id, input.chargeId));
 
+      // ── Sincronizar com inspection_charges quando tipo for repair ou inspection ──
+      if (charge.type === 'repair' || charge.type === 'inspection') {
+        try {
+          const { inspectionCharges: icTable } = await import('../../drizzle/schema');
+          const icNewStatus = isPaid ? 'paid' : 'partiallyPaid';
+
+          // Tentar encontrar pelo asaas_charge_id primeiro
+          if (charge.asaasChargeId) {
+            const icRows = await db.select().from(icTable)
+              .where(eq(icTable.asaasChargeId, charge.asaasChargeId)).limit(1);
+            if (icRows.length > 0) {
+              await db.update(icTable)
+                .set({
+                  paymentStatus: icNewStatus,
+                  amountPaid: newAmountPaid.toFixed(2),
+                  updatedAt: new Date(),
+                })
+                .where(eq(icTable.asaasChargeId, charge.asaasChargeId));
+            }
+          }
+
+          // Fallback: buscar pelo email do cliente + valor + tipo
+          if (charge.clientEmail) {
+            const { sql: sqlRaw } = await import('drizzle-orm');
+            const chargeTypeForIC = charge.type === 'repair' ? 'repair' : 'inspection';
+            const [icFallbackRows] = (await db.execute(sqlRaw.raw(`
+              SELECT id FROM inspection_charges
+              WHERE client_email = '${(charge.clientEmail ?? '').replace(/'/g, "''")}'
+                AND charge_type = '${chargeTypeForIC}'
+                AND ABS(CAST(amount AS DECIMAL(10,2)) - ${chargeValue}) < 0.02
+                AND payment_status NOT IN ('paid', 'cancelled')
+              ORDER BY created_at DESC
+              LIMIT 1
+            `))) as any;
+            const icFallback = Array.isArray(icFallbackRows) ? icFallbackRows[0] : null;
+            if (icFallback?.id) {
+              await db.update(icTable)
+                .set({
+                  paymentStatus: icNewStatus,
+                  amountPaid: newAmountPaid.toFixed(2),
+                  updatedAt: new Date(),
+                })
+                .where(eq(icTable.id, Number(icFallback.id)));
+            }
+          }
+        } catch (syncErr: any) {
+          console.warn('[registerPartialPayment] Falha ao sincronizar inspection_charges:', syncErr.message);
+        }
+      }
+
       return {
         success: true,
         isPaid,
