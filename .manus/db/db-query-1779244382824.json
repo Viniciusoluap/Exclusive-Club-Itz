@@ -1,0 +1,46 @@
+{
+  "query": "\n-- Cobranças de reparo do Luciano em inspection_charges\nSELECT ic.id, ic.charge_type, ic.amount, ic.due_date, ic.payment_status, ic.client_email, ic.asaas_charge_id\nFROM inspection_charges ic\nLEFT JOIN allowed_clients ac ON ac.email = ic.client_email\nWHERE ac.name LIKE '%Luciano%'\nORDER BY ic.due_date DESC\nLIMIT 10;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Cobranças de reparo do Luciano em inspection_charges\nSELECT ic.id, ic.charge_type, ic.amount, ic.due_date, ic.payment_status, ic.client_email, ic.asaas_charge_id\nFROM inspection_charges ic\nLEFT JOIN allowed_clients ac ON ac.email = ic.client_email\nWHERE ac.name LIKE '%Luciano%'\nORDER BY ic.due_date DESC\nLIMIT 10;\n",
+  "rows": [
+    {
+      "id": "1590017",
+      "charge_type": "repair",
+      "amount": "274.17",
+      "due_date": "2026-05-19 03:17:31",
+      "payment_status": "overdue",
+      "client_email": "gabnercorporation@gmail.com",
+      "asaas_charge_id": "pay_y9bmnria6qhp8dc7"
+    },
+    {
+      "id": "1470006",
+      "charge_type": "repair",
+      "amount": "102.55",
+      "due_date": "2026-04-20 00:00:00",
+      "payment_status": "paid",
+      "client_email": "gabnercorporation@gmail.com",
+      "asaas_charge_id": "pay_s1f0twy3prhdcx0i"
+    },
+    {
+      "id": "1050006",
+      "charge_type": "repair",
+      "amount": "248.00",
+      "due_date": "2026-03-09 13:39:39",
+      "payment_status": "paid",
+      "client_email": "gabnercorporation@gmail.com",
+      "asaas_charge_id": "pay_decx0i4fv747ighx"
+    },
+    {
+      "id": "900006",
+      "charge_type": "repair",
+      "amount": "20.83",
+      "due_date": "2026-01-27 00:00:00",
+      "payment_status": "paid",
+      "client_email": "gabnercorporation@gmail.com",
+      "asaas_charge_id": "pay_plk857yz9mcdb741"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcharge_type\tamount\tdue_date\tpayment_status\tclient_email\tasaas_charge_id\n1590017\trepair\t274.17\t2026-05-19 03:17:31\toverdue\tgabnercorporation@gmail.com\tpay_y9bmnria6qhp8dc7\n1470006\trepair\t102.55\t2026-04-20 00:00:00\tpaid\tgabnercorporation@gmail.com\tpay_s1f0twy3prhdcx0i\n1050006\trepair\t248.00\t2026-03-09 13:39:39\tpaid\tgabnercorporation@gmail.com\tpay_decx0i4fv747ighx\n900006\trepair\t20.83\t2026-01-27 00:00:00\tpaid\tgabnercorporation@gmail.com\tpay_plk857yz9mcdb741\n",
+  "stderr": "",
+  "execution_time_ms": 262
+}

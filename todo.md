@@ -2211,3 +2211,11 @@ Identificar clientes faltantes, quantificar discrepância e diagnosticar causa r
 - [x] Job agendado às 00:05 UTC via node-cron
 - [x] Execução imediata na inicialização do servidor (corrigiu 79 registros históricos)
 - [x] 4 testes automatizados passando
+
+## 🔧 Integração Pagamento Parcial BPO ↔ Cobranças de Danos
+===============================================================
+
+- [x] Corrigir banco: aplicar R$247 no bpo_charges id=630017 e inspection_charges id=1590017 (caso Luciano)
+- [x] Adicionar coluna amount_paid em inspection_charges e migrar schema
+- [x] Sincronizar registerPartialPayment com inspection_charges (repair/inspection)
+- [x] Adicionar filtro/aba Parciais no BPO Financeiro e corrigir visibilidade de partiallyPaid

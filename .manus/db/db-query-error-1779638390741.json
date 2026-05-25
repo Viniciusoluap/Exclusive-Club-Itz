@@ -1,0 +1,8 @@
+{
+  "query": "\n-- 1. Atualizar bpo_charges id=630017: R$247 pagos, status partiallyPaid\nUPDATE bpo_charges\nSET \n  status = 'partiallyPaid',\n  amount_paid = '247.00',\n  updated_at = NOW()\nWHERE id = 630017;\n\n-- 2. Atualizar inspection_charges id=1590017: status partiallyPaid\nUPDATE inspection_charges\nSET \n  payment_status = 'partiallyPaid',\n  updated_at = NOW()\nWHERE id = 1590017;\n\n-- 3. Verificar resultado\nSELECT id, value, amount_paid, status, updated_at FROM bpo_charges WHERE id = 630017;\nSELECT id, amount, payment_status, updated_at FROM inspection_charges WHERE id = 1590017;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- 1. Atualizar bpo_charges id=630017: R$247 pagos, status partiallyPaid\nUPDATE bpo_charges\nSET \n  status = 'partiallyPaid',\n  amount_paid = '247.00',\n  updated_at = NOW()\nWHERE id = 630017;\n\n-- 2. Atualizar inspection_charges id=1590017: status partiallyPaid\nUPDATE inspection_charges\nSET \n  payment_status = 'partiallyPaid',\n  updated_at = NOW()\nWHERE id = 1590017;\n\n-- 3. Verificar resultado\nSELECT id, value, amount_paid, status, updated_at FROM bpo_charges WHERE id = 630017;\nSELECT id, amount, payment_status, updated_at FROM inspection_charges WHERE id = 1590017;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1406 (22001) at line 11: Data Too Long, field len 7, data len 13"
+  ]
+}

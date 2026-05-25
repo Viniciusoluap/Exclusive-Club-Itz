@@ -4377,7 +4377,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
     // Admin: Listar todas as cobranças
     listAll: adminProcedure
       .input(z.object({
-        status: z.enum(['all', 'pending', 'paid', 'overdue', 'cancelled']).optional().default('all'),
+        status: z.enum(['all', 'pending', 'paid', 'overdue', 'cancelled', 'partiallyPaid']).optional().default('all'),
         month: z.string().optional(), // '01' .. '12'
         year: z.string().optional(),  // '2024'
         clientSearch: z.string().optional(),
@@ -4415,7 +4415,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 ic.*,
                 COALESCE(ac.name, ic.client_email) AS client_name,
                 CASE
-                  WHEN ic.payment_status IN ('paid', 'cancelled') THEN ic.payment_status
+                  WHEN ic.payment_status IN ('paid', 'cancelled', 'partiallyPaid') THEN ic.payment_status
                   WHEN ic.payment_status = 'overdue' THEN 'overdue'
                   WHEN ic.payment_status = 'pending' AND ic.due_date < CURDATE() THEN 'overdue'
                   ELSE 'pending'

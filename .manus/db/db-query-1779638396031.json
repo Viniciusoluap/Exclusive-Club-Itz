@@ -1,0 +1,18 @@
+{
+  "query": "\nSHOW COLUMNS FROM inspection_charges WHERE Field = 'payment_status';\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSHOW COLUMNS FROM inspection_charges WHERE Field = 'payment_status';\n",
+  "rows": [
+    {
+      "Field": "payment_status",
+      "Type": "enum('pending','paid','overdue')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "pending",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\npayment_status\tenum('pending','paid','overdue')\tNO\t\tpending\t\n",
+  "stderr": "",
+  "execution_time_ms": 263
+}

@@ -435,6 +435,13 @@
       "when": 1778434466080,
       "tag": "0061_left_vance_astro",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "5",
+      "when": 1779668106790,
+      "tag": "0062_small_katie_power",
+      "breakpoints": true
     }
   ]
 }

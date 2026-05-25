@@ -1,0 +1,15 @@
+{
+  "query": "\nSELECT id, type, value, due_date, status, amount_paid, description, classified_by, source, created_at, updated_at\nFROM bpo_charges\nWHERE id = 630017;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \nSELECT id, type, value, due_date, status, amount_paid, description, classified_by, source, created_at, updated_at\nFROM bpo_charges\nWHERE id = 630017;\n",
+  "rows": [],
+  "messages": [
+    "630017\trepair\t274.17\t2026-05-19\toverdue\t0.00\tReparo da Embarcação: JETSKI SEADOO GTI SE 130HP - 1 - Bomba de combustivel",
+    "2 - Pneu carretinha",
+    "3 - anel de carbono",
+    "ainda Faltam pagar",
+    "1 - 1.140 mão de obra do mv mecanico\tmanual\tasaas_webhook\t2026-05-12 03:17:36\t2026-05-24 15:01:23"
+  ],
+  "stdout": "id\ttype\tvalue\tdue_date\tstatus\tamount_paid\tdescription\tclassified_by\tsource\tcreated_at\tupdated_at\n630017\trepair\t274.17\t2026-05-19\toverdue\t0.00\tReparo da Embarcação: JETSKI SEADOO GTI SE 130HP - 1 - Bomba de combustivel\n2 - Pneu carretinha\n3 - anel de carbono\nainda Faltam pagar\n1 - 1.140 mão de obra do mv mecanico\tmanual\tasaas_webhook\t2026-05-12 03:17:36\t2026-05-24 15:01:23\n",
+  "stderr": "",
+  "execution_time_ms": 261
+}

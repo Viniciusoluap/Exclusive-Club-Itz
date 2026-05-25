@@ -1,0 +1,22 @@
+{
+  "query": "\n-- Estado atual do inspection_charge de R$274,17 do Luciano\nSELECT id, charge_type, amount, due_date, payment_status, asaas_charge_id, receipt_url\nFROM inspection_charges\nWHERE id = 1590017;\n\n-- Verificar se existe algum bpo_charge criado recentemente com valor ~247\nSELECT id, type, value, due_date, status, amount_paid, description, source, created_at\nFROM bpo_charges\nWHERE client_email = 'gabnercorporation@gmail.com'\n  AND created_at >= '2026-05-19'\nORDER BY created_at DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Estado atual do inspection_charge de R$274,17 do Luciano\nSELECT id, charge_type, amount, due_date, payment_status, asaas_charge_id, receipt_url\nFROM inspection_charges\nWHERE id = 1590017;\n\n-- Verificar se existe algum bpo_charge criado recentemente com valor ~247\nSELECT id, type, value, due_date, status, amount_paid, description, source, created_at\nFROM bpo_charges\nWHERE client_email = 'gabnercorporation@gmail.com'\n  AND created_at >= '2026-05-19'\nORDER BY created_at DESC;\n",
+  "rows": [
+    {
+      "id": "1590017",
+      "charge_type": "repair",
+      "amount": "274.17",
+      "due_date": "2026-05-19 03:17:31",
+      "payment_status": "overdue",
+      "asaas_charge_id": "pay_y9bmnria6qhp8dc7",
+      "receipt_url": "https://d2xsxph8kpxj0f.cloudfront.net/310419663028705863/4SVaP8MpsE4tem3Hhe5WES/uploads/1778555849896-ct0uujb563l.pdf"
+    }
+  ],
+  "messages": [
+    "id\ttype\tvalue\tdue_date\tstatus\tamount_paid\tdescription\tsource\tcreated_at",
+    "990002\tother\t102.55\t2026-05-04\treceived\t102.55\tRegularização de débitos vencidos — Reparo (1 cobrança) [Distribuído via Split de PIX em 2026-05-20]\tasaas_webhook\t2026-05-20 03:00:08"
+  ],
+  "stdout": "id\tcharge_type\tamount\tdue_date\tpayment_status\tasaas_charge_id\treceipt_url\n1590017\trepair\t274.17\t2026-05-19 03:17:31\toverdue\tpay_y9bmnria6qhp8dc7\thttps://d2xsxph8kpxj0f.cloudfront.net/310419663028705863/4SVaP8MpsE4tem3Hhe5WES/uploads/1778555849896-ct0uujb563l.pdf\nid\ttype\tvalue\tdue_date\tstatus\tamount_paid\tdescription\tsource\tcreated_at\n990002\tother\t102.55\t2026-05-04\treceived\t102.55\tRegularização de débitos vencidos — Reparo (1 cobrança) [Distribuído via Split de PIX em 2026-05-20]\tasaas_webhook\t2026-05-20 03:00:08\n",
+  "stderr": "",
+  "execution_time_ms": 273
+}

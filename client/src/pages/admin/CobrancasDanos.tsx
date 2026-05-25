@@ -435,16 +435,23 @@ export default function CobrancasDanos() {
       pending: "secondary",
       paid: "default",
       overdue: "destructive",
+      partiallyPaid: "outline",
     };
 
     const labels: Record<string, string> = {
       pending: "Pendente",
       paid: "Pago",
       overdue: "Vencido",
+      partiallyPaid: "Parcial",
+      cancelled: "Cancelado",
+    };
+
+    const colorClass: Record<string, string> = {
+      partiallyPaid: "border-orange-400 text-orange-700 bg-orange-50",
     };
 
     return (
-      <Badge variant={variants[status] || "outline"}>
+      <Badge variant={variants[status] || "outline"} className={colorClass[status] || ""}>
         {labels[status] || status}
       </Badge>
     );
@@ -562,6 +569,7 @@ export default function CobrancasDanos() {
                 <SelectItem value="pending">Pendente</SelectItem>
                 <SelectItem value="paid">Pago</SelectItem>
                 <SelectItem value="overdue">Vencido</SelectItem>
+                <SelectItem value="partiallyPaid">Parcial</SelectItem>
                 <SelectItem value="cancelled">Cancelado</SelectItem>
               </SelectContent>
             </Select>
@@ -633,7 +641,14 @@ export default function CobrancasDanos() {
                         <div className="text-xs text-muted-foreground">{charge.client_email}</div>
                       </td>
                       <td className="p-2">{charge.vessel_name}</td>
-                      <td className="p-2 font-medium">{formatCurrency(parseFloat(charge.amount))}</td>
+                      <td className="p-2 font-medium">
+                        {formatCurrency(parseFloat(charge.amount))}
+                        {charge.payment_status === 'partiallyPaid' && charge.amount_paid && parseFloat(charge.amount_paid) > 0 && (
+                          <div className="text-xs text-orange-600 mt-0.5">
+                            Pago: {formatCurrency(parseFloat(charge.amount_paid))} · Saldo: {formatCurrency(Math.max(0, parseFloat(charge.amount) - parseFloat(charge.amount_paid)))}
+                          </div>
+                        )}
+                      </td>
                       <td className="p-2">{formatDate(charge.due_date)}</td>
                       <td className="p-2">{getStatusBadge(charge.payment_status)}</td>
                       <td className="p-2 text-center">
@@ -663,7 +678,7 @@ export default function CobrancasDanos() {
                       </td>
                       <td className="p-2 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {(charge.payment_status === 'pending' || charge.payment_status === 'overdue') && (
+                          {(charge.payment_status === 'pending' || charge.payment_status === 'overdue' || charge.payment_status === 'partiallyPaid') && (
                             <>
                               <Button
                                 variant="ghost"

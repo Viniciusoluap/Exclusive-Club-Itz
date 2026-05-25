@@ -1,0 +1,28 @@
+{
+  "query": "\n-- 1. Atualizar bpo_charges id=630017: R$247 pagos, status partiallyPaid\nUPDATE bpo_charges\nSET \n  status = 'partiallyPaid',\n  amount_paid = '247.00',\n  updated_at = NOW()\nWHERE id = 630017;\n\n-- 2. Atualizar inspection_charges id=1590017: status partiallyPaid, amount_paid=247\nUPDATE inspection_charges\nSET \n  payment_status = 'partiallyPaid',\n  amount_paid = '247.00',\n  updated_at = NOW()\nWHERE id = 1590017;\n\n-- 3. Verificar resultado\nSELECT id, value, amount_paid, status FROM bpo_charges WHERE id = 630017;\nSELECT id, amount, amount_paid, payment_status FROM inspection_charges WHERE id = 1590017;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- 1. Atualizar bpo_charges id=630017: R$247 pagos, status partiallyPaid\nUPDATE bpo_charges\nSET \n  status = 'partiallyPaid',\n  amount_paid = '247.00',\n  updated_at = NOW()\nWHERE id = 630017;\n\n-- 2. Atualizar inspection_charges id=1590017: status partiallyPaid, amount_paid=247\nUPDATE inspection_charges\nSET \n  payment_status = 'partiallyPaid',\n  amount_paid = '247.00',\n  updated_at = NOW()\nWHERE id = 1590017;\n\n-- 3. Verificar resultado\nSELECT id, value, amount_paid, status FROM bpo_charges WHERE id = 630017;\nSELECT id, amount, amount_paid, payment_status FROM inspection_charges WHERE id = 1590017;\n",
+  "rows": [
+    {
+      "id": "630017",
+      "value": "274.17",
+      "amount_paid": "247.00",
+      "status": "partiallyPaid"
+    },
+    {
+      "id": "id",
+      "value": "amount",
+      "amount_paid": "amount_paid",
+      "status": "payment_status"
+    },
+    {
+      "id": "1590017",
+      "value": "274.17",
+      "amount_paid": "247.00",
+      "status": "partiallyPaid"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tvalue\tamount_paid\tstatus\n630017\t274.17\t247.00\tpartiallyPaid\nid\tamount\tamount_paid\tpayment_status\n1590017\t274.17\t247.00\tpartiallyPaid\n",
+  "stderr": "",
+  "execution_time_ms": 298
+}

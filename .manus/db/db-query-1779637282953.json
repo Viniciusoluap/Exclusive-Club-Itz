@@ -1,0 +1,9 @@
+{
+  "query": "\n-- Registros recentes do Luciano em bpo_charges (últimas 48h)\nSELECT id, type, value, due_date, status, description, classified_by, source, created_at\nFROM bpo_charges\nWHERE client_email = 'gabnercorporation@gmail.com'\n  AND created_at >= DATE_SUB(NOW(), INTERVAL 48 HOUR)\nORDER BY created_at DESC;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user QGkzyx9AEigNFY6.4e95eea21b54 --database 4SVaP8MpsE4tem3Hhe5WES --execute \n-- Registros recentes do Luciano em bpo_charges (últimas 48h)\nSELECT id, type, value, due_date, status, description, classified_by, source, created_at\nFROM bpo_charges\nWHERE client_email = 'gabnercorporation@gmail.com'\n  AND created_at >= DATE_SUB(NOW(), INTERVAL 48 HOUR)\nORDER BY created_at DESC;\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 275
+}
