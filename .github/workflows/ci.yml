@@ -27,7 +27,7 @@ jobs:
         run: npm install -g pnpm@10
 
       - name: Install dependencies
-        run: pnpm install --no-optional
+        run: pnpm install --no-optional --no-frozen-lockfile
 
       - name: Type check
         run: pnpm check

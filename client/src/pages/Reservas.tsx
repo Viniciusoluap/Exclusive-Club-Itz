@@ -603,43 +603,56 @@ export default function Reservas() {
           <DialogHeader>
             <DialogTitle>Detalhes da Reserva</DialogTitle>
           </DialogHeader>
-          
-          {selectedBooking && (
-            <div className="space-y-3">
-              <div>
-                <span className="text-sm font-medium">Cliente:</span>
-                <p className="text-sm text-muted-foreground">{selectedBooking.clientName}</p>
-              </div>
-              <div>
-                <span className="text-sm font-medium">Embarcação:</span>
-                <p className="text-sm text-muted-foreground">
-                  {userVessels.find(v => v.id === selectedBooking.vesselId)?.name}
-                </p>
-              </div>
-              <div>
-                <span className="text-sm font-medium">Data:</span>
-                <p className="text-sm text-muted-foreground">
-                  {new Date(selectedBooking.bookingDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                </p>
-              </div>
-              <div>
-                <span className="text-sm font-medium">Horário:</span>
-                <p className="text-sm text-muted-foreground">
-                  10:00 - 19:00
-                </p>
-              </div>
-              {selectedBooking.notes && (
+
+          {selectedBooking && (() => {
+            const canSeeDetails =
+              user?.role === 'admin' ||
+              user?.role === 'employee' ||
+              selectedBooking.clientEmail === user?.email;
+
+            return (
+              <div className="space-y-3">
+                {canSeeDetails ? (
+                  <div>
+                    <span className="text-sm font-medium">Cliente:</span>
+                    <p className="text-sm text-muted-foreground">{selectedBooking.clientName}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    Esta data está reservada.
+                  </p>
+                )}
                 <div>
-                  <span className="text-sm font-medium">Observações:</span>
-                  <p className="text-sm text-muted-foreground">{selectedBooking.notes}</p>
+                  <span className="text-sm font-medium">Embarcação:</span>
+                  <p className="text-sm text-muted-foreground">
+                    {userVessels.find(v => v.id === selectedBooking.vesselId)?.name}
+                  </p>
                 </div>
-              )}
-              <div>
-                <span className="text-sm font-medium">Status:</span>
-                <p className="text-sm text-muted-foreground capitalize">{selectedBooking.status}</p>
+                <div>
+                  <span className="text-sm font-medium">Data:</span>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(selectedBooking.bookingDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-sm font-medium">Horário:</span>
+                  <p className="text-sm text-muted-foreground">
+                    10:00 - 19:00
+                  </p>
+                </div>
+                {canSeeDetails && selectedBooking.notes && (
+                  <div>
+                    <span className="text-sm font-medium">Observações:</span>
+                    <p className="text-sm text-muted-foreground">{selectedBooking.notes}</p>
+                  </div>
+                )}
+                <div>
+                  <span className="text-sm font-medium">Status:</span>
+                  <p className="text-sm text-muted-foreground capitalize">{selectedBooking.status}</p>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
