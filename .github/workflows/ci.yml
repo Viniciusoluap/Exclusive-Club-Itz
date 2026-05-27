@@ -16,10 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
+      - name: Checkpoint after checkout
+        run: echo "ok" > /tmp/cp-checkout.txt && node --version && npm --version
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps --ignore-scripts 2>&1 | tee /tmp/npm-install.log; exit ${PIPESTATUS[0]}
@@ -35,12 +33,12 @@ jobs:
             const fs = require('fs');
             const readLog = (path, maxLines) => {
               try {
-                const content = fs.readFileSync(path, 'utf8');
-                const lines = content.split('\n');
-                return lines.slice(Math.max(0, lines.length - maxLines)).join('\n');
+                const c = fs.readFileSync(path, 'utf8');
+                return c.split('\n').slice(-maxLines).join('\n');
               } catch(e) { return null; }
             };
-            let body = '## CI Diagnostics (failure)\n\n';
+            const checkoutDone = fs.existsSync('/tmp/cp-checkout.txt');
+            let body = `## CI Diagnostics\n\nCheckout step completed: **${checkoutDone}**\n\n`;
             const installLog = readLog('/tmp/npm-install.log', 30);
             body += '### npm install (last 30 lines)\n```\n' + (installLog ?? '_not run_') + '\n```\n\n';
             const tscLog = readLog('/tmp/tsc-output.log', 100);
@@ -49,5 +47,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.payload.pull_request.number,
-              body: body
+              body
             });
