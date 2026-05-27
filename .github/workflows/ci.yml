@@ -17,16 +17,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-
-      - name: Cache npm
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-${{ hashFiles('package.json') }}
-          restore-keys: npm-
+          cache: "npm"
 
       - name: Install dependencies
-        run: npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit
+        run: npm ci --ignore-scripts --legacy-peer-deps --no-fund --no-audit
 
       - name: Type check
         run: npx tsc --noEmit

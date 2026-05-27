@@ -112,4 +112,3 @@ google-drive-token.json
 temp-backup/
 exclusive-club-backup-*.zip
 database-*.sql
-package-lock.json
