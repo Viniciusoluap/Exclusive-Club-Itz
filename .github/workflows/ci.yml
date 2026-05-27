@@ -23,8 +23,10 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install pnpm
-        run: npm install -g pnpm@10
+      - name: Enable corepack and install pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.4.1 --activate
 
       - name: Install dependencies
         run: pnpm install --no-optional --no-frozen-lockfile
