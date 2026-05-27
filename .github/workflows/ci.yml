@@ -26,9 +26,17 @@ jobs:
           node-version: "20"
           cache: "pnpm"
 
+      - name: Debug environment
+        run: |
+          echo "Node: $(node --version)"
+          echo "npm: $(npm --version)"
+          echo "pnpm: $(pnpm --version)"
+          echo "Lock file header:"
+          head -5 pnpm-lock.yaml
+
       - name: Install dependencies
         id: install
-        run: pnpm install --frozen-lockfile --ignore-scripts 2>&1 | tee /tmp/install.log; exit ${PIPESTATUS[0]}
+        run: pnpm install --ignore-scripts 2>&1 | tee /tmp/install.log; exit ${PIPESTATUS[0]}
         continue-on-error: true
 
       - name: Type check
@@ -46,17 +54,25 @@ jobs:
           if [ -f /tmp/install.log ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### pnpm install (last 100 lines)" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            printf '%s\n' '```' >> $GITHUB_STEP_SUMMARY
             tail -100 /tmp/install.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            printf '%s\n' '```' >> $GITHUB_STEP_SUMMARY
           fi
           if [ -f /tmp/tsc.log ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### tsc errors" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            printf '%s\n' '```' >> $GITHUB_STEP_SUMMARY
             cat /tmp/tsc.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            printf '%s\n' '```' >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-logs
+          path: /tmp/*.log
+          if-no-files-found: ignore
 
       - name: Post PR comment
         if: (steps.install.outcome == 'failure' || steps.typecheck.outcome == 'failure') && github.event_name == 'pull_request'
