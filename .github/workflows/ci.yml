@@ -22,29 +22,63 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
+        id: install
         run: |
-          npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit 2>&1 | tee /tmp/install.log
+          echo "node: $(node --version)" >> /tmp/install.log
+          echo "npm: $(npm --version)" >> /tmp/install.log
+          echo "pwd: $(pwd)" >> /tmp/install.log
+          echo "--- npm install start ---" >> /tmp/install.log
+          npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit >> /tmp/install.log 2>&1
+          echo "npm exit: $?" >> /tmp/install.log
+        continue-on-error: true
 
       - name: Type check
+        id: typecheck
+        if: steps.install.outcome == 'success'
         run: |
-          npx tsc --noEmit 2>&1 | tee /tmp/tsc.log
+          echo "--- tsc start ---" >> /tmp/tsc.log
+          npx tsc --noEmit >> /tmp/tsc.log 2>&1
+          echo "tsc exit: $?" >> /tmp/tsc.log
+        continue-on-error: true
 
-      - name: Post diagnosis on failure
-        if: failure() && github.event_name == 'pull_request'
+      - name: Post diagnosis
+        if: (steps.install.outcome == 'failure' || steps.typecheck.outcome == 'failure') && github.event_name == 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
+          INSTALL_STATUS: ${{ steps.install.outcome }}
+          TSC_STATUS: ${{ steps.typecheck.outcome }}
         run: |
-          INSTALL_OUT=$(cat /tmp/install.log 2>/dev/null | tail -150)
-          TSC_OUT=$(cat /tmp/tsc.log 2>/dev/null | tail -150)
-          BODY=$(jq -Rs --arg install "$INSTALL_OUT" --arg tsc "$TSC_OUT" \
-            '"## CI Diagnosis\n### npm install\n```\n" + $install + "\n```\n### tsc\n```\n" + $tsc + "\n```"' \
-            <<< "")
-          curl -sf -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"body\": $BODY}" \
-            "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments" \
-            && echo "Comment posted" \
-            || echo "Failed to post comment (exit $?)"
+          python3 - << 'PYEOF'
+          import json, os, urllib.request
+
+          install_log = open('/tmp/install.log').read()[-4000:] if os.path.exists('/tmp/install.log') else '(no install log)'
+          tsc_log = open('/tmp/tsc.log').read()[-4000:] if os.path.exists('/tmp/tsc.log') else '(no tsc log)'
+
+          body = (
+            "## CI Diagnosis\n"
+            f"- npm install: **{os.environ['INSTALL_STATUS']}**\n"
+            f"- tsc: **{os.environ['TSC_STATUS']}**\n\n"
+            "### npm install output\n```\n" + install_log + "\n```\n\n"
+            "### tsc output\n```\n" + tsc_log + "\n```"
+          )
+
+          payload = json.dumps({"body": body}).encode()
+          repo = os.environ['REPO']
+          pr = os.environ['PR_NUMBER']
+          url = f"https://api.github.com/repos/{repo}/issues/{pr}/comments"
+          req = urllib.request.Request(url, data=payload, headers={
+            "Authorization": f"token {os.environ['GITHUB_TOKEN']}",
+            "Content-Type": "application/json",
+          })
+          try:
+            resp = urllib.request.urlopen(req)
+            print(f"Comment posted: {resp.status}")
+          except Exception as e:
+            print(f"Failed to post comment: {e}")
+          PYEOF
+
+      - name: Fail
+        if: always() && (steps.install.outcome == 'failure' || steps.typecheck.outcome == 'failure')
+        run: exit 1
