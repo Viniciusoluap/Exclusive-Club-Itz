@@ -17,14 +17,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "pnpm"
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10
 
       - name: Install dependencies
         id: install
@@ -32,7 +30,9 @@ jobs:
           set +e
           pnpm install --frozen-lockfile --ignore-scripts > /tmp/install.log 2>&1
           INSTALL_EXIT=$?
-          echo "install_exit=$INSTALL_EXIT" >> $GITHUB_OUTPUT
+          echo "install_exit=$INSTALL_EXIT" >> "$GITHUB_OUTPUT"
+          echo "## pnpm install (exit $INSTALL_EXIT)" >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/install.log >> "$GITHUB_STEP_SUMMARY"
           exit $INSTALL_EXIT
         continue-on-error: true
 
@@ -43,7 +43,9 @@ jobs:
           set +e
           npx tsc --noEmit > /tmp/tsc.log 2>&1
           TSC_EXIT=$?
-          echo "tsc_exit=$TSC_EXIT" >> $GITHUB_OUTPUT
+          echo "tsc_exit=$TSC_EXIT" >> "$GITHUB_OUTPUT"
+          echo "## tsc (exit $TSC_EXIT)" >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/tsc.log >> "$GITHUB_STEP_SUMMARY"
           exit $TSC_EXIT
         continue-on-error: true
 
