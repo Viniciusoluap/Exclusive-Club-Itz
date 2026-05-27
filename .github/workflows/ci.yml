@@ -17,28 +17,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "pnpm"
 
       - name: Install dependencies
         id: install
         run: |
-          echo "node: $(node --version)" >> /tmp/install.log
-          echo "npm: $(npm --version)" >> /tmp/install.log
-          echo "pwd: $(pwd)" >> /tmp/install.log
-          echo "--- npm install start ---" >> /tmp/install.log
-          npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit >> /tmp/install.log 2>&1
-          echo "npm exit: $?" >> /tmp/install.log
+          set +e
+          pnpm install --frozen-lockfile --ignore-scripts > /tmp/install.log 2>&1
+          INSTALL_EXIT=$?
+          echo "install_exit=$INSTALL_EXIT" >> $GITHUB_OUTPUT
+          exit $INSTALL_EXIT
         continue-on-error: true
 
       - name: Type check
         id: typecheck
         if: steps.install.outcome == 'success'
         run: |
-          echo "--- tsc start ---" >> /tmp/tsc.log
-          npx tsc --noEmit >> /tmp/tsc.log 2>&1
-          echo "tsc exit: $?" >> /tmp/tsc.log
+          set +e
+          npx tsc --noEmit > /tmp/tsc.log 2>&1
+          TSC_EXIT=$?
+          echo "tsc_exit=$TSC_EXIT" >> $GITHUB_OUTPUT
+          exit $TSC_EXIT
         continue-on-error: true
 
       - name: Post diagnosis
@@ -58,9 +64,9 @@ jobs:
 
           body = (
             "## CI Diagnosis\n"
-            f"- npm install: **{os.environ['INSTALL_STATUS']}**\n"
+            f"- pnpm install: **{os.environ['INSTALL_STATUS']}**\n"
             f"- tsc: **{os.environ['TSC_STATUS']}**\n\n"
-            "### npm install output\n```\n" + install_log + "\n```\n\n"
+            "### pnpm install output\n```\n" + install_log + "\n```\n\n"
             "### tsc output\n```\n" + tsc_log + "\n```"
           )
 
