@@ -10,6 +10,8 @@ jobs:
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -24,13 +26,28 @@ jobs:
 
       - name: Diagnostics
         run: |
-          node --version
-          pnpm --version
-          ls -la pnpm-lock.yaml package.json
-          cat package.json | python3 -c "import sys,json; p=json.load(sys.stdin); print('deps:', len(p.get('dependencies',{})), 'devDeps:', len(p.get('devDependencies',{})), 'optional:', p.get('optionalDependencies','none'))"
+          echo "node: $(node --version)"
+          echo "pnpm: $(pnpm --version)"
+          echo "npm: $(npm --version)"
+          ls -la pnpm-lock.yaml package.json package-lock.json 2>/dev/null || true
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        id: install
+        run: pnpm install --frozen-lockfile --ignore-scripts 2>&1 | tee /tmp/pnpm-install.log; exit ${PIPESTATUS[0]}
+        continue-on-error: true
+
+      - name: Report install failure
+        if: steps.install.outcome == 'failure' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          body="❌ **pnpm install falhou**. Output:\n\`\`\`\n$(tail -50 /tmp/pnpm-install.log)\n\`\`\`"
+          gh pr comment ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --body "$body"
+          exit 1
+
+      - name: Fail if install failed
+        if: steps.install.outcome == 'failure' && github.event_name != 'pull_request'
+        run: exit 1
 
       - name: Type check
         run: npx tsc --noEmit
