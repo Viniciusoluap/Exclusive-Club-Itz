@@ -1472,9 +1472,8 @@ Nenhuma reserva foi afetada.
       cutoffDate.setHours(0, 0, 0, 0);
       const cutoffTimestamp = cutoffDate.getTime();
       
-      // Query com JOIN para buscar telefone do cliente
-      const query = `
-        SELECT 
+      const result = await dbInstance.execute(sqlTag`
+        SELECT
           b.id,
           b.client_email as clientEmail,
           b.client_name as clientName,
@@ -1492,8 +1491,7 @@ Nenhuma reserva foi afetada.
           AND b.status = 'confirmed'
         ORDER BY b.booking_date ASC
         LIMIT 21
-      `;
-      const result = await dbInstance.execute(sqlTag.raw(query)) as any;
+      `) as any;
       return (Array.isArray(result[0]) ? result[0] : result) as any[];
     }),
   }),
