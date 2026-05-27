@@ -17,19 +17,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "pnpm"
 
       - name: Install dependencies
         id: install
-        run: npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit 2>&1 | tee /tmp/npm.log; exit ${PIPESTATUS[0]}
+        run: pnpm install --frozen-lockfile --ignore-scripts 2>&1 | tee /tmp/install.log; exit ${PIPESTATUS[0]}
         continue-on-error: true
 
       - name: Type check
         id: typecheck
         if: steps.install.outcome == 'success'
-        run: npx tsc --noEmit 2>&1 | tee /tmp/tsc.log; exit ${PIPESTATUS[0]}
+        run: pnpm exec tsc --noEmit 2>&1 | tee /tmp/tsc.log; exit ${PIPESTATUS[0]}
         continue-on-error: true
 
       - name: Write summary
@@ -38,11 +43,11 @@ jobs:
           echo "## CI Results" >> $GITHUB_STEP_SUMMARY
           echo "- Install: **${{ steps.install.outcome }}**" >> $GITHUB_STEP_SUMMARY
           echo "- TypeCheck: **${{ steps.typecheck.outcome }}**" >> $GITHUB_STEP_SUMMARY
-          if [ -f /tmp/npm.log ]; then
+          if [ -f /tmp/install.log ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### npm install (last 100 lines)" >> $GITHUB_STEP_SUMMARY
+            echo "### pnpm install (last 100 lines)" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -100 /tmp/npm.log >> $GITHUB_STEP_SUMMARY
+            tail -100 /tmp/install.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
           if [ -f /tmp/tsc.log ]; then
@@ -60,16 +65,16 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const npmLog = fs.existsSync('/tmp/npm.log') ? fs.readFileSync('/tmp/npm.log','utf8').slice(-3000) : '(not found)';
+            const installLog = fs.existsSync('/tmp/install.log') ? fs.readFileSync('/tmp/install.log','utf8').slice(-3000) : '(not found)';
             const tscLog = fs.existsSync('/tmp/tsc.log') ? fs.readFileSync('/tmp/tsc.log','utf8').slice(-3000) : '(not found)';
             const lines = [
               '## CI Diagnosis',
-              `- npm install: **${{ steps.install.outcome }}**`,
-              `- tsc: **${{ steps.typecheck.outcome }}**`,
+              `- Install: **${{ steps.install.outcome }}**`,
+              `- TypeCheck: **${{ steps.typecheck.outcome }}**`,
               '',
-              '### npm output (last 3000 chars)',
+              '### Install output (last 3000 chars)',
               '```',
-              npmLog,
+              installLog,
               '```',
               '',
               '### tsc output',
