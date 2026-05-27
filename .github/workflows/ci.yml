@@ -14,6 +14,7 @@ jobs:
     env:
       PUPPETEER_SKIP_DOWNLOAD: "true"
       PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+      COREPACK_ENABLE_STRICT: "0"
 
     steps:
       - uses: actions/checkout@v4
@@ -23,10 +24,8 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Enable corepack and install pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@10.4.1 --activate
+      - name: Install pnpm
+        run: npm install -g pnpm@10.4.1
 
       - name: Install dependencies
         run: pnpm install --no-optional --no-frozen-lockfile
