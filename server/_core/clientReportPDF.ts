@@ -157,7 +157,7 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
           });
 
           const documentBuffer = Buffer.from(documentResponse.data);
-          const contentType = documentResponse.headers["content-type"] || "";
+          const contentType = String(documentResponse.headers["content-type"] || "");
 
           if (contentType.includes("image")) {
             // Incorporar imagem do documento com dimensões otimizadas para A4
@@ -203,7 +203,7 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
           });
 
           const contractBuffer = Buffer.from(contractResponse.data);
-          const contentType = contractResponse.headers["content-type"] || "";
+          const contentType = String(contractResponse.headers["content-type"] || "");
 
           if (contentType.includes("image")) {
             // Incorporar imagem do contrato com dimensões otimizadas para A4
@@ -249,7 +249,7 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
           });
 
           const contract2Buffer = Buffer.from(contract2Response.data);
-          const contentType = contract2Response.headers["content-type"] || "";
+          const contentType = String(contract2Response.headers["content-type"] || "");
 
           if (contentType.includes("image")) {
             // Incorporar imagem do contrato 2 com dimensões otimizadas para A4
