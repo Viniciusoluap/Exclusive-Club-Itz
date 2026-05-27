@@ -890,7 +890,6 @@ export const bpoRouter = router({
           status: isFullyPaid ? 'receivedInCash' : 'partiallyPaid',
           amountPaid: newAmountPaid.toFixed(2),
           paidDate: isFullyPaid ? paymentDate : null,
-          updatedAt: new Date(),
         })
         .where(eq(bpoCharges.id, targetCharge.id));
 
@@ -904,7 +903,6 @@ export const bpoRouter = router({
           type: input.type,
           classifiedBy: 'manual',
           description: newDesc,
-          updatedAt: new Date(),
         })
         .where(eq(bpoCharges.id, input.chargeId));
 
@@ -1570,7 +1568,6 @@ export const bpoRouter = router({
           status: "receivedInCash",
           amountPaid: String(paidValue),
           paidDate: paymentDate,
-          updatedAt: new Date(),
         })
         .where(eq(bpoCharges.id, input.chargeId));
 
@@ -1624,7 +1621,6 @@ export const bpoRouter = router({
           amountPaid: newAmountPaid.toFixed(2),
           paymentLinks: JSON.stringify(paymentLinks),
           ...(isPaid ? { paidDate: paymentDate } : {}),
-          updatedAt: new Date(),
         })
         .where(eq(bpoCharges.id, input.chargeId));
 
@@ -1698,7 +1694,6 @@ export const bpoRouter = router({
             amountPaid: newAmountPaid.toFixed(2),
             paymentLinks: JSON.stringify(paymentLinks),
             ...(isPaid ? { paidDate: paymentDate } : {}),
-            updatedAt: new Date(),
           })
           .where(eq(bpoCharges.id, split.chargeId));
 
@@ -1726,7 +1721,6 @@ export const bpoRouter = router({
             status: 'cancelled',
             classifiedBy: 'manual',  // Remove da fila de não classificadas
             description: newDesc,
-            updatedAt: new Date(),
           })
           .where(eq(bpoCharges.id, input.sourceChargeId));
       }
@@ -1991,7 +1985,6 @@ export const bpoRouter = router({
           paymentLink: newCharge.invoiceUrl ?? null,
           invoiceUrl: newCharge.invoiceUrl ?? null,
           syncedAt: new Date(),
-          updatedAt: new Date(),
         })
         .where(eq(bpoCharges.id, input.chargeId));
 
@@ -2087,7 +2080,6 @@ export const bpoRouter = router({
               paymentLink: newCharge.invoiceUrl ?? null,
               invoiceUrl: newCharge.invoiceUrl ?? null,
               syncedAt: new Date(),
-              updatedAt: new Date(),
             })
             .where(eq(bpoCharges.id, chargeId));
 
