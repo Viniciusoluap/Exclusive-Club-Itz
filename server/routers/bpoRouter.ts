@@ -116,7 +116,7 @@ export const bpoRouter = router({
                 paidDate: charge.paymentDate || null,
                 amountPaid: paid ? String(charge.value) : "0",
                 netValue: charge.netValue != null ? String(charge.netValue) : null,
-                syncedAt: new Date(),
+                syncedAt: sql`NOW()`,
                 source: "asaas_import",
               })
               .where(eq(bpoCharges.asaasChargeId, charge.id));
@@ -142,7 +142,7 @@ export const bpoRouter = router({
               invoiceUrl: charge.invoiceUrl || null,
               bankSlipUrl: charge.bankSlipUrl || null,
               source: "asaas_import",
-              syncedAt: new Date(),
+              syncedAt: sql`NOW()`,
             });
             report.inserted++;
           }
@@ -443,7 +443,7 @@ export const bpoRouter = router({
             status: newStatus,
             paidDate: charge.paymentDate || null,
             amountPaid: paid ? String(charge.value) : "0",
-            syncedAt: new Date(),
+            syncedAt: sql`NOW()`,
             source: "asaas_webhook",
           })
           .where(eq(bpoCharges.asaasChargeId, row.asaas_charge_id));
@@ -487,7 +487,7 @@ export const bpoRouter = router({
           status: newStatus,
           paidDate: input.paymentDate || null,
           amountPaid: paid && input.value ? String(input.value) : "0",
-          syncedAt: new Date(),
+          syncedAt: sql`NOW()`,
           source: "asaas_webhook",
         })
         .where(eq(bpoCharges.asaasChargeId, input.asaasChargeId));
@@ -731,7 +731,7 @@ export const bpoRouter = router({
             invoiceUrl: charge.invoiceUrl || null,
             bankSlipUrl: charge.bankSlipUrl || null,
             source: "asaas_import",
-            syncedAt: new Date(),
+            syncedAt: sql`NOW()`,
           });
 
           report.inserted++;
@@ -1984,7 +1984,7 @@ export const bpoRouter = router({
           asaasCustomerId: asaasCustomer.id,
           paymentLink: newCharge.invoiceUrl ?? null,
           invoiceUrl: newCharge.invoiceUrl ?? null,
-          syncedAt: new Date(),
+          syncedAt: sql`NOW()`,
         })
         .where(eq(bpoCharges.id, input.chargeId));
 
@@ -2079,7 +2079,7 @@ export const bpoRouter = router({
               asaasCustomerId: asaasCustomer.id,
               paymentLink: newCharge.invoiceUrl ?? null,
               invoiceUrl: newCharge.invoiceUrl ?? null,
-              syncedAt: new Date(),
+              syncedAt: sql`NOW()`,
             })
             .where(eq(bpoCharges.id, chargeId));
 
