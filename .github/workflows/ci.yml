@@ -14,17 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: |
-          echo "node=$(node --version)"
-          echo "npm=$(npm --version)"
-          which pnpm && pnpm --version || echo "pnpm: not found"
-          which corepack && corepack --version || echo "corepack: not found"
-          node -e "require('corepack')" 2>/dev/null && echo "corepack module: ok" || echo "corepack module: not found"
-
       - uses: pnpm/action-setup@v4
 
-      - run: |
-          echo "pnpm after setup: $(pnpm --version)"
-          pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
 
-      - run: npx tsc --noEmit
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Type check
+        run: npx tsc --noEmit
