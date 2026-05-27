@@ -21,29 +21,38 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit
+        id: install
+        run: npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit 2>&1 | tee /tmp/npm.log; exit ${PIPESTATUS[0]}
+        continue-on-error: true
 
       - name: Type check
         id: typecheck
+        if: steps.install.outcome == 'success'
         run: npx tsc --noEmit 2>&1 | tee /tmp/tsc.log; exit ${PIPESTATUS[0]}
         continue-on-error: true
 
-      - name: Report tsc errors as PR comment
-        if: steps.typecheck.outcome == 'failure' && github.event_name == 'pull_request'
+      - name: Report errors as PR comment
+        if: (steps.install.outcome == 'failure' || steps.typecheck.outcome == 'failure') && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const log = fs.existsSync('/tmp/tsc.log')
-              ? fs.readFileSync('/tmp/tsc.log', 'utf8').slice(-4000)
-              : 'tsc.log not found';
+            const npmLog = fs.existsSync('/tmp/npm.log')
+              ? fs.readFileSync('/tmp/npm.log', 'utf8').slice(-2000)
+              : '';
+            const tscLog = fs.existsSync('/tmp/tsc.log')
+              ? fs.readFileSync('/tmp/tsc.log', 'utf8').slice(-2000)
+              : '';
+            const installStatus = '${{ steps.install.outcome }}';
+            const tscStatus = '${{ steps.typecheck.outcome }}';
+            const body = `## CI Diagnosis\n- npm install: **${installStatus}**\n- tsc: **${tscStatus}**\n\n### npm output (last 2000 chars)\n\`\`\`\n${npmLog}\n\`\`\`\n\n### tsc output\n\`\`\`\n${tscLog}\n\`\`\``;
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `❌ **TypeScript errors**:\n\`\`\`\n${log}\n\`\`\``
+              body
             });
 
-      - name: Fail if typecheck failed
-        if: steps.typecheck.outcome == 'failure'
+      - name: Fail
+        if: steps.install.outcome == 'failure' || steps.typecheck.outcome == 'failure'
         run: exit 1
