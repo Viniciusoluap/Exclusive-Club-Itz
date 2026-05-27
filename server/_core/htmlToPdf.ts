@@ -292,15 +292,17 @@ export interface ContractData {
   clientCity?: string;
   clientState?: string;
   clientZipCode?: string;
-  boatName: string;
-  boatDescription: string;
-  quotaType: string;
-  quotaNumber: number;
-  quotaPercentage: string;
-  totalQuotas: number;
-  adhesionValue: number;
-  monthlyFee: number;
-  installments: Array<{ description: string; dueDate: string; value: number }>;
+  quotas: Array<{
+    boatName: string;
+    boatDescription?: string;
+    quotaType: string;
+    quotaNumber: number;
+    totalQuotas: number;
+    adhesionValue: number;
+    monthlyFee: number;
+    quotaPercentage: string;
+  }>;
+  installments: Array<{ description: string; dueDate: string; value: number; status?: string }>;
   contractDate: string;
 }
 
@@ -414,109 +416,107 @@ export async function generateNotificationPdf(data: NotificationData): Promise<B
 // ============================================================
 
 export async function generateContractPdf(data: ContractData): Promise<Buffer> {
-  const installmentRows = data.installments.slice(0, 20).map((inst, i) => [
+  const firstQuota = data.quotas[0] ?? {
+    boatName: "", boatDescription: "", quotaType: "Cota Inteira",
+    quotaNumber: 1, totalQuotas: 6, adhesionValue: 0, monthlyFee: 0, quotaPercentage: "16,67",
+  };
+
+  // Montar descrição das cotas para a Cláusula 1
+  const quotaDescLines = data.quotas.map((q) => {
+    const desc = q.boatDescription ? `${q.boatName} — ${q.boatDescription}` : q.boatName;
+    return `${q.quotaType} Nº ${q.quotaNumber} — ${desc}`;
+  });
+
+  // Taxa de adesão total (soma de todas as parcelas de venda de cota)
+  const adhesionTotal = data.installments.reduce((s, i) => s + i.value, 0);
+  const adhesionDisplay = adhesionTotal > 0 ? fmtBRL(adhesionTotal) : (firstQuota.adhesionValue > 0 ? fmtBRL(firstQuota.adhesionValue) : "Conforme negociação");
+  const monthlyDisplay = firstQuota.monthlyFee > 0 ? fmtBRL(firstQuota.monthlyFee) : "Conforme negociação";
+
+  const installmentRows = data.installments.map((inst, i) => [
     String(i + 1),
-    inst.description,
+    inst.description || "Venda de Cota",
     fmtDate(inst.dueDate),
     fmtBRL(inst.value),
+    inst.status || "",
   ]);
 
   const locationCity = data.clientCity && data.clientState
     ? `${data.clientCity}/${data.clientState}`
     : data.clientCity || "Imperatriz/MA";
 
+  const clientIntro = [
+    `Nome completo: ${data.clientName},`,
+    data.clientAddress ? `com sede na rua ${data.clientAddress},` : "",
+    data.clientNeighborhood ? `Bairro ${data.clientNeighborhood},` : "",
+    data.clientZipCode ? `CEP ${data.clientZipCode},` : "",
+    `cidade de ${locationCity},`,
+    `inscrito no CPF sob nº. ${data.clientCpfCnpj || "___________________________"}`,
+    data.clientRg ? `e RG ${data.clientRg}.` : "e RG ___________________________.",
+  ].filter(Boolean).join(" ");
+
+  const objectText = quotaDescLines.length === 1
+    ? `1.1 Este instrumento tem como objeto o uso compartilhado da embarcação: ${quotaDescLines[0]}, de propriedade da EXCLUSIVE CLUB, de modo compartilhado com outras pessoas que tenham celebrado ou venham a celebrar contrato do tipo do presente de embarcação fornecida pela EXCLUSIVE CLUB, em cada oportunidade de acordo com as disposições deste instrumento.`
+    : `1.1 Este instrumento tem como objeto o uso compartilhado das seguintes cotas de embarcações de propriedade da EXCLUSIVE CLUB: ${quotaDescLines.join("; ")}. O uso será compartilhado com outras pessoas que tenham celebrado ou venham a celebrar contrato do tipo do presente, em cada oportunidade de acordo com as disposições deste instrumento.`;
+
   const sections: PdfSection[] = [
     { type: "header" },
     { type: "title", content: "CONTRATO PARA USO COMPARTILHADO DE EMBARCAÇÃO" },
     { type: "subtitle", content: '"EXCLUSIVE CLUB"' },
 
-    { type: "h2", content: "Qualificação das Partes" },
-    { type: "h3", content: "CONTRATADO" },
-    {
-      type: "infoBox",
-      fields: [
-        { label: "Razão Social", value: "EXCLUSIVE CLUB — P V G FREITAS" },
-        { label: "CNPJ/MF", value: "50.680.592/0001-08" },
-        { label: "Endereço", value: "Rua Leôncio Pires Dourado, Nº 840-A, Bairro Bacuri, CEP: 65.901-020 — Imperatriz/MA" },
-        { label: "Representante Legal", value: "PAULO VINICIUS GOMES FREITAS" },
-        { label: "CPF", value: "988.600.113-53" },
-        { label: "RG", value: "16191852001-0 SSP/MA" },
-      ],
-    },
-
-    { type: "h3", content: "CONTRATANTE" },
-    {
-      type: "infoBox",
-      fields: [
-        { label: "Nome Completo", value: data.clientName },
-        { label: "CPF/CNPJ", value: data.clientCpfCnpj || "___________________________" },
-        { label: "RG", value: data.clientRg || "___________________________" },
-        { label: "Telefone", value: data.clientPhone || "___________________________" },
-        { label: "E-mail", value: data.clientEmail },
-        { label: "Endereço", value: data.clientAddress || "_______________________________________________" },
-        { label: "Bairro", value: data.clientNeighborhood || "___________________________" },
-        { label: "CEP", value: data.clientZipCode || "___________________________" },
-        { label: "Cidade/UF", value: locationCity },
-      ],
-    },
-
-    { type: "h2", content: "Cláusula 1ª — Objeto" },
     {
       type: "paragraph",
-      content: `O presente contrato tem por objeto a cessão do direito de uso compartilhado da embarcação denominada ${data.boatName}${data.boatDescription ? ` (${data.boatDescription})` : ""}, de propriedade da EXCLUSIVE CLUB, na modalidade ${data.quotaType}, correspondente à Cota Nº ${data.quotaNumber}, equivalente a ${data.quotaPercentage}% do total de ${data.totalQuotas} cotas da referida embarcação.`,
+      content: `Por este instrumento, o CONTRATADO, EXCLUSIVE CLUB - ME, com sede na Rua Leôncio Pires Dourado, Nº. 840-A, Bairro Bacuri, CEP: 65.901-020, na cidade de Imperatriz/MA, inscrita no CNPJ/MF sob nº. 50.680.592/0001-08, neste ato representado por seu administrador PAULO VINICIUS GOMES FREITAS, portador da cédula de identidade 16191852001-0 SSP/MA, sob o CPF de nº. 988.600.113-53. Celebra com o CONTRATANTE: ${clientIntro}`,
     },
-    {
-      type: "paragraph",
-      content: `A embarcação será utilizada de forma compartilhada entre os cotistas, conforme calendário de reservas gerenciado pela CONTRATADA por meio do sistema digital Exclusive Club (exclusiveclubitz.com), respeitando as regras de uso estabelecidas neste instrumento.`,
-    },
+    { type: "paragraph", content: "Assim designado adiante neste instrumento e qualificado em documento anexado ao presente (DOC. 01), CONTRATAM COMO SE SEGUE:" },
 
-    { type: "h2", content: "Cláusula 2ª — Obtenção do Direito de Posse e Uso" },
-    {
-      type: "paragraph",
-      content: `Pela aquisição do direito de uso da cota descrita na Cláusula 1ª, o CONTRATANTE pagará à CONTRATADA os seguintes valores:`,
-    },
-    {
-      type: "infoBox",
-      fields: [
-        { label: "Taxa de Adesão (valor único)", value: data.adhesionValue > 0 ? fmtBRL(data.adhesionValue) : "Conforme negociação" },
-        { label: "Taxa Mensal de Manutenção", value: data.monthlyFee > 0 ? `${fmtBRL(data.monthlyFee)} / mês` : "Conforme negociação" },
-      ],
-    },
+    { type: "h2", content: "Cláusula 1 — Objeto" },
+    { type: "paragraph", content: objectText },
+    { type: "paragraph", content: "O CONTRATANTE declara, para os fins de direito, estar ciente de que tem de manter-se apto e rigorosamente em dia, bem assim manter em situação regular, com relação a habilitações e autorizações necessárias, nos termos da legislação aplicável, para conduzir e usar embarcação nos termos deste contrato. Cópias autenticadas da documentação referente à renovação ou autorização respectivas devem ser entregues à EXCLUSIVE CLUB, assim que disponível para o CONTRATANTE, em cada oportunidade." },
+
+    { type: "h2", content: "Cláusula 2 — Obtenção do Direito de Posse e Uso de Embarcação pelo Contratante" },
+    { type: "paragraph", content: `O CONTRATANTE obtém o direito da quota da posse e usufruto da embarcação mediante o pagamento à EXCLUSIVE CLUB da quantia de ${adhesionDisplay}, doravante designada "taxa de adesão", podendo ser negociada individualmente com cada quotista, sendo anexada ao contrato original.` },
+    { type: "paragraph", content: `2.2 O sócio possuidor/usufrutuário descrito acima subscreve ${data.quotas.length} quota(s) em um total de ${firstQuota.quotaPercentage}% da posse e do valor da embarcação.` },
+    { type: "paragraph", content: `E permanece com esse direito da quota de posse e usufruto enquanto pague à EXCLUSIVE CLUB, mensalmente, a quantia de ${monthlyDisplay}, doravante designada "taxa mensal" (ou, no plural, "taxas mensais"), com reajuste anual de acordo com o IPCA.` },
+    { type: "paragraph", content: "Vencendo-se (i) a primeira taxa mensal no mesmo dia do mês-calendário imediatamente seguinte ao do pagamento da taxa inicial, e (ii) as demais taxas mensais no mesmo dia de cada um dos meses-calendário seguintes." },
+    { type: "paragraph", content: "A taxa mensal deve ser paga mediante transferência bancária comprovada e confirmada pela EXCLUSIVE CLUB, ficando a ela facultado a remessa, ao CONTRATANTE, de boletos para pagamento em banco autorizado ou pix fornecido pelo contratado." },
+    { type: "paragraph", content: "O valor da taxa mensal fica sujeito a correção monetária anual de acordo com a variação, para maior, do Índice Geral de Preços do Mercado – IGP-M – divulgado pela Fundação Getúlio Vargas, sendo que na falta desse índice é adotado o Índice Nacional de Preços ao Consumidor – INPC." },
+    { type: "paragraph", content: "A falta de pagamento, no dia do vencimento, de taxa de adesão e ou mensal importa em que a mesma fique acrescida por aplicação, em sequência, de (i) juro à razão de 1% (um por cento) ao mês e (ii) multa na base de 2% (dois por cento). A inadimplência de 30% do valor pago pela taxa de adesão ou 3 taxas mensais acarretará na perda do direito da quota de usufruto da embarcação." },
+    { type: "paragraph", content: "As taxas, de adesão e ou mensal não são passíveis de devolução, sob qualquer hipótese. Caso a EXCLUSIVE CLUB desative suas atividades, o CONTRATADO irá devolver 16,67% do valor negociado da embarcação." },
+    { type: "paragraph", content: "O CONTRATANTE pode solicitar a transferência desse contrato para uma terceira parte, após 2 meses de vigência do contrato, desde que esteja em conformidade com todas as cláusulas deste contrato, em dia com as mensalidades e a terceira parte seja aprovada pela EXCLUSIVE CLUB." },
 
     ...(installmentRows.length > 0
       ? [
-          { type: "h3" as const, content: "Cronograma de Pagamentos" },
+          { type: "h3" as const, content: "Cronograma de Pagamentos — Venda de Cota" },
           {
             type: "table" as const,
-            headers: ["#", "Descrição", "Vencimento", "Valor"],
-            colWidths: [30, 250, 100, 80],
+            headers: ["#", "Descrição", "Vencimento", "Valor", "Status"],
+            colWidths: [25, 180, 80, 75, 75],
             rows: installmentRows,
           },
         ]
       : []),
 
-    { type: "h2", content: "Cláusula 3ª — Reserva para Uso de Embarcação" },
-    { type: "paragraph", content: "3.1. O CONTRATANTE deverá realizar as reservas de uso da embarcação exclusivamente por meio do sistema digital disponível em exclusiveclubitz.com, com antecedência mínima de 24 (vinte e quatro) horas." },
-    { type: "paragraph", content: "3.2. As reservas estão sujeitas à disponibilidade da embarcação, sendo vedada a sobreposição de horários entre cotistas." },
-    { type: "paragraph", content: "3.3. O cancelamento de reserva deverá ser realizado com antecedência mínima de 12 (doze) horas, sob pena de desconto de 1 (uma) hora de uso do saldo disponível." },
-    { type: "paragraph", content: "3.4. Cada cotista terá direito ao uso proporcional à sua cota, conforme calendário estabelecido pela CONTRATADA, podendo ser ajustado mediante acordo entre as partes." },
+    { type: "h2", content: "Cláusula 3 — Reserva para Uso de Embarcação" },
+    { type: "paragraph", content: "Para usar embarcação nos termos deste contrato o CONTRATANTE tem de fazer reserva em tela própria do sistema utilizado pela EXCLUSIVE CLUB, disponível em exclusiveclubitz.com. No caso em que haja embarcação disponível para o dia da reserva, a confirmação dessa reserva é indicada no próprio site." },
+    { type: "paragraph", content: "O CONTRATANTE tem o direito de manter até 2 (duas) reservas ativas, de cada vez, para uso de embarcação." },
+    { type: "paragraph", content: "O CONTRATANTE pode cancelar reserva que tenha sido a ele confirmada, desde que o faça até às 18 horas do dia anterior ao de uso da embarcação. Se o CONTRATANTE não cancela a reserva conforme disposto nesta cláusula e não comparece no lugar e horário próprios para uso da embarcação, fica sujeito ao pagamento de uma taxa de desistência no valor de R$ 100,00 (cem reais)." },
+    { type: "paragraph", content: "O CONTRATANTE, enquanto esteja em mora ou em situação de inadimplemento, fica impedido (i) de fazer reserva para uso de embarcação, ou, se já feita a reserva, (ii) de usar embarcação." },
 
-    { type: "h2", content: "Cláusula 4ª — Uso da Embarcação pelo Contratante" },
-    { type: "paragraph", content: "4.1. O CONTRATANTE se compromete a utilizar a embarcação de forma responsável, respeitando as normas de segurança náutica estabelecidas pela Marinha do Brasil e pela legislação vigente." },
-    { type: "paragraph", content: "4.2. É vedado ao CONTRATANTE: (a) ceder ou sublocar seu direito de uso a terceiros sem autorização expressa da CONTRATADA; (b) utilizar a embarcação para fins comerciais; (c) realizar modificações na embarcação sem autorização prévia." },
-    { type: "paragraph", content: "4.3. Danos causados à embarcação por uso inadequado ou negligência do CONTRATANTE serão de sua exclusiva responsabilidade, devendo ser ressarcidos à CONTRATADA no prazo de 30 (trinta) dias após a constatação." },
-    { type: "paragraph", content: "4.4. O CONTRATANTE deverá apresentar habilitação náutica válida sempre que conduzir a embarcação, conforme exigência da Autoridade Marítima Brasileira." },
-    { type: "paragraph", content: "4.5. O abastecimento de combustível será custeado pelo CONTRATANTE de forma proporcional ao uso, conforme registros do sistema digital da CONTRATADA." },
+    { type: "h2", content: "Cláusula 4 — Uso de Embarcação pelo Contratante" },
+    { type: "paragraph", content: "A embarcação para uso com base em reserva confirmada ficará à disposição do CONTRATANTE a partir das 8:00 horas do dia respectivo, devendo o CONTRATANTE aportar e devolver a embarcação até às 19:00 horas do mesmo dia, livre de pessoas e coisas que não pertençam à embarcação." },
+    { type: "paragraph", content: "A embarcação é entregue ao CONTRATANTE com o tanque de combustível cheio, cabendo ao CONTRATANTE devolvê-la nas mesmas condições. No caso em que a embarcação é devolvida sem estar com o tanque cheio, o CONTRATANTE fica automaticamente obrigado ao pagamento de taxa de reabastecimento de R$ 250,00 (duzentos e cinquenta reais), mais o custo do combustível necessário para encher o tanque." },
+    { type: "paragraph", content: "É terminantemente VEDADO: (i) o uso da embarcação para fim que não seja exclusivamente de recreação; (ii) cessão ou empréstimo da embarcação pelo CONTRATANTE; (iii) uso em testes de velocidade ou competição; (iv) uso ou condução em estado de embriaguez; (v) uso ou porte de substância psicotrópica ou narcótica; (vi) uso para transporte de produtos inflamáveis ou explosivos." },
+    { type: "paragraph", content: "O CONTRATANTE que descumprir qualquer das hipóteses acima perderá o direito de usufruto da quota. Danos causados à embarcação por uso inadequado ou negligência serão de exclusiva responsabilidade do CONTRATANTE, devendo ser ressarcidos à EXCLUSIVE CLUB no prazo de 30 (trinta) dias após a constatação." },
+    { type: "paragraph", content: "A não devolução da embarcação no prazo estabelecido importa em multa diária no valor de R$ 1.200,00 (um mil e duzentos reais). Em caso de acidente, o CONTRATANTE fica obrigado a comunicar imediatamente a EXCLUSIVE CLUB e providenciar boletim de ocorrência ou documento equivalente." },
 
-    { type: "h2", content: "Cláusula 5ª — Vigência e Término" },
-    { type: "paragraph", content: "5.1. O presente contrato é celebrado por prazo indeterminado, podendo ser rescindido por qualquer das partes mediante notificação escrita com antecedência mínima de 30 (trinta) dias." },
-    { type: "paragraph", content: "5.2. A rescisão antecipada pelo CONTRATANTE não implicará devolução da taxa de adesão já paga, salvo acordo expresso entre as partes." },
-    { type: "paragraph", content: "5.3. Em caso de inadimplência superior a 60 (sessenta) dias, a CONTRATADA poderá suspender o direito de uso do CONTRATANTE até a regularização dos débitos, sem prejuízo das demais medidas legais cabíveis." },
+    { type: "h2", content: "Cláusula 5 — Vigência e Término" },
+    { type: "paragraph", content: "Este contrato entra em vigor na data constante da parte final deste instrumento e pelo prazo ou período indeterminado." },
+    { type: "paragraph", content: "Este contrato poderá ser extinto por qualquer das partes mediante notificação por escrito com antecedência de 20 (vinte) dias. Na hipótese de infração contratual, a parte infratora ficará obrigada a pagar multa rescisória equivalente à soma de 3 (três) taxas mensais." },
 
-    { type: "h2", content: "Cláusula 6ª — Disposições Finais" },
-    { type: "paragraph", content: "6.1. O presente contrato é regido pelas disposições do Código Civil Brasileiro (Lei nº 10.406/2002) e pela legislação náutica aplicável." },
-    { type: "paragraph", content: "6.2. As partes elegem o foro da Comarca de Imperatriz/MA para dirimir quaisquer controvérsias oriundas deste instrumento, com renúncia expressa a qualquer outro, por mais privilegiado que seja." },
-    { type: "paragraph", content: "6.3. Este instrumento é celebrado em 2 (duas) vias de igual teor e forma, na presença de 2 (duas) testemunhas." },
+    { type: "h2", content: "Cláusula 6 — Disposições Finais" },
+    { type: "paragraph", content: "O término deste contrato, por qualquer motivo, não terá efeito liberatório em relação a obrigações assumidas durante sua vigência e que permaneçam pendentes de cumprimento." },
+    { type: "paragraph", content: "O CONTRATANTE obriga-se a reembolsar à EXCLUSIVE CLUB despesas judiciais ou extrajudiciais por ela incorridas como decorrência de questão que seja de responsabilidade do CONTRATANTE, conforme disposição deste contrato." },
+    { type: "paragraph", content: "Fica eleito o foro central da Comarca de Imperatriz, no Estado do Maranhão, para resolução de questões ou controvérsias derivadas deste contrato." },
 
     {
       type: "signatureBlock",

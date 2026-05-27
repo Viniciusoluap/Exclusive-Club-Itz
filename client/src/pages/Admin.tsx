@@ -699,37 +699,47 @@ export default function Admin() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Mobile: Apenas Ícones */}
-          <TabsList className="md:hidden w-full flex flex-wrap gap-2 p-2 justify-center">
-            <TabsTrigger value="clients" className="p-3">
-              <Users className="h-5 w-5" />
+          {/* Mobile: Apenas Ícones em grid 5x2 */}
+          <TabsList className="md:hidden w-full grid grid-cols-5 p-1 h-auto gap-1">
+            <TabsTrigger value="clients" className="p-2 flex flex-col items-center gap-0.5">
+              <Users className="h-4 w-4" />
+              <span className="text-[9px] leading-none">Clientes</span>
             </TabsTrigger>
-            <TabsTrigger value="vessels" className="p-3">
-              <Ship className="h-5 w-5" />
+            <TabsTrigger value="vessels" className="p-2 flex flex-col items-center gap-0.5">
+              <Ship className="h-4 w-4" />
+              <span className="text-[9px] leading-none">Embarcações</span>
             </TabsTrigger>
-            <TabsTrigger value="bookings" className="p-3">
-              <Calendar className="h-5 w-5" />
+            <TabsTrigger value="bookings" className="p-2 flex flex-col items-center gap-0.5">
+              <Calendar className="h-4 w-4" />
+              <span className="text-[9px] leading-none">Reservas</span>
             </TabsTrigger>
-            <TabsTrigger value="maintenance" className="p-3">
-              <Settings className="h-5 w-5" />
+            <TabsTrigger value="maintenance" className="p-2 flex flex-col items-center gap-0.5">
+              <Settings className="h-4 w-4" />
+              <span className="text-[9px] leading-none">Manutenção</span>
             </TabsTrigger>
-            <TabsTrigger value="employees" className="p-3">
-              <UserCog className="h-5 w-5" />
+            <TabsTrigger value="employees" className="p-2 flex flex-col items-center gap-0.5">
+              <UserCog className="h-4 w-4" />
+              <span className="text-[9px] leading-none">Funcionários</span>
             </TabsTrigger>
-            <TabsTrigger value="fuel" className="p-3">
-              <Fuel className="h-5 w-5" />
+            <TabsTrigger value="fuel" className="p-2 flex flex-col items-center gap-0.5">
+              <Fuel className="h-4 w-4" />
+              <span className="text-[9px] leading-none">Abastec.</span>
             </TabsTrigger>
-            <TabsTrigger value="inspections" className="p-3">
-              <ClipboardCheck className="h-5 w-5" />
+            <TabsTrigger value="inspections" className="p-2 flex flex-col items-center gap-0.5">
+              <ClipboardCheck className="h-4 w-4" />
+              <span className="text-[9px] leading-none">Vistorias</span>
             </TabsTrigger>
-            <TabsTrigger value="reports" className="p-3">
-              <BarChart3 className="h-5 w-5" />
+            <TabsTrigger value="reports" className="p-2 flex flex-col items-center gap-0.5">
+              <BarChart3 className="h-4 w-4" />
+              <span className="text-[9px] leading-none">Relatórios</span>
             </TabsTrigger>
-            <TabsTrigger value="saas" className="p-3">
-              <DollarSign className="h-5 w-5" />
+            <TabsTrigger value="saas" className="p-2 flex flex-col items-center gap-0.5">
+              <DollarSign className="h-4 w-4" />
+              <span className="text-[9px] leading-none">Saas</span>
             </TabsTrigger>
-            <TabsTrigger value="configuracoes" className="p-3">
-              <Settings className="h-5 w-5" />
+            <TabsTrigger value="configuracoes" className="p-2 flex flex-col items-center gap-0.5">
+              <Settings className="h-4 w-4" />
+              <span className="text-[9px] leading-none">Config.</span>
             </TabsTrigger>
           </TabsList>
 
@@ -848,32 +858,32 @@ export default function Admin() {
                       return sortedClients.map((client) => (
                       <div
                         key={client.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg gap-2"
                       >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <div className="font-semibold">{client.name}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="font-semibold break-words">{client.name}</div>
                             {(!client.quotas || client.quotas.length === 0) && (
-                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full">
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded-full whitespace-nowrap">
                                 SEM COTAS
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-muted-foreground">{client.email}</div>
+                          <div className="text-sm text-muted-foreground truncate">{client.email}</div>
                           {client.phone && (
                             <div className="text-sm text-muted-foreground">{client.phone}</div>
                           )}
                           {client.quotas && client.quotas.length > 0 && (
-                            <div className="text-sm font-medium text-primary mt-1">
+                            <div className="text-sm font-medium text-primary mt-1 flex flex-wrap gap-1">
                               {client.quotas.map((q: any) => (
-                                <span key={q.id} className="mr-2">
+                                <span key={q.id} className="whitespace-nowrap">
                                   {vessels?.find(v => v.id === q.vesselId)?.name} #{q.quotaNumber} ({q.quotaType === "full" ? "Inteira" : "Meia"})
                                 </span>
                               ))}
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 flex-wrap flex-shrink-0">
                           <Button
                             variant="outline"
                             size="sm"
@@ -1069,17 +1079,17 @@ export default function Admin() {
                     {bookings.map((booking) => (
                       <div
                         key={booking.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg gap-2"
                       >
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <div className="font-semibold">{booking.clientName}</div>
-                          <div className="text-sm text-muted-foreground">{booking.clientEmail}</div>
-                          <div className="text-sm">
+                          <div className="text-sm text-muted-foreground truncate">{booking.clientEmail}</div>
+                          <div className="text-sm truncate">
                             {booking.vesselName} -{" "}
                             {new Date(booking.bookingDate).toLocaleDateString("pt-BR")}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 flex-wrap flex-shrink-0">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${
                               booking.status === "confirmed"
