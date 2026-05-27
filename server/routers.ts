@@ -2555,36 +2555,36 @@ Nenhuma reserva foi afetada.
             const value = ((rec.total_amount || 0) / 100).toFixed(2);
             const description = `Abastecimento - Baixa manual (ID: ${input.id})`;
 
+            let rowsUpdated = 0;
+
+            // Tenta atualizar pelo asaas_charge_id
             if (rec.asaas_charge_id) {
-              // Tenta atualizar o registro existente em bpo_charges
               const updateResult = await db.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'received', updated_at = NOW()
                 WHERE asaas_charge_id = ${rec.asaas_charge_id}
               `) as any;
-              const affectedRows = updateResult?.[0]?.affectedRows ?? updateResult?.affectedRows ?? 0;
-              // Se não encontrou registro com esse asaas_charge_id, insere um novo
-              if (affectedRows === 0) {
-                await db.insert(bpoCharges).values({
-                  asaasChargeId: rec.asaas_charge_id,
-                  asaasCustomerId: null,
-                  clientId: null,
-                  clientName: rec.client_name || null,
-                  clientEmail: rec.client_email || null,
-                  value,
-                  dueDate,
-                  status: 'received',
-                  type: 'fuel',
-                  classifiedBy: 'manual',
-                  billingType: 'PIX',
-                  description,
-                  source: 'manual',
-                });
-              }
-            } else {
-              // Sem asaas_charge_id — inserir como baixa manual
+              rowsUpdated = updateResult?.[0]?.affectedRows ?? updateResult?.affectedRows ?? 0;
+            }
+
+            // Fallback: atualizar pelo client_email + type='fuel' se não encontrou pelo asaas_charge_id
+            if (rowsUpdated === 0 && rec.client_email) {
+              const fallbackResult = await db.execute(sql`
+                UPDATE bpo_charges
+                SET status = 'received', updated_at = NOW()
+                WHERE type = 'fuel'
+                  AND client_email = ${rec.client_email}
+                  AND status IN ('pending', 'overdue')
+                ORDER BY due_date ASC
+                LIMIT 1
+              `) as any;
+              rowsUpdated = fallbackResult?.[0]?.affectedRows ?? fallbackResult?.affectedRows ?? 0;
+            }
+
+            // Se ainda não encontrou nenhum registro, insere como baixa manual
+            if (rowsUpdated === 0) {
               await db.insert(bpoCharges).values({
-                asaasChargeId: null,
+                asaasChargeId: rec.asaas_charge_id || null,
                 asaasCustomerId: null,
                 clientId: null,
                 clientName: rec.client_name || null,
