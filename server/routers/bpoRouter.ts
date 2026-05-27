@@ -1661,7 +1661,7 @@ export const bpoRouter = router({
         );
       }
 
-      const paymentDate = input.paymentDate || new Date().toISOString().split('T')[0];
+      const paymentDate: string = input.paymentDate ?? new Date().toISOString().split('T')[0];
       const results: Array<{ chargeId: number; status: string; message: string }> = [];
 
       for (const split of input.splits) {
@@ -1693,7 +1693,7 @@ export const bpoRouter = router({
             status: newStatus,
             amountPaid: newAmountPaid.toFixed(2),
             paymentLinks: JSON.stringify(paymentLinks),
-            ...(isPaid ? { paidDate: paymentDate } : {}),
+            paidDate: isPaid ? paymentDate : undefined,
           })
           .where(eq(bpoCharges.id, split.chargeId));
 

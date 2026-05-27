@@ -47,8 +47,14 @@ jobs:
             let body = `## CI Diagnostics\n\nCheckout step completed: **${checkoutDone}**\n\n`;
             const installLog = readLog('/tmp/npm-install.log', 30);
             body += '### npm install (last 30 lines)\n```\n' + (installLog ?? '_not run_') + '\n```\n\n';
-            const tscLog = readLog('/tmp/tsc-output.log', 100);
-            body += '### tsc output\n```\n' + (tscLog ?? '_not run_') + '\n```\n';
+            const tscRaw = (() => { try { return fs.readFileSync('/tmp/tsc-output.log', 'utf8'); } catch(e) { return null; } })();
+            if (tscRaw) {
+              const lines = tscRaw.split('\n');
+              const errors = lines.filter(l => l.includes('error TS'));
+              body += '### tsc errors (' + errors.length + ' total)\n```\n' + errors.join('\n') + '\n```\n';
+            } else {
+              body += '### tsc output\n```\n_not run_\n```\n';
+            }
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
