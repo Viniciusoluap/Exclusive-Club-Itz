@@ -22,11 +22,29 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit
+        run: |
+          echo "=== npm install ===" | tee /tmp/ci.log
+          npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit 2>&1 | tee -a /tmp/ci.log
+          echo "npm exit: $?" | tee -a /tmp/ci.log
 
       - name: Type check
-        run: npx tsc --noEmit
+        run: |
+          echo "=== tsc --noEmit ===" | tee -a /tmp/ci.log
+          npx tsc --noEmit 2>&1 | tee -a /tmp/ci.log
+          TSC_EXIT=${PIPESTATUS[0]}
+          echo "tsc exit: $TSC_EXIT" | tee -a /tmp/ci.log
+          exit $TSC_EXIT
 
-      - name: Report success
-        if: success()
-        run: echo "✅ CI passed"
+      - name: Post diagnosis on failure
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LOG=$(cat /tmp/ci.log 2>/dev/null | tail -200 | sed 's/"/\\"/g' | sed 's/\\/\\\\/g' | tr '\n' '|' | sed 's/|/\\n/g')
+          BODY="## CI Failed\\n\`\`\`\\n${LOG}\\n\`\`\`"
+          curl -s -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"body\": \"$BODY\"}" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            || echo "curl failed to post comment"
