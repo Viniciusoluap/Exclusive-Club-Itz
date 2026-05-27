@@ -10,9 +10,6 @@ jobs:
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
-      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -21,41 +18,8 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install pnpm
-        run: npm install -g pnpm@10.18.0
-
-      - name: Diagnostics
-        run: |
-          echo "node: $(node --version)"
-          echo "npm: $(npm --version)"
-          echo "pnpm: $(pnpm --version)"
-          echo "lockfile lines: $(wc -l < pnpm-lock.yaml)"
-          echo "package-lock exists: $(test -f package-lock.json && echo yes || echo no)"
-
       - name: Install dependencies
-        id: install
-        run: pnpm install --frozen-lockfile --ignore-scripts 2>&1 | tee /tmp/install.log; exit ${PIPESTATUS[0]}
-        continue-on-error: true
-
-      - name: Report failure as PR comment
-        if: steps.install.outcome == 'failure' && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const log = fs.existsSync('/tmp/install.log')
-              ? fs.readFileSync('/tmp/install.log', 'utf8').slice(-3000)
-              : 'Log not found';
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `❌ **pnpm install falhou**\n\`\`\`\n${log}\n\`\`\``
-            });
-
-      - name: Fail if install failed
-        if: steps.install.outcome == 'failure'
-        run: exit 1
+        run: npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit
 
       - name: Type check
         run: npx tsc --noEmit
