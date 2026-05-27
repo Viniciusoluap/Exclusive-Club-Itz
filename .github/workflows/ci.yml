@@ -22,6 +22,13 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Diagnostics
+        run: |
+          node --version
+          pnpm --version
+          ls -la pnpm-lock.yaml package.json
+          cat package.json | python3 -c "import sys,json; p=json.load(sys.stdin); print('deps:', len(p.get('dependencies',{})), 'devDeps:', len(p.get('devDependencies',{})), 'optional:', p.get('optionalDependencies','none'))"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
