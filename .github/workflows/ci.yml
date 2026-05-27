@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
+      issues: write
 
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         id: install
-        run: npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit 2>&1 | tee /tmp/npm.log; exit ${PIPESTATUS[0]}
+        run: npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit --loglevel verbose 2>&1 | tee /tmp/npm.log; exit ${PIPESTATUS[0]}
         continue-on-error: true
 
       - name: Type check
@@ -45,9 +46,9 @@ jobs:
               : '';
             const installStatus = '${{ steps.install.outcome }}';
             const tscStatus = '${{ steps.typecheck.outcome }}';
-            const body = `## CI Diagnosis\n- npm install: **${installStatus}**\n- tsc: **${tscStatus}**\n\n### npm output (last 2000 chars)\n\`\`\`\n${npmLog}\n\`\`\`\n\n### tsc output\n\`\`\`\n${tscLog}\n\`\`\``;
+            const body = `## CI Diagnosis\n- npm install: **${installStatus}**\n- tsc: **${tscStatus}**\n\n### npm output (last 2000 chars)\n\`\`\`\n${npmLog}\n\`\`\`\n\n### tsc output (last 2000 chars)\n\`\`\`\n${tscLog}\n\`\`\``;
             await github.rest.issues.createComment({
-              issue_number: context.issue.number,
+              issue_number: context.payload.pull_request?.number || context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body
