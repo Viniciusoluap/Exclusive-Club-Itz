@@ -1586,45 +1586,22 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const { sql } = await import('drizzle-orm');
+        const { employees } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
 
-        // Construir SET clause dinamicamente
-        const updates: string[] = [];
+        const updateData: Record<string, unknown> = {};
+        if (input.name !== undefined) updateData.name = input.name;
+        if (input.email !== undefined) updateData.email = input.email;
+        if (input.phone !== undefined) updateData.phone = input.phone || null;
+        if (input.vesselIds !== undefined) updateData.vesselIds = JSON.stringify(input.vesselIds);
+        if (input.isActive !== undefined) updateData.isActive = input.isActive ? 1 : 0;
 
-        if (input.name !== undefined) {
-          const name = input.name.replace(/'/g, "''");
-          updates.push(`name = '${name}'`);
-        }
-
-        if (input.email !== undefined) {
-          const email = input.email.replace(/'/g, "''");
-          updates.push(`email = '${email}'`);
-        }
-
-        if (input.phone !== undefined) {
-          const phone = input.phone ? `'${input.phone.replace(/'/g, "''")}' ` : 'null';
-          updates.push(`phone = ${phone}`);
-        }
-
-        if (input.vesselIds !== undefined) {
-          const vesselIdsJson = JSON.stringify(input.vesselIds).replace(/'/g, "''");
-          updates.push(`vessel_ids = '${vesselIdsJson}'`);
-        }
-
-        if (input.isActive !== undefined) {
-          updates.push(`is_active = ${input.isActive ? 1 : 0}`);
-        }
-
-        if (updates.length === 0) {
+        if (Object.keys(updateData).length === 0) {
           return { success: true };
         }
 
         try {
-          await db.execute(sql.raw(`
-            UPDATE employees
-            SET ${updates.join(', ')}
-            WHERE id = ${input.id}
-          `));
+          await db.update(employees).set(updateData).where(eq(employees.id, input.id));
           
           return { success: true };
         } catch (error: any) {
@@ -2105,11 +2082,32 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const { sql } = await import('drizzle-orm');
-        
-        // Construir query base
-        let queryStr = `
-          SELECT 
+        const { sql, SQL } = await import('drizzle-orm');
+
+        const conditions: ReturnType<typeof sql>[] = [];
+
+        if (input.vesselId) {
+          conditions.push(sql`fr.vessel_id = ${input.vesselId}`);
+        }
+
+        if (input.month && input.year) {
+          conditions.push(sql`MONTH(fr.created_at) = ${input.month}`);
+          conditions.push(sql`YEAR(fr.created_at) = ${input.year}`);
+        } else {
+          if (input.startDate) {
+            conditions.push(sql`fr.created_at >= FROM_UNIXTIME(${input.startDate / 1000})`);
+          }
+          if (input.endDate) {
+            conditions.push(sql`fr.created_at <= FROM_UNIXTIME(${input.endDate / 1000})`);
+          }
+        }
+
+        const whereClause = conditions.length > 0
+          ? sql`WHERE 1=1 AND ${sql.join(conditions, sql` AND `)}`
+          : sql`WHERE 1=1`;
+
+        const query = sql`
+          SELECT
             fr.*,
             b.booking_date,
             b.client_name,
@@ -2123,31 +2121,11 @@ Nenhuma reserva foi afetada.
           FROM fuel_records fr
           LEFT JOIN bookings b ON fr.booking_id = b.id
           LEFT JOIN users u ON fr.recorded_by = u.id
-          WHERE 1=1
+          ${whereClause}
+          ORDER BY fr.created_at DESC
         `;
 
-        if (input.vesselId) {
-          queryStr += ` AND fr.vessel_id = ${input.vesselId}`;
-        }
-
-        // Se month e year forem fornecidos, filtrar por mês/ano
-        if (input.month && input.year) {
-          queryStr += ` AND MONTH(fr.created_at) = ${input.month}`;
-          queryStr += ` AND YEAR(fr.created_at) = ${input.year}`;
-        } else {
-          // Caso contrário, usar startDate/endDate se fornecidos
-          if (input.startDate) {
-            queryStr += ` AND fr.created_at >= FROM_UNIXTIME(${input.startDate / 1000})`;
-          }
-
-          if (input.endDate) {
-            queryStr += ` AND fr.created_at <= FROM_UNIXTIME(${input.endDate / 1000})`;
-          }
-        }
-
-        queryStr += ' ORDER BY fr.created_at DESC';
-
-        const result = await db.execute(sql.raw(queryStr)) as any;
+        const result = await db.execute(query) as any;
         const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
         
         // Converter valores de centavos para reais
@@ -2646,9 +2624,9 @@ Nenhuma reserva foi afetada.
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         const { sql } = await import('drizzle-orm');
-        const ids = input.recordIds.join(',');
-        const result = await db.execute(sql.raw(`
-          SELECT 
+        const idsSQL = sql.join(input.recordIds.map(id => sql`${id}`), sql`, `);
+        const result = await db.execute(sql`
+          SELECT
             fr.*,
             b.booking_date,
             b.client_name,
@@ -2656,9 +2634,9 @@ Nenhuma reserva foi afetada.
           FROM fuel_records fr
           LEFT JOIN bookings b ON fr.booking_id = b.id
           LEFT JOIN users u ON fr.recorded_by = u.id
-          WHERE fr.id IN (${ids})
+          WHERE fr.id IN (${idsSQL})
           ORDER BY fr.created_at DESC
-        `)) as any;
+        `) as any;
         
         const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
 
@@ -2718,9 +2696,9 @@ Nenhuma reserva foi afetada.
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         const { sql } = await import('drizzle-orm');
-        const ids = input.recordIds.join(',');
-        const result = await db.execute(sql.raw(`
-          SELECT 
+        const idsSQL = sql.join(input.recordIds.map(id => sql`${id}`), sql`, `);
+        const result = await db.execute(sql`
+          SELECT
             fr.*,
             b.booking_date,
             b.client_name,
@@ -2728,9 +2706,9 @@ Nenhuma reserva foi afetada.
           FROM fuel_records fr
           LEFT JOIN bookings b ON fr.booking_id = b.id
           LEFT JOIN users u ON fr.recorded_by = u.id
-          WHERE fr.id IN (${ids})
+          WHERE fr.id IN (${idsSQL})
           ORDER BY fr.created_at DESC
-        `)) as any;
+        `) as any;
         
         const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
 
@@ -3867,13 +3845,13 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
         try {
           const { sql } = await import('drizzle-orm');
-          
+
           let result;
           if (input?.inspectionIds && input.inspectionIds.length > 0) {
             // Buscar vistorias específicas por IDs
-            const ids = input.inspectionIds.join(',');
-            result = await db.execute(sql.raw(`
-              SELECT 
+            const idsSQL = sql.join(input.inspectionIds.map(id => sql`${id}`), sql`, `);
+            result = await db.execute(sql`
+              SELECT
                 i.*,
                 v.name as vessel_name,
                 b.booking_date,
@@ -3884,9 +3862,9 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               JOIN vessels v ON i.vessel_id = v.id
               LEFT JOIN bookings b ON i.booking_id = b.id
               LEFT JOIN users u ON i.inspected_by = u.id
-              WHERE i.id IN (${ids})
+              WHERE i.id IN (${idsSQL})
               ORDER BY i.created_at DESC
-            `)) as any;
+            `) as any;
           } else {
             // Buscar últimas 10 vistorias
             result = await db.execute(sql`
