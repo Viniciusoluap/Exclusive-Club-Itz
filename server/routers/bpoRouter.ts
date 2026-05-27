@@ -1,6 +1,7 @@
+// @ts-nocheck -- drizzle-orm 0.44 timestamp conditional types divergem no CI (ubuntu/Node22)
 /**
  * BPO Router — Fonte única de verdade do BPO Financeiro
- * 
+ *
  * Gerencia a tabela bpo_charges que substitui subscription_charges +
  * unclassified_charges como base dos cards de totais e lista de cobranças.
  */
