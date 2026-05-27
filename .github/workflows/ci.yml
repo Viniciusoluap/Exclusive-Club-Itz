@@ -10,6 +10,8 @@ jobs:
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -22,4 +24,26 @@ jobs:
         run: npm install --ignore-scripts --legacy-peer-deps --no-fund --no-audit
 
       - name: Type check
-        run: npx tsc --noEmit
+        id: typecheck
+        run: npx tsc --noEmit 2>&1 | tee /tmp/tsc.log; exit ${PIPESTATUS[0]}
+        continue-on-error: true
+
+      - name: Report tsc errors as PR comment
+        if: steps.typecheck.outcome == 'failure' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const log = fs.existsSync('/tmp/tsc.log')
+              ? fs.readFileSync('/tmp/tsc.log', 'utf8').slice(-4000)
+              : 'tsc.log not found';
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `❌ **TypeScript errors**:\n\`\`\`\n${log}\n\`\`\``
+            });
+
+      - name: Fail if typecheck failed
+        if: steps.typecheck.outcome == 'failure'
+        run: exit 1
