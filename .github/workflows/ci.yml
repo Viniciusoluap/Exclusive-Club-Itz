@@ -21,20 +21,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-
-      - name: Disable corepack
-        run: corepack disable || true
-
-      - name: Install pnpm
-        run: |
-          npm install -g pnpm@10.33.4 2>&1 | tee /tmp/npm-install-pnpm.log
-          PNPM_BIN=$(npm prefix -g)/bin
-          echo "pnpm global bin: $PNPM_BIN"
-          echo "$PNPM_BIN" >> $GITHUB_PATH
 
       - name: Show versions
         run: node --version && pnpm --version
@@ -59,10 +54,8 @@ jobs:
               } catch(e) { return null; }
             };
             let body = '## CI Diagnostics (failure)\n\n';
-            const npmLog = readLog('/tmp/npm-install-pnpm.log', 20);
-            body += '### npm install -g pnpm\n```\n' + (npmLog ?? '_not run_') + '\n```\n\n';
             const installLog = readLog('/tmp/pnpm-install.log', 40);
-            body += '### pnpm install\n```\n' + (installLog ?? '_not run_') + '\n```\n\n';
+            body += '### pnpm install (last 40 lines)\n```\n' + (installLog ?? '_not run_') + '\n```\n\n';
             const tscLog = readLog('/tmp/tsc-output.log', 100);
             body += '### tsc output\n```\n' + (tscLog ?? '_not run_') + '\n```\n';
             await github.rest.issues.createComment({
