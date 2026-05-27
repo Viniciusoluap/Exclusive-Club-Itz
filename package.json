@@ -81,7 +81,6 @@
     "pdf-lib": "^1.17.1",
     "pdf-to-img": "^5.0.0",
     "pdfkit": "^0.17.2",
-    "puppeteer": "^24.31.0",
     "react": "^19.1.1",
     "react-day-picker": "^9.11.1",
     "react-dom": "^19.1.1",
