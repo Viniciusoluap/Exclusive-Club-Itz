@@ -17,7 +17,57 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Diagnose early
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - << 'PYEOF'
+          import json, os, subprocess, urllib.request
+          node_v = subprocess.run(['node', '--version'], capture_output=True, text=True).stdout.strip()
+          npm_v = subprocess.run(['npm', '--version'], capture_output=True, text=True).stdout.strip()
+          pnpm_v = subprocess.run(['pnpm', '--version'], capture_output=True, text=True).stdout.strip()
+          body = f"## CI Step 1: checkout OK\n- node: {node_v}\n- npm: {npm_v}\n- pnpm: {pnpm_v or '(not installed)'}"
+          payload = json.dumps({"body": body}).encode()
+          url = f"https://api.github.com/repos/{os.environ['REPO']}/issues/{os.environ['PR_NUMBER']}/comments"
+          req = urllib.request.Request(url, data=payload, headers={
+            "Authorization": f"token {os.environ['GITHUB_TOKEN']}",
+            "Content-Type": "application/json",
+          })
+          try:
+            resp = urllib.request.urlopen(req)
+            print(f"Posted: {resp.status}")
+          except Exception as e:
+            print(f"Failed: {e}")
+          PYEOF
+
       - uses: pnpm/action-setup@v4
+
+      - name: Diagnose after pnpm setup
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - << 'PYEOF'
+          import json, os, subprocess, urllib.request
+          pnpm_v = subprocess.run(['pnpm', '--version'], capture_output=True, text=True).stdout.strip()
+          body = f"## CI Step 2: pnpm/action-setup OK\n- pnpm: {pnpm_v}"
+          payload = json.dumps({"body": body}).encode()
+          url = f"https://api.github.com/repos/{os.environ['REPO']}/issues/{os.environ['PR_NUMBER']}/comments"
+          req = urllib.request.Request(url, data=payload, headers={
+            "Authorization": f"token {os.environ['GITHUB_TOKEN']}",
+            "Content-Type": "application/json",
+          })
+          try:
+            resp = urllib.request.urlopen(req)
+            print(f"Posted: {resp.status}")
+          except Exception as e:
+            print(f"Failed: {e}")
+          PYEOF
 
       - uses: actions/setup-node@v4
         with:
