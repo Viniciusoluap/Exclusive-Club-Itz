@@ -22,13 +22,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Disable corepack
         run: corepack disable || true
 
       - name: Install pnpm
         run: npm install -g pnpm@10.33.4
+
+      - name: Show versions
+        run: node --version && pnpm --version
 
       - name: Install dependencies
         run: pnpm install --no-optional --no-frozen-lockfile
