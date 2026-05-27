@@ -606,25 +606,23 @@ export const appRouter = router({
         const startDate = new Date(Date.UTC(input.year, input.month - 1, 1, 0, 0, 0)).getTime();
         const endDate = new Date(Date.UTC(input.year, input.month, 0, 23, 59, 59)).getTime();
         
-        const query = `SELECT 
-          b.id,
-          b.vesselId,
-          b.bookingDate as booking_date,
-          b.startTime,
-          b.endTime,
-          b.status,
-          b.notes,
-          u.name as client_name,
-          u.email as client_email,
-          v.name as vessel_name
-        FROM bookings b
-        JOIN users u ON b.userId = u.id
-        JOIN vessels v ON b.vesselId = v.id
-        WHERE b.bookingDate >= ? AND b.bookingDate <= ?
-        ORDER BY b.bookingDate ASC`;
-        
         const { sql: sqlTag } = await import('drizzle-orm');
-        const result = await db.execute(sqlTag.raw(query)) as any;
+        const result = await db.execute(sqlTag`
+          SELECT
+            b.id,
+            b.vessel_id as vesselId,
+            b.booking_date as booking_date,
+            b.status,
+            b.notes,
+            u.name as client_name,
+            u.email as client_email,
+            v.name as vessel_name
+          FROM bookings b
+          JOIN users u ON b.user_id = u.id
+          JOIN vessels v ON b.vessel_id = v.id
+          WHERE b.booking_date >= ${startDate} AND b.booking_date <= ${endDate}
+          ORDER BY b.booking_date ASC
+        `) as any;
         return (Array.isArray(result[0]) ? result[0] : result) as any[];
       }),
 
@@ -2557,31 +2555,48 @@ Nenhuma reserva foi afetada.
 
             let rowsUpdated = 0;
 
-            // Tenta atualizar pelo asaas_charge_id
+            // 1. Tentar pelo asaas_charge_id (mais preciso)
             if (rec.asaas_charge_id) {
-              const updateResult = await db.execute(sql`
+              const r = await db.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'received', updated_at = NOW()
                 WHERE asaas_charge_id = ${rec.asaas_charge_id}
               `) as any;
-              rowsUpdated = updateResult?.[0]?.affectedRows ?? updateResult?.affectedRows ?? 0;
+              rowsUpdated += r?.[0]?.affectedRows ?? r?.affectedRows ?? 0;
             }
 
-            // Fallback: atualizar pelo client_email + type='fuel' se não encontrou pelo asaas_charge_id
+            // 2. Fallback por valor + email + tipo (cobre casos onde asaas_charge_id não coincide)
+            // Usa margem de R$ 0,02 para float imprecision
             if (rowsUpdated === 0 && rec.client_email) {
-              const fallbackResult = await db.execute(sql`
+              const valueNum = parseFloat(value);
+              const r2 = await db.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'received', updated_at = NOW()
                 WHERE type = 'fuel'
                   AND client_email = ${rec.client_email}
                   AND status IN ('pending', 'overdue')
-                ORDER BY due_date ASC
+                  AND ABS(CAST(value AS DECIMAL(10,2)) - ${valueNum}) < 0.02
+                ORDER BY ABS(DATEDIFF(due_date, ${dueDate})) ASC
                 LIMIT 1
               `) as any;
-              rowsUpdated = fallbackResult?.[0]?.affectedRows ?? fallbackResult?.affectedRows ?? 0;
+              rowsUpdated += r2?.[0]?.affectedRows ?? r2?.affectedRows ?? 0;
             }
 
-            // Se ainda não encontrou nenhum registro, insere como baixa manual
+            // 3. Último fallback: qualquer fuel overdue do mesmo cliente (ex: campo valor divergente)
+            if (rowsUpdated === 0 && rec.client_email) {
+              const r3 = await db.execute(sql`
+                UPDATE bpo_charges
+                SET status = 'received', updated_at = NOW()
+                WHERE type = 'fuel'
+                  AND client_email = ${rec.client_email}
+                  AND status IN ('pending', 'overdue')
+                ORDER BY ABS(DATEDIFF(due_date, ${dueDate})) ASC
+                LIMIT 1
+              `) as any;
+              rowsUpdated += r3?.[0]?.affectedRows ?? r3?.affectedRows ?? 0;
+            }
+
+            // 4. Se absolutamente nada encontrado, inserir como baixa manual
             if (rowsUpdated === 0) {
               await db.insert(bpoCharges).values({
                 asaasChargeId: rec.asaas_charge_id || null,

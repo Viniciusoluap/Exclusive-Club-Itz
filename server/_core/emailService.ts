@@ -15,8 +15,8 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false, // true para porta 465, false para outras portas
   auth: {
-    user: 'atendimento@exclusiveclubitz.com',
-    pass: 'Efficaz2010',
+    user: process.env.SMTP_USER || 'atendimento@exclusiveclubitz.com',
+    pass: process.env.SMTP_PASS || 'Efficaz2010',
   },
   tls: {
     // Não falhar em certificados inválidos (comum em hospedagens compartilhadas)
