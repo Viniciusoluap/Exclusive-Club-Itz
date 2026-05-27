@@ -422,13 +422,13 @@ export const bpoCharges = mysqlTable("bpo_charges", {
   receiptUrl: text("receipt_url"),
 
   // Controle de sincronização
-  syncedAt: timestamp("synced_at"),
+  syncedAt: timestamp("synced_at", { mode: 'string' }),
   source: mysqlEnum("source", [
     "asaas_import", "asaas_webhook", "manual", "system"
   ]).default("system"),
 
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().onUpdateNow().notNull(),
 }, (table) => [
   index("bpo_charges_asaas_charge_id_idx").on(table.asaasChargeId),
   index("bpo_charges_client_id_idx").on(table.clientId),
