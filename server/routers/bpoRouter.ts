@@ -1649,7 +1649,7 @@ export const bpoRouter = router({
         amount: z.number(),           // Valor a alocar nesta cobrança
       })),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input }): Promise<{ success: boolean; results: Array<{ chargeId: number; status: string; message: string }>; totalAllocated: number; unallocated: number; paidCount: number; partialCount: number; message: string }> => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
