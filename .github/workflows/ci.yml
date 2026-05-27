@@ -30,7 +30,11 @@ jobs:
         run: corepack disable || true
 
       - name: Install pnpm
-        run: npm install -g pnpm@10.33.4
+        run: |
+          npm install -g pnpm@10.33.4 2>&1 | tee /tmp/npm-install-pnpm.log
+          PNPM_BIN=$(npm prefix -g)/bin
+          echo "pnpm global bin: $PNPM_BIN"
+          echo "$PNPM_BIN" >> $GITHUB_PATH
 
       - name: Show versions
         run: node --version && pnpm --version
@@ -47,17 +51,20 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            const readLog = (path, maxLines) => {
+              try {
+                const content = fs.readFileSync(path, 'utf8');
+                const lines = content.split('\n');
+                return lines.slice(Math.max(0, lines.length - maxLines)).join('\n');
+              } catch(e) { return null; }
+            };
             let body = '## CI Diagnostics (failure)\n\n';
-            try {
-              const installLog = fs.readFileSync('/tmp/pnpm-install.log', 'utf8');
-              const lines = installLog.split('\n');
-              const tail = lines.slice(Math.max(0, lines.length - 40)).join('\n');
-              body += '### pnpm install (last 40 lines)\n```\n' + tail + '\n```\n\n';
-            } catch(e) { body += '_No install log_\n\n'; }
-            try {
-              const tscLog = fs.readFileSync('/tmp/tsc-output.log', 'utf8');
-              body += '### tsc output\n```\n' + tscLog.slice(0, 8000) + '\n```\n';
-            } catch(e) { body += '_No tsc log (install likely failed)_\n'; }
+            const npmLog = readLog('/tmp/npm-install-pnpm.log', 20);
+            body += '### npm install -g pnpm\n```\n' + (npmLog ?? '_not run_') + '\n```\n\n';
+            const installLog = readLog('/tmp/pnpm-install.log', 40);
+            body += '### pnpm install\n```\n' + (installLog ?? '_not run_') + '\n```\n\n';
+            const tscLog = readLog('/tmp/tsc-output.log', 100);
+            body += '### tsc output\n```\n' + (tscLog ?? '_not run_') + '\n```\n';
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
