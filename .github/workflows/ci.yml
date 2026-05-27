@@ -14,6 +14,7 @@ jobs:
     env:
       PUPPETEER_SKIP_DOWNLOAD: "true"
       PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+      COREPACK_ENABLE_STRICT: "0"
 
     steps:
       - uses: actions/checkout@v4
@@ -24,10 +25,10 @@ jobs:
           node-version: "20"
 
       - name: Install pnpm
-        run: npm install -g pnpm@10
+        run: npm install -g pnpm@10.4.1
 
       - name: Install dependencies
-        run: pnpm install --no-optional
+        run: pnpm install --no-optional --no-frozen-lockfile
 
       - name: Type check
         run: pnpm check

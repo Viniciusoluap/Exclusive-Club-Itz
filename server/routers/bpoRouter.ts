@@ -8,7 +8,9 @@ import { z } from "zod";
 import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { bpoCharges, allowedClients as acTable, vessels as vesselsTable, clientQuotas } from "../../drizzle/schema";
-import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers, createPixCharge, getOrCreateAsaasCustomer, cancelCharge, receiveInCash, getPixQrCode } from "../_core/asaasService";// ============================================================
+import { eq, sql, and, gte, lte, inArray, desc } from "drizzle-orm";
+import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers, createPixCharge, getOrCreateAsaasCustomer, cancelCharge, receiveInCash, getPixQrCode } from "../_core/asaasService";
+// ============================================================
 // Helper: normalizar status do Asaas para enum bpo_charges
 // ============================================================
 export function normalizeBpoStatus(
@@ -589,7 +591,7 @@ export const bpoRouter = router({
         .select()
         .from(bpoCharges)
         .where(and(...conditions))
-        .orderBy(bpoCharges.dueDate);
+        .orderBy(desc(bpoCharges.dueDate));
 
       if (rows.length === 0) return { charges: [] };
 
