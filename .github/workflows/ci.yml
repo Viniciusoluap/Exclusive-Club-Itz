@@ -10,6 +10,8 @@ jobs:
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     env:
       PUPPETEER_SKIP_DOWNLOAD: "true"
       PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
@@ -34,7 +36,31 @@ jobs:
         run: node --version && pnpm --version
 
       - name: Install dependencies
-        run: pnpm install --no-optional --no-frozen-lockfile
+        run: pnpm install --no-optional --no-frozen-lockfile 2>&1 | tee /tmp/pnpm-install.log; exit ${PIPESTATUS[0]}
 
       - name: Type check
-        run: pnpm check
+        run: pnpm check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
+
+      - name: Post error to PR comment
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '## CI Diagnostics (failure)\n\n';
+            try {
+              const installLog = fs.readFileSync('/tmp/pnpm-install.log', 'utf8');
+              const lines = installLog.split('\n');
+              const tail = lines.slice(Math.max(0, lines.length - 40)).join('\n');
+              body += '### pnpm install (last 40 lines)\n```\n' + tail + '\n```\n\n';
+            } catch(e) { body += '_No install log_\n\n'; }
+            try {
+              const tscLog = fs.readFileSync('/tmp/tsc-output.log', 'utf8');
+              body += '### tsc output\n```\n' + tscLog.slice(0, 8000) + '\n```\n';
+            } catch(e) { body += '_No tsc log (install likely failed)_\n'; }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: body
+            });
