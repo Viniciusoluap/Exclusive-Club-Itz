@@ -4,12 +4,23 @@ import path from 'path';
 import { getDb } from './db';
 import { backupHistory } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
+import { sdk } from './_core/sdk';
 
 /**
  * Rota para download de arquivos de backup
  * GET /api/backup/download/:id
  */
 export async function downloadBackupRoute(req: Request, res: Response) {
+  // Verificar autenticação e papel admin
+  try {
+    const user = await sdk.authenticateRequest(req);
+    if (!user || (user as any).role !== 'admin') {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+  } catch {
+    return res.status(401).json({ error: 'Não autenticado' });
+  }
+
   try {
     const backupId = parseInt(req.params.id);
     

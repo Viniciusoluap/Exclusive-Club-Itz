@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { sdk } from "./sdk";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -36,8 +37,20 @@ async function startServer() {
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
 
+  // Helper de autenticação para endpoints Express fora do tRPC
+  async function requireAuth(req: any, res: any): Promise<boolean> {
+    try {
+      await sdk.authenticateRequest(req);
+      return true;
+    } catch {
+      res.status(401).json({ error: 'Não autenticado' });
+      return false;
+    }
+  }
+
   // Upload receipt endpoint
   app.post('/api/upload-receipt', async (req, res) => {
+    if (!await requireAuth(req, res)) return;
     try {
       const multer = await import('multer');
       const upload = multer.default({ storage: multer.memoryStorage() });
@@ -72,6 +85,7 @@ async function startServer() {
 
   // Upload client document endpoint
   app.post('/api/upload-client-document', async (req, res) => {
+    if (!await requireAuth(req, res)) return;
     try {
       const multer = await import('multer');
       const upload = multer.default({ 
@@ -130,6 +144,7 @@ async function startServer() {
 
   // Generic upload endpoint for fuel record photos
   app.post('/api/upload', async (req, res) => {
+    if (!await requireAuth(req, res)) return;
     try {
       const multer = await import('multer');
       const upload = multer.default({ 
@@ -173,6 +188,7 @@ async function startServer() {
 
   // Upload inspection photo endpoint
   app.post('/api/upload-inspection-photo', async (req, res) => {
+    if (!await requireAuth(req, res)) return;
     try {
       const multer = await import('multer');
       const upload = multer.default({ 
@@ -224,7 +240,11 @@ async function startServer() {
       const receivedToken = (req.headers['asaas-access-token'] as string) || '';
       const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN || '';
       console.log('[Webhook Asaas] Evento recebido:', payload?.event, '| ID:', payload?.payment?.id);
-      if (webhookToken && receivedToken !== webhookToken) {
+      if (!webhookToken) {
+        console.error('[Webhook Asaas] ASAAS_WEBHOOK_TOKEN não configurado — rejeitando evento por segurança');
+        return;
+      }
+      if (receivedToken !== webhookToken) {
         console.warn('[Webhook Asaas] Token inválido — ignorando evento');
         return;
       }
