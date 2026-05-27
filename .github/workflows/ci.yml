@@ -12,33 +12,20 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-    env:
-      PUPPETEER_SKIP_DOWNLOAD: "true"
-      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
-      COREPACK_ENABLE_STRICT: "0"
-      COREPACK_ENABLE_AUTO_PIN: "0"
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      - name: Show versions
-        run: node --version && pnpm --version
-
       - name: Install dependencies
-        run: pnpm install --no-optional --no-frozen-lockfile 2>&1 | tee /tmp/pnpm-install.log; exit ${PIPESTATUS[0]}
+        run: npm install --legacy-peer-deps --ignore-scripts 2>&1 | tee /tmp/npm-install.log; exit ${PIPESTATUS[0]}
 
       - name: Type check
-        run: pnpm check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
+        run: npm run check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
 
       - name: Post error to PR comment
         if: failure() && github.event_name == 'pull_request'
@@ -54,8 +41,8 @@ jobs:
               } catch(e) { return null; }
             };
             let body = '## CI Diagnostics (failure)\n\n';
-            const installLog = readLog('/tmp/pnpm-install.log', 40);
-            body += '### pnpm install (last 40 lines)\n```\n' + (installLog ?? '_not run_') + '\n```\n\n';
+            const installLog = readLog('/tmp/npm-install.log', 30);
+            body += '### npm install (last 30 lines)\n```\n' + (installLog ?? '_not run_') + '\n```\n\n';
             const tscLog = readLog('/tmp/tsc-output.log', 100);
             body += '### tsc output\n```\n' + (tscLog ?? '_not run_') + '\n```\n';
             await github.rest.issues.createComment({
