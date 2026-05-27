@@ -435,44 +435,42 @@ export const appRouter = router({
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        let query = `SELECT 
-          b.id,
-          b.vessel_id as vesselId,
-          b.booking_date as startTime,
-          b.booking_date as endTime,
-          b.status,
-          b.client_name as clientName,
-          b.client_email as clientEmail,
-          b.vessel_name as vesselName
-        FROM bookings b
-        WHERE `;
-        
-        const params: any[] = [];
-        
-        // Se onlyUsed for true, retorna apenas reservas utilizadas (para abastecimento)
+        const { sql: sqlTag } = await import('drizzle-orm');
+
+        const conditions: ReturnType<typeof sqlTag>[] = [];
+
         if (input.onlyUsed) {
-          query += `b.status = 'used'`;
+          conditions.push(sqlTag`b.status = 'used'`);
         } else {
-          query += `(b.status = 'confirmed' OR b.status = 'used')`;
+          conditions.push(sqlTag`(b.status = 'confirmed' OR b.status = 'used')`);
         }
-        
-        // Se days for fornecido, filtra por período
+
         if (input.days !== undefined) {
           const cutoffDate = new Date();
           cutoffDate.setDate(cutoffDate.getDate() - input.days);
-          query += ' AND b.booking_date >= ?';
-          params.push(cutoffDate.getTime());
-        }
-        
-        query += ' ORDER BY b.booking_date DESC';
-        
-        // Para abastecimento, limita a 6 registros
-        if (input.onlyUsed) {
-          query += ' LIMIT 6';
+          conditions.push(sqlTag`b.booking_date >= ${cutoffDate.getTime()}`);
         }
 
-        const { sql: sqlTag } = await import('drizzle-orm');
-        const result = await db.execute(sqlTag.raw(query)) as any;
+        let query = sqlTag`
+          SELECT
+            b.id,
+            b.vessel_id as vesselId,
+            b.booking_date as startTime,
+            b.booking_date as endTime,
+            b.status,
+            b.client_name as clientName,
+            b.client_email as clientEmail,
+            b.vessel_name as vesselName
+          FROM bookings b
+          WHERE ${sqlTag.join(conditions, sqlTag` AND `)}
+          ORDER BY b.booking_date DESC
+        `;
+
+        if (input.onlyUsed) {
+          query = sqlTag`${query} LIMIT 6`;
+        }
+
+        const result = await db.execute(query) as any;
         return (Array.isArray(result[0]) ? result[0] : result) as any[];
       }),
 
@@ -550,30 +548,29 @@ export const appRouter = router({
         const now = Date.now();
         const timeFilter = input?.timeFilter || "future";
 
-        let query = `
-          SELECT 
-            b.id,
-            b.client_email as clientEmail,
-            b.client_name as clientName,
-            b.vessel_id as vesselId,
-            b.vessel_name as vesselName,
-            b.booking_date as bookingDate,
-            b.status,
-            b.notes,
-            b.created_at as createdAt,
-            b.updated_at as updatedAt
-          FROM bookings b
-          WHERE `;
+        const query = timeFilter === "future"
+          ? sqlTag`
+              SELECT
+                b.id, b.client_email as clientEmail, b.client_name as clientName,
+                b.vessel_id as vesselId, b.vessel_name as vesselName,
+                b.booking_date as bookingDate, b.status, b.notes,
+                b.created_at as createdAt, b.updated_at as updatedAt
+              FROM bookings b
+              WHERE b.booking_date >= ${now}
+              ORDER BY b.booking_date ASC
+            `
+          : sqlTag`
+              SELECT
+                b.id, b.client_email as clientEmail, b.client_name as clientName,
+                b.vessel_id as vesselId, b.vessel_name as vesselName,
+                b.booking_date as bookingDate, b.status, b.notes,
+                b.created_at as createdAt, b.updated_at as updatedAt
+              FROM bookings b
+              WHERE b.booking_date < ${now}
+              ORDER BY b.booking_date DESC
+            `;
 
-        if (timeFilter === "future") {
-          // Futuras: data >= hoje, ordenadas da mais próxima
-          query += `b.booking_date >= ${now} ORDER BY b.booking_date ASC`;
-        } else {
-          // Passadas: data < hoje, ordenadas da mais recente
-          query += `b.booking_date < ${now} ORDER BY b.booking_date DESC`;
-        }
-
-        const result = await dbInstance.execute(sqlTag.raw(query)) as any;
+        const result = await dbInstance.execute(query) as any;
         return (Array.isArray(result[0]) ? result[0] : result) as any[];
       }),
 
