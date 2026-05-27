@@ -328,16 +328,16 @@ export default function Reservas() {
             {myActiveBookings && myActiveBookings.filter((b: any) => b.status === 'confirmed' && new Date(b.bookingDate).getTime() >= Date.now()).length > 0 ? (
               <div className="space-y-3">
                 {myActiveBookings.filter((b: any) => b.status === 'confirmed' && new Date(b.bookingDate).getTime() >= Date.now()).map((booking: any) => (
-                  <div key={booking.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="flex-1 cursor-pointer" onClick={() => { setSelectedBooking(booking); setShowDetailsDialog(true); }}>
+                  <div key={booking.id} className="p-3 border rounded-lg hover:bg-accent/50 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => { setSelectedBooking(booking); setShowDetailsDialog(true); }}>
                         <p className="font-semibold">{booking.vesselName}</p>
                         <p className="text-sm text-muted-foreground">
                           {new Date(booking.bookingDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Confirmada</span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded whitespace-nowrap">Confirmada</span>
                         <Button
                           variant="destructive"
                           size="sm"
