@@ -4096,10 +4096,11 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             
             // Buscar dados da vistoria com CPF/CNPJ do cliente
             const inspectionResult = await db.execute(sql.raw(`
-              SELECT 
+              SELECT
                 i.*,
                 COALESCE(i.client_email, b.client_email) as client_email,
                 v.name as vessel_name,
+                ac.id as client_id,
                 ac.cpf_cnpj as client_cpf_cnpj,
                 ac.phone as client_phone
               FROM inspections i
@@ -4170,7 +4171,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               await db.insert(bpoCharges).values({
                 asaasChargeId: asaasCharge.id,
                 asaasCustomerId: customer.id,
-                clientId: null,
+                clientId: inspection.client_id ?? null,
                 clientName: inspection.client_name || null,
                 clientEmail: inspection.client_email,
                 value: input.amount.toString(),
