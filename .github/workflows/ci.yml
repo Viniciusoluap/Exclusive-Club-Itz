@@ -25,6 +25,9 @@ jobs:
       - name: Checkpoint after checkout
         run: echo "ok" > /tmp/cp-checkout.txt && node --version && npm --version
 
+      - name: Disable corepack
+        run: corepack disable || true
+
       - name: Install dependencies
         run: npm install --legacy-peer-deps --ignore-scripts 2>&1 | tee /tmp/npm-install.log; exit ${PIPESTATUS[0]}
 
