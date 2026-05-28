@@ -100,7 +100,7 @@ async function runSyncIncrementalBPO(): Promise<void> {
                 paidDate: (charge as any).paymentDate || null,
                 amountPaid: isPaid ? String(charge.value) : "0",
                 netValue: (charge as any).netValue != null ? String((charge as any).netValue) : null,
-                syncedAt: new Date(),
+                syncedAt: sql`NOW()`,
                 source: "asaas_webhook",
               })
               .where(eq(bpoCharges.asaasChargeId, charge.id));
@@ -127,7 +127,7 @@ async function runSyncIncrementalBPO(): Promise<void> {
               invoiceUrl: (charge as any).invoiceUrl || null,
               bankSlipUrl: (charge as any).bankSlipUrl || null,
               source: "asaas_import",
-              syncedAt: new Date(),
+              syncedAt: sql`NOW()`,
             });
             inserted++;
           }
