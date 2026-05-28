@@ -1817,11 +1817,22 @@ export const bpoRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
+      // Buscar email do cliente para também encontrar cobranças com client_id NULL
+      const [clientRows] = (await db.execute(sql.raw(`
+        SELECT email FROM allowed_clients WHERE id = ${input.clientId} LIMIT 1
+      `))) as any;
+      const clientEmail = Array.isArray(clientRows) && clientRows.length > 0 ? clientRows[0]?.email : null;
+
+      const emailCondition = clientEmail
+        ? `OR (client_id IS NULL AND client_email = '${clientEmail.replace(/'/g, "\\'")}')`
+        : '';
+
       const [rows] = (await db.execute(sql.raw(`
         SELECT id, due_date as dueDate, value, amount_paid as amountPaid,
-               status, type, description, asaas_charge_id as asaasChargeId
+               status, type, description, asaas_charge_id as asaasChargeId,
+               client_name as client_name
         FROM bpo_charges
-        WHERE client_id = ${input.clientId}
+        WHERE (client_id = ${input.clientId} ${emailCondition})
           AND status IN ('pending', 'overdue', 'partiallyPaid')
         ORDER BY due_date ASC
         LIMIT 50
