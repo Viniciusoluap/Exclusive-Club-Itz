@@ -435,44 +435,42 @@ export const appRouter = router({
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        let query = `SELECT 
-          b.id,
-          b.vessel_id as vesselId,
-          b.booking_date as startTime,
-          b.booking_date as endTime,
-          b.status,
-          b.client_name as clientName,
-          b.client_email as clientEmail,
-          b.vessel_name as vesselName
-        FROM bookings b
-        WHERE `;
-        
-        const params: any[] = [];
-        
-        // Se onlyUsed for true, retorna apenas reservas utilizadas (para abastecimento)
+        const { sql: sqlTag } = await import('drizzle-orm');
+
+        const conditions: ReturnType<typeof sqlTag>[] = [];
+
         if (input.onlyUsed) {
-          query += `b.status = 'used'`;
+          conditions.push(sqlTag`b.status = 'used'`);
         } else {
-          query += `(b.status = 'confirmed' OR b.status = 'used')`;
+          conditions.push(sqlTag`(b.status = 'confirmed' OR b.status = 'used')`);
         }
-        
-        // Se days for fornecido, filtra por período
+
         if (input.days !== undefined) {
           const cutoffDate = new Date();
           cutoffDate.setDate(cutoffDate.getDate() - input.days);
-          query += ' AND b.booking_date >= ?';
-          params.push(cutoffDate.getTime());
-        }
-        
-        query += ' ORDER BY b.booking_date DESC';
-        
-        // Para abastecimento, limita a 6 registros
-        if (input.onlyUsed) {
-          query += ' LIMIT 6';
+          conditions.push(sqlTag`b.booking_date >= ${cutoffDate.getTime()}`);
         }
 
-        const { sql: sqlTag } = await import('drizzle-orm');
-        const result = await db.execute(sqlTag.raw(query)) as any;
+        let query = sqlTag`
+          SELECT
+            b.id,
+            b.vessel_id as vesselId,
+            b.booking_date as startTime,
+            b.booking_date as endTime,
+            b.status,
+            b.client_name as clientName,
+            b.client_email as clientEmail,
+            b.vessel_name as vesselName
+          FROM bookings b
+          WHERE ${sqlTag.join(conditions, sqlTag` AND `)}
+          ORDER BY b.booking_date DESC
+        `;
+
+        if (input.onlyUsed) {
+          query = sqlTag`${query} LIMIT 6`;
+        }
+
+        const result = await db.execute(query) as any;
         return (Array.isArray(result[0]) ? result[0] : result) as any[];
       }),
 
@@ -550,30 +548,29 @@ export const appRouter = router({
         const now = Date.now();
         const timeFilter = input?.timeFilter || "future";
 
-        let query = `
-          SELECT 
-            b.id,
-            b.client_email as clientEmail,
-            b.client_name as clientName,
-            b.vessel_id as vesselId,
-            b.vessel_name as vesselName,
-            b.booking_date as bookingDate,
-            b.status,
-            b.notes,
-            b.created_at as createdAt,
-            b.updated_at as updatedAt
-          FROM bookings b
-          WHERE `;
+        const query = timeFilter === "future"
+          ? sqlTag`
+              SELECT
+                b.id, b.client_email as clientEmail, b.client_name as clientName,
+                b.vessel_id as vesselId, b.vessel_name as vesselName,
+                b.booking_date as bookingDate, b.status, b.notes,
+                b.created_at as createdAt, b.updated_at as updatedAt
+              FROM bookings b
+              WHERE b.booking_date >= ${now}
+              ORDER BY b.booking_date ASC
+            `
+          : sqlTag`
+              SELECT
+                b.id, b.client_email as clientEmail, b.client_name as clientName,
+                b.vessel_id as vesselId, b.vessel_name as vesselName,
+                b.booking_date as bookingDate, b.status, b.notes,
+                b.created_at as createdAt, b.updated_at as updatedAt
+              FROM bookings b
+              WHERE b.booking_date < ${now}
+              ORDER BY b.booking_date DESC
+            `;
 
-        if (timeFilter === "future") {
-          // Futuras: data >= hoje, ordenadas da mais próxima
-          query += `b.booking_date >= ${now} ORDER BY b.booking_date ASC`;
-        } else {
-          // Passadas: data < hoje, ordenadas da mais recente
-          query += `b.booking_date < ${now} ORDER BY b.booking_date DESC`;
-        }
-
-        const result = await dbInstance.execute(sqlTag.raw(query)) as any;
+        const result = await dbInstance.execute(query) as any;
         return (Array.isArray(result[0]) ? result[0] : result) as any[];
       }),
 
@@ -606,25 +603,23 @@ export const appRouter = router({
         const startDate = new Date(Date.UTC(input.year, input.month - 1, 1, 0, 0, 0)).getTime();
         const endDate = new Date(Date.UTC(input.year, input.month, 0, 23, 59, 59)).getTime();
         
-        const query = `SELECT 
-          b.id,
-          b.vesselId,
-          b.bookingDate as booking_date,
-          b.startTime,
-          b.endTime,
-          b.status,
-          b.notes,
-          u.name as client_name,
-          u.email as client_email,
-          v.name as vessel_name
-        FROM bookings b
-        JOIN users u ON b.userId = u.id
-        JOIN vessels v ON b.vesselId = v.id
-        WHERE b.bookingDate >= ? AND b.bookingDate <= ?
-        ORDER BY b.bookingDate ASC`;
-        
         const { sql: sqlTag } = await import('drizzle-orm');
-        const result = await db.execute(sqlTag.raw(query)) as any;
+        const result = await db.execute(sqlTag`
+          SELECT
+            b.id,
+            b.vessel_id as vesselId,
+            b.booking_date as booking_date,
+            b.status,
+            b.notes,
+            u.name as client_name,
+            u.email as client_email,
+            v.name as vessel_name
+          FROM bookings b
+          JOIN users u ON b.user_id = u.id
+          JOIN vessels v ON b.vessel_id = v.id
+          WHERE b.booking_date >= ${startDate} AND b.booking_date <= ${endDate}
+          ORDER BY b.booking_date ASC
+        `) as any;
         return (Array.isArray(result[0]) ? result[0] : result) as any[];
       }),
 
@@ -1477,9 +1472,8 @@ Nenhuma reserva foi afetada.
       cutoffDate.setHours(0, 0, 0, 0);
       const cutoffTimestamp = cutoffDate.getTime();
       
-      // Query com JOIN para buscar telefone do cliente
-      const query = `
-        SELECT 
+      const result = await dbInstance.execute(sqlTag`
+        SELECT
           b.id,
           b.client_email as clientEmail,
           b.client_name as clientName,
@@ -1497,8 +1491,7 @@ Nenhuma reserva foi afetada.
           AND b.status = 'confirmed'
         ORDER BY b.booking_date ASC
         LIMIT 21
-      `;
-      const result = await dbInstance.execute(sqlTag.raw(query)) as any;
+      `) as any;
       return (Array.isArray(result[0]) ? result[0] : result) as any[];
     }),
   }),
@@ -1588,45 +1581,22 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const { sql } = await import('drizzle-orm');
+        const { employees } = await import('../drizzle/schema');
+        const { eq } = await import('drizzle-orm');
 
-        // Construir SET clause dinamicamente
-        const updates: string[] = [];
+        const updateData: Record<string, unknown> = {};
+        if (input.name !== undefined) updateData.name = input.name;
+        if (input.email !== undefined) updateData.email = input.email;
+        if (input.phone !== undefined) updateData.phone = input.phone || null;
+        if (input.vesselIds !== undefined) updateData.vesselIds = JSON.stringify(input.vesselIds);
+        if (input.isActive !== undefined) updateData.isActive = input.isActive ? 1 : 0;
 
-        if (input.name !== undefined) {
-          const name = input.name.replace(/'/g, "''");
-          updates.push(`name = '${name}'`);
-        }
-
-        if (input.email !== undefined) {
-          const email = input.email.replace(/'/g, "''");
-          updates.push(`email = '${email}'`);
-        }
-
-        if (input.phone !== undefined) {
-          const phone = input.phone ? `'${input.phone.replace(/'/g, "''")}' ` : 'null';
-          updates.push(`phone = ${phone}`);
-        }
-
-        if (input.vesselIds !== undefined) {
-          const vesselIdsJson = JSON.stringify(input.vesselIds).replace(/'/g, "''");
-          updates.push(`vessel_ids = '${vesselIdsJson}'`);
-        }
-
-        if (input.isActive !== undefined) {
-          updates.push(`is_active = ${input.isActive ? 1 : 0}`);
-        }
-
-        if (updates.length === 0) {
+        if (Object.keys(updateData).length === 0) {
           return { success: true };
         }
 
         try {
-          await db.execute(sql.raw(`
-            UPDATE employees
-            SET ${updates.join(', ')}
-            WHERE id = ${input.id}
-          `));
+          await db.update(employees).set(updateData).where(eq(employees.id, input.id));
           
           return { success: true };
         } catch (error: any) {
@@ -2107,11 +2077,32 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        const { sql } = await import('drizzle-orm');
-        
-        // Construir query base
-        let queryStr = `
-          SELECT 
+        const { sql, SQL } = await import('drizzle-orm');
+
+        const conditions: ReturnType<typeof sql>[] = [];
+
+        if (input.vesselId) {
+          conditions.push(sql`fr.vessel_id = ${input.vesselId}`);
+        }
+
+        if (input.month && input.year) {
+          conditions.push(sql`MONTH(fr.created_at) = ${input.month}`);
+          conditions.push(sql`YEAR(fr.created_at) = ${input.year}`);
+        } else {
+          if (input.startDate) {
+            conditions.push(sql`fr.created_at >= FROM_UNIXTIME(${input.startDate / 1000})`);
+          }
+          if (input.endDate) {
+            conditions.push(sql`fr.created_at <= FROM_UNIXTIME(${input.endDate / 1000})`);
+          }
+        }
+
+        const whereClause = conditions.length > 0
+          ? sql`WHERE 1=1 AND ${sql.join(conditions, sql` AND `)}`
+          : sql`WHERE 1=1`;
+
+        const query = sql`
+          SELECT
             fr.*,
             b.booking_date,
             b.client_name,
@@ -2125,31 +2116,11 @@ Nenhuma reserva foi afetada.
           FROM fuel_records fr
           LEFT JOIN bookings b ON fr.booking_id = b.id
           LEFT JOIN users u ON fr.recorded_by = u.id
-          WHERE 1=1
+          ${whereClause}
+          ORDER BY fr.created_at DESC
         `;
 
-        if (input.vesselId) {
-          queryStr += ` AND fr.vessel_id = ${input.vesselId}`;
-        }
-
-        // Se month e year forem fornecidos, filtrar por mês/ano
-        if (input.month && input.year) {
-          queryStr += ` AND MONTH(fr.created_at) = ${input.month}`;
-          queryStr += ` AND YEAR(fr.created_at) = ${input.year}`;
-        } else {
-          // Caso contrário, usar startDate/endDate se fornecidos
-          if (input.startDate) {
-            queryStr += ` AND fr.created_at >= FROM_UNIXTIME(${input.startDate / 1000})`;
-          }
-
-          if (input.endDate) {
-            queryStr += ` AND fr.created_at <= FROM_UNIXTIME(${input.endDate / 1000})`;
-          }
-        }
-
-        queryStr += ' ORDER BY fr.created_at DESC';
-
-        const result = await db.execute(sql.raw(queryStr)) as any;
+        const result = await db.execute(query) as any;
         const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
         
         // Converter valores de centavos para reais
@@ -2557,31 +2528,48 @@ Nenhuma reserva foi afetada.
 
             let rowsUpdated = 0;
 
-            // Tenta atualizar pelo asaas_charge_id
+            // 1. Tentar pelo asaas_charge_id (mais preciso)
             if (rec.asaas_charge_id) {
-              const updateResult = await db.execute(sql`
+              const r = await db.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'received', updated_at = NOW()
                 WHERE asaas_charge_id = ${rec.asaas_charge_id}
               `) as any;
-              rowsUpdated = updateResult?.[0]?.affectedRows ?? updateResult?.affectedRows ?? 0;
+              rowsUpdated += r?.[0]?.affectedRows ?? r?.affectedRows ?? 0;
             }
 
-            // Fallback: atualizar pelo client_email + type='fuel' se não encontrou pelo asaas_charge_id
+            // 2. Fallback por valor + email + tipo (cobre casos onde asaas_charge_id não coincide)
+            // Usa margem de R$ 0,02 para float imprecision
             if (rowsUpdated === 0 && rec.client_email) {
-              const fallbackResult = await db.execute(sql`
+              const valueNum = parseFloat(value);
+              const r2 = await db.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'received', updated_at = NOW()
                 WHERE type = 'fuel'
                   AND client_email = ${rec.client_email}
                   AND status IN ('pending', 'overdue')
-                ORDER BY due_date ASC
+                  AND ABS(CAST(value AS DECIMAL(10,2)) - ${valueNum}) < 0.02
+                ORDER BY ABS(DATEDIFF(due_date, ${dueDate})) ASC
                 LIMIT 1
               `) as any;
-              rowsUpdated = fallbackResult?.[0]?.affectedRows ?? fallbackResult?.affectedRows ?? 0;
+              rowsUpdated += r2?.[0]?.affectedRows ?? r2?.affectedRows ?? 0;
             }
 
-            // Se ainda não encontrou nenhum registro, insere como baixa manual
+            // 3. Último fallback: qualquer fuel overdue do mesmo cliente (ex: campo valor divergente)
+            if (rowsUpdated === 0 && rec.client_email) {
+              const r3 = await db.execute(sql`
+                UPDATE bpo_charges
+                SET status = 'received', updated_at = NOW()
+                WHERE type = 'fuel'
+                  AND client_email = ${rec.client_email}
+                  AND status IN ('pending', 'overdue')
+                ORDER BY ABS(DATEDIFF(due_date, ${dueDate})) ASC
+                LIMIT 1
+              `) as any;
+              rowsUpdated += r3?.[0]?.affectedRows ?? r3?.affectedRows ?? 0;
+            }
+
+            // 4. Se absolutamente nada encontrado, inserir como baixa manual
             if (rowsUpdated === 0) {
               await db.insert(bpoCharges).values({
                 asaasChargeId: rec.asaas_charge_id || null,
@@ -2631,9 +2619,9 @@ Nenhuma reserva foi afetada.
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         const { sql } = await import('drizzle-orm');
-        const ids = input.recordIds.join(',');
-        const result = await db.execute(sql.raw(`
-          SELECT 
+        const idsSQL = sql.join(input.recordIds.map(id => sql`${id}`), sql`, `);
+        const result = await db.execute(sql`
+          SELECT
             fr.*,
             b.booking_date,
             b.client_name,
@@ -2641,9 +2629,9 @@ Nenhuma reserva foi afetada.
           FROM fuel_records fr
           LEFT JOIN bookings b ON fr.booking_id = b.id
           LEFT JOIN users u ON fr.recorded_by = u.id
-          WHERE fr.id IN (${ids})
+          WHERE fr.id IN (${idsSQL})
           ORDER BY fr.created_at DESC
-        `)) as any;
+        `) as any;
         
         const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
 
@@ -2703,9 +2691,9 @@ Nenhuma reserva foi afetada.
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
         const { sql } = await import('drizzle-orm');
-        const ids = input.recordIds.join(',');
-        const result = await db.execute(sql.raw(`
-          SELECT 
+        const idsSQL = sql.join(input.recordIds.map(id => sql`${id}`), sql`, `);
+        const result = await db.execute(sql`
+          SELECT
             fr.*,
             b.booking_date,
             b.client_name,
@@ -2713,9 +2701,9 @@ Nenhuma reserva foi afetada.
           FROM fuel_records fr
           LEFT JOIN bookings b ON fr.booking_id = b.id
           LEFT JOIN users u ON fr.recorded_by = u.id
-          WHERE fr.id IN (${ids})
+          WHERE fr.id IN (${idsSQL})
           ORDER BY fr.created_at DESC
-        `)) as any;
+        `) as any;
         
         const records = (Array.isArray(result[0]) ? result[0] : result) as any[];
 
@@ -3852,13 +3840,13 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
         try {
           const { sql } = await import('drizzle-orm');
-          
+
           let result;
           if (input?.inspectionIds && input.inspectionIds.length > 0) {
             // Buscar vistorias específicas por IDs
-            const ids = input.inspectionIds.join(',');
-            result = await db.execute(sql.raw(`
-              SELECT 
+            const idsSQL = sql.join(input.inspectionIds.map(id => sql`${id}`), sql`, `);
+            result = await db.execute(sql`
+              SELECT
                 i.*,
                 v.name as vessel_name,
                 b.booking_date,
@@ -3869,9 +3857,9 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               JOIN vessels v ON i.vessel_id = v.id
               LEFT JOIN bookings b ON i.booking_id = b.id
               LEFT JOIN users u ON i.inspected_by = u.id
-              WHERE i.id IN (${ids})
+              WHERE i.id IN (${idsSQL})
               ORDER BY i.created_at DESC
-            `)) as any;
+            `) as any;
           } else {
             // Buscar últimas 10 vistorias
             result = await db.execute(sql`

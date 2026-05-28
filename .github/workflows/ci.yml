@@ -10,12 +10,9 @@ jobs:
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
-
-    env:
-      PUPPETEER_SKIP_DOWNLOAD: "true"
-      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
-      COREPACK_ENABLE_STRICT: "0"
-      COREPACK_ENABLE_AUTO_PIN: "0"
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -23,16 +20,44 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
-      - name: Disable corepack
-        run: corepack disable || true
-
-      - name: Install pnpm
-        run: npm install -g pnpm@10.4.1
+      - name: Checkpoint after checkout
+        run: echo "ok" > /tmp/cp-checkout.txt && node --version && npm --version
 
       - name: Install dependencies
-        run: pnpm install --no-optional --no-frozen-lockfile
+        run: npm install --legacy-peer-deps --ignore-scripts 2>&1 | tee /tmp/npm-install.log; exit ${PIPESTATUS[0]}
 
       - name: Type check
-        run: pnpm check
+        run: npm run check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
+
+      - name: Post error to PR comment
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const readLog = (path, maxLines) => {
+              try {
+                const c = fs.readFileSync(path, 'utf8');
+                return c.split('\n').slice(-maxLines).join('\n');
+              } catch(e) { return null; }
+            };
+            const checkoutDone = fs.existsSync('/tmp/cp-checkout.txt');
+            let body = `## CI Diagnostics\n\nCheckout step completed: **${checkoutDone}**\n\n`;
+            const installLog = readLog('/tmp/npm-install.log', 30);
+            body += '### npm install (last 30 lines)\n```\n' + (installLog ?? '_not run_') + '\n```\n\n';
+            const tscRaw = (() => { try { return fs.readFileSync('/tmp/tsc-output.log', 'utf8'); } catch(e) { return null; } })();
+            if (tscRaw) {
+              const lines = tscRaw.split('\n');
+              const errors = lines.filter(l => l.includes('error TS'));
+              body += '### tsc errors (' + errors.length + ' total)\n```\n' + errors.join('\n') + '\n```\n';
+            } else {
+              body += '### tsc output\n```\n_not run_\n```\n';
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body
+            });

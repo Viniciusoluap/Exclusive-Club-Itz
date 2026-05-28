@@ -648,7 +648,15 @@ export default function Reservas() {
                 )}
                 <div>
                   <span className="text-sm font-medium">Status:</span>
-                  <p className="text-sm text-muted-foreground capitalize">{selectedBooking.status}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {({
+                      confirmed: 'Confirmada',
+                      cancelled: 'Cancelada',
+                      pending: 'Pendente',
+                      used: 'Utilizada',
+                      blocked: 'Bloqueada',
+                    } as Record<string, string>)[selectedBooking.status] ?? selectedBooking.status}
+                  </p>
                 </div>
               </div>
             );
