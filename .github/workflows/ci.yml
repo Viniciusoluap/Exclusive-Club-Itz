@@ -29,7 +29,7 @@ jobs:
         run: corepack disable || true
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps --ignore-scripts 2>&1 | tee /tmp/npm-install.log; exit ${PIPESTATUS[0]}
+        run: npm install --legacy-peer-deps --ignore-scripts --no-optional 2>&1 | tee /tmp/npm-install.log; exit ${PIPESTATUS[0]}
 
       - name: Type check
         run: npm run check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
