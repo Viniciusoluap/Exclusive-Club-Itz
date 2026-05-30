@@ -281,6 +281,14 @@ async function startServer() {
       `))) as any;
       const affectedRows = (bpoResult as any)?.affectedRows ?? 0;
       console.log('[Webhook Asaas] bpo_charges atualizado:', asaasId, '->', newStatus, '| rows:', affectedRows);
+
+      // Sincronizar status para inspection_charges e fuel_records
+      try {
+        const { syncStatusToSources } = await import('../routers/bpoRouter');
+        await syncStatusToSources(db, asaasId, newStatus);
+      } catch (syncErr: any) {
+        console.warn('[Webhook Asaas] Falha ao sincronizar tabelas de origem:', syncErr?.message);
+      }
       // Gravar log do webhook para auditoria
       try {
         const payloadStr = JSON.stringify(payload).replace(/'/g, "''").substring(0, 4000);

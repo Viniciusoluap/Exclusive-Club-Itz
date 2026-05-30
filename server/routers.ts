@@ -4579,52 +4579,30 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
           // Sincronizar com bpo_charges
           try {
-            const { bpoCharges } = await import('../drizzle/schema');
-            const chargeType = charge.charge_type === 'repair' ? 'repair' : 'inspection';
-            const dueDate = charge.due_date ? new Date(charge.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-            const value = ((charge.amount || 0) / 100).toFixed(2);
-            const description = charge.description || `${chargeType === 'repair' ? 'Reparo' : 'Vistoria'} - Baixa manual (ID: ${input.chargeId})`;
-
+            const { syncStatusToSources } = await import('./routers/bpoRouter');
+            // Usar syncStatusToSources para atualizar inspection_charges já está feito acima,
+            // aqui só precisamos atualizar bpo_charges pelo asaas_charge_id
             if (charge.asaas_charge_id) {
-              const updateResult = await db.execute(sql`
+              // Atualizar bpo_charges pelo asaas_charge_id (campo mais confiável)
+              const safeId = String(charge.asaas_charge_id).replace(/'/g, '');
+              await db.execute(sql.raw(`
                 UPDATE bpo_charges
-                SET status = 'received', updated_at = NOW()
-                WHERE asaas_charge_id = ${charge.asaas_charge_id}
-              `) as any;
-              const affectedRows = updateResult?.[0]?.affectedRows ?? updateResult?.affectedRows ?? 0;
-              if (affectedRows === 0) {
-                await db.insert(bpoCharges).values({
-                  asaasChargeId: charge.asaas_charge_id,
-                  asaasCustomerId: null,
-                  clientId: null,
-                  clientName: charge.client_name || null,
-                  clientEmail: charge.client_email || null,
-                  value,
-                  dueDate,
-                  status: 'received',
-                  type: chargeType,
-                  classifiedBy: 'manual',
-                  billingType: 'PIX',
-                  description,
-                  source: 'manual',
-                });
-              }
-            } else {
-              await db.insert(bpoCharges).values({
-                asaasChargeId: null,
-                asaasCustomerId: null,
-                clientId: null,
-                clientName: charge.client_name || null,
-                clientEmail: charge.client_email || null,
-                value,
-                dueDate,
-                status: 'received',
-                type: chargeType,
-                classifiedBy: 'manual',
-                billingType: 'PIX',
-                description,
-                source: 'manual',
-              });
+                SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
+                WHERE asaas_charge_id = '${safeId}'
+              `));
+            } else if (charge.client_email) {
+              // Fallback: atualizar pelo email + tipo + valor (sem asaas_charge_id)
+              const safeEmail = String(charge.client_email).replace(/'/g, "''");
+              const chargeType = charge.charge_type === 'repair' ? 'repair' : 'inspection';
+              const chargeValue = parseFloat(String(charge.amount || 0));
+              await db.execute(sql.raw(`
+                UPDATE bpo_charges
+                SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
+                WHERE LOWER(client_email) = LOWER('${safeEmail}')
+                  AND type = '${chargeType}'
+                  AND ABS(CAST(value AS DECIMAL(10,2)) - ${chargeValue}) < 0.02
+                  AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
+              `));
             }
           } catch (bpoErr: any) {
             console.warn('[inspectionCharges.markAsPaid] Falha ao sincronizar bpo_charges:', bpoErr.message);
