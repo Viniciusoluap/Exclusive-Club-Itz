@@ -119,6 +119,11 @@ async function executeSplitPayment(input: {
       })
       .where(eq(bpoCharges.id, split.chargeId));
 
+    // Sincronizar status de volta para inspection_charges / fuel_records
+    if (charge.asaasChargeId) {
+      await syncStatusToSources(db, charge.asaasChargeId, newStatus);
+    }
+
     results.push({
       chargeId: split.chargeId,
       status: isPaid ? "paid" : "partial",
@@ -155,6 +160,43 @@ async function executeSplitPayment(input: {
     message: `${results.filter(r => r.status === 'paid').length} cobrança(s) quitada(s), ${results.filter(r => r.status === 'partial').length} parcial(is)`,
   };
 }
+
+// ============================================================
+// Helper: sincroniza status de pagamento para tabelas de origem
+// (inspection_charges e fuel_records) usando o asaas_charge_id.
+// Deve ser chamado sempre que bpo_charges.status for atualizado.
+// ============================================================
+async function syncStatusToSources(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  asaasChargeId: string | null | undefined,
+  bpoStatus: string
+): Promise<void> {
+  if (!asaasChargeId) return;
+  const safeId = String(asaasChargeId).replace(/'/g, '');
+  const isPaid = ['received', 'confirmed', 'receivedInCash'].includes(bpoStatus);
+  const isPartial = bpoStatus === 'partiallyPaid';
+  const isCancelled = bpoStatus === 'cancelled';
+  const isOverdue = bpoStatus === 'overdue';
+
+  // inspection_charges aceita: 'pending','paid','overdue','partiallyPaid','cancelled'
+  const icStatus = isPaid ? 'paid' : isPartial ? 'partiallyPaid' : isCancelled ? 'cancelled' : isOverdue ? 'overdue' : null;
+  // fuel_records aceita: 'pending','paid','cancelled','overdue'
+  const frStatus = isPaid ? 'paid' : isCancelled ? 'cancelled' : isOverdue ? 'overdue' : null;
+
+  try {
+    if (icStatus) {
+      await db.execute(sql.raw(`UPDATE inspection_charges SET payment_status = '${icStatus}' WHERE asaas_charge_id = '${safeId}'`));
+    }
+  } catch (e: any) { console.warn('[syncStatusToSources] inspection_charges:', e?.message); }
+
+  try {
+    if (frStatus) {
+      await db.execute(sql.raw(`UPDATE fuel_records SET payment_status = '${frStatus}' WHERE asaas_charge_id = '${safeId}'`));
+    }
+  } catch (e: any) { console.warn('[syncStatusToSources] fuel_records:', e?.message); }
+}
+
+export { syncStatusToSources };
 
 export const bpoRouter = router({
 
@@ -642,7 +684,7 @@ export const bpoRouter = router({
   // ============================================================
   getMyCharges: protectedProcedure
     .input(z.object({
-      types: z.array(z.enum(["monthly", "quota_sale", "fuel", "repair", "other"])).optional(),
+      types: z.array(z.enum(["monthly", "quota_sale", "fuel", "repair", "inspection", "other"])).optional(),
       status: z.array(z.enum(["pending", "received", "confirmed", "overdue", "refunded", "receivedInCash", "awaitingChargeback", "detached", "partiallyPaid"])).optional(),
       year: z.number().optional(),
       month: z.number().min(1).max(12).optional(),
@@ -1674,6 +1716,11 @@ export const bpoRouter = router({
         })
         .where(eq(bpoCharges.id, input.chargeId));
 
+      // Sincronizar para inspection_charges / fuel_records
+      if (charge.asaasChargeId) {
+        await syncStatusToSources(db, charge.asaasChargeId, "receivedInCash");
+      }
+
       return {
         success: true,
         message: `Baixa registrada com sucesso! Valor: R$ ${paidValue.toFixed(2)}`,
@@ -1727,54 +1774,9 @@ export const bpoRouter = router({
         })
         .where(eq(bpoCharges.id, input.chargeId));
 
-      // ── Sincronizar com inspection_charges quando tipo for repair ou inspection ──
-      if (charge.type === 'repair' || charge.type === 'inspection') {
-        try {
-          const { inspectionCharges: icTable } = await import('../../drizzle/schema');
-          const icNewStatus = isPaid ? 'paid' : 'partiallyPaid';
-
-          // Tentar encontrar pelo asaas_charge_id primeiro
-          if (charge.asaasChargeId) {
-            const icRows = await db.select().from(icTable)
-              .where(eq(icTable.asaasChargeId, charge.asaasChargeId)).limit(1);
-            if (icRows.length > 0) {
-              await db.update(icTable)
-                .set({
-                  paymentStatus: icNewStatus,
-                  amountPaid: newAmountPaid.toFixed(2),
-                  updatedAt: new Date(),
-                })
-                .where(eq(icTable.asaasChargeId, charge.asaasChargeId));
-            }
-          }
-
-          // Fallback: buscar pelo email do cliente + valor + tipo
-          if (charge.clientEmail) {
-            const { sql: sqlRaw } = await import('drizzle-orm');
-            const chargeTypeForIC = charge.type === 'repair' ? 'repair' : 'inspection';
-            const [icFallbackRows] = (await db.execute(sqlRaw.raw(`
-              SELECT id FROM inspection_charges
-              WHERE client_email = '${(charge.clientEmail ?? '').replace(/'/g, "''")}'
-                AND charge_type = '${chargeTypeForIC}'
-                AND ABS(CAST(amount AS DECIMAL(10,2)) - ${chargeValue}) < 0.02
-                AND payment_status NOT IN ('paid', 'cancelled')
-              ORDER BY created_at DESC
-              LIMIT 1
-            `))) as any;
-            const icFallback = Array.isArray(icFallbackRows) ? icFallbackRows[0] : null;
-            if (icFallback?.id) {
-              await db.update(icTable)
-                .set({
-                  paymentStatus: icNewStatus,
-                  amountPaid: newAmountPaid.toFixed(2),
-                  updatedAt: new Date(),
-                })
-                .where(eq(icTable.id, Number(icFallback.id)));
-            }
-          }
-        } catch (syncErr: any) {
-          console.warn('[registerPartialPayment] Falha ao sincronizar inspection_charges:', syncErr.message);
-        }
+      // Sincronizar status para inspection_charges / fuel_records
+      if (charge.asaasChargeId) {
+        await syncStatusToSources(db, charge.asaasChargeId, newStatus);
       }
 
       return {
