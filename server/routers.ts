@@ -2522,70 +2522,75 @@ Nenhuma reserva foi afetada.
           // 3. Sincronizar com bpo_charges
           try {
             const { bpoCharges } = await import('../drizzle/schema');
-            const dueDate = rec.due_date ? new Date(rec.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-            const value = ((rec.total_amount || 0) / 100).toFixed(2);
-            const description = `Abastecimento - Baixa manual (ID: ${input.id})`;
+            const { sql: drizzleSql } = await import('drizzle-orm');
+            const dueDateStr = rec.due_date ? new Date(rec.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            const valueInReais = ((rec.total_amount || 0) / 100).toFixed(2);
+            const valueNum = parseFloat(valueInReais);
+            const safeEmail = rec.client_email ? String(rec.client_email).replace(/'/g, "''") : null;
+            const safeAsaasId = rec.asaas_charge_id ? String(rec.asaas_charge_id).replace(/'/g, '') : null;
 
             let rowsUpdated = 0;
 
-            // 1. Tentar pelo asaas_charge_id (mais preciso)
-            if (rec.asaas_charge_id) {
-              const r = await db.execute(sql`
+            // 1. Pelo asaas_charge_id (mais preciso)
+            if (safeAsaasId) {
+              const [r] = (await db.execute(drizzleSql.raw(`
                 UPDATE bpo_charges
-                SET status = 'received', updated_at = NOW()
-                WHERE asaas_charge_id = ${rec.asaas_charge_id}
-              `) as any;
-              rowsUpdated += r?.[0]?.affectedRows ?? r?.affectedRows ?? 0;
+                SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
+                WHERE asaas_charge_id = '${safeAsaasId}'
+                  AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
+              `))) as any;
+              rowsUpdated += r?.affectedRows ?? 0;
             }
 
-            // 2. Fallback por valor + email + tipo (cobre casos onde asaas_charge_id não coincide)
-            // Usa margem de R$ 0,02 para float imprecision
-            if (rowsUpdated === 0 && rec.client_email) {
-              const valueNum = parseFloat(value);
-              const r2 = await db.execute(sql`
+            // 2. Fallback por email (case-insensitive) + tipo + valor com margem
+            if (rowsUpdated === 0 && safeEmail && valueNum > 0) {
+              const [r2] = (await db.execute(drizzleSql.raw(`
                 UPDATE bpo_charges
-                SET status = 'received', updated_at = NOW()
+                SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
                 WHERE type = 'fuel'
-                  AND client_email = ${rec.client_email}
-                  AND status IN ('pending', 'overdue')
+                  AND LOWER(client_email) = LOWER('${safeEmail}')
+                  AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
                   AND ABS(CAST(value AS DECIMAL(10,2)) - ${valueNum}) < 0.02
-                ORDER BY ABS(DATEDIFF(due_date, ${dueDate})) ASC
+                ORDER BY ABS(DATEDIFF(due_date, '${dueDateStr}')) ASC
                 LIMIT 1
-              `) as any;
-              rowsUpdated += r2?.[0]?.affectedRows ?? r2?.affectedRows ?? 0;
+              `))) as any;
+              rowsUpdated += r2?.affectedRows ?? 0;
             }
 
-            // 3. Último fallback: qualquer fuel overdue do mesmo cliente (ex: campo valor divergente)
-            if (rowsUpdated === 0 && rec.client_email) {
-              const r3 = await db.execute(sql`
+            // 3. Fallback amplo: qualquer fuel pendente/vencido do mesmo cliente (sem restrição de valor)
+            if (rowsUpdated === 0 && safeEmail) {
+              const [r3] = (await db.execute(drizzleSql.raw(`
                 UPDATE bpo_charges
-                SET status = 'received', updated_at = NOW()
+                SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
                 WHERE type = 'fuel'
-                  AND client_email = ${rec.client_email}
+                  AND LOWER(client_email) = LOWER('${safeEmail}')
                   AND status IN ('pending', 'overdue')
-                ORDER BY ABS(DATEDIFF(due_date, ${dueDate})) ASC
+                ORDER BY ABS(DATEDIFF(due_date, '${dueDateStr}')) ASC
                 LIMIT 1
-              `) as any;
-              rowsUpdated += r3?.[0]?.affectedRows ?? r3?.affectedRows ?? 0;
+              `))) as any;
+              rowsUpdated += r3?.affectedRows ?? 0;
             }
 
-            // 4. Se absolutamente nada encontrado, inserir como baixa manual
+            // 4. Nenhum registro encontrado — inserir como baixa manual para rastreio
             if (rowsUpdated === 0) {
-              await db.insert(bpoCharges).values({
-                asaasChargeId: rec.asaas_charge_id || null,
-                asaasCustomerId: null,
-                clientId: null,
-                clientName: rec.client_name || null,
-                clientEmail: rec.client_email || null,
-                value,
-                dueDate,
-                status: 'received',
-                type: 'fuel',
-                classifiedBy: 'manual',
-                billingType: 'PIX',
-                description,
-                source: 'manual',
-              });
+              const safeName = (rec.client_name || '').replace(/'/g, "''");
+              const safeDesc = `Abastecimento - Baixa manual (ID: ${input.id})`.replace(/'/g, "''");
+              const asaasIdSql = safeAsaasId ? `'${safeAsaasId}'` : 'NULL';
+              const emailSql = safeEmail ? `'${safeEmail}'` : 'NULL';
+              const nameSql = safeName ? `'${safeName}'` : 'NULL';
+              await db.execute(drizzleSql.raw(`
+                INSERT INTO bpo_charges (
+                  asaas_charge_id, client_name, client_email,
+                  value, due_date, status, type, classified_by,
+                  billing_type, description, source, synced_at
+                ) VALUES (
+                  ${asaasIdSql}, ${nameSql}, ${emailSql},
+                  ${valueInReais}, '${dueDateStr}', 'receivedInCash', 'fuel', 'manual',
+                  'PIX', '${safeDesc}', 'manual', NOW()
+                )
+                ON DUPLICATE KEY UPDATE
+                  status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
+              `));
             }
           } catch (bpoErr: any) {
             console.warn('[fuelRecords.markAsPaid] Falha ao sincronizar bpo_charges:', bpoErr.message);
@@ -5543,6 +5548,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         WHERE client_email = '${emailEsc}'
           AND status NOT IN ('received','confirmed','receivedInCash','refunded')
           AND (status = 'overdue' OR (status = 'pending' AND due_date < '${todayStr}'))
+          AND (external_reference IS NULL OR external_reference NOT LIKE 'consolidated-%')
         ORDER BY due_date ASC
       `))) as any;
       const charges = Array.isArray(rows) ? rows : [];
@@ -5623,6 +5629,10 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         dueDate.setDate(dueDate.getDate() + 1);
         const dueDateStr = dueDate.toISOString().split('T')[0];
 
+        // IDs das cobranças originais para rastreio no webhook
+        const originalIds = (charges as any[]).map((c: any) => c.id).join(',');
+        const externalRef = `consolidated-${originalIds}-${Date.now()}`;
+
         // Criar cobrança PIX consolidada no Asaas
         const charge = await asaas.createCharge({
           customer: customer.id,
@@ -5630,8 +5640,36 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           value: totalRounded,
           dueDate: dueDateStr,
           description,
-          externalReference: `consolidated-${ctx.user.email}-${Date.now()}`,
+          externalReference: externalRef,
         });
+
+        // Pré-inserir na bpo_charges com classified_by='manual' para evitar que o
+        // "Importar do Asaas" crie uma linha duplicada como "Não Classificada"
+        try {
+          const asaasChargeIdEsc = String(charge.id || '').replace(/'/g, '');
+          const asaasCustomerIdEsc = String(customer.id || '').replace(/'/g, '');
+          const descEsc = description.replace(/'/g, "''");
+          const externalRefEsc = externalRef.replace(/'/g, "''");
+          const invoiceUrlEsc = ((charge.invoiceUrl || charge.bankSlipUrl || '') as string).replace(/'/g, "''");
+          const clientEmailEsc = ctx.user.email.replace(/'/g, "''");
+          await dbConn.execute(sql.raw(`
+            INSERT INTO bpo_charges (
+              asaas_charge_id, asaas_customer_id, client_email,
+              value, due_date, status, type, classified_by, billing_type,
+              description, external_reference, payment_link, invoice_url, source, synced_at
+            ) VALUES (
+              '${asaasChargeIdEsc}', '${asaasCustomerIdEsc}', '${clientEmailEsc}',
+              ${totalRounded}, '${dueDateStr}', 'pending', 'other', 'manual', 'PIX',
+              '${descEsc}', '${externalRefEsc}',
+              '${invoiceUrlEsc}', '${invoiceUrlEsc}', 'manual', NOW()
+            )
+            ON DUPLICATE KEY UPDATE
+              status = VALUES(status),
+              synced_at = NOW()
+          `));
+        } catch (insertErr: any) {
+          console.warn('[generateConsolidatedCharge] Falha ao pré-inserir bpo_charges:', insertErr?.message);
+        }
 
         return {
           success: true,
