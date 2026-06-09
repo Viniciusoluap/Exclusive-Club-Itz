@@ -289,6 +289,44 @@ async function startServer() {
       } catch (syncErr: any) {
         console.warn('[Webhook Asaas] Falha ao sincronizar tabelas de origem:', syncErr?.message);
       }
+
+      // Se é pagamento de cobrança CONSOLIDADA, marcar cobranças originais como pagas
+      if (isPaid) {
+        try {
+          const externalRef: string = payment.externalReference || '';
+          if (externalRef.startsWith('consolidated-')) {
+            // Formato: "consolidated-{ids separados por vírgula}-{timestamp}"
+            const parts = externalRef.split('-');
+            if (parts.length >= 3) {
+              // parts[0] = 'consolidated', parts[1] = ids, parts[n-1] = timestamp
+              const idsStr = parts.slice(1, -1).join('-');
+              const originalIds = idsStr.split(',').map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n) && n > 0);
+              if (originalIds.length > 0) {
+                const idList = originalIds.join(',');
+                await db.execute(drizzleSql.raw(`
+                  UPDATE bpo_charges
+                  SET status = 'receivedInCash', paid_date = ${paidDateSqlVal}, synced_at = NOW(), source = 'asaas_webhook'
+                  WHERE id IN (${idList})
+                    AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
+                `));
+                console.log('[Webhook Asaas] Cobranças originais marcadas como pagas:', idList);
+                // Sincronizar inspection_charges e fuel_records para cada cobrança original
+                const [origRows] = (await db.execute(drizzleSql.raw(`
+                  SELECT asaas_charge_id FROM bpo_charges WHERE id IN (${idList})
+                `))) as any;
+                for (const row of (Array.isArray(origRows) ? origRows : [])) {
+                  if (row?.asaas_charge_id) {
+                    const { syncStatusToSources } = await import('../routers/bpoRouter');
+                    await syncStatusToSources(db, row.asaas_charge_id, 'receivedInCash');
+                  }
+                }
+              }
+            }
+          }
+        } catch (consolidatedErr: any) {
+          console.warn('[Webhook Asaas] Falha ao processar cobranças consolidadas:', consolidatedErr?.message);
+        }
+      }
       // Gravar log do webhook para auditoria
       try {
         const payloadStr = JSON.stringify(payload).replace(/'/g, "''").substring(0, 4000);
