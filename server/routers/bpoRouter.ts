@@ -252,18 +252,26 @@ export const bpoRouter = router({
             .where(eq(bpoCharges.asaasChargeId, charge.id))
             .limit(1);
 
+          // Cobranças consolidadas (geradas pelo dashboard do cliente) não devem
+          // aparecer como "Não Classificadas" — usar classified_by='manual'
+          const isConsolidated = typeof charge.externalReference === 'string' &&
+            charge.externalReference.startsWith('consolidated-');
+          const classifiedByForImport = isConsolidated ? 'manual' : undefined;
+
           if (existing.length > 0) {
             // Atualizar apenas campos que podem ter mudado
+            const updateSet: Record<string, any> = {
+              status: normalizedStatus,
+              paidDate: charge.paymentDate || null,
+              amountPaid: paid ? String(charge.value) : "0",
+              netValue: charge.netValue != null ? String(charge.netValue) : null,
+              syncedAt: sql`NOW()`,
+              source: "asaas_import",
+            };
+            if (classifiedByForImport) updateSet.classifiedBy = classifiedByForImport;
             await db
               .update(bpoCharges)
-              .set({
-                status: normalizedStatus,
-                paidDate: charge.paymentDate || null,
-                amountPaid: paid ? String(charge.value) : "0",
-                netValue: charge.netValue != null ? String(charge.netValue) : null,
-                syncedAt: sql`NOW()`,
-                source: "asaas_import",
-              })
+              .set(updateSet)
               .where(eq(bpoCharges.asaasChargeId, charge.id));
             report.updated++;
           } else {
@@ -286,6 +294,7 @@ export const bpoRouter = router({
               paymentLink: charge.invoiceUrl || null,
               invoiceUrl: charge.invoiceUrl || null,
               bankSlipUrl: charge.bankSlipUrl || null,
+              classifiedBy: classifiedByForImport ?? "unclassified",
               source: "asaas_import",
               syncedAt: sql`NOW()`,
             });
