@@ -247,11 +247,11 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
 
         case "signatureBlock": {
           const signers = section.signers || [];
-          doc.moveDown(1);
+          doc.moveDown(0.5);
 
           if (section.content) {
             doc.fillColor("#1a1a1a").fontSize(10).font("Helvetica").text(section.content, { align: "center" });
-            doc.moveDown(1.5);
+            doc.moveDown(1);
           }
 
           const sigW = (pageW - 40) / Math.min(signers.length, 2);
@@ -259,10 +259,10 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
 
           for (let i = 0; i < signers.length; i++) {
             if (i > 0 && i % 2 === 0) {
-              doc.moveDown(4);
+              doc.moveDown(2.5);
               sigX = 50;
             }
-            const lineY = doc.y + 50;
+            const lineY = doc.y + 25;
             doc.moveTo(sigX + 10, lineY).lineTo(sigX + sigW - 10, lineY).strokeColor("#333333").lineWidth(0.5).stroke();
             doc.fillColor("#1a1a1a").fontSize(9.5).font("Helvetica-Bold").text(signers[i].name, sigX + 10, lineY + 5, {
               width: sigW - 20,
@@ -280,7 +280,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
             }
             sigX += sigW + 20;
           }
-          doc.moveDown(5);
+          doc.moveDown(1);
           break;
         }
 
@@ -338,6 +338,7 @@ export interface ContractData {
     adhesionValue: number;
     monthlyFee: number;
     quotaPercentage: string;
+    capacity?: number;
   }>;
   installments: Array<{ description: string; dueDate: string; value: number; status?: string }>;
   contractDate: string;
@@ -459,7 +460,7 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
   };
 
   // ── Dados da embarcação ──────────────────────────────────────
-  const boatDesc = firstQuota.boatDescription || firstQuota.boatName;
+  const boatDesc = firstQuota.boatName;
 
   // ── Cálculo da quantidade de cotas ──────────────────────────
   const quotaAmount = data.quotas.reduce(
@@ -471,6 +472,20 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
   const tipoCotas = quotaAmount === 0.5 ? "Meia cota (0,5 quota)"
     : quotaAmount === 1 ? "Cota Inteira (1 quota)"
     : `${quotaAmountDecimal} (${intToWordsPT(Math.round(quotaAmount)).toLowerCase()}) Cotas Inteiras`;
+
+  // ── Reservas ativas (cláusula 3.4) — dinâmico por tipo de cota ──
+  const maxReservas = Math.round(quotaAmount * 2);
+  const maxReservasWords = intToWordsPT(maxReservas).toLowerCase();
+  const maxReservasStr = maxReservas === 1
+    ? `1 (${maxReservasWords}) reserva ativa, de cada vez,`
+    : `${maxReservas} (${maxReservasWords}) reservas ativas, de cada vez,`;
+
+  // ── Capacidade da embarcação (cláusula 4.4) ─────────────────
+  const vesselCapacity = firstQuota.capacity ?? 8;
+  const capacityWords = intToWordsPT(vesselCapacity).toLowerCase();
+  const configStr = vesselCapacity <= 1
+    ? `${vesselCapacity} pessoa`
+    : `configuração "${vesselCapacity - 1}+1": ${vesselCapacity - 1} passageiro(s) + 1 piloto`;
 
   // ── Totais de cotas da embarcação ────────────────────────────
   const totalQuotasNum = firstQuota.totalQuotas;
@@ -596,7 +611,7 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
     { type: "paragraph", content: "3.1 Para usar a embarcação, o CONTRATANTE deve fazer reserva em tela própria do site: https://www.exclusiveclubitz.com (utilizado pela EXCLUSIVE CLUB)." },
     { type: "paragraph", content: "3.2 Se houver embarcação disponível para o dia da reserva, a confirmação é indicada no site. Se não houver embarcação disponível, a informação é disponibilizada no site para que o CONTRATANTE verifique a data mais próxima disponível." },
     { type: "paragraph", content: "3.3 Cada reserva confirmada pela EXCLUSIVE CLUB confere ao CONTRATANTE o direito de usar a embarcação exclusivamente no dia, nos horários e no local para embarque/partida constantes da reserva confirmada." },
-    { type: "paragraph", content: "3.4 O CONTRATANTE tem o direito de manter até 1 (uma) reserva ativa, de cada vez, para uso de embarcação." },
+    { type: "paragraph", content: `3.4 O CONTRATANTE tem o direito de manter até ${maxReservasStr} para uso de embarcação.` },
     { type: "paragraph", content: "3.5 O CONTRATANTE pode cancelar reserva confirmada desde que o faça até às 18 horas do dia anterior ao de uso da embarcação." },
     { type: "paragraph", content: "3.6 Se o CONTRATANTE não cancela a reserva conforme disposto e não comparece no lugar e horário próprios para uso da embarcação, fica sujeito ao pagamento de uma taxa de desistência no valor de R$ 100,00 (cem reais), cobrada juntamente com a taxa mensal com vencimento em um dos dois meses-calendário imediatamente seguintes." },
     { type: "paragraph", content: "3.7 À taxa de desistência aplicam-se as disposições das cláusulas 2.6 e 2.7." },
@@ -607,10 +622,10 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
     { type: "paragraph", content: "4.1 A embarcação fica à disposição do CONTRATANTE no local designado na confirmação da reserva a partir das 8:00 horas do dia respectivo. O CONTRATANTE deve aportar e devolver a embarcação no mesmo lugar até às 19:00 horas do mesmo dia, livre de pessoas e coisas que não pertençam à embarcação. Salvo acordo combinado entre as partes e conste da confirmação da reserva." },
     { type: "paragraph", content: "4.2 A EXCLUSIVE CLUB tem direito de não liberar a embarcação para uso do CONTRATANTE em caso de condições atmosféricas desfavoráveis, falta de condições adequadas de navegabilidade, outros motivos de força maior, ou dano ao motor por mal uso (prazo maior para conserto). Nesse caso, o CONTRATANTE fica com direito de fazer nova reserva para uso de embarcação, sendo atendido pela EXCLUSIVE CLUB conforme disponibilidade para novas datas futuras." },
     { type: "paragraph", content: "4.3 Para receber a embarcação, o CONTRATANTE deve apresentar-se de modo adequado e com identificação, chegando com antecedência de pelo menos 40 (quarenta) minutos em relação à hora de embarque conforme reserva confirmada." },
-    { type: "paragraph", content: "4.4 É permitido o embarque e permanência de acompanhante(s) do CONTRATANTE, respeitando a lotação máxima de 8 (oito) pessoas, conforme indicado pelo fabricante (configuração \"7+1\": 7 passageiros + 1 piloto). O CONTRATANTE fica responsável, de modo pessoal e irrestrito, por: (i) mal uso da embarcação ou danos causados à mesma ou ao local de embarque; (ii) comportamento impróprio; (iii) infração de qualquer ordem cometida por acompanhante(s), inclusive profissional(is) habilitado(s)." },
+    { type: "paragraph", content: `4.4 É permitido o embarque e permanência de acompanhante(s) do CONTRATANTE, respeitando a lotação máxima de ${vesselCapacity} (${capacityWords}) pessoas, conforme indicado pelo fabricante (${configStr}). O CONTRATANTE fica responsável, de modo pessoal e irrestrito, por: (i) mal uso da embarcação ou danos causados à mesma ou ao local de embarque; (ii) comportamento impróprio; (iii) infração de qualquer ordem cometida por acompanhante(s), inclusive profissional(is) habilitado(s).` },
     { type: "paragraph", content: "4.5 Cabe ao EXCLUSIVE CLUB manter um barqueiro no local e horário de embarque para colocar a embarcação na água, se necessário, e entregá-la em condições de uso para o CONTRATANTE." },
-    { type: "paragraph", content: "4.6 A embarcação é entregue com o tanque de combustível completamente abastecido. Após o uso e devolução, o CONTRATANTE providencia o reabastecimento completo do tanque. O custo do reabastecimento é repassado integralmente ao CONTRATANTE. Prazo de pagamento: até 1 (um) dia útil contado da data de devolução. Penalidade por atraso: juros moratórios de 1% (um por cento) ao mês e multa de 2% (dois por cento). Formas de pagamento: transferência bancária, PIX ou boleto emitido pela EXCLUSIVE CLUB." },
-    { type: "paragraph", content: "4.7 Ao receber a embarcação, o CONTRATANTE recebe também uma relação impressa indicativa de certificados, manuais e outros documentos, além de equipamentos, aparelhos, acessórios e utensílios existentes na embarcação. O CONTRATANTE faz a conferência respectiva, anota ressalvas cabíveis no verso da relação e devolve a relação assinada ao representante ou preposto da EXCLUSIVE CLUB. Itens não ressalvados têm sua existência e estado satisfatório de uso confirmados pelo CONTRATANTE. O CONTRATANTE inspeciona a embarcação na água antes da partida. Na falta de ressalva anotada na relação, entende-se que o CONTRATANTE está recebendo a embarcação em condições satisfatórias, ressalvados os defeitos só perceptíveis no curso da jornada." },
+    { type: "paragraph", content: "4.6 A embarcação é entregue com o tanque de combustível completamente abastecido. Após o uso e devolução, a CONTRATADA providencia o reabastecimento completo do tanque. O custo do reabastecimento é repassado integralmente ao CONTRATANTE. Prazo de pagamento: até 1 (um) dia útil contado da data de devolução. Penalidade por atraso: juros moratórios de 1% (um por cento) ao mês e multa de 2% (dois por cento). Formas de pagamento: transferência bancária, PIX ou boleto emitido pela EXCLUSIVE CLUB." },
+    { type: "paragraph", content: "4.7 Ao receber a embarcação, o CONTRATANTE recebe também uma relação digital disponibilizada no site indicativa de certificados, manuais e outros documentos, além de equipamentos, aparelhos, acessórios e utensílios existentes na embarcação. O CONTRATANTE faz a conferência respectiva, anota ressalvas cabíveis no verso da relação e devolve a relação assinada ao representante ou preposto da EXCLUSIVE CLUB. Itens não ressalvados têm sua existência e estado satisfatório de uso confirmados pelo CONTRATANTE. O CONTRATANTE inspeciona a embarcação na água antes da partida. Na falta de ressalva anotada na relação, entende-se que o CONTRATANTE está recebendo a embarcação em condições satisfatórias, ressalvados os defeitos só perceptíveis no curso da jornada." },
     { type: "paragraph", content: "4.8 É permitida a (co)pilotagem da embarcação por profissional habilitado contratado pelo CONTRATANTE por sua conta e risco, devendo o CONTRATANTE estar presente na embarcação. Alternativamente, a EXCLUSIVE CLUB pode disponibilizar profissional para pilotagem, conforme combinado por escrito e previamente entre as partes, incluindo custo respectivo. Independentemente de o profissional haver sido ou não indicado pela EXCLUSIVE CLUB, o CONTRATANTE é responsável pessoal por danos, avarias, acidentes ou incidentes que haja enquanto a embarcação esteja ou devesse estar na sua posse." },
     { type: "paragraph", content: "4.9 O CONTRATANTE obriga-se a usar a embarcação com estrita observância de: (i) instruções recebidas do EXCLUSIVE CLUB; (ii) especificações do fabricante constantes em manuais e publicações que acompanham as embarcações; (iii) disposições deste contrato; (iv) prescrições normativas de qualquer nível aplicáveis." },
     { type: "paragraph", content: "4.10 A EXCLUSIVE CLUB não responde pela presença, perda, subtração, desaparecimento ou dano qualquer em relação a valores, pertences, aparelhos e outros bens ou objetos levados para a embarcação pelo CONTRATANTE ou acompanhante." },
