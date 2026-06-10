@@ -1,0 +1,48 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Círculo branco com borda náutica -->
+  <circle cx="100" cy="100" r="96" fill="white" stroke="#c0d4e8" stroke-width="2.5"/>
+  <circle cx="100" cy="100" r="89" fill="none" stroke="#dce9f5" stroke-width="0.8"/>
+
+  <!-- Âncora -->
+  <g fill="none" stroke="#1B3A5C" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Anel superior -->
+    <circle cx="100" cy="36" r="10" stroke-width="3.2"/>
+    <!-- Haste vertical -->
+    <line x1="100" y1="46" x2="100" y2="116" stroke-width="3.5"/>
+    <!-- Travessa horizontal (stock) -->
+    <line x1="66" y1="68" x2="134" y2="68" stroke-width="3.5"/>
+    <!-- Arco da coroa na base -->
+    <path d="M 76 116 Q 100 128 124 116" stroke-width="3.5"/>
+    <!-- Braço esquerdo -->
+    <path d="M 76 116 C 52 122 39 106 46 89" stroke-width="3.5"/>
+    <path d="M 46 89 L 34 84" stroke-width="3"/>
+    <path d="M 46 89 L 40 78" stroke-width="3"/>
+    <!-- Braço direito -->
+    <path d="M 124 116 C 148 122 161 106 154 89" stroke-width="3.5"/>
+    <path d="M 154 89 L 166 84" stroke-width="3"/>
+    <path d="M 154 89 L 160 78" stroke-width="3"/>
+  </g>
+
+  <!-- "Exclusive Club" -->
+  <text
+    x="100" y="152"
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="21"
+    fill="#1B3A5C"
+    letter-spacing="0.5"
+  >Exclusive Club</text>
+
+  <!-- "Compartilhando Sonhos" curvo na base -->
+  <defs>
+    <path id="arc" d="M 34 162 A 148 148 0 0 1 166 162"/>
+  </defs>
+  <text
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="9.5"
+    fill="#1B3A5C"
+    letter-spacing="1"
+  >
+    <textPath href="#arc" startOffset="50%" text-anchor="middle">Compartilhando Sonhos</textPath>
+  </text>
+</svg>
