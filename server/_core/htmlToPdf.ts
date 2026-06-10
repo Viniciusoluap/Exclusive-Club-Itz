@@ -111,20 +111,20 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
         }
 
         case "title": {
-          doc.fillColor("#1a1a1a").fontSize(13).font("Helvetica-Bold").text(section.content || "", { align: "center" });
+          doc.fillColor("#1a1a1a").fontSize(13).font("Helvetica-Bold").text(section.content || "", 50, doc.y, { align: "center", width: pageW });
           doc.moveDown(0.4);
           break;
         }
 
         case "subtitle": {
-          doc.fillColor(GRAY).fontSize(9.5).font("Helvetica").text(section.content || "", { align: "center" });
+          doc.fillColor(GRAY).fontSize(9.5).font("Helvetica").text(section.content || "", 50, doc.y, { align: "center", width: pageW });
           doc.moveDown(0.8);
           break;
         }
 
         case "h2": {
           doc.moveDown(0.5);
-          doc.fillColor(RED).fontSize(10.5).font("Helvetica-Bold").text((section.content || "").toUpperCase());
+          doc.fillColor(RED).fontSize(10.5).font("Helvetica-Bold").text((section.content || "").toUpperCase(), 50, doc.y, { width: pageW });
           doc.moveTo(50, doc.y + 2).lineTo(50 + pageW, doc.y + 2).strokeColor(RED).lineWidth(1).stroke();
           doc.moveDown(0.6);
           break;
@@ -132,13 +132,13 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
 
         case "h3": {
           doc.moveDown(0.3);
-          doc.fillColor(BLUE).fontSize(10).font("Helvetica-Bold").text((section.content || "").toUpperCase());
+          doc.fillColor(BLUE).fontSize(10).font("Helvetica-Bold").text((section.content || "").toUpperCase(), 50, doc.y, { width: pageW });
           doc.moveDown(0.4);
           break;
         }
 
         case "paragraph": {
-          doc.fillColor("#1a1a1a").fontSize(10).font("Helvetica").text(section.content || "", { align: "justify", lineGap: 2 });
+          doc.fillColor("#1a1a1a").fontSize(10).font("Helvetica").text(section.content || "", 50, doc.y, { align: "justify", lineGap: 2, width: pageW });
           doc.moveDown(0.6);
           break;
         }
@@ -160,6 +160,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
             fieldY += lineH;
           }
           doc.y = startY + boxH + 8;
+          doc.x = doc.page.margins.left; // reset cursor após infoBox para evitar deslocamento de x
           doc.moveDown(0.3);
           break;
         }
@@ -209,6 +210,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
           }
 
           doc.y = rowY + 8;
+          doc.x = doc.page.margins.left;
           doc.moveDown(0.3);
           break;
         }
@@ -227,6 +229,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
             lineGap: 1,
           });
           doc.y = wStartY + wH + 8;
+          doc.x = doc.page.margins.left;
           doc.moveDown(0.3);
           break;
         }

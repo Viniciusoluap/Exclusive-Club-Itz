@@ -1537,8 +1537,17 @@ export const bpoRouter = router({
 
       const createdCharges: string[] = [];
 
-      const totalInstallments = input.type === "quota_sale" ? (input.installments ?? 1) : 1;
-      const installmentValue = totalInstallments > 1
+      let totalInstallments: number;
+      if (input.type === "quota_sale") {
+        totalInstallments = input.installments ?? 1;
+      } else if (input.type === "monthly") {
+        // Cria uma cobrança por mês do mês inicial até dezembro do mesmo ano
+        totalInstallments = 13 - startMonthNum;
+      } else {
+        totalInstallments = 1;
+      }
+      // Mensalidade: cada mês tem o valor cheio; quota_sale: divide o total
+      const installmentValue = (input.type !== "monthly" && totalInstallments > 1)
         ? Math.round((input.value / totalInstallments) * 100) / 100
         : input.value;
 
@@ -1550,9 +1559,16 @@ export const bpoRouter = router({
           parcelYear += 1;
         }
         const dueDateStr = `${String(parcelYear)}-${String(parcelMonth).padStart(2, "0")}-${String(input.dueDay).padStart(2, "0")}`;
-        const descLabel = totalInstallments > 1
-          ? `${typeLabel[input.type]} - Parcela ${i + 1}/${totalInstallments} - ${client.name}`
-          : input.description || `${typeLabel[input.type]} - ${String(parcelMonth).padStart(2, "0")}/${parcelYear} - ${client.name}`;
+        let descLabel: string;
+        if (input.type === "monthly") {
+          descLabel = input.description
+            ? `${input.description} - ${String(parcelMonth).padStart(2, "0")}/${parcelYear}`
+            : `Mensalidade - ${String(parcelMonth).padStart(2, "0")}/${parcelYear} - ${client.name}`;
+        } else if (totalInstallments > 1) {
+          descLabel = `${typeLabel[input.type]} - Parcela ${i + 1}/${totalInstallments} - ${client.name}`;
+        } else {
+          descLabel = input.description || `${typeLabel[input.type]} - ${String(parcelMonth).padStart(2, "0")}/${parcelYear} - ${client.name}`;
+        }
 
         const asaasCharge = await createPixCharge({
           customerId: asaasCustomer.id,
