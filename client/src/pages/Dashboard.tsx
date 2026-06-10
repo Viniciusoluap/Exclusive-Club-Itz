@@ -2,7 +2,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 // import { InspectionChargesSection } from "@/components/InspectionChargesSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { APP_LOGO, APP_TITLE, getLoginUrl } from "@/const";
+import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
+import { APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X, CheckCircle2, XCircle, Fuel, DollarSign, Copy, QrCode, ArrowLeft, AlertTriangle, Wrench, CreditCard, Loader2, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -605,7 +606,7 @@ export default function Dashboard() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-cyan-50">
         <Card className="max-w-md w-full mx-4">
           <CardHeader className="text-center">
-            <img src={APP_LOGO} alt={APP_TITLE} className="h-20 mx-auto mb-4" />
+            <ExclusiveClubLogo size={80} className="mx-auto mb-4" />
             <CardTitle>Acesso Restrito</CardTitle>
             <CardDescription>Faça login para ver seu dashboard</CardDescription>
           </CardHeader>
@@ -627,7 +628,7 @@ export default function Dashboard() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <Link href="/">
               <div className="flex items-center gap-3 cursor-pointer">
-                <img src={APP_LOGO} alt={APP_TITLE} className="h-10 md:h-12" />
+                <ExclusiveClubLogo size={54} className="drop-shadow-sm" />
                 <span className="font-bold text-base md:text-xl text-gray-900 truncate">{APP_TITLE}</span>
               </div>
             </Link>

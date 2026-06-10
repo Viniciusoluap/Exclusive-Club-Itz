@@ -2,7 +2,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { MobileMenu } from "@/components/MobileMenu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { APP_LOGO, getLoginUrl } from "@/const";
+import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
+import { getLoginUrl } from "@/const";
 import { Anchor, Calendar, Ship, Waves } from "lucide-react";
 import { Link } from "wouter";
 
@@ -20,7 +21,7 @@ export default function Home() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2 md:gap-3">
-              <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10 md:h-12 md:w-12" style={{width: '50px', height: '47px'}} />
+              <ExclusiveClubLogo size={50} className="drop-shadow-sm" />
               <span className="text-base md:text-xl font-bold text-primary">Exclusive Club</span>
             </div>
             <nav className="hidden md:flex items-center gap-6">
@@ -283,7 +284,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <img src={APP_LOGO} alt="Exclusive Club" className="h-12 w-12" style={{width: '70px', height: '65px'}} />
+                <ExclusiveClubLogo size={50} className="drop-shadow-sm" />
                 <span className="text-xl font-bold text-primary">Exclusive Club</span>
               </div>
               <p className="text-muted-foreground">Compartilhando Sonhos</p>
