@@ -11,7 +11,7 @@ import cron from "node-cron";
 import { getDb } from "./db";
 import { listAllAsaasCharges } from "./_core/asaasService";
 import { bpoCharges } from "../drizzle/schema";
-import { normalizeBpoStatus } from "./routers/bpoRouter";
+import { normalizeBpoStatus, autoClassifyCharge } from "./routers/bpoRouter";
 import { eq, sql } from "drizzle-orm";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,8 +106,13 @@ async function runSyncIncrementalBPO(): Promise<void> {
               .where(eq(bpoCharges.asaasChargeId, charge.id));
             updated++;
           } else {
-            // Inserir nova cobrança que não estava no banco
+            // Inserir nova cobrança com tipo e classificação já definidos
             const clientInfo = clientMap.get(charge.customer);
+            const isConsolidated = typeof charge.externalReference === 'string' &&
+              charge.externalReference.startsWith('consolidated-');
+            const { type: chargeType, classifiedBy: chargeClassifiedBy } = isConsolidated
+              ? { type: 'other' as const, classifiedBy: 'manual' as const }
+              : autoClassifyCharge(charge.description ?? null, charge.externalReference ?? null);
             await db.insert(bpoCharges).values({
               asaasChargeId: charge.id,
               asaasCustomerId: charge.customer,
@@ -120,6 +125,8 @@ async function runSyncIncrementalBPO(): Promise<void> {
               dueDate: charge.dueDate,
               paidDate: (charge as any).paymentDate || null,
               status: newStatus,
+              type: chargeType,
+              classifiedBy: chargeClassifiedBy,
               billingType: charge.billingType || null,
               description: charge.description || null,
               externalReference: charge.externalReference || null,

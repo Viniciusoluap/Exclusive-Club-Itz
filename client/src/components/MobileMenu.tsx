@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { APP_LOGO, getLoginUrl } from "@/const";
+import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
+import { getLoginUrl } from "@/const";
 import { Menu, X, Pencil, Check } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -91,7 +92,7 @@ export function MobileMenu() {
       <SheetContent side="right" className="w-[300px] sm:w-[400px]">
         <SheetHeader className="mb-6">
           <div className="flex items-center gap-3">
-            <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10" style={{width: '70px', height: '65px'}} />
+            <ExclusiveClubLogo size={54} className="drop-shadow-sm" />
             <SheetTitle className="text-primary">Exclusive Club</SheetTitle>
           </div>
         </SheetHeader>
