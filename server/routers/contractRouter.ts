@@ -34,7 +34,7 @@ export const contractRouter = router({
       const [quotaRows] = (await db.execute(sql.raw(`
         SELECT cq.id, cq.quota_type, cq.quota_number, cq.vessel_id,
                v.name as vessel_name, v.description as vessel_description,
-               v.quota_count as total_quotas
+               v.quota_count as total_quotas, v.capacity as vessel_capacity
         FROM client_quotas cq
         JOIN vessels v ON v.id = cq.vessel_id
         WHERE cq.client_id = ${input.clientId} AND cq.is_active = 1
@@ -71,6 +71,7 @@ export const contractRouter = router({
           vesselName: q.vessel_name,
           vesselDescription: q.vessel_description || "",
           totalQuotas: q.total_quotas || 6,
+          capacity: q.vessel_capacity || 8,
         })),
         adhesionTotal: quotaSaleCharges.reduce((sum: number, c: any) => sum + parseFloat(c.value || "0"), 0),
         monthlyFee: monthlyCharges.length > 0 ? parseFloat(monthlyCharges[0].value || "0") : 0,
@@ -108,7 +109,7 @@ export const contractRouter = router({
       const [quotaRows] = (await db.execute(sql.raw(`
         SELECT cq.id, cq.quota_type, cq.quota_number, cq.vessel_id,
                v.name as vessel_name, v.description as vessel_description,
-               v.quota_count as total_quotas
+               v.quota_count as total_quotas, v.capacity as vessel_capacity
         FROM client_quotas cq
         JOIN vessels v ON v.id = cq.vessel_id
         WHERE cq.client_id = ${input.clientId} AND cq.is_active = 1
@@ -156,6 +157,7 @@ export const contractRouter = router({
           adhesionValue: adhesionTotal,
           monthlyFee,
           quotaPercentage: percentage,
+          capacity: q.vessel_capacity || 8,
         };
       });
 

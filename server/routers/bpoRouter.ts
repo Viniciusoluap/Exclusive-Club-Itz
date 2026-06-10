@@ -55,6 +55,26 @@ function isPaidStatus(status: string): boolean {
 }
 
 // ============================================================
+// Helper: classificar cobrança por palavras-chave na descrição
+// Exportado para uso no cron job e em outras mutations
+// ============================================================
+export function autoClassifyCharge(
+  description: string | null,
+  externalRef: string | null
+): { type: "monthly" | "quota_sale" | "fuel" | "repair" | "other"; classifiedBy: "auto" | "unclassified" } {
+  const text = `${description || ""} ${externalRef || ""}`.toLowerCase();
+  if (/mensalidade|cota|quota|parcela|contrato|assinatura|subscription/.test(text))
+    return { type: "monthly", classifiedBy: "auto" };
+  if (/abastecimento|combustivel|gasolina|litros|fuel|tanque/.test(text))
+    return { type: "fuel", classifiedBy: "auto" };
+  if (/vistoria|reparo|dano|avaria|reprovacao|conserto|manutencao/.test(text))
+    return { type: "repair", classifiedBy: "auto" };
+  if (/venda|quota_sale|aquisicao|compra.*cota|cota.*compra/.test(text))
+    return { type: "quota_sale", classifiedBy: "auto" };
+  return { type: "other", classifiedBy: "unclassified" };
+}
+
+// ============================================================
 // Standalone helper para splitPayment — fora do router para
 // evitar propagação de erros de inferência genérica do tRPC
 // ============================================================
@@ -252,14 +272,15 @@ export const bpoRouter = router({
             .where(eq(bpoCharges.asaasChargeId, charge.id))
             .limit(1);
 
-          // Cobranças consolidadas (geradas pelo dashboard do cliente) não devem
-          // aparecer como "Não Classificadas" — usar classified_by='manual'
+          // Cobranças consolidadas não devem aparecer como "Não Classificadas"
           const isConsolidated = typeof charge.externalReference === 'string' &&
             charge.externalReference.startsWith('consolidated-');
-          const classifiedByForImport = isConsolidated ? 'manual' : undefined;
+          const { type: chargeType, classifiedBy: chargeClassifiedBy } = isConsolidated
+            ? { type: 'other' as const, classifiedBy: 'manual' as const }
+            : autoClassifyCharge(charge.description ?? null, charge.externalReference ?? null);
 
           if (existing.length > 0) {
-            // Atualizar apenas campos que podem ter mudado
+            // Atualizar status + classificação (preserva type se já classificado manualmente)
             const updateSet: Record<string, any> = {
               status: normalizedStatus,
               paidDate: charge.paymentDate || null,
@@ -268,14 +289,14 @@ export const bpoRouter = router({
               syncedAt: sql`NOW()`,
               source: "asaas_import",
             };
-            if (classifiedByForImport) updateSet.classifiedBy = classifiedByForImport;
+            if (isConsolidated) updateSet.classifiedBy = 'manual';
             await db
               .update(bpoCharges)
               .set(updateSet)
               .where(eq(bpoCharges.asaasChargeId, charge.id));
             report.updated++;
           } else {
-            // Inserir novo registro
+            // Inserir novo registro com tipo e classificação já definidos
             await db.insert(bpoCharges).values({
               asaasChargeId: charge.id,
               asaasCustomerId: charge.customer,
@@ -288,13 +309,14 @@ export const bpoRouter = router({
               dueDate: charge.dueDate,
               paidDate: charge.paymentDate || null,
               status: normalizedStatus,
+              type: chargeType,
               billingType: charge.billingType || null,
               description: charge.description || null,
               externalReference: charge.externalReference || null,
               paymentLink: charge.invoiceUrl || null,
               invoiceUrl: charge.invoiceUrl || null,
               bankSlipUrl: charge.bankSlipUrl || null,
-              classifiedBy: classifiedByForImport ?? "unclassified",
+              classifiedBy: chargeClassifiedBy,
               source: "asaas_import",
               syncedAt: sql`NOW()`,
             });
@@ -426,6 +448,7 @@ export const bpoRouter = router({
           vesselName: z.string().optional(),
           limit: z.number().optional().default(50),
           offset: z.number().optional().default(0),
+          excludeConsolidation: z.boolean().optional().default(false),
         })
         .optional()
     )
@@ -491,6 +514,12 @@ export const bpoRouter = router({
         conditions.push(
           `(client_name LIKE '%${searchFilter}%' OR client_email LIKE '%${searchFilter}%' OR description LIKE '%${searchFilter}%')`
         );
+      }
+
+      // Excluir cobranças de consolidação (tentativas PIX agrupadas não pagas)
+      // Essas cobranças têm external_reference iniciando com 'consolidated-'
+      if (input?.excludeConsolidation) {
+        conditions.push(`(external_reference IS NULL OR external_reference NOT LIKE 'consolidated-%')`);
       }
 
       // Filtro por embarcação — via client_quotas (clientes com cota ativa na embarcação)
@@ -822,26 +851,7 @@ export const bpoRouter = router({
       }
     }
 
-    // 3. Classificação automática por palavras-chave
-    const autoClassify = (description: string | null, externalRef: string | null): {
-      type: "monthly" | "quota_sale" | "fuel" | "repair" | "other";
-      classifiedBy: "auto" | "unclassified";
-    } => {
-      const text = `${description || ""} ${externalRef || ""}`.toLowerCase();
-      if (/mensalidade|cota|quota|parcela|contrato|assinatura|subscription/.test(text)) {
-        return { type: "monthly", classifiedBy: "auto" };
-      }
-      if (/abastecimento|combustivel|gasolina|litros|fuel|tanque/.test(text)) {
-        return { type: "fuel", classifiedBy: "auto" };
-      }
-      if (/vistoria|reparo|dano|avaria|reprovacao|conserto|manutencao/.test(text)) {
-        return { type: "repair", classifiedBy: "auto" };
-      }
-      if (/venda|quota_sale|aquisicao|compra.*cota|cota.*compra/.test(text)) {
-        return { type: "quota_sale", classifiedBy: "auto" };
-      }
-      return { type: "other", classifiedBy: "unclassified" };
-    }
+    // 3. Classificação automática por palavras-chave (usa helper exportado)
 
     // 4. Paginar todas as cobranças do Asaas a partir de 01/01/2025
     let offset = 0;
@@ -862,7 +872,7 @@ export const bpoRouter = router({
           const clientInfo = clientMap.get(charge.customer);
           const normalizedStatus = normalizeBpoStatus(charge.status);
           const paid = isPaidStatus(normalizedStatus);
-          const { type, classifiedBy } = autoClassify(charge.description ?? null, charge.externalReference ?? null);
+          const { type, classifiedBy } = autoClassifyCharge(charge.description ?? null, charge.externalReference ?? null);
 
           await db.insert(bpoCharges).values({
             asaasChargeId: charge.id,
@@ -1378,10 +1388,15 @@ export const bpoRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
+      // Apenas cobranças RECEBIDAS precisam de classificação (dinheiro que entrou)
+      // pending/overdue = dívida ainda não paga, não deve aparecer para classificar
+      const receivedStatuses = ["received", "confirmed", "receivedInCash", "partiallyPaid"] as const;
+
       const charges = await db.select().from(bpoCharges)
         .where(and(
           eq(bpoCharges.classifiedBy, "unclassified"),
-          gte(bpoCharges.dueDate, "2025-01-01")
+          gte(bpoCharges.dueDate, "2025-01-01"),
+          inArray(bpoCharges.status, receivedStatuses as unknown as string[])
         ))
         .orderBy(bpoCharges.dueDate)
         .limit(input.limit)
@@ -1391,7 +1406,8 @@ export const bpoRouter = router({
         .from(bpoCharges)
         .where(and(
           eq(bpoCharges.classifiedBy, "unclassified"),
-          gte(bpoCharges.dueDate, "2025-01-01")
+          gte(bpoCharges.dueDate, "2025-01-01"),
+          inArray(bpoCharges.status, receivedStatuses as unknown as string[])
         ));
 
       // Buscar todos os clientes para sugestão automática
@@ -1537,8 +1553,17 @@ export const bpoRouter = router({
 
       const createdCharges: string[] = [];
 
-      const totalInstallments = input.type === "quota_sale" ? (input.installments ?? 1) : 1;
-      const installmentValue = totalInstallments > 1
+      let totalInstallments: number;
+      if (input.type === "quota_sale") {
+        totalInstallments = input.installments ?? 1;
+      } else if (input.type === "monthly") {
+        // Cria uma cobrança por mês do mês inicial até dezembro do mesmo ano
+        totalInstallments = 13 - startMonthNum;
+      } else {
+        totalInstallments = 1;
+      }
+      // Mensalidade: cada mês tem o valor cheio; quota_sale: divide o total
+      const installmentValue = (input.type !== "monthly" && totalInstallments > 1)
         ? Math.round((input.value / totalInstallments) * 100) / 100
         : input.value;
 
@@ -1550,9 +1575,16 @@ export const bpoRouter = router({
           parcelYear += 1;
         }
         const dueDateStr = `${String(parcelYear)}-${String(parcelMonth).padStart(2, "0")}-${String(input.dueDay).padStart(2, "0")}`;
-        const descLabel = totalInstallments > 1
-          ? `${typeLabel[input.type]} - Parcela ${i + 1}/${totalInstallments} - ${client.name}`
-          : input.description || `${typeLabel[input.type]} - ${String(parcelMonth).padStart(2, "0")}/${parcelYear} - ${client.name}`;
+        let descLabel: string;
+        if (input.type === "monthly") {
+          descLabel = input.description
+            ? `${input.description} - ${String(parcelMonth).padStart(2, "0")}/${parcelYear}`
+            : `Mensalidade - ${String(parcelMonth).padStart(2, "0")}/${parcelYear} - ${client.name}`;
+        } else if (totalInstallments > 1) {
+          descLabel = `${typeLabel[input.type]} - Parcela ${i + 1}/${totalInstallments} - ${client.name}`;
+        } else {
+          descLabel = input.description || `${typeLabel[input.type]} - ${String(parcelMonth).padStart(2, "0")}/${parcelYear} - ${client.name}`;
+        }
 
         const asaasCharge = await createPixCharge({
           customerId: asaasCustomer.id,
@@ -1872,31 +1904,11 @@ export const bpoRouter = router({
       const charges: Array<{ id: number; description: string | null; externalReference: string | null }> =
         Array.isArray(rows) ? rows : [];
 
-      const autoClassify = (description: string | null, externalRef: string | null): {
-        type: "monthly" | "quota_sale" | "fuel" | "repair" | "other";
-        classifiedBy: "auto" | "unclassified";
-      } => {
-        const text = `${description || ""} ${externalRef || ""}`.toLowerCase();
-        if (/mensalidade|cota|quota|parcela|contrato|assinatura|subscription/.test(text)) {
-          return { type: "monthly", classifiedBy: "auto" };
-        }
-        if (/abastecimento|combustivel|gasolina|litros|fuel|tanque/.test(text)) {
-          return { type: "fuel", classifiedBy: "auto" };
-        }
-        if (/vistoria|reparo|dano|avaria|reprovacao|conserto|manutencao/.test(text)) {
-          return { type: "repair", classifiedBy: "auto" };
-        }
-        if (/venda|quota_sale|aquisicao|compra.*cota|cota.*compra/.test(text)) {
-          return { type: "quota_sale", classifiedBy: "auto" };
-        }
-        return { type: "other", classifiedBy: "unclassified" };
-      };
-
       let classified = 0;
       let unchanged = 0;
 
       for (const charge of charges) {
-        const { type, classifiedBy } = autoClassify(charge.description, charge.externalReference);
+        const { type, classifiedBy } = autoClassifyCharge(charge.description, charge.externalReference);
         if (type !== "other" || classifiedBy === "auto") {
           await db.execute(sql.raw(`
             UPDATE bpo_charges

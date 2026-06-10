@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { APP_LOGO, getLoginUrl } from "@/const";
+import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
+import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, Bell, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, FileText, Fuel, HardDrive, Loader2, Menu, Pencil, Plus, Send, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
 import { useState } from "react";
@@ -584,8 +585,11 @@ export default function Admin() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <img src={APP_LOGO} alt="Exclusive Club" className="h-10 w-10" style={{width: '70px', height: '65px'}} />
-              <span className="text-lg font-bold text-primary">Exclusive Club Admin</span>
+              <ExclusiveClubLogo size={54} className="drop-shadow-sm" />
+              <div className="flex flex-col leading-tight">
+                <span className="text-base font-bold tracking-tight" style={{ color: "#1B3A5C" }}>Exclusive Club</span>
+                <span className="text-[10px] font-semibold tracking-[0.14em] uppercase text-muted-foreground">Painel Administrativo</span>
+              </div>
             </Link>
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-4">

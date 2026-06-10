@@ -1084,6 +1084,13 @@ Venc: {fmtDate(charge.due_date)}
                 a partir de {createForm.startMonth}.
               </p>
             )}
+            {createForm.type === "monthly" && createForm.startMonth && (
+              <p className="text-xs text-muted-foreground bg-blue-50 border border-blue-200 rounded p-2">
+                Serão criadas <strong>{13 - parseInt(createForm.startMonth.split("-")[1] || "1")} cobranças</strong> de{" "}
+                <strong>{fmt(parseFloat(createForm.value || "0"))}</strong> cada,
+                de {createForm.startMonth} até dezembro/{createForm.startMonth.split("-")[0]}.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancelar</Button>

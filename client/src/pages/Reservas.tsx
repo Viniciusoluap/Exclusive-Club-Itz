@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { APP_LOGO, getLoginUrl } from "@/const";
+import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
+import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { ChevronLeft, ChevronRight, Loader2, Plus, X, Menu, ArrowLeft } from "lucide-react";
 import React, { useState, useEffect, useMemo } from "react";
@@ -290,7 +291,7 @@ export default function Reservas() {
           <div className="flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center gap-3 cursor-pointer">
-                <img src={APP_LOGO} alt="Logo" className="h-10 w-10 rounded-lg" style={{width: '70px', height: '65px'}} />
+                <ExclusiveClubLogo size={54} className="drop-shadow-sm" />
                 <span className="text-xl font-bold hidden sm:inline">Exclusive Club</span>
               </div>
             </Link>

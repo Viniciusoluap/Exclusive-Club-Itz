@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, ChevronLeft, ChevronRight, ArrowLeft } from "lucide-react";
-import { APP_LOGO, APP_TITLE } from "@/const";
+import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
+import { APP_TITLE } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 interface Photo {
@@ -61,7 +62,7 @@ export default function Galeria() {
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto flex h-16 items-center justify-between">
           <a href="/" className="flex items-center gap-2">
-            <img src={APP_LOGO} alt={APP_TITLE} className="h-10 w-10 rounded-full object-cover" style={{width: '70px', height: '65px'}} />
+            <ExclusiveClubLogo size={54} className="drop-shadow-sm" />
             <span className="text-xl font-bold text-cyan-700">{APP_TITLE}</span>
           </a>
           <nav className="flex gap-6 items-center">
