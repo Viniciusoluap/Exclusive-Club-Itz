@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Loader2, Save, AlertCircle, CheckCircle2, ArrowLeft, XCircle } from "lucide-react";
 import { useLocation } from "wouter";
@@ -122,16 +121,6 @@ export default function SystemSettings() {
         {/* Conteúdo */}
         {activeTab === "asaas" && (
           <div>
-
-      {/* Alert sobre workaround */}
-      <Alert className="mb-6 border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
-        <AlertCircle className="h-4 w-4 text-yellow-600" />
-        <AlertDescription className="text-yellow-800 dark:text-yellow-200">
-          <strong>Workaround Temporário:</strong> Devido a um bug do sistema Manus, a chave API do Asaas
-          configurada no painel de Secrets não está sendo carregada. Esta interface permite configurar
-          a chave diretamente no banco de dados até o problema ser resolvido.
-        </AlertDescription>
-      </Alert>
 
       <Card>
         <CardHeader>

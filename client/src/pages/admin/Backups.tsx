@@ -377,18 +377,21 @@ export default function AdminBackups() {
                           </>
                         )}
                         
-                        {/* Botão Excluir para TODOS os backups (exceto em execução) */}
-                        {backup.status !== 'running' && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(backup.id)}
-                            title="Excluir backup"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
+                        {/* Botão Excluir para TODOS os backups */}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            if (backup.status === 'running') {
+                              if (!confirm('Este backup pode ainda estar em execução. Excluir mesmo assim?')) return;
+                            }
+                            handleDelete(backup.id);
+                          }}
+                          title="Excluir backup"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
