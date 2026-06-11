@@ -329,7 +329,7 @@ export const reportsRouter = router({
       );
 
       // 2. Dias Mais Reservados (dia da semana)
-      const bookingsByWeekday = await db.execute(sql`
+      const bookingsByWeekdayRaw = await db.execute(sql`
         SELECT DAYNAME(FROM_UNIXTIME(booking_date / 1000)) as weekday, COUNT(*) as count
         FROM bookings
         WHERE booking_date >= ${start}
@@ -338,6 +338,7 @@ export const reportsRouter = router({
         GROUP BY weekday
         ORDER BY count DESC
       `) as any;
+      const bookingsByWeekday = Array.isArray(bookingsByWeekdayRaw[0]) ? bookingsByWeekdayRaw[0] : bookingsByWeekdayRaw;
 
       // 3. Horários de Pico (placeholder - não temos hora exata)
       const peakHours = { morning: 0, afternoon: 0, evening: 0 };
@@ -793,29 +794,23 @@ export const reportsRouter = router({
       }));
 
       // 5. Abastecimentos Operacionais vs Clientes
-      const operationalFuel = await db.select({
-        total: sql<number>`SUM(${fuelRecords.liters})`.as('total'),
-      })
-      .from(fuelRecords)
-      .where(
-        and(
-          gte(fuelRecords.createdAt, new Date(start).toISOString()),
-          lte(fuelRecords.createdAt, new Date(end).toISOString()),
-          eq(fuelRecords.isOperational, 1)
-        )
-      );
+      const operationalFuelRaw = await db.execute(sql`
+        SELECT SUM(liters) as total FROM fuel_records
+        WHERE created_at >= ${new Date(start).toISOString()}
+          AND created_at <= ${new Date(end).toISOString()}
+          AND is_operational = 1
+      `) as any;
+      const opRows = Array.isArray(operationalFuelRaw[0]) ? operationalFuelRaw[0] : operationalFuelRaw;
+      const operationalFuelTotal = parseFloat(opRows[0]?.total || 0);
 
-      const clientFuel = await db.select({
-        total: sql<number>`SUM(${fuelRecords.liters})`.as('total'),
-      })
-      .from(fuelRecords)
-      .where(
-        and(
-          gte(fuelRecords.createdAt, new Date(start).toISOString()),
-          lte(fuelRecords.createdAt, new Date(end).toISOString()),
-          eq(fuelRecords.isOperational, 0)
-        )
-      );
+      const clientFuelRaw = await db.execute(sql`
+        SELECT SUM(liters) as total FROM fuel_records
+        WHERE created_at >= ${new Date(start).toISOString()}
+          AND created_at <= ${new Date(end).toISOString()}
+          AND (is_operational = 0 OR is_operational IS NULL)
+      `) as any;
+      const clRows = Array.isArray(clientFuelRaw[0]) ? clientFuelRaw[0] : clientFuelRaw;
+      const clientFuelTotal = parseFloat(clRows[0]?.total || 0);
 
       // 6. Projeção de Estoque (baseado em consumo médio diário)
       const totalConsumption = consumptionByVessel.reduce((sum, v) => sum + v.totalLiters, 0);
@@ -833,7 +828,7 @@ export const reportsRouter = router({
       const daysUntilEmpty = dailyAvgConsumption > 0 ? stockLiters / dailyAvgConsumption : 0;
 
       // 7. Histórico de Preços
-      const priceHistory = await db.execute(sql`
+      const priceHistoryRaw = await db.execute(sql`
         SELECT DATE_FORMAT(created_at, '%Y-%m') as month, AVG(price_per_liter) as avgPrice
         FROM fuel_records
         WHERE created_at >= ${new Date(start).toISOString()}
@@ -841,14 +836,15 @@ export const reportsRouter = router({
         GROUP BY month
         ORDER BY month
       `) as any;
+      const priceHistory = Array.isArray(priceHistoryRaw[0]) ? priceHistoryRaw[0] : priceHistoryRaw;
 
       return {
         consumptionByVessel,
         avgCostPerLiter: avgCostPerLiter[0]?.avg || 0,
         fuelEfficiency,
         vesselComparison,
-        operationalFuel: operationalFuel[0]?.total || 0,
-        clientFuel: clientFuel[0]?.total || 0,
+        operationalFuel: operationalFuelTotal,
+        clientFuel: clientFuelTotal,
         stockProjection: {
           currentStock: stockLiters,
           dailyConsumption: Math.round(dailyAvgConsumption * 10) / 10,
@@ -872,7 +868,7 @@ export const reportsRouter = router({
       const end = new Date(input.endDate).getTime();
 
       // 1. Ocupação por Mês
-      const occupancyByMonth = await db.execute(sql`
+      const occupancyByMonthRaw = await db.execute(sql`
         SELECT DATE_FORMAT(FROM_UNIXTIME(booking_date / 1000), '%Y-%m') as month, COUNT(*) as count
         FROM bookings
         WHERE booking_date >= ${start}
@@ -881,9 +877,10 @@ export const reportsRouter = router({
         GROUP BY month
         ORDER BY month
       `) as any;
+      const occupancyByMonth = Array.isArray(occupancyByMonthRaw[0]) ? occupancyByMonthRaw[0] : occupancyByMonthRaw;
 
       // 2. Receita por Mês
-      const revenueByMonth = await db.execute(sql`
+      const revenueByMonthRaw = await db.execute(sql`
         SELECT DATE_FORMAT(created_at, '%Y-%m') as month, SUM(total_amount) / 100 as total
         FROM fuel_records
         WHERE created_at >= ${new Date(start).toISOString()}
@@ -892,12 +889,13 @@ export const reportsRouter = router({
         GROUP BY month
         ORDER BY month
       `) as any;
+      const revenueByMonth = Array.isArray(revenueByMonthRaw[0]) ? revenueByMonthRaw[0] : revenueByMonthRaw;
 
       // 3. Picos de Demanda (top 3 meses)
-      const peakMonths = [...occupancyByMonth].sort((a: any, b: any) => b.count - a.count).slice(0, 3);
+      const peakMonths = [...(occupancyByMonth as any[])].sort((a: any, b: any) => b.count - a.count).slice(0, 3);
 
       // 4. Períodos de Baixa (bottom 3 meses)
-      const lowMonths = [...occupancyByMonth].sort((a: any, b: any) => a.count - b.count).slice(0, 3);
+      const lowMonths = [...(occupancyByMonth as any[])].sort((a: any, b: any) => a.count - b.count).slice(0, 3);
 
       // 5. Comparação Ano a Ano (placeholder - precisa de mais de 1 ano de dados)
       const yearOverYear: any[] = [];
@@ -906,7 +904,7 @@ export const reportsRouter = router({
       const highSeasonMonths = peakMonths.map((m: any) => m.month);
 
       // 7. Taxa de Ocupação por Dia da Semana
-      const occupancyByWeekday = await db.execute(sql`
+      const occupancyByWeekdayRaw = await db.execute(sql`
         SELECT DAYNAME(FROM_UNIXTIME(booking_date / 1000)) as weekday, COUNT(*) as count
         FROM bookings
         WHERE booking_date >= ${start}
@@ -915,6 +913,7 @@ export const reportsRouter = router({
         GROUP BY weekday
         ORDER BY count DESC
       `) as any;
+      const occupancyByWeekday = Array.isArray(occupancyByWeekdayRaw[0]) ? occupancyByWeekdayRaw[0] : occupancyByWeekdayRaw;
 
       // 8. Eventos Especiais (placeholder - precisa de calendário de feriados)
       const specialEvents: any[] = [];

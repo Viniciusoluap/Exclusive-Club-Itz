@@ -14,10 +14,9 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 export default function ReportsTab() {
   const [activeReportTab, setActiveReportTab] = useState("executive");
-  const [startDate, setStartDate] = useState(
-    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  );
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const currentYear = new Date().getFullYear();
+  const [startDate, setStartDate] = useState(`${currentYear}-01-01`);
+  const [endDate, setEndDate] = useState(`${currentYear}-12-31`);
 
   const { data: financial, isLoading: loadingFinancial } = trpc.reports.financial.useQuery({
     startDate,
