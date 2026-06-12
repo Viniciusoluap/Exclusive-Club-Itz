@@ -144,6 +144,29 @@ async function executeSplitPayment(input: {
       await syncStatusToSources(db, charge.asaasChargeId, newStatus);
     }
 
+    // Criar/atualizar saldo devedor automático
+    const chargeRef = String(charge.externalReference || '');
+    if (newStatus === 'partiallyPaid' && !chargeRef.startsWith('saldo-')) {
+      await createOrUpdateRemainderCharge(db, {
+        id: split.chargeId,
+        value: chargeValue,
+        amountPaid: newAmountPaid,
+        dueDate: String(charge.dueDate || ''),
+        type: String(charge.type || 'other'),
+        clientId: charge.clientId ?? null,
+        clientName: charge.clientName ?? null,
+        clientEmail: charge.clientEmail ?? null,
+        description: charge.description ?? null,
+        asaasCustomerId: charge.asaasCustomerId ?? null,
+      });
+    } else if (newStatus === 'receivedInCash' && !chargeRef.startsWith('saldo-')) {
+      await createOrUpdateRemainderCharge(db, {
+        id: split.chargeId, value: chargeValue, amountPaid: chargeValue,
+        dueDate: String(charge.dueDate || ''), type: '', clientId: null,
+        clientName: null, clientEmail: null, description: null, asaasCustomerId: null,
+      });
+    }
+
     results.push({
       chargeId: split.chargeId,
       status: isPaid ? "paid" : "partial",
@@ -217,6 +240,62 @@ async function syncStatusToSources(
 }
 
 export { syncStatusToSources };
+
+// ============================================================
+// Helper: cria ou atualiza saldo devedor ao registrar pagamento parcial
+// Chamado sempre que uma cobrança fica com status partiallyPaid ou
+// receivedInCash. Cobranças com externalReference 'saldo-X' são ignoradas
+// para evitar recursão infinita.
+// ============================================================
+async function createOrUpdateRemainderCharge(
+  db: any,
+  originalCharge: {
+    id: number;
+    value: string | number;
+    amountPaid: string | number;
+    dueDate: string;
+    type: string;
+    clientId: number | null;
+    clientName: string | null;
+    clientEmail: string | null;
+    description: string | null;
+    asaasCustomerId: string | null;
+  }
+) {
+  const total = parseFloat(String(originalCharge.value));
+  const paid  = parseFloat(String(originalCharge.amountPaid));
+  const remaining = Math.max(0, total - paid);
+  const ref = `saldo-${originalCharge.id}`;
+  const esc = (s: string | null) => s === null ? 'NULL' : `'${String(s).replace(/'/g, "''")}'`;
+
+  if (remaining < 0.01) {
+    await db.execute(sql.raw(
+      `UPDATE bpo_charges SET status = 'cancelled' WHERE external_reference = '${ref}' AND status NOT IN ('receivedInCash', 'cancelled')`
+    ));
+    return;
+  }
+
+  const today = new Date().toISOString().substring(0, 10);
+  const dueDate = originalCharge.dueDate || today;
+  const status = dueDate < today ? 'overdue' : 'pending';
+  const description = `Saldo devedor — ${originalCharge.description || 'Cobrança parcial'}`;
+
+  const existingRaw = await db.execute(sql.raw(
+    `SELECT id FROM bpo_charges WHERE external_reference = '${ref}' LIMIT 1`
+  )) as any;
+  const existing = (Array.isArray(existingRaw[0]) ? existingRaw[0] : existingRaw)[0];
+
+  if (existing) {
+    await db.execute(sql.raw(
+      `UPDATE bpo_charges SET value = ${remaining.toFixed(2)}, status = '${status}', due_date = '${dueDate}', amount_paid = 0.00 WHERE id = ${existing.id}`
+    ));
+  } else {
+    const clientIdSql = originalCharge.clientId !== null ? originalCharge.clientId : 'NULL';
+    await db.execute(sql.raw(
+      `INSERT INTO bpo_charges (client_id, client_name, client_email, asaas_customer_id, value, due_date, status, type, classified_by, billing_type, description, external_reference, source) VALUES (${clientIdSql}, ${esc(originalCharge.clientName)}, ${esc(originalCharge.clientEmail)}, ${esc(originalCharge.asaasCustomerId)}, ${remaining.toFixed(2)}, '${dueDate}', '${status}', '${originalCharge.type || 'other'}', 'manual', 'PIX', ${esc(description)}, '${ref}', 'system')`
+    ));
+  }
+}
 
 export const bpoRouter = router({
 
@@ -974,7 +1053,9 @@ export const bpoRouter = router({
 
       // 5. Buscar cobranças pendentes do mesmo cliente com o mesmo tipo
       const [pendingRows] = (await db.execute(sql.raw(`
-        SELECT id, value, amount_paid as amountPaid, due_date as dueDate, description, status
+        SELECT id, value, amount_paid as amountPaid, due_date as dueDate, description, status,
+               external_reference as externalReference, client_name as clientName,
+               client_email as clientEmail, asaas_customer_id as asaasCustomerId, type
         FROM bpo_charges
         WHERE client_id = ${clientId}
           AND type = '${input.type}'
@@ -1056,6 +1137,23 @@ export const bpoRouter = router({
           paidDate: isFullyPaid ? paymentDate : null,
         })
         .where(eq(bpoCharges.id, targetCharge.id));
+
+      // Criar/atualizar saldo devedor automático
+      const chargeRef = String(targetCharge.externalReference || '');
+      if (!chargeRef.startsWith('saldo-')) {
+        await createOrUpdateRemainderCharge(db, {
+          id: targetCharge.id,
+          value: targetValue,
+          amountPaid: newAmountPaid,
+          dueDate: String(targetCharge.dueDate || ''),
+          type: String(targetCharge.type || input.type || 'other'),
+          clientId: clientId ?? null,
+          clientName: targetCharge.clientName ?? null,
+          clientEmail: targetCharge.clientEmail ?? null,
+          description: targetCharge.description ?? null,
+          asaasCustomerId: targetCharge.asaasCustomerId ?? null,
+        });
+      }
 
       // 12. CANCELAR a cobrança do PIX (origem) — já foi distribuída
       const currentDesc = sourceCharge.description || '';
@@ -1820,6 +1918,23 @@ export const bpoRouter = router({
         await syncStatusToSources(db, charge.asaasChargeId, newStatus);
       }
 
+      // Criar/atualizar saldo devedor automático
+      const chargeRef = String(charge.externalReference || '');
+      if (!chargeRef.startsWith('saldo-')) {
+        await createOrUpdateRemainderCharge(db, {
+          id: input.chargeId,
+          value: chargeValue,
+          amountPaid: newAmountPaid,
+          dueDate: String(charge.dueDate || ''),
+          type: String(charge.type || 'other'),
+          clientId: charge.clientId ?? null,
+          clientName: charge.clientName ?? null,
+          clientEmail: charge.clientEmail ?? null,
+          description: charge.description ?? null,
+          asaasCustomerId: charge.asaasCustomerId ?? null,
+        });
+      }
+
       return {
         success: true,
         isPaid,
@@ -2204,4 +2319,129 @@ export const bpoRouter = router({
         results,
       };
     }),
+
+  // ============================================================
+  // Sync retroativo: varre inspection_charges sem par em bpo_charges
+  // e cria os registros faltantes. Resolve cobranças criadas antes
+  // do fix de upsert ou cujo webhook do Asaas nunca disparou.
+  // ============================================================
+  repairInspectionSync: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("DB unavailable");
+
+    // Status mapping: inspection_charges → bpo_charges
+    const statusMap: Record<string, string> = {
+      pending: 'pending',
+      paid: 'received',
+      overdue: 'overdue',
+      partiallyPaid: 'partiallyPaid',
+      cancelled: 'cancelled',
+    };
+
+    // Busca todas as inspection_charges sem par em bpo_charges
+    const orphansRaw = await db.execute(sql.raw(`
+      SELECT
+        ic.id,
+        ic.asaas_charge_id,
+        ic.charge_type,
+        ic.client_email,
+        ic.vessel_name,
+        ic.amount,
+        ic.due_date,
+        ic.payment_status,
+        ic.description,
+        ac.id   AS client_id,
+        ac.name AS client_name
+      FROM inspection_charges ic
+      LEFT JOIN bpo_charges bc ON bc.asaas_charge_id = ic.asaas_charge_id
+      LEFT JOIN allowed_clients ac ON LOWER(ac.email) = LOWER(ic.client_email)
+      WHERE bc.id IS NULL
+        AND ic.asaas_charge_id IS NOT NULL
+        AND ic.client_email IS NOT NULL
+    `)) as any;
+
+    const orphans: any[] = Array.isArray(orphansRaw[0]) ? orphansRaw[0] : orphansRaw;
+
+    let synced = 0;
+    const errors: string[] = [];
+
+    for (const ic of orphans) {
+      try {
+        const dueDate = ic.due_date
+          ? String(ic.due_date).substring(0, 10)
+          : new Date().toISOString().substring(0, 10);
+        const bpoStatus = statusMap[ic.payment_status] ?? 'pending';
+        const bpoType = ic.charge_type === 'repair' ? 'repair' : 'inspection';
+        const value = parseFloat(ic.amount || '0').toFixed(2);
+
+        await db.execute(sql.raw(`
+          INSERT INTO bpo_charges
+            (asaas_charge_id, client_id, client_name, client_email,
+             value, due_date, status, type, classified_by, billing_type,
+             description, source)
+          VALUES
+            (${JSON.stringify(ic.asaas_charge_id)},
+             ${ic.client_id ?? 'NULL'},
+             ${ic.client_name ? JSON.stringify(ic.client_name) : 'NULL'},
+             ${JSON.stringify(ic.client_email)},
+             ${value},
+             ${JSON.stringify(dueDate)},
+             ${JSON.stringify(bpoStatus)},
+             ${JSON.stringify(bpoType)},
+             'manual', 'PIX',
+             ${ic.description ? JSON.stringify(ic.description) : JSON.stringify(`${bpoType === 'repair' ? 'Reparo' : 'Vistoria'} - ${ic.vessel_name || ''}`)},
+             'manual')
+          ON DUPLICATE KEY UPDATE
+            type         = VALUES(type),
+            classified_by = 'manual',
+            status       = VALUES(status),
+            client_id    = COALESCE(VALUES(client_id), client_id),
+            client_name  = COALESCE(VALUES(client_name), client_name),
+            client_email = COALESCE(VALUES(client_email), client_email)
+        `));
+        synced++;
+      } catch (err: any) {
+        errors.push(`ic#${ic.id}: ${err.message}`);
+      }
+    }
+
+    // Retroactive fix: criar saldo devedor para cobranças partiallyPaid sem saldo devedor
+    const partialRaw = await db.execute(sql.raw(`
+      SELECT bc.id, bc.value, bc.amount_paid AS amountPaid, bc.due_date AS dueDate,
+             bc.type, bc.client_id AS clientId, bc.client_name AS clientName,
+             bc.client_email AS clientEmail, bc.description,
+             bc.asaas_customer_id AS asaasCustomerId
+      FROM bpo_charges bc
+      WHERE bc.status = 'partiallyPaid'
+        AND (bc.external_reference IS NULL OR bc.external_reference NOT LIKE 'saldo-%')
+        AND NOT EXISTS (
+          SELECT 1 FROM bpo_charges sd
+          WHERE sd.external_reference = CONCAT('saldo-', bc.id)
+            AND sd.status NOT IN ('cancelled')
+        )
+    `)) as any;
+    const partials: any[] = Array.isArray(partialRaw[0]) ? partialRaw[0] : partialRaw;
+    let retroSynced = 0;
+    for (const p of partials) {
+      try {
+        await createOrUpdateRemainderCharge(db, {
+          id: p.id,
+          value: p.value,
+          amountPaid: p.amountPaid ?? '0',
+          dueDate: p.dueDate ? String(p.dueDate).substring(0, 10) : '',
+          type: p.type || 'other',
+          clientId: p.clientId ?? null,
+          clientName: p.clientName ?? null,
+          clientEmail: p.clientEmail ?? null,
+          description: p.description ?? null,
+          asaasCustomerId: p.asaasCustomerId ?? null,
+        });
+        retroSynced++;
+      } catch (err: any) {
+        errors.push(`saldo#${p.id}: ${err.message}`);
+      }
+    }
+
+    return { total: orphans.length, synced, errors, retroSynced, retroTotal: partials.length };
+  }),
 });
