@@ -247,40 +247,60 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
 
         case "signatureBlock": {
           const signers = section.signers || [];
+          const numRows = Math.ceil(signers.length / 2);
+          // Each row: 20px top gap + 1px line + 14px name + 13px role + 13px extra + 10px local/data = ~75px
+          // Plus inter-row gap of 25px and date line of 30px
+          const sigBlockH = 30 + numRows * 75 + (numRows - 1) * 25;
+          const bottomMargin = doc.page.margins.bottom || 50;
+
+          // Force new page if there isn't enough space for the full block
+          if (doc.y + sigBlockH > doc.page.height - bottomMargin) {
+            doc.addPage();
+          }
+
           doc.moveDown(0.5);
 
           if (section.content) {
-            doc.fillColor("#1a1a1a").fontSize(10).font("Helvetica").text(section.content, { align: "center" });
-            doc.moveDown(1);
+            doc.fillColor("#1a1a1a").fontSize(10).font("Helvetica")
+              .text(section.content, 50, doc.y, { align: "center", width: pageW });
+            doc.y += 20;
           }
 
-          const sigW = (pageW - 40) / Math.min(signers.length, 2);
-          let sigX = 50;
+          const sigW = (pageW - 20) / 2;
 
-          for (let i = 0; i < signers.length; i++) {
-            if (i > 0 && i % 2 === 0) {
-              doc.moveDown(2.5);
-              sigX = 50;
+          for (let row = 0; row < numRows; row++) {
+            if (row > 0) doc.y += 25;
+
+            // Fix: save rowY once so both columns start at the same baseline
+            const rowY = doc.y;
+
+            for (let col = 0; col < 2; col++) {
+              const idx = row * 2 + col;
+              if (idx >= signers.length) break;
+
+              const sx = 50 + col * (sigW + 20);
+              const lineY = rowY + 20;
+
+              doc.moveTo(sx + 10, lineY).lineTo(sx + sigW - 10, lineY)
+                .strokeColor("#333333").lineWidth(0.5).stroke();
+              doc.fillColor("#1a1a1a").fontSize(9.5).font("Helvetica-Bold")
+                .text(signers[idx].name, sx + 10, lineY + 4, { width: sigW - 20, align: "center", lineBreak: false });
+              doc.fillColor(GRAY).fontSize(8.5).font("Helvetica")
+                .text(signers[idx].role, sx + 10, lineY + 17, { width: sigW - 20, align: "center", lineBreak: false });
+              if (signers[idx].extra) {
+                doc.fillColor(GRAY).fontSize(8)
+                  .text(signers[idx].extra!, sx + 10, lineY + 29, { width: sigW - 20, align: "center", lineBreak: false });
+              }
+              doc.fillColor(GRAY).fontSize(8)
+                .text("Local e Data: ___/___/______", sx + 10, lineY + 42, { width: sigW - 20, align: "center", lineBreak: false });
             }
-            const lineY = doc.y + 25;
-            doc.moveTo(sigX + 10, lineY).lineTo(sigX + sigW - 10, lineY).strokeColor("#333333").lineWidth(0.5).stroke();
-            doc.fillColor("#1a1a1a").fontSize(9.5).font("Helvetica-Bold").text(signers[i].name, sigX + 10, lineY + 5, {
-              width: sigW - 20,
-              align: "center",
-            });
-            doc.fillColor(GRAY).fontSize(8.5).font("Helvetica").text(signers[i].role, sigX + 10, lineY + 18, {
-              width: sigW - 20,
-              align: "center",
-            });
-            if (signers[i].extra) {
-              doc.fillColor(GRAY).fontSize(8).text(signers[i].extra!, sigX + 10, lineY + 30, {
-                width: sigW - 20,
-                align: "center",
-              });
-            }
-            sigX += sigW + 20;
+
+            // Advance y past the row (line 20 + name 13 + role 13 + extra 12 + local 12 = 70)
+            doc.y = rowY + 70;
+            doc.x = doc.page.margins.left;
           }
-          doc.moveDown(1);
+
+          doc.moveDown(0.5);
           break;
         }
 
