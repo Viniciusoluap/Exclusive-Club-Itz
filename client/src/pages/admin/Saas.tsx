@@ -287,6 +287,19 @@ export default function Saas() {
     onError: (err) => toast.error(`Erro na importação: ${err.message}`),
   });
 
+  const repairSyncMutation = trpc.bpo.repairInspectionSync.useMutation({
+    onSuccess: (data) => {
+      if (data.synced === 0) {
+        toast.success('Nenhuma cobrança de danos órfã encontrada — tudo sincronizado!');
+      } else {
+        toast.success(`Sync concluído: ${data.synced} cobrança(s) de danos/vistorias adicionadas ao BPO`);
+      }
+      utils.bpo.getStats.invalidate();
+      utils.bpo.listCharges.invalidate();
+    },
+    onError: (err) => toast.error(`Erro no sync: ${err.message}`),
+  });
+
   const syncMutation = trpc.bpo.syncIncremental.useMutation({
     onSuccess: (data) => {
       toast.success(`Sincronização concluída: ${data.updated} atualizadas`);
@@ -439,6 +452,18 @@ export default function Saas() {
                 ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 : <RefreshCw className="h-4 w-4 mr-2" />}
               Sincronizar com Asaas
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => repairSyncMutation.mutate()}
+              disabled={repairSyncMutation.isPending}
+              title="Corrige cobranças de Danos/Vistorias que não apareceram no BPO"
+            >
+              {repairSyncMutation.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                : <RefreshCw className="h-4 w-4 mr-2" />}
+              Corrigir Danos/BPO
             </Button>
           </div>
           {/* Cards de totais — apenas na aba Cobranças */}

@@ -4169,30 +4169,33 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               receiptUrl: null,
             }) as any;
 
-            // Sincronizar com bpo_charges para aparecer no BPO Financeiro
-            try {
-              const { bpoCharges } = await import('../drizzle/schema');
-              const { normalizeBpoStatus } = await import('./routers/bpoRouter');
-              await db.insert(bpoCharges).values({
-                asaasChargeId: asaasCharge.id,
-                asaasCustomerId: customer.id,
-                clientId: inspection.client_id ?? null,
-                clientName: inspection.client_name || null,
-                clientEmail: inspection.client_email,
-                value: input.amount.toString(),
-                dueDate: dueDateStr,
-                status: 'pending',
-                type: 'inspection',
-                classifiedBy: 'manual',
-                billingType: 'PIX',
-                description: `Conserto de Danos - Vistoria ${new Date(inspection.created_at).toLocaleDateString('pt-BR')}`,
-                paymentLink: asaasCharge.invoiceUrl ?? null,
-                invoiceUrl: asaasCharge.invoiceUrl ?? null,
-                source: 'manual',
-              });
-            } catch (bpoErr: any) {
-              console.warn('[inspectionCharges.create] Falha ao sincronizar com bpo_charges:', bpoErr.message);
-            }
+            // Sincronizar com bpo_charges — upsert para nunca falhar por duplicata de asaas_charge_id
+            await db.execute(sql.raw(`
+              INSERT INTO bpo_charges
+                (asaas_charge_id, asaas_customer_id, client_id, client_name, client_email,
+                 value, due_date, status, type, classified_by, billing_type, description,
+                 payment_link, invoice_url, source)
+              VALUES
+                (${JSON.stringify(asaasCharge.id)},
+                 ${JSON.stringify(customer.id)},
+                 ${inspection.client_id ?? 'NULL'},
+                 ${inspection.client_name ? JSON.stringify(inspection.client_name) : 'NULL'},
+                 ${JSON.stringify(inspection.client_email)},
+                 ${parseFloat(input.amount.toString()).toFixed(2)},
+                 ${JSON.stringify(dueDateStr)},
+                 'pending', 'inspection', 'manual', 'PIX',
+                 ${JSON.stringify(`Conserto de Danos - Vistoria ${new Date(inspection.created_at).toLocaleDateString('pt-BR')}`)},
+                 ${asaasCharge.invoiceUrl ? JSON.stringify(asaasCharge.invoiceUrl) : 'NULL'},
+                 ${asaasCharge.invoiceUrl ? JSON.stringify(asaasCharge.invoiceUrl) : 'NULL'},
+                 'manual')
+              ON DUPLICATE KEY UPDATE
+                type = 'inspection',
+                classified_by = 'manual',
+                client_id = COALESCE(VALUES(client_id), client_id),
+                client_name = COALESCE(VALUES(client_name), client_name),
+                client_email = COALESCE(VALUES(client_email), client_email),
+                description = VALUES(description)
+            `));
             
             return { 
               success: true, 
@@ -4289,29 +4292,33 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 receiptUrl: input.receiptUrl || null,
               });
 
-              // Sincronizar com bpo_charges para aparecer no BPO Financeiro
-              try {
-                const { bpoCharges } = await import('../drizzle/schema');
-                await db.insert(bpoCharges).values({
-                  asaasChargeId: asaasCharge.id,
-                  asaasCustomerId: customer.id,
-                  clientId: quota.client_id ?? null,
-                  clientName: quota.client_name || null,
-                  clientEmail: quota.client_email,
-                  value: individualAmount.toString(),
-                  dueDate: dueDateStr,
-                  status: 'pending',
-                  type: 'repair',
-                  classifiedBy: 'manual',
-                  billingType: 'PIX',
-                  description: `Reparo da Embarcação: ${vessel.name} - ${input.description}`,
-                  paymentLink: asaasCharge.invoiceUrl ?? null,
-                  invoiceUrl: asaasCharge.invoiceUrl ?? null,
-                  source: 'manual',
-                });
-              } catch (bpoErr: any) {
-                console.warn('[inspectionCharges.create] Falha ao sincronizar reparo com bpo_charges:', bpoErr.message);
-              }
+              // Sincronizar com bpo_charges — upsert para nunca falhar por duplicata de asaas_charge_id
+              await db.execute(sql.raw(`
+                INSERT INTO bpo_charges
+                  (asaas_charge_id, asaas_customer_id, client_id, client_name, client_email,
+                   value, due_date, status, type, classified_by, billing_type, description,
+                   payment_link, invoice_url, source)
+                VALUES
+                  (${JSON.stringify(asaasCharge.id)},
+                   ${JSON.stringify(customer.id)},
+                   ${quota.client_id ?? 'NULL'},
+                   ${quota.client_name ? JSON.stringify(quota.client_name) : 'NULL'},
+                   ${JSON.stringify(quota.client_email)},
+                   ${parseFloat(individualAmount.toString()).toFixed(2)},
+                   ${JSON.stringify(dueDateStr)},
+                   'pending', 'repair', 'manual', 'PIX',
+                   ${JSON.stringify(`Reparo da Embarcação: ${vessel.name} - ${input.description}`)},
+                   ${asaasCharge.invoiceUrl ? JSON.stringify(asaasCharge.invoiceUrl) : 'NULL'},
+                   ${asaasCharge.invoiceUrl ? JSON.stringify(asaasCharge.invoiceUrl) : 'NULL'},
+                   'manual')
+                ON DUPLICATE KEY UPDATE
+                  type = 'repair',
+                  classified_by = 'manual',
+                  client_id = COALESCE(VALUES(client_id), client_id),
+                  client_name = COALESCE(VALUES(client_name), client_name),
+                  client_email = COALESCE(VALUES(client_email), client_email),
+                  description = VALUES(description)
+              `));
               
               createdCharges.push({
                 clientEmail: quota.client_email,
