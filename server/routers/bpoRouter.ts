@@ -2204,4 +2204,92 @@ export const bpoRouter = router({
         results,
       };
     }),
+
+  // ============================================================
+  // Sync retroativo: varre inspection_charges sem par em bpo_charges
+  // e cria os registros faltantes. Resolve cobranças criadas antes
+  // do fix de upsert ou cujo webhook do Asaas nunca disparou.
+  // ============================================================
+  repairInspectionSync: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("DB unavailable");
+
+    // Status mapping: inspection_charges → bpo_charges
+    const statusMap: Record<string, string> = {
+      pending: 'pending',
+      paid: 'received',
+      overdue: 'overdue',
+      partiallyPaid: 'partiallyPaid',
+      cancelled: 'cancelled',
+    };
+
+    // Busca todas as inspection_charges sem par em bpo_charges
+    const orphansRaw = await db.execute(sql.raw(`
+      SELECT
+        ic.id,
+        ic.asaas_charge_id,
+        ic.charge_type,
+        ic.client_email,
+        ic.vessel_name,
+        ic.amount,
+        ic.due_date,
+        ic.payment_status,
+        ic.description,
+        ac.id   AS client_id,
+        ac.name AS client_name
+      FROM inspection_charges ic
+      LEFT JOIN bpo_charges bc ON bc.asaas_charge_id = ic.asaas_charge_id
+      LEFT JOIN allowed_clients ac ON LOWER(ac.email) = LOWER(ic.client_email)
+      WHERE bc.id IS NULL
+        AND ic.asaas_charge_id IS NOT NULL
+        AND ic.client_email IS NOT NULL
+    `)) as any;
+
+    const orphans: any[] = Array.isArray(orphansRaw[0]) ? orphansRaw[0] : orphansRaw;
+
+    let synced = 0;
+    const errors: string[] = [];
+
+    for (const ic of orphans) {
+      try {
+        const dueDate = ic.due_date
+          ? String(ic.due_date).substring(0, 10)
+          : new Date().toISOString().substring(0, 10);
+        const bpoStatus = statusMap[ic.payment_status] ?? 'pending';
+        const bpoType = ic.charge_type === 'repair' ? 'repair' : 'inspection';
+        const value = parseFloat(ic.amount || '0').toFixed(2);
+
+        await db.execute(sql.raw(`
+          INSERT INTO bpo_charges
+            (asaas_charge_id, client_id, client_name, client_email,
+             value, due_date, status, type, classified_by, billing_type,
+             description, source)
+          VALUES
+            (${JSON.stringify(ic.asaas_charge_id)},
+             ${ic.client_id ?? 'NULL'},
+             ${ic.client_name ? JSON.stringify(ic.client_name) : 'NULL'},
+             ${JSON.stringify(ic.client_email)},
+             ${value},
+             ${JSON.stringify(dueDate)},
+             ${JSON.stringify(bpoStatus)},
+             ${JSON.stringify(bpoType)},
+             'manual', 'PIX',
+             ${ic.description ? JSON.stringify(ic.description) : JSON.stringify(`${bpoType === 'repair' ? 'Reparo' : 'Vistoria'} - ${ic.vessel_name || ''}`)},
+             'manual')
+          ON DUPLICATE KEY UPDATE
+            type         = VALUES(type),
+            classified_by = 'manual',
+            status       = VALUES(status),
+            client_id    = COALESCE(VALUES(client_id), client_id),
+            client_name  = COALESCE(VALUES(client_name), client_name),
+            client_email = COALESCE(VALUES(client_email), client_email)
+        `));
+        synced++;
+      } catch (err: any) {
+        errors.push(`ic#${ic.id}: ${err.message}`);
+      }
+    }
+
+    return { total: orphans.length, synced, errors };
+  }),
 });
