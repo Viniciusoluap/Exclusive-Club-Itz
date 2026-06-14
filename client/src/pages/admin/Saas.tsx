@@ -110,11 +110,11 @@ export default function Saas() {
   const [dreMonth, setDreMonth] = useState("all");
   const [dreVesselId, setDreVesselId] = useState<number | undefined>(undefined);
   const dreQuery = trpc.bpo.getDRE.useQuery(
-    { year: dreYear, month: dreMonth !== "all" ? dreMonth : undefined },
+    { year: dreYear !== "Todos os anos" ? dreYear : undefined, month: dreMonth !== "all" ? dreMonth : undefined },
     { refetchOnWindowFocus: false, enabled: dreVesselId === undefined }
   );
   const dreByVesselQuery = trpc.bpo.getDREByVessel.useQuery(
-    { year: dreYear !== "all" ? dreYear : undefined, month: dreMonth !== "all" ? dreMonth : undefined, vesselId: dreVesselId },
+    { year: dreYear !== "Todos os anos" ? dreYear : undefined, month: dreMonth !== "all" ? dreMonth : undefined, vesselId: dreVesselId },
     { refetchOnWindowFocus: false }
   );
 
@@ -794,9 +794,9 @@ Venc: {fmtDate(charge.due_date)}
         <TabsContent value="dre" className="space-y-4">
           <div className="flex flex-wrap gap-3 items-center">
             <Select value={dreYear} onValueChange={setDreYear}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {YEARS.filter(y => y !== "Todos os anos").map(y => (
+                {YEARS.map(y => (
                   <SelectItem key={y} value={y}>{y}</SelectItem>
                 ))}
               </SelectContent>
