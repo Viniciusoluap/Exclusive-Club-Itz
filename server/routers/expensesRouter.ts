@@ -346,28 +346,39 @@ export const expensesRouter = router({
         status: z.enum(STATUSES).optional().default("pending"),
         asaasPaymentId: z.string().optional(),
         notes: z.string().optional(),
+        repeatMonths: z.number().int().min(1).max(24).optional().default(1),
       })
     )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      const result = await db.insert(expenseRecords).values({
-        costCenter: input.costCenter,
-        description: input.description,
-        recipientName: input.recipientName ?? null,
-        value: input.value.toFixed(2) as any,
-        dueDate: input.dueDate,
-        paidDate: input.paidDate ?? null,
-        status: input.status ?? "pending",
-        asaasPaymentId: input.asaasPaymentId ?? null,
-        sourceType: "manual",
-        manuallyClassified: 1,
-        notes: input.notes ?? null,
-        createdBy: ctx.user?.id ?? null,
-      } as any);
+      const baseDate = new Date(input.dueDate + 'T12:00:00Z');
+      const count = input.repeatMonths ?? 1;
+      let lastId: number | undefined;
 
-      return { success: true, id: (result as any)[0]?.insertId };
+      for (let i = 0; i < count; i++) {
+        const d = new Date(baseDate);
+        d.setUTCMonth(d.getUTCMonth() + i);
+        const dueDate = d.toISOString().substring(0, 10);
+        const result = await db.insert(expenseRecords).values({
+          costCenter: input.costCenter,
+          description: input.description,
+          recipientName: input.recipientName ?? null,
+          value: input.value.toFixed(2) as any,
+          dueDate,
+          paidDate: input.paidDate ?? null,
+          status: input.status ?? "pending",
+          asaasPaymentId: input.asaasPaymentId ?? null,
+          sourceType: "manual",
+          manuallyClassified: 1,
+          notes: input.notes ?? null,
+          createdBy: ctx.user?.id ?? null,
+        } as any);
+        if (i === 0) lastId = (result as any)[0]?.insertId;
+      }
+
+      return { success: true, id: lastId, count };
     }),
 
   // ── Editar despesa ───────────────────────────────────────────────────────
