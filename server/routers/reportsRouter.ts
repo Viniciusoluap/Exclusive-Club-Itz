@@ -909,7 +909,7 @@ export const reportsRouter = router({
         FROM bookings
         WHERE booking_date >= ${start}
           AND booking_date <= ${end}
-          AND status = 'confirmed'
+          AND status != 'cancelled'
         GROUP BY weekday
         ORDER BY count DESC
       `) as any;
