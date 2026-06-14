@@ -51,10 +51,114 @@ function fmt(v: number) {
 /** Converte YYYY-MM-DD para DD/MM/AAAA. Retorna o valor original se não for possível converter. */
 function fmtDate(date: string | null | undefined): string {
   if (!date) return "";
-  // Formato ISO: YYYY-MM-DD
   const match = String(date).match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (match) return `${match[3]}/${match[2]}/${match[1]}`;
   return String(date);
+}
+
+async function loadLogoBase64(): Promise<string | null> {
+  try {
+    const resp = await fetch('/logo-exclusive-round.png');
+    const blob = await resp.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function buildPDFDoc(title: string, subtitle: string): Promise<{ doc: jsPDF; startY: number }> {
+  const doc = new jsPDF();
+  const pageW = doc.internal.pageSize.getWidth();
+
+  // Dark blue header
+  doc.setFillColor(10, 61, 107);
+  doc.rect(0, 0, pageW, 42, 'F');
+
+  // Logo
+  const logoBase64 = await loadLogoBase64();
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', pageW - 40, 4, 32, 32);
+  }
+
+  // Company name
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('EXCLUSIVE CLUB', 14, 14);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('BPO Financeiro — Gestão de Pagamentos e Recebimentos', 14, 21);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text(title, 14, 33);
+
+  // Generation date in header
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 40);
+
+  // Subtitle below header
+  doc.setTextColor(80, 80, 80);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(subtitle, 14, 50);
+
+  doc.setTextColor(40, 40, 40);
+  return { doc, startY: 55 };
+}
+
+function addWatermarkToAllPages(doc: jsPDF) {
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setTextColor(230, 230, 230);
+    doc.setFontSize(55);
+    doc.setFont('helvetica', 'bold');
+    doc.text('EXCLUSIVE CLUB', 105, 160, { align: 'center', angle: 38 });
+    doc.setTextColor(40, 40, 40);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+  }
+}
+
+function drawHBarChart(
+  doc: jsPDF,
+  startY: number,
+  items: { label: string; value: number }[],
+  maxValue: number,
+  color: [number, number, number]
+): number {
+  const BAR_H = 7;
+  const BAR_MAX_W = 100;
+  const LABEL_W = 52;
+  const x = 14;
+  items.forEach(item => {
+    const barW = maxValue > 0 ? Math.max(1, (item.value / maxValue) * BAR_MAX_W) : 0;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(40, 40, 40);
+    const label = item.label.length > 20 ? item.label.substring(0, 19) + '…' : item.label;
+    doc.text(label, x, startY + BAR_H / 2 + 1.5);
+    // background
+    doc.setFillColor(235, 235, 235);
+    doc.rect(x + LABEL_W, startY, BAR_MAX_W, BAR_H, 'F');
+    // bar fill
+    if (barW > 0) {
+      doc.setFillColor(...color);
+      doc.rect(x + LABEL_W, startY, barW, BAR_H, 'F');
+    }
+    // value label
+    doc.setFontSize(6.5);
+    doc.setTextColor(60, 60, 60);
+    doc.text(fmt(item.value), x + LABEL_W + BAR_MAX_W + 3, startY + BAR_H / 2 + 1.5);
+    startY += BAR_H + 2;
+  });
+  return startY;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -66,7 +170,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-const YEARS = ["Todos os anos", "2024", "2025", "2026", "2027", "2028", "2029", "2030"];
+const YEARS = ["Todos os anos", "2025", "2026", "2027", "2028", "2029", "2030"];
 const MONTHS = [
   { value: "all", label: "Todos os meses" },
   { value: "1", label: "Janeiro" }, { value: "2", label: "Fevereiro" },
@@ -256,16 +360,16 @@ export default function Saas() {
     }
   }
 
-  function handleExportChargesPDF() {
-    const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text("BPO Financeiro — Cobranças", 14, 15);
-    doc.setFontSize(9);
-    doc.text(`${totalCharges} cobrança(s) | Gerado em ${new Date().toLocaleDateString("pt-BR")}`, 14, 22);
+  async function handleExportChargesPDF() {
+    toast.info("Preparando PDF, aguarde...");
+    const allData = await utils.bpo.listCharges.fetch({ ...queryFilters, limit: 10000, offset: 0 });
+    const allCharges = allData?.items ?? [];
+    const subtitle = `${allCharges.length} cobrança(s) exportada(s)${yearFilter !== "Todos os anos" ? ` · ${yearFilter}` : ""}`;
+    const { doc, startY } = await buildPDFDoc("Cobranças BPO", subtitle);
     autoTable(doc, {
-      startY: 27,
+      startY,
       head: [["Cliente", "Tipo", "Status", "Vencimento", "Valor", "Pago"]],
-      body: charges.map((c: any) => [
+      body: allCharges.map((c: any) => [
         c.client_name || c.client_email || "N/A",
         TYPE_LABELS[c.type] ?? c.type,
         STATUS_LABELS[c.status]?.label ?? c.status,
@@ -273,9 +377,21 @@ export default function Saas() {
         fmt(parseFloat(c.value ?? "0")),
         c.amount_paid && parseFloat(c.amount_paid) > 0 ? fmt(parseFloat(c.amount_paid)) : "-",
       ]),
-      styles: { fontSize: 8 },
+      styles: { fontSize: 7.5 },
       headStyles: { fillColor: [20, 184, 166] },
+      didAddPage: async (data) => {
+        const pg = (doc as any).internal.getNumberOfPages();
+        if (pg > 1) {
+          doc.setFillColor(10, 61, 107);
+          doc.rect(0, 0, doc.internal.pageSize.getWidth(), 12, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.text('EXCLUSIVE CLUB — BPO Financeiro', 14, 8);
+          doc.setTextColor(40, 40, 40);
+        }
+      },
     });
+    addWatermarkToAllPages(doc);
     doc.save("cobrancas-bpo.pdf");
   }
 
@@ -425,62 +541,89 @@ export default function Saas() {
     setPage(0);
   }
 
-  function handleExportDREPDF() {
+  async function handleExportDREPDF() {
     const rawData = dreVesselId !== undefined ? dreByVesselQuery.data : dreQuery.data;
     if (!rawData) { toast.error("Sem dados para exportar"); return; }
     const data = rawData as any;
-    const doc = new jsPDF();
-    const title = dreVesselId !== undefined
+    const reportTitle = dreVesselId !== undefined
       ? `DRE — ${(vesselsForFilterQuery.data ?? []).find((v: any) => v.id === dreVesselId)?.name ?? "Embarcação"}`
       : "DRE Consolidado";
-    doc.setFontSize(14);
-    doc.text(title, 14, 15);
-    doc.setFontSize(9);
     const period = `${dreYear !== "Todos os anos" ? dreYear : "Todos os anos"}${dreMonth !== "all" ? ` / ${MONTHS.find(m => m.value === dreMonth)?.label}` : ""}`;
-    doc.text(`Período: ${period} | Gerado em ${new Date().toLocaleDateString("pt-BR")}`, 14, 22);
 
+    toast.info("Gerando PDF...");
+    const { doc, startY: headerEnd } = await buildPDFDoc(reportTitle, `Período: ${period}`);
+
+    // KPI summary table
     autoTable(doc, {
-      startY: 27,
+      startY: headerEnd,
       head: [["Indicador", "Valor"]],
       body: [
-        ["Receita Realizada", fmt(data.revenue?.total ?? 0)],
-        ["Receita Prevista", fmt(data.revenue?.expected ?? 0)],
-        ["Despesas Pagas", fmt(data.expenses?.total ?? 0)],
+        ["Receita Realizada", fmt(data.revenue?.total ?? data.totalRevenue ?? 0)],
+        ["Receita Prevista", fmt(data.revenue?.expected ?? data.totalExpected ?? 0)],
+        ["Despesas Pagas", fmt(data.expenses?.total ?? data.totalExpenses ?? 0)],
         ["Resultado Líquido", fmt(data.netResult ?? 0)],
-        ["Lucro Real", fmt(data.lucroReal ?? 0)],
+        ["Lucro do Sócio Adm", fmt(data.lucroReal ?? 0)],
         ["Margem", `${(data.margin ?? 0).toFixed(1)}%`],
       ],
       styles: { fontSize: 10 },
       headStyles: { fillColor: [20, 184, 166] },
     });
 
+    let curY = (doc as any).lastAutoTable.finalY + 10;
+
+    // Revenue by category chart + table
     const byType: any[] = data.revenue?.byType ?? [];
     if (byType.length > 0) {
+      const maxRev = Math.max(...byType.map((r: any) => r.received ?? 0), 1);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(34, 100, 60);
+      doc.text('Receitas por Categoria', 14, curY);
+      doc.setTextColor(40, 40, 40);
+      curY += 5;
+      curY = drawHBarChart(doc, curY, byType.map((r: any) => ({ label: TYPE_LABELS[r.type] ?? r.type, value: r.received ?? 0 })), maxRev, [34, 197, 94]);
+      curY += 4;
       autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 8,
-        head: [["Categoria de Receita", "Valor"]],
-        body: byType.map((r: any) => [TYPE_LABELS[r.type] ?? r.type, fmt(r.total ?? 0)]),
-        styles: { fontSize: 9 },
+        startY: curY,
+        head: [["Categoria de Receita", "Realizado", "Previsto"]],
+        body: byType.map((r: any) => [
+          TYPE_LABELS[r.type] ?? r.type,
+          fmt(r.received ?? 0),
+          fmt(r.expected ?? 0),
+        ]),
+        styles: { fontSize: 8 },
         headStyles: { fillColor: [34, 197, 94] },
       });
+      curY = (doc as any).lastAutoTable.finalY + 10;
     }
 
+    // Expenses by cost center chart + table
+    const COST_CC: Record<string, string> = {
+      salary: "Salários", rent: "Aluguéis", pro_labore: "Pró-labore",
+      fuel_operational: "Combustível (Op.)", repair: "Reparos",
+      operational: "Custo Operacional", withdrawal: "Saque / Retirada", other: "Outros",
+    };
     const byCenter: any[] = data.expenses?.byCenter ?? data.expenses?.byCostCenter ?? [];
     if (byCenter.length > 0) {
-      const COST_CC: Record<string, string> = {
-        salary: "Salários", rent: "Aluguéis", pro_labore: "Pró-labore",
-        fuel_operational: "Combustível (Op.)", repair: "Reparos",
-        operational: "Custo Operacional", withdrawal: "Saque / Retirada", other: "Outros",
-      };
+      const maxExp = Math.max(...byCenter.map((e: any) => e.paid ?? 0), 1);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(180, 30, 30);
+      doc.text('Despesas por Centro de Custo', 14, curY);
+      doc.setTextColor(40, 40, 40);
+      curY += 5;
+      curY = drawHBarChart(doc, curY, byCenter.map((e: any) => ({ label: COST_CC[e.costCenter] ?? e.costCenter, value: e.paid ?? 0 })), maxExp, [239, 68, 68]);
+      curY += 4;
       autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 8,
-        head: [["Centro de Custo", "Valor"]],
-        body: byCenter.map((e: any) => [COST_CC[e.costCenter] ?? e.costCenter, fmt(e.total ?? e.paid ?? 0)]),
-        styles: { fontSize: 9 },
+        startY: curY,
+        head: [["Centro de Custo", "Pago", "Total Previsto"]],
+        body: byCenter.map((e: any) => [COST_CC[e.costCenter] ?? e.costCenter, fmt(e.paid ?? 0), fmt(e.total ?? 0)]),
+        styles: { fontSize: 8 },
         headStyles: { fillColor: [239, 68, 68] },
       });
     }
 
+    addWatermarkToAllPages(doc);
     doc.save("dre-bpo.pdf");
   }
 
@@ -2052,7 +2195,7 @@ function DREByVesselView({ data, vesselName }: { data: any; vesselName?: string 
               <CardContent className="pt-4">
                 <div className="flex items-center gap-1.5 mb-1">
                   <TrendingUp className={`h-4 w-4 shrink-0 ${lrPos ? "text-teal-600" : "text-rose-600"}`} />
-                  <p className={`text-xs font-medium ${lrPos ? "text-teal-800" : "text-rose-800"}`}>Lucro Real</p>
+                  <p className={`text-xs font-medium ${lrPos ? "text-teal-800" : "text-rose-800"}`}>Lucro do Sócio Adm</p>
                 </div>
                 <p className={`text-xl font-bold ${lrPos ? "text-teal-700" : "text-rose-700"}`}>{fmt(lr)}</p>
                 <p className={`text-xs mt-1 ${lrPos ? "text-teal-600" : "text-rose-600"}`}>
@@ -2189,7 +2332,7 @@ function DREView({ data }: { data: any }) {
               <CardContent className="pt-4">
                 <div className="flex items-center gap-1.5 mb-1">
                   <TrendingUp className={`h-4 w-4 shrink-0 ${lrPos ? "text-teal-600" : "text-rose-600"}`} />
-                  <p className={`text-xs font-medium ${lrPos ? "text-teal-800" : "text-rose-800"}`}>Lucro Real</p>
+                  <p className={`text-xs font-medium ${lrPos ? "text-teal-800" : "text-rose-800"}`}>Lucro do Sócio Adm</p>
                 </div>
                 <p className={`text-xl font-bold ${lrPos ? "text-teal-700" : "text-rose-700"}`}>{fmt(lr)}</p>
                 <p className={`text-xs mt-1 ${lrPos ? "text-teal-600" : "text-rose-600"}`}>
@@ -2489,26 +2632,71 @@ function ExpensesTab() {
     }
   }
 
-  function handleExportExpensesPDF() {
-    const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text("BPO Financeiro — Despesas", 14, 15);
-    doc.setFontSize(9);
-    doc.text(`${totalExpenses} despesa(s) | Gerado em ${new Date().toLocaleDateString("pt-BR")}`, 14, 22);
-    autoTable(doc, {
-      startY: 27,
-      head: [["Descrição", "Centro de Custo", "Fornecedor", "Status", "Vencimento", "Valor"]],
-      body: expenses.map((e: any) => [
-        e.description,
-        COST_CENTER_LABELS[e.costCenter] ?? e.costCenter,
-        e.recipientName ?? "-",
-        EXPENSE_STATUS_LABELS[e.status]?.label ?? e.status,
-        fmtDate(e.dueDate),
-        fmt(parseFloat(String(e.value ?? 0))),
-      ]),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [79, 70, 229] },
+  async function handleExportExpensesPDF() {
+    toast.info("Preparando PDF, aguarde...");
+    const allData = await utils.expenses.list.fetch({
+      year: expYear !== "all" ? expYear : undefined,
+      month: expMonth !== "all" ? expMonth.padStart(2, "0") : undefined,
+      costCenter: expCostCenter !== "all" ? (expCostCenter as any) : "all",
+      status: expStatus !== "all" ? (expStatus as any) : "all",
+      limit: 10000,
+      offset: 0,
     });
+    const allExpenses = allData?.items ?? [];
+    const subtitle = `${allExpenses.length} despesa(s) exportada(s)${expYear !== "all" ? ` · ${expYear}` : ""}`;
+    const { doc, startY: headerEnd } = await buildPDFDoc("Despesas BPO", subtitle);
+
+    // Group expenses by YYYY-MM (month-by-month breakdown)
+    const grouped = new Map<string, typeof allExpenses>();
+    for (const e of allExpenses) {
+      const key = e.dueDate ? String(e.dueDate).substring(0, 7) : "0000-00";
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(e);
+    }
+    const sortedMonths = Array.from(grouped.keys()).sort().reverse();
+
+    const body: any[] = [];
+    for (const monthKey of sortedMonths) {
+      const monthExpenses = grouped.get(monthKey)!;
+      const [yr, mo] = monthKey.split('-');
+      const monthLabel = MONTHS.find(m => m.value === String(parseInt(mo ?? "0")))?.label ?? monthKey;
+      const monthTotal = monthExpenses.reduce((sum, e) => sum + parseFloat(String(e.value ?? 0)), 0);
+      body.push([{
+        content: `${monthLabel}${yr !== "0000" ? ` ${yr}` : ""}  —  ${fmt(monthTotal)}`,
+        colSpan: 6,
+        styles: { fillColor: [230, 235, 255], fontStyle: 'bold', fontSize: 8.5, textColor: [20, 40, 120] },
+      }]);
+      for (const e of monthExpenses) {
+        body.push([
+          e.description,
+          COST_CENTER_LABELS[e.costCenter] ?? e.costCenter,
+          e.recipientName ?? "-",
+          EXPENSE_STATUS_LABELS[e.status]?.label ?? e.status,
+          fmtDate(e.dueDate),
+          fmt(parseFloat(String(e.value ?? 0))),
+        ]);
+      }
+    }
+
+    autoTable(doc, {
+      startY: headerEnd,
+      head: [["Descrição", "Centro de Custo", "Fornecedor", "Status", "Vencimento", "Valor"]],
+      body,
+      styles: { fontSize: 7.5 },
+      headStyles: { fillColor: [79, 70, 229] },
+      didAddPage: () => {
+        const pg = (doc as any).internal.getNumberOfPages();
+        if (pg > 1) {
+          doc.setFillColor(10, 61, 107);
+          doc.rect(0, 0, doc.internal.pageSize.getWidth(), 12, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7);
+          doc.text('EXCLUSIVE CLUB — BPO Financeiro', 14, 8);
+          doc.setTextColor(40, 40, 40);
+        }
+      },
+    });
+    addWatermarkToAllPages(doc);
     doc.save("despesas-bpo.pdf");
   }
 
