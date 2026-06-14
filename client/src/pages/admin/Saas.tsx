@@ -426,8 +426,9 @@ export default function Saas() {
   }
 
   function handleExportDREPDF() {
-    const data = dreVesselId !== undefined ? dreByVesselQuery.data : dreQuery.data;
-    if (!data) { toast.error("Sem dados para exportar"); return; }
+    const rawData = dreVesselId !== undefined ? dreByVesselQuery.data : dreQuery.data;
+    if (!rawData) { toast.error("Sem dados para exportar"); return; }
+    const data = rawData as any;
     const doc = new jsPDF();
     const title = dreVesselId !== undefined
       ? `DRE — ${(vesselsForFilterQuery.data ?? []).find((v: any) => v.id === dreVesselId)?.name ?? "Embarcação"}`
@@ -442,9 +443,9 @@ export default function Saas() {
       startY: 27,
       head: [["Indicador", "Valor"]],
       body: [
-        ["Receita Realizada", fmt(data.revenue?.total ?? data.totalRevenue ?? 0)],
+        ["Receita Realizada", fmt(data.revenue?.total ?? 0)],
         ["Receita Prevista", fmt(data.revenue?.expected ?? 0)],
-        ["Despesas Pagas", fmt(data.expenses?.total ?? data.totalExpenses ?? 0)],
+        ["Despesas Pagas", fmt(data.expenses?.total ?? 0)],
         ["Resultado Líquido", fmt(data.netResult ?? 0)],
         ["Lucro Real", fmt(data.lucroReal ?? 0)],
         ["Margem", `${(data.margin ?? 0).toFixed(1)}%`],
@@ -453,7 +454,7 @@ export default function Saas() {
       headStyles: { fillColor: [20, 184, 166] },
     });
 
-    const byType = data.revenue?.byType ?? [];
+    const byType: any[] = data.revenue?.byType ?? [];
     if (byType.length > 0) {
       autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 8,
@@ -464,8 +465,8 @@ export default function Saas() {
       });
     }
 
-    const byCostCenter = data.expenses?.byCostCenter ?? [];
-    if (byCostCenter.length > 0) {
+    const byCenter: any[] = data.expenses?.byCenter ?? data.expenses?.byCostCenter ?? [];
+    if (byCenter.length > 0) {
       const COST_CC: Record<string, string> = {
         salary: "Salários", rent: "Aluguéis", pro_labore: "Pró-labore",
         fuel_operational: "Combustível (Op.)", repair: "Reparos",
@@ -474,7 +475,7 @@ export default function Saas() {
       autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 8,
         head: [["Centro de Custo", "Valor"]],
-        body: byCostCenter.map((e: any) => [COST_CC[e.costCenter] ?? e.costCenter, fmt(e.total ?? 0)]),
+        body: byCenter.map((e: any) => [COST_CC[e.costCenter] ?? e.costCenter, fmt(e.total ?? e.paid ?? 0)]),
         styles: { fontSize: 9 },
         headStyles: { fillColor: [239, 68, 68] },
       });
