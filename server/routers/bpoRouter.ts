@@ -1200,8 +1200,8 @@ export const bpoRouter = router({
           : `due_date LIKE '${yearVal}-%'`;
       } else {
         dateFilter = monthVal !== "all"
-          ? `MONTH(due_date) = ${parseInt(monthVal)}`
-          : `1=1`;
+          ? `(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(monthVal)})`
+          : `due_date >= '2025-01-01'`;
       }
       const [bpoRows] = (await db.execute(sql.raw(`
         SELECT
@@ -1221,7 +1221,7 @@ export const bpoRouter = router({
         expenseDateFilter = `YEAR(due_date) = ${parseInt(yearVal)}`;
         if (monthVal !== "all") expenseDateFilter += ` AND MONTH(due_date) = ${parseInt(monthVal)}`;
       } else {
-        expenseDateFilter = monthVal !== "all" ? `MONTH(due_date) = ${parseInt(monthVal)}` : `1=1`;
+        expenseDateFilter = monthVal !== "all" ? `(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(monthVal)})` : `due_date >= '2025-01-01'`;
       }
       const [expRows] = (await db.execute(sql.raw(`
         SELECT
@@ -1272,8 +1272,8 @@ export const bpoRouter = router({
         margin: totalRevenue > 0 ? (netResult / totalRevenue) * 100 : 0,
         lucroReal: (() => {
           const proLabore = parseFloat(String(expByCenter.find((r: any) => r.cost_center === 'pro_labore')?.paid ?? 0));
-          const outros = parseFloat(String(expByCenter.find((r: any) => r.cost_center === 'other')?.paid ?? 0));
-          return netResult + proLabore - outros;
+          const outrosReceita = parseFloat(String(bpoByType.find((r: any) => r.type === 'other')?.received ?? 0));
+          return netResult + proLabore - outrosReceita;
         })(),
       };
     }),
@@ -1413,8 +1413,11 @@ export const bpoRouter = router({
         margin: totalRevenue > 0 ? (netResult / totalRevenue) * 100 : 0,
         lucroReal: (() => {
           const proLabore = parseFloat(String(expByCenter.find((r: any) => r.cost_center === 'pro_labore')?.paid ?? 0));
-          const outros = parseFloat(String(expByCenter.find((r: any) => r.cost_center === 'other')?.paid ?? 0));
-          return netResult + proLabore - outros;
+          // "Outros" vem das receitas (tipo 'other' em bpo_charges), não das despesas
+          const outrosReceita = input.vesselId
+            ? parseFloat(String(revenueRows.find((r: any) => r.type === 'other')?.received ?? 0))
+            : 0;
+          return netResult + proLabore - outrosReceita;
         })(),
       };
     }),
