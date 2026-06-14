@@ -192,9 +192,9 @@ export default function Admin() {
     contract2Url?: string;
     documentUrl?: string;
     quotas: Array<{ vesselId: number, quotaNumber: number, quotaType: "full" | "half" }>;
-  }>({ 
-    email: "", 
-    name: "", 
+  }>({
+    email: "",
+    name: "",
     phone: "",
     cpfCnpj: "",
     rg: "",
@@ -208,6 +208,13 @@ export default function Admin() {
     documentUrl: "",
     quotas: []
   });
+
+  // Arquivos pendentes de upload (usados ao criar novo cliente)
+  const [pendingFiles, setPendingFiles] = useState<{
+    contract?: File;
+    contract2?: File;
+    document?: File;
+  }>({});
 
   // Contract & Notification State
   const [contractClientId, setContractClientId] = useState<number | null>(null);
@@ -280,11 +287,43 @@ export default function Admin() {
 
   // Mutations
   const createClient = trpc.allowedClients.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async (data) => {
+      const newId = (data as any).id as number;
+
+      // Faz upload dos arquivos pendentes usando o novo ID
+      const uploadPending = async (file: File, docType: string): Promise<string | undefined> => {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('clientId', String(newId));
+        fd.append('documentType', docType);
+        const res = await fetch('/api/upload-client-document', { method: 'POST', body: fd });
+        if (!res.ok) { toast.error(`Erro ao enviar ${docType}`); return undefined; }
+        return (await res.json()).url as string;
+      };
+
+      const urlUpdates: Record<string, string> = {};
+      if (pendingFiles.contract) {
+        const url = await uploadPending(pendingFiles.contract, 'contract');
+        if (url) urlUpdates.contractUrl = url;
+      }
+      if (pendingFiles.contract2) {
+        const url = await uploadPending(pendingFiles.contract2, 'contract2');
+        if (url) urlUpdates.contract2Url = url;
+      }
+      if (pendingFiles.document) {
+        const url = await uploadPending(pendingFiles.document, 'document');
+        if (url) urlUpdates.documentUrl = url;
+      }
+
+      if (Object.keys(urlUpdates).length > 0) {
+        await updateClient.mutateAsync({ id: newId, ...urlUpdates });
+      }
+
       toast.success("Cliente adicionado com sucesso!");
       utils.allowedClients.list.invalidate();
       setShowClientDialog(false);
       setEditingClientId(null);
+      setPendingFiles({});
       setClientForm({ email: "", name: "", phone: "", contractUrl: "", contract2Url: "", documentUrl: "", quotas: [] });
     },
     onError: (error) => {
@@ -298,6 +337,7 @@ export default function Admin() {
       utils.allowedClients.list.invalidate();
       setShowClientDialog(false);
       setEditingClientId(null);
+      setPendingFiles({});
       setClientForm({ email: "", name: "", phone: "", contractUrl: "", contract2Url: "", documentUrl: "", quotas: [] });
     },
     onError: (error) => {
@@ -1455,29 +1495,26 @@ export default function Admin() {
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      
+
                       if (!editingClientId) {
-                        toast.error("Salve o cliente primeiro antes de fazer upload de documentos");
+                        // Novo cliente: guardar arquivo para enviar após criação
+                        setPendingFiles(prev => ({ ...prev, contract: file }));
+                        setClientForm(prev => ({ ...prev, contractUrl: `[pendente: ${file.name}]` }));
+                        toast.info('Arquivo selecionado — será enviado ao salvar o cliente');
                         return;
                       }
-                      
+
                       const formData = new FormData();
                       formData.append('file', file);
                       formData.append('clientId', editingClientId.toString());
                       formData.append('documentType', 'contract');
-                      
                       try {
-                        const response = await fetch('/api/upload-client-document', {
-                          method: 'POST',
-                          body: formData,
-                        });
-                        
+                        const response = await fetch('/api/upload-client-document', { method: 'POST', body: formData });
                         if (!response.ok) throw new Error('Erro ao fazer upload');
-                        
                         const data = await response.json();
-                        setClientForm({ ...clientForm, contractUrl: data.url });
+                        setClientForm(prev => ({ ...prev, contractUrl: data.url }));
                         toast.success('Contrato enviado com sucesso!');
-                      } catch (error) {
+                      } catch {
                         toast.error('Erro ao fazer upload do contrato');
                       }
                     }}
@@ -1529,29 +1566,25 @@ export default function Admin() {
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      
+
                       if (!editingClientId) {
-                        toast.error("Salve o cliente primeiro antes de fazer upload de documentos");
+                        setPendingFiles(prev => ({ ...prev, contract2: file }));
+                        setClientForm(prev => ({ ...prev, contract2Url: `[pendente: ${file.name}]` }));
+                        toast.info('Arquivo selecionado — será enviado ao salvar o cliente');
                         return;
                       }
-                      
+
                       const formData = new FormData();
                       formData.append('file', file);
                       formData.append('clientId', editingClientId.toString());
                       formData.append('documentType', 'contract2');
-                      
                       try {
-                        const response = await fetch('/api/upload-client-document', {
-                          method: 'POST',
-                          body: formData,
-                        });
-                        
+                        const response = await fetch('/api/upload-client-document', { method: 'POST', body: formData });
                         if (!response.ok) throw new Error('Erro ao fazer upload');
-                        
                         const data = await response.json();
-                        setClientForm({ ...clientForm, contract2Url: data.url });
+                        setClientForm(prev => ({ ...prev, contract2Url: data.url }));
                         toast.success('Contrato 2 enviado com sucesso!');
-                      } catch (error) {
+                      } catch {
                         toast.error('Erro ao fazer upload do contrato 2');
                       }
                     }}
@@ -1603,29 +1636,25 @@ export default function Admin() {
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      
+
                       if (!editingClientId) {
-                        toast.error("Salve o cliente primeiro antes de fazer upload de documentos");
+                        setPendingFiles(prev => ({ ...prev, document: file }));
+                        setClientForm(prev => ({ ...prev, documentUrl: `[pendente: ${file.name}]` }));
+                        toast.info('Arquivo selecionado — será enviado ao salvar o cliente');
                         return;
                       }
-                      
+
                       const formData = new FormData();
                       formData.append('file', file);
                       formData.append('clientId', editingClientId.toString());
                       formData.append('documentType', 'document');
-                      
                       try {
-                        const response = await fetch('/api/upload-client-document', {
-                          method: 'POST',
-                          body: formData,
-                        });
-                        
+                        const response = await fetch('/api/upload-client-document', { method: 'POST', body: formData });
                         if (!response.ok) throw new Error('Erro ao fazer upload');
-                        
                         const data = await response.json();
-                        setClientForm({ ...clientForm, documentUrl: data.url });
+                        setClientForm(prev => ({ ...prev, documentUrl: data.url }));
                         toast.success('Documento enviado com sucesso!');
-                      } catch (error) {
+                      } catch {
                         toast.error('Erro ao fazer upload do documento');
                       }
                     }}
