@@ -339,19 +339,22 @@ export const notificationRouter = router({
       if (!client) throw new Error("Cliente não encontrado");
       if (!client.email) throw new Error("Cliente sem e-mail cadastrado");
 
-      // 2. Buscar débitos em aberto
+      // 2. Buscar apenas débitos vencidos (status overdue, ou partiallyPaid com due_date passada)
       const [debtRows] = (await db.execute(sql.raw(`
         SELECT id, type, description, value, due_date, status, amount_paid
         FROM bpo_charges
         WHERE client_id = ${input.clientId}
-          AND status IN ('pending', 'overdue', 'partiallyPaid')
+          AND (
+            status = 'overdue'
+            OR (status = 'partiallyPaid' AND due_date < CURDATE())
+          )
         ORDER BY due_date ASC
         LIMIT 100
       `))) as any;
       const rawDebts = Array.isArray(debtRows) ? debtRows : [];
 
       if (rawDebts.length === 0) {
-        throw new Error("Este cliente não possui débitos em aberto.");
+        throw new Error("Este cliente não possui débitos vencidos.");
       }
 
       const debts = rawDebts.map((d: any) => ({
