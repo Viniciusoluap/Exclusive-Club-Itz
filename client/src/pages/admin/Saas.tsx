@@ -1852,39 +1852,57 @@ function DREByVesselView({ data, vesselName }: { data: any; vesselName?: string 
       )}
 
       {/* Cards de resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="border-green-200 bg-green-50/40">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <p className="text-sm font-medium text-green-800">Receita Realizada</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <TrendingUp className="h-4 w-4 text-green-600 shrink-0" />
+              <p className="text-xs font-medium text-green-800">Receita Realizada</p>
             </div>
-            <p className="text-2xl font-bold text-green-700">{fmt(data.totalRevenue)}</p>
-            <p className="text-xs text-green-600 mt-1">Previsto: {fmt(data.totalExpected)}</p>
+            <p className="text-xl font-bold text-green-700">{fmt(data.totalRevenue)}</p>
+            <p className="text-xs text-green-600 mt-1">Prev: {fmt(data.totalExpected)}</p>
           </CardContent>
         </Card>
         <Card className="border-red-200 bg-red-50/40">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingDown className="h-4 w-4 text-red-600" />
-              <p className="text-sm font-medium text-red-800">Despesas Pagas</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <TrendingDown className="h-4 w-4 text-red-600 shrink-0" />
+              <p className="text-xs font-medium text-red-800">Despesas Pagas</p>
             </div>
-            <p className="text-2xl font-bold text-red-700">{fmt(data.totalExpenses)}</p>
-            <p className="text-xs text-red-600 mt-1">Previsto: {fmt(data.totalExpensesAll)}</p>
+            <p className="text-xl font-bold text-red-700">{fmt(data.totalExpenses)}</p>
+            <p className="text-xs text-red-600 mt-1">Prev: {fmt(data.totalExpensesAll)}</p>
           </CardContent>
         </Card>
         <Card className={netPositive ? "border-blue-200 bg-blue-50/40" : "border-orange-200 bg-orange-50/40"}>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className={`h-4 w-4 ${netPositive ? "text-blue-600" : "text-orange-600"}`} />
-              <p className={`text-sm font-medium ${netPositive ? "text-blue-800" : "text-orange-800"}`}>Resultado Líquido</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <DollarSign className={`h-4 w-4 shrink-0 ${netPositive ? "text-blue-600" : "text-orange-600"}`} />
+              <p className={`text-xs font-medium ${netPositive ? "text-blue-800" : "text-orange-800"}`}>Resultado Líquido</p>
             </div>
-            <p className={`text-2xl font-bold ${netPositive ? "text-blue-700" : "text-orange-700"}`}>{fmt(data.netResult)}</p>
+            <p className={`text-xl font-bold ${netPositive ? "text-blue-700" : "text-orange-700"}`}>{fmt(data.netResult)}</p>
             <p className={`text-xs mt-1 ${netPositive ? "text-blue-600" : "text-orange-600"}`}>
               Margem: {data.margin.toFixed(1)}%
             </p>
           </CardContent>
         </Card>
+        {(() => {
+          const lr = data.lucroReal ?? 0;
+          const lrPos = lr >= 0;
+          return (
+            <Card className={lrPos ? "border-teal-200 bg-teal-50/40" : "border-rose-200 bg-rose-50/40"}>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <TrendingUp className={`h-4 w-4 shrink-0 ${lrPos ? "text-teal-600" : "text-rose-600"}`} />
+                  <p className={`text-xs font-medium ${lrPos ? "text-teal-800" : "text-rose-800"}`}>Lucro Real</p>
+                </div>
+                <p className={`text-xl font-bold ${lrPos ? "text-teal-700" : "text-rose-700"}`}>{fmt(lr)}</p>
+                <p className={`text-xs mt-1 ${lrPos ? "text-teal-600" : "text-rose-600"}`}>
+                  Líq + Pró-labore − Outros
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1971,39 +1989,57 @@ function DREView({ data }: { data: any }) {
   return (
     <div className="space-y-6">
       {/* Cards de resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="border-green-200 bg-green-50/40">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <p className="text-sm font-medium text-green-800">Receita Realizada</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <TrendingUp className="h-4 w-4 text-green-600 shrink-0" />
+              <p className="text-xs font-medium text-green-800">Receita Realizada</p>
             </div>
-            <p className="text-2xl font-bold text-green-700">{fmt(data.revenue.total)}</p>
-            <p className="text-xs text-green-600 mt-1">Previsto: {fmt(data.revenue.expected)}</p>
+            <p className="text-xl font-bold text-green-700">{fmt(data.revenue.total)}</p>
+            <p className="text-xs text-green-600 mt-1">Prev: {fmt(data.revenue.expected)}</p>
           </CardContent>
         </Card>
         <Card className="border-red-200 bg-red-50/40">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingDown className="h-4 w-4 text-red-600" />
-              <p className="text-sm font-medium text-red-800">Despesas Pagas</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <TrendingDown className="h-4 w-4 text-red-600 shrink-0" />
+              <p className="text-xs font-medium text-red-800">Despesas Pagas</p>
             </div>
-            <p className="text-2xl font-bold text-red-700">{fmt(data.expenses.total)}</p>
-            <p className="text-xs text-red-600 mt-1">Previsto: {fmt(data.expenses.totalAll)}</p>
+            <p className="text-xl font-bold text-red-700">{fmt(data.expenses.total)}</p>
+            <p className="text-xs text-red-600 mt-1">Prev: {fmt(data.expenses.totalAll)}</p>
           </CardContent>
         </Card>
         <Card className={netPositive ? "border-blue-200 bg-blue-50/40" : "border-orange-200 bg-orange-50/40"}>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className={`h-4 w-4 ${netPositive ? "text-blue-600" : "text-orange-600"}`} />
-              <p className={`text-sm font-medium ${netPositive ? "text-blue-800" : "text-orange-800"}`}>Resultado Líquido</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <DollarSign className={`h-4 w-4 shrink-0 ${netPositive ? "text-blue-600" : "text-orange-600"}`} />
+              <p className={`text-xs font-medium ${netPositive ? "text-blue-800" : "text-orange-800"}`}>Resultado Líquido</p>
             </div>
-            <p className={`text-2xl font-bold ${netPositive ? "text-blue-700" : "text-orange-700"}`}>{fmt(data.netResult)}</p>
+            <p className={`text-xl font-bold ${netPositive ? "text-blue-700" : "text-orange-700"}`}>{fmt(data.netResult)}</p>
             <p className={`text-xs mt-1 ${netPositive ? "text-blue-600" : "text-orange-600"}`}>
               Margem: {data.margin.toFixed(1)}%
             </p>
           </CardContent>
         </Card>
+        {(() => {
+          const lr = data.lucroReal ?? 0;
+          const lrPos = lr >= 0;
+          return (
+            <Card className={lrPos ? "border-teal-200 bg-teal-50/40" : "border-rose-200 bg-rose-50/40"}>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <TrendingUp className={`h-4 w-4 shrink-0 ${lrPos ? "text-teal-600" : "text-rose-600"}`} />
+                  <p className={`text-xs font-medium ${lrPos ? "text-teal-800" : "text-rose-800"}`}>Lucro Real</p>
+                </div>
+                <p className={`text-xl font-bold ${lrPos ? "text-teal-700" : "text-rose-700"}`}>{fmt(lr)}</p>
+                <p className={`text-xs mt-1 ${lrPos ? "text-teal-600" : "text-rose-600"}`}>
+                  Líq + Pró-labore − Outros
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
