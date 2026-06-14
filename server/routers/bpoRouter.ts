@@ -1830,6 +1830,29 @@ export const bpoRouter = router({
       return { success: true, message: "Cobrança excluída com sucesso" };
     }),
 
+  bulkDeleteCharges: adminProcedure
+    .input(z.object({
+      chargeIds: z.array(z.number()).min(1),
+      cancelInAsaas: z.boolean().optional().default(false),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      let deleted = 0;
+      for (const chargeId of input.chargeIds) {
+        const existing = await db.select().from(bpoCharges).where(eq(bpoCharges.id, chargeId)).limit(1);
+        if (existing.length === 0) continue;
+        const charge = existing[0];
+        if (input.cancelInAsaas && charge.asaasChargeId) {
+          try { await cancelCharge(charge.asaasChargeId); } catch {}
+        }
+        await db.delete(bpoCharges).where(eq(bpoCharges.id, chargeId));
+        deleted++;
+      }
+      return { success: true, deleted, message: `${deleted} cobrança(s) excluída(s)` };
+    }),
+
   // ============================================================
   // DAR BAIXA MANUAL — confirma recebimento em dinheiro/manual
   // Chama receiveInCash no Asaas e atualiza status no banco
