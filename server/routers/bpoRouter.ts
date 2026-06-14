@@ -1291,23 +1291,25 @@ export const bpoRouter = router({
       }
 
       // 1. Receitas por embarcação
-      // Usa LEFT JOIN para incluir também cobranças de clientes sem cota ativa (reparos avulsos, etc.)
       let revenueRows: any[] = [];
       if (input.vesselId) {
+        // Filtra bpo_charges pelos clientes com cota ativa na embarcação selecionada.
+        // Usa subquery para evitar o erro ONLY_FULL_GROUP_BY do MySQL com LEFT JOIN + IS NULL.
         const [rows] = (await db.execute(sql.raw(`
           SELECT
-            v.id as vessel_id,
-            v.name as vessel_name,
             COALESCE(bc.type, 'other') as type,
             COALESCE(SUM(CASE WHEN bc.status IN ('received','confirmed','receivedInCash') THEN CAST(bc.amount_paid AS DECIMAL(10,2)) ELSE 0 END), 0) as received,
             COALESCE(SUM(CAST(bc.value AS DECIMAL(10,2))), 0) as expected,
             COUNT(*) as cnt
           FROM bpo_charges bc
-          LEFT JOIN client_quotas cq2 ON LOWER(bc.client_email) = LOWER(cq2.client_email)
-            AND cq2.vessel_id = ${input.vesselId} AND cq2.is_active = 1
-          LEFT JOIN vessels v ON v.id = cq2.vessel_id
-          WHERE ${dateFilter} AND (cq2.vessel_id = ${input.vesselId} OR cq2.vessel_id IS NULL)
-          GROUP BY COALESCE(v.id, 0), COALESCE(v.name, 'Sem embarcação'), COALESCE(bc.type, 'other')
+          WHERE ${dateFilter}
+            AND LOWER(bc.client_email) IN (
+              SELECT LOWER(ac.email)
+              FROM client_quotas cq
+              JOIN allowed_clients ac ON ac.id = cq.client_id
+              WHERE cq.vessel_id = ${input.vesselId} AND cq.is_active = 1
+            )
+          GROUP BY COALESCE(bc.type, 'other')
           ORDER BY received DESC
         `))) as any;
         revenueRows = Array.isArray(rows) ? rows : [];
@@ -1370,7 +1372,7 @@ export const bpoRouter = router({
         year: yearVal, month: monthVal, vesselId: input.vesselId ?? null,
         revenueByVessel: input.vesselId
           ? revenueRows.map((r: any) => ({
-              vesselId: r.vessel_id as number, vesselName: r.vessel_name as string,
+              vesselId: input.vesselId as number, vesselName: null,
               type: r.type as string, typeLabel: TYPE_LABELS[r.type] ?? r.type,
               received: parseFloat(r.received ?? "0"),
               expected: parseFloat(r.expected ?? "0"),
