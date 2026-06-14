@@ -1262,6 +1262,11 @@ export const bpoRouter = router({
         },
         netResult,
         margin: totalRevenue > 0 ? (netResult / totalRevenue) * 100 : 0,
+        lucroReal: (() => {
+          const proLabore = parseFloat(String(expByCenter.find((r: any) => r.cost_center === 'pro_labore')?.paid ?? 0));
+          const outros = parseFloat(String(expByCenter.find((r: any) => r.cost_center === 'other')?.paid ?? 0));
+          return netResult + proLabore - outros;
+        })(),
       };
     }),
 
@@ -1398,6 +1403,11 @@ export const bpoRouter = router({
         totalRevenue, totalExpected, totalExpenses, totalExpensesAll,
         netResult,
         margin: totalRevenue > 0 ? (netResult / totalRevenue) * 100 : 0,
+        lucroReal: (() => {
+          const proLabore = parseFloat(String(expByCenter.find((r: any) => r.cost_center === 'pro_labore')?.paid ?? 0));
+          const outros = parseFloat(String(expByCenter.find((r: any) => r.cost_center === 'other')?.paid ?? 0));
+          return netResult + proLabore - outros;
+        })(),
       };
     }),
 
