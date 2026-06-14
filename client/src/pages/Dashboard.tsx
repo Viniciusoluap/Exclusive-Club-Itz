@@ -697,7 +697,7 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8" style={{paddingTop: '150px'}}>
+      <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Meu Dashboard</h1>
           <p className="text-gray-600">Acompanhe suas estatísticas e histórico de uso</p>
@@ -710,12 +710,12 @@ export default function Dashboard() {
             <CardDescription>Suas reservas nos últimos 6 meses</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col lg:flex-row gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Gráfico com eixo Y fixo 1-7 + linha de referência "Bom uso" no nível 3 */}
-              <div className="flex-1">
+              <div className="lg:col-span-2">
                 <div className="flex gap-2">
                   {/* Eixo Y — labels alinhados à escala 0-6, cada nível em (v/6)*100% da altura */}
-                  <div className="flex flex-col-reverse items-end pr-1 relative" style={{ height: '224px' }}>
+                  <div className="flex flex-col-reverse items-end pr-1 relative" style={{ height: '200px' }}>
                     {[1,2,3,4,5,6].map(v => (
                       <div
                         key={v}
@@ -727,7 +727,7 @@ export default function Dashboard() {
                     ))}
                   </div>
                   {/* Área do gráfico com linhas de grade e barras */}
-                  <div className="flex-1 relative" style={{ height: '224px' }}>
+                  <div className="flex-1 relative" style={{ height: '200px' }}>
                     {/* Linhas de grade horizontais — escala 0-6, cada nível em (v/6)*100% */}
                     {[0,1,2,3,4,5,6].map(v => {
                       const bottomPct = (v / 6) * 100;
@@ -782,7 +782,7 @@ export default function Dashboard() {
               </div>
 
               {/* Painel de resumo */}
-              <div className="lg:w-56 grid grid-cols-2 lg:grid-cols-1 gap-3 content-start">
+              <div className="grid grid-cols-2 lg:grid-cols-1 gap-3 content-start">
                 <div className="bg-blue-50 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <Calendar className="h-4 w-4 text-blue-500" />

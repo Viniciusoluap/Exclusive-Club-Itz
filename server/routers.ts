@@ -176,8 +176,8 @@ export const appRouter = router({
             quotaName: quotaNames.join(', '),
           });
         }
-        
-        return { success: true };
+
+        return { success: true, id: client.id };
       }),
 
     update: adminProcedure
