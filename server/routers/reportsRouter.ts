@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { bookings, fuelRecords, maintenances, allowedClients, vessels, clientQuotas, fuelBudget } from "../../drizzle/schema";
-import { eq, and, gte, lte, desc, sql, count } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, count, ne } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 export const reportsRouter = router({
@@ -311,7 +311,7 @@ export const reportsRouter = router({
               eq(bookings.vesselName, vessel.name),
               gte(bookings.bookingDate, start),
               lte(bookings.bookingDate, end),
-              eq(bookings.status, 'confirmed')
+              ne(bookings.status, 'cancelled')
             )
           );
 
@@ -334,7 +334,7 @@ export const reportsRouter = router({
         FROM bookings
         WHERE booking_date >= ${start}
           AND booking_date <= ${end}
-          AND status = 'confirmed'
+          AND status != 'cancelled'
         GROUP BY weekday
         ORDER BY count DESC
       `) as any;
@@ -381,7 +381,7 @@ export const reportsRouter = router({
         and(
           gte(bookings.bookingDate, start),
           lte(bookings.bookingDate, end),
-          eq(bookings.status, 'confirmed')
+          ne(bookings.status, 'cancelled')
         )
       );
 
@@ -392,7 +392,7 @@ export const reportsRouter = router({
           }, 0) / bookingsWithLeadTime.length
         : 0;
 
-      // 6. Reservas por Cliente
+      // 6. Reservas por Cliente — conta confirmed + used + pending (exclui apenas cancelled)
       const bookingsByClient = await db.select({
         clientEmail: bookings.clientEmail,
         clientName: bookings.clientName,
@@ -403,7 +403,7 @@ export const reportsRouter = router({
         and(
           gte(bookings.bookingDate, start),
           lte(bookings.bookingDate, end),
-          eq(bookings.status, 'confirmed')
+          ne(bookings.status, 'cancelled')
         )
       )
       .groupBy(bookings.clientEmail, bookings.clientName)

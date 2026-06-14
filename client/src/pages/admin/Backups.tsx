@@ -13,29 +13,39 @@ import { useState } from "react";
 export default function AdminBackups() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
-  const [isRunningBackup, setIsRunningBackup] = useState(false);
 
   const utils = trpc.useUtils();
-  const { data: stats, isLoading: statsLoading } = trpc.backup.getStats.useQuery();
-  const { data: history, isLoading: historyLoading } = trpc.backup.getHistory.useQuery({ limit: 20 });
 
   const runBackupMutation = trpc.backup.runNow.useMutation({
     onSuccess: () => {
-      toast.success('Backup executado com sucesso!');
-      // Atualiza as queries de stats e history
+      toast.info('Backup iniciado em segundo plano. Acompanhe o progresso abaixo.');
       utils.backup.getStats.invalidate();
       utils.backup.getHistory.invalidate();
-      utils.backup.getLatest.invalidate();
-      setIsRunningBackup(false);
     },
     onError: (error) => {
-      toast.error(`Erro ao executar backup: ${error.message}`);
-      setIsRunningBackup(false);
+      toast.error(`Erro ao iniciar backup: ${error.message}`);
     },
   });
 
+  // Polling: refetch a cada 5s enquanto há backup em execução
+  const { data: stats, isLoading: statsLoading } = trpc.backup.getStats.useQuery(undefined, {
+    refetchInterval: (query) => {
+      const d = query.state.data as any;
+      return d?.runningBackups > 0 ? 5000 : false;
+    },
+  });
+  const { data: history, isLoading: historyLoading } = trpc.backup.getHistory.useQuery({ limit: 20 }, {
+    refetchInterval: (query) => {
+      const d = query.state.data as any;
+      return Array.isArray(d) && d.some((b: any) => b.status === 'running') ? 5000 : false;
+    },
+  });
+
+  // Desabilita o botão enquanto há backup em execução (pelo histórico ou pela mutation em andamento)
+  const isRunningBackup = runBackupMutation.isPending || (history ?? []).some((b: any) => b.status === 'running');
+
   const handleRunBackup = () => {
-    setIsRunningBackup(true);
+    if (isRunningBackup) return;
     toast.info('Iniciando backup... Isso pode levar alguns minutos.');
     runBackupMutation.mutate();
   };
