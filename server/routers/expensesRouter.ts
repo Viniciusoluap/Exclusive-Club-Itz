@@ -458,6 +458,17 @@ export const expensesRouter = router({
       return { success: true };
     }),
 
+  bulkDelete: adminProcedure
+    .input(z.object({ ids: z.array(z.number()).min(1) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      for (const id of input.ids) {
+        await db.delete(expenseRecords).where(eq(expenseRecords.id, id));
+      }
+      return { success: true, deleted: input.ids.length };
+    }),
+
   // ── Classificação automática em lote ────────────────────────────────────
   autoClassify: adminProcedure
     .input(z.object({

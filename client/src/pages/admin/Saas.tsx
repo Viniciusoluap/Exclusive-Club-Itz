@@ -7,14 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   DollarSign, TrendingUp, Clock, AlertTriangle,
   RefreshCw, Download, Search, ChevronLeft, ChevronRight,
   CheckCircle2, Loader2, RotateCcw, BarChart3, Webhook,
   GitCompare, Receipt, TrendingDown, Activity, AlertCircle,
-  Pencil, Trash2, Plus, CreditCard, Scissors, HandCoins, Wand2
+  Pencil, Trash2, Plus, CreditCard, Scissors, HandCoins, Wand2, FileText
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -110,11 +113,11 @@ export default function Saas() {
   const [dreMonth, setDreMonth] = useState("all");
   const [dreVesselId, setDreVesselId] = useState<number | undefined>(undefined);
   const dreQuery = trpc.bpo.getDRE.useQuery(
-    { year: dreYear, month: dreMonth !== "all" ? dreMonth : undefined },
+    { year: dreYear !== "Todos os anos" ? dreYear : undefined, month: dreMonth !== "all" ? dreMonth : undefined },
     { refetchOnWindowFocus: false, enabled: dreVesselId === undefined }
   );
   const dreByVesselQuery = trpc.bpo.getDREByVessel.useQuery(
-    { year: dreYear !== "all" ? dreYear : undefined, month: dreMonth !== "all" ? dreMonth : undefined, vesselId: dreVesselId },
+    { year: dreYear !== "Todos os anos" ? dreYear : undefined, month: dreMonth !== "all" ? dreMonth : undefined, vesselId: dreVesselId },
     { refetchOnWindowFocus: false }
   );
 
@@ -224,6 +227,57 @@ export default function Saas() {
     },
     onError: (err) => toast.error(`Erro ao excluir: ${err.message}`),
   });
+
+  const [selectedChargeIds, setSelectedChargeIds] = useState<Set<number>>(new Set());
+
+  const bulkDeleteChargesMutation = trpc.bpo.bulkDeleteCharges.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setSelectedChargeIds(new Set());
+      utils.bpo.getStats.invalidate();
+      utils.bpo.listCharges.invalidate();
+    },
+    onError: (err) => toast.error(`Erro ao excluir: ${err.message}`),
+  });
+
+  function toggleChargeSelection(id: number) {
+    setSelectedChargeIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllCharges() {
+    if (selectedChargeIds.size === charges.length) {
+      setSelectedChargeIds(new Set());
+    } else {
+      setSelectedChargeIds(new Set(charges.map((c: any) => c.id)));
+    }
+  }
+
+  function handleExportChargesPDF() {
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text("BPO Financeiro — Cobranças", 14, 15);
+    doc.setFontSize(9);
+    doc.text(`${totalCharges} cobrança(s) | Gerado em ${new Date().toLocaleDateString("pt-BR")}`, 14, 22);
+    autoTable(doc, {
+      startY: 27,
+      head: [["Cliente", "Tipo", "Status", "Vencimento", "Valor", "Pago"]],
+      body: charges.map((c: any) => [
+        c.client_name || c.client_email || "N/A",
+        TYPE_LABELS[c.type] ?? c.type,
+        STATUS_LABELS[c.status]?.label ?? c.status,
+        fmtDate(c.due_date),
+        fmt(parseFloat(c.value ?? "0")),
+        c.amount_paid && parseFloat(c.amount_paid) > 0 ? fmt(parseFloat(c.amount_paid)) : "-",
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [20, 184, 166] },
+    });
+    doc.save("cobrancas-bpo.pdf");
+  }
 
   const markAsPaidMutation = trpc.bpo.markAsPaid.useMutation({
     onSuccess: (data) => {
@@ -371,6 +425,65 @@ export default function Saas() {
     setPage(0);
   }
 
+  function handleExportDREPDF() {
+    const rawData = dreVesselId !== undefined ? dreByVesselQuery.data : dreQuery.data;
+    if (!rawData) { toast.error("Sem dados para exportar"); return; }
+    const data = rawData as any;
+    const doc = new jsPDF();
+    const title = dreVesselId !== undefined
+      ? `DRE — ${(vesselsForFilterQuery.data ?? []).find((v: any) => v.id === dreVesselId)?.name ?? "Embarcação"}`
+      : "DRE Consolidado";
+    doc.setFontSize(14);
+    doc.text(title, 14, 15);
+    doc.setFontSize(9);
+    const period = `${dreYear !== "Todos os anos" ? dreYear : "Todos os anos"}${dreMonth !== "all" ? ` / ${MONTHS.find(m => m.value === dreMonth)?.label}` : ""}`;
+    doc.text(`Período: ${period} | Gerado em ${new Date().toLocaleDateString("pt-BR")}`, 14, 22);
+
+    autoTable(doc, {
+      startY: 27,
+      head: [["Indicador", "Valor"]],
+      body: [
+        ["Receita Realizada", fmt(data.revenue?.total ?? 0)],
+        ["Receita Prevista", fmt(data.revenue?.expected ?? 0)],
+        ["Despesas Pagas", fmt(data.expenses?.total ?? 0)],
+        ["Resultado Líquido", fmt(data.netResult ?? 0)],
+        ["Lucro Real", fmt(data.lucroReal ?? 0)],
+        ["Margem", `${(data.margin ?? 0).toFixed(1)}%`],
+      ],
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [20, 184, 166] },
+    });
+
+    const byType: any[] = data.revenue?.byType ?? [];
+    if (byType.length > 0) {
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 8,
+        head: [["Categoria de Receita", "Valor"]],
+        body: byType.map((r: any) => [TYPE_LABELS[r.type] ?? r.type, fmt(r.total ?? 0)]),
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [34, 197, 94] },
+      });
+    }
+
+    const byCenter: any[] = data.expenses?.byCenter ?? data.expenses?.byCostCenter ?? [];
+    if (byCenter.length > 0) {
+      const COST_CC: Record<string, string> = {
+        salary: "Salários", rent: "Aluguéis", pro_labore: "Pró-labore",
+        fuel_operational: "Combustível (Op.)", repair: "Reparos",
+        operational: "Custo Operacional", withdrawal: "Saque / Retirada", other: "Outros",
+      };
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 8,
+        head: [["Centro de Custo", "Valor"]],
+        body: byCenter.map((e: any) => [COST_CC[e.costCenter] ?? e.costCenter, fmt(e.total ?? e.paid ?? 0)]),
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [239, 68, 68] },
+      });
+    }
+
+    doc.save("dre-bpo.pdf");
+  }
+
   const hasFilters =
     statusFilter !== "all" ||
     typeFilter !== "all" ||
@@ -423,6 +536,32 @@ export default function Saas() {
         <TabsContent value="charges" className="space-y-4">
           {/* Botões de ação — apenas na aba Cobranças */}
           <div className="flex gap-2 flex-wrap justify-end">
+            {selectedChargeIds.size > 0 && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => {
+                  if (window.confirm(`Excluir ${selectedChargeIds.size} cobrança(s) selecionada(s)?`)) {
+                    bulkDeleteChargesMutation.mutate({ chargeIds: Array.from(selectedChargeIds) });
+                  }
+                }}
+                disabled={bulkDeleteChargesMutation.isPending}
+              >
+                {bulkDeleteChargesMutation.isPending
+                  ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  : <Trash2 className="h-4 w-4 mr-2" />}
+                Excluir {selectedChargeIds.size} selecionada(s)
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExportChargesPDF}
+              disabled={charges.length === 0}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Gerar PDF
+            </Button>
             <Button
               size="sm"
               onClick={() => setShowCreateDialog(true)}
@@ -624,11 +763,21 @@ export default function Saas() {
 
           {/* Lista */}
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              {chargesQuery.isLoading
-                ? "Carregando..."
-                : `${totalCharges} cobrança(s) encontrada(s)`}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {chargesQuery.isLoading
+                  ? "Carregando..."
+                  : `${totalCharges} cobrança(s) encontrada(s)${selectedChargeIds.size > 0 ? ` · ${selectedChargeIds.size} selecionada(s)` : ""}`}
+              </p>
+              {charges.length > 0 && (
+                <button
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                  onClick={toggleAllCharges}
+                >
+                  {selectedChargeIds.size === charges.length ? "Desmarcar todos" : "Selecionar todos"}
+                </button>
+              )}
+            </div>
 
             {chargesQuery.isLoading ? (
               <div className="flex justify-center py-12">
@@ -642,10 +791,16 @@ export default function Saas() {
               </div>
             ) : (
               charges.map((charge: any) => (
-                <Card key={charge.id} className="hover:shadow-sm transition-shadow">
+                <Card key={charge.id} className={`hover:shadow-sm transition-shadow ${selectedChargeIds.has(charge.id) ? "ring-2 ring-teal-400" : ""}`}>
                   <CardContent className="py-3 px-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <Checkbox
+                          checked={selectedChargeIds.has(charge.id)}
+                          onCheckedChange={() => toggleChargeSelection(charge.id)}
+                          className="mt-0.5 shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-sm truncate">
                             {charge.client_name || charge.client_email || "Cliente não vinculado"}
@@ -664,6 +819,7 @@ export default function Saas() {
 Venc: {fmtDate(charge.due_date)}
                            {charge.paid_date && ` · Pago: ${fmtDate(charge.paid_date)}`}
                         </p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                         <div className="text-right">
@@ -794,9 +950,9 @@ Venc: {fmtDate(charge.due_date)}
         <TabsContent value="dre" className="space-y-4">
           <div className="flex flex-wrap gap-3 items-center">
             <Select value={dreYear} onValueChange={setDreYear}>
-              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {YEARS.filter(y => y !== "Todos os anos").map(y => (
+                {YEARS.map(y => (
                   <SelectItem key={y} value={y}>{y}</SelectItem>
                 ))}
               </SelectContent>
@@ -821,6 +977,9 @@ Venc: {fmtDate(charge.due_date)}
             </Select>
             <Button variant="outline" size="sm" onClick={() => { dreQuery.refetch(); dreByVesselQuery.refetch(); }}>
               <RefreshCw className="h-3.5 w-3.5 mr-1" />Atualizar
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportDREPDF}>
+              <FileText className="h-3.5 w-3.5 mr-1" />Gerar PDF
             </Button>
           </div>
           {(dreVesselId !== undefined ? dreByVesselQuery.isLoading : dreQuery.isLoading) ? (
@@ -1852,39 +2011,57 @@ function DREByVesselView({ data, vesselName }: { data: any; vesselName?: string 
       )}
 
       {/* Cards de resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="border-green-200 bg-green-50/40">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <p className="text-sm font-medium text-green-800">Receita Realizada</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <TrendingUp className="h-4 w-4 text-green-600 shrink-0" />
+              <p className="text-xs font-medium text-green-800">Receita Realizada</p>
             </div>
-            <p className="text-2xl font-bold text-green-700">{fmt(data.totalRevenue)}</p>
-            <p className="text-xs text-green-600 mt-1">Previsto: {fmt(data.totalExpected)}</p>
+            <p className="text-xl font-bold text-green-700">{fmt(data.totalRevenue)}</p>
+            <p className="text-xs text-green-600 mt-1">Prev: {fmt(data.totalExpected)}</p>
           </CardContent>
         </Card>
         <Card className="border-red-200 bg-red-50/40">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingDown className="h-4 w-4 text-red-600" />
-              <p className="text-sm font-medium text-red-800">Despesas Pagas</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <TrendingDown className="h-4 w-4 text-red-600 shrink-0" />
+              <p className="text-xs font-medium text-red-800">Despesas Pagas</p>
             </div>
-            <p className="text-2xl font-bold text-red-700">{fmt(data.totalExpenses)}</p>
-            <p className="text-xs text-red-600 mt-1">Previsto: {fmt(data.totalExpensesAll)}</p>
+            <p className="text-xl font-bold text-red-700">{fmt(data.totalExpenses)}</p>
+            <p className="text-xs text-red-600 mt-1">Prev: {fmt(data.totalExpensesAll)}</p>
           </CardContent>
         </Card>
         <Card className={netPositive ? "border-blue-200 bg-blue-50/40" : "border-orange-200 bg-orange-50/40"}>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className={`h-4 w-4 ${netPositive ? "text-blue-600" : "text-orange-600"}`} />
-              <p className={`text-sm font-medium ${netPositive ? "text-blue-800" : "text-orange-800"}`}>Resultado Líquido</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <DollarSign className={`h-4 w-4 shrink-0 ${netPositive ? "text-blue-600" : "text-orange-600"}`} />
+              <p className={`text-xs font-medium ${netPositive ? "text-blue-800" : "text-orange-800"}`}>Resultado Líquido</p>
             </div>
-            <p className={`text-2xl font-bold ${netPositive ? "text-blue-700" : "text-orange-700"}`}>{fmt(data.netResult)}</p>
+            <p className={`text-xl font-bold ${netPositive ? "text-blue-700" : "text-orange-700"}`}>{fmt(data.netResult)}</p>
             <p className={`text-xs mt-1 ${netPositive ? "text-blue-600" : "text-orange-600"}`}>
               Margem: {data.margin.toFixed(1)}%
             </p>
           </CardContent>
         </Card>
+        {(() => {
+          const lr = data.lucroReal ?? 0;
+          const lrPos = lr >= 0;
+          return (
+            <Card className={lrPos ? "border-teal-200 bg-teal-50/40" : "border-rose-200 bg-rose-50/40"}>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <TrendingUp className={`h-4 w-4 shrink-0 ${lrPos ? "text-teal-600" : "text-rose-600"}`} />
+                  <p className={`text-xs font-medium ${lrPos ? "text-teal-800" : "text-rose-800"}`}>Lucro Real</p>
+                </div>
+                <p className={`text-xl font-bold ${lrPos ? "text-teal-700" : "text-rose-700"}`}>{fmt(lr)}</p>
+                <p className={`text-xs mt-1 ${lrPos ? "text-teal-600" : "text-rose-600"}`}>
+                  Líq + Pró-labore − Outros
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1971,39 +2148,57 @@ function DREView({ data }: { data: any }) {
   return (
     <div className="space-y-6">
       {/* Cards de resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="border-green-200 bg-green-50/40">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <p className="text-sm font-medium text-green-800">Receita Realizada</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <TrendingUp className="h-4 w-4 text-green-600 shrink-0" />
+              <p className="text-xs font-medium text-green-800">Receita Realizada</p>
             </div>
-            <p className="text-2xl font-bold text-green-700">{fmt(data.revenue.total)}</p>
-            <p className="text-xs text-green-600 mt-1">Previsto: {fmt(data.revenue.expected)}</p>
+            <p className="text-xl font-bold text-green-700">{fmt(data.revenue.total)}</p>
+            <p className="text-xs text-green-600 mt-1">Prev: {fmt(data.revenue.expected)}</p>
           </CardContent>
         </Card>
         <Card className="border-red-200 bg-red-50/40">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingDown className="h-4 w-4 text-red-600" />
-              <p className="text-sm font-medium text-red-800">Despesas Pagas</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <TrendingDown className="h-4 w-4 text-red-600 shrink-0" />
+              <p className="text-xs font-medium text-red-800">Despesas Pagas</p>
             </div>
-            <p className="text-2xl font-bold text-red-700">{fmt(data.expenses.total)}</p>
-            <p className="text-xs text-red-600 mt-1">Previsto: {fmt(data.expenses.totalAll)}</p>
+            <p className="text-xl font-bold text-red-700">{fmt(data.expenses.total)}</p>
+            <p className="text-xs text-red-600 mt-1">Prev: {fmt(data.expenses.totalAll)}</p>
           </CardContent>
         </Card>
         <Card className={netPositive ? "border-blue-200 bg-blue-50/40" : "border-orange-200 bg-orange-50/40"}>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className={`h-4 w-4 ${netPositive ? "text-blue-600" : "text-orange-600"}`} />
-              <p className={`text-sm font-medium ${netPositive ? "text-blue-800" : "text-orange-800"}`}>Resultado Líquido</p>
+            <div className="flex items-center gap-1.5 mb-1">
+              <DollarSign className={`h-4 w-4 shrink-0 ${netPositive ? "text-blue-600" : "text-orange-600"}`} />
+              <p className={`text-xs font-medium ${netPositive ? "text-blue-800" : "text-orange-800"}`}>Resultado Líquido</p>
             </div>
-            <p className={`text-2xl font-bold ${netPositive ? "text-blue-700" : "text-orange-700"}`}>{fmt(data.netResult)}</p>
+            <p className={`text-xl font-bold ${netPositive ? "text-blue-700" : "text-orange-700"}`}>{fmt(data.netResult)}</p>
             <p className={`text-xs mt-1 ${netPositive ? "text-blue-600" : "text-orange-600"}`}>
               Margem: {data.margin.toFixed(1)}%
             </p>
           </CardContent>
         </Card>
+        {(() => {
+          const lr = data.lucroReal ?? 0;
+          const lrPos = lr >= 0;
+          return (
+            <Card className={lrPos ? "border-teal-200 bg-teal-50/40" : "border-rose-200 bg-rose-50/40"}>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <TrendingUp className={`h-4 w-4 shrink-0 ${lrPos ? "text-teal-600" : "text-rose-600"}`} />
+                  <p className={`text-xs font-medium ${lrPos ? "text-teal-800" : "text-rose-800"}`}>Lucro Real</p>
+                </div>
+                <p className={`text-xl font-bold ${lrPos ? "text-teal-700" : "text-rose-700"}`}>{fmt(lr)}</p>
+                <p className={`text-xs mt-1 ${lrPos ? "text-teal-600" : "text-rose-600"}`}>
+                  Líq + Pró-labore − Outros
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2198,6 +2393,7 @@ function ExpensesTab() {
     costCenter: "operational", description: "", recipientName: "",
     value: "", dueDate: "", status: "pending", notes: "", repeatMonths: "1",
   });
+  const [selectedExpenseIds, setSelectedExpenseIds] = useState<Set<number>>(new Set());
 
   // Estado do dialog de edição
   const [editingExpense, setEditingExpense] = useState<any | null>(null);
@@ -2266,6 +2462,55 @@ function ExpensesTab() {
     },
     onError: (err) => toast.error(`Erro: ${err.message}`),
   });
+
+  const bulkDeleteExpensesMutation = trpc.expenses.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`${data.deleted} despesa(s) excluída(s)`);
+      setSelectedExpenseIds(new Set());
+      utils.expenses.list.invalidate();
+      utils.expenses.stats.invalidate();
+    },
+    onError: (err) => toast.error(`Erro ao excluir: ${err.message}`),
+  });
+
+  function toggleExpenseSelection(id: number) {
+    setSelectedExpenseIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllExpenses() {
+    if (selectedExpenseIds.size === expenses.length) {
+      setSelectedExpenseIds(new Set());
+    } else {
+      setSelectedExpenseIds(new Set(expenses.map((e: any) => e.id)));
+    }
+  }
+
+  function handleExportExpensesPDF() {
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text("BPO Financeiro — Despesas", 14, 15);
+    doc.setFontSize(9);
+    doc.text(`${totalExpenses} despesa(s) | Gerado em ${new Date().toLocaleDateString("pt-BR")}`, 14, 22);
+    autoTable(doc, {
+      startY: 27,
+      head: [["Descrição", "Centro de Custo", "Fornecedor", "Status", "Vencimento", "Valor"]],
+      body: expenses.map((e: any) => [
+        e.description,
+        COST_CENTER_LABELS[e.costCenter] ?? e.costCenter,
+        e.recipientName ?? "-",
+        EXPENSE_STATUS_LABELS[e.status]?.label ?? e.status,
+        fmtDate(e.dueDate),
+        fmt(parseFloat(String(e.value ?? 0))),
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [79, 70, 229] },
+    });
+    doc.save("despesas-bpo.pdf");
+  }
 
   const updateMutation = trpc.expenses.update.useMutation({
     onSuccess: () => {
@@ -2352,6 +2597,32 @@ function ExpensesTab() {
           </Select>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {selectedExpenseIds.size > 0 && (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => {
+                if (window.confirm(`Excluir ${selectedExpenseIds.size} despesa(s) selecionada(s)?`)) {
+                  bulkDeleteExpensesMutation.mutate({ ids: Array.from(selectedExpenseIds) });
+                }
+              }}
+              disabled={bulkDeleteExpensesMutation.isPending}
+            >
+              {bulkDeleteExpensesMutation.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                : <Trash2 className="h-4 w-4 mr-2" />}
+              Excluir {selectedExpenseIds.size} selecionada(s)
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExportExpensesPDF}
+            disabled={expenses.length === 0}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            Gerar PDF
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -2511,17 +2782,33 @@ function ExpensesTab() {
         </div>
       ) : (
         <>
-        <div className="text-sm text-muted-foreground mb-2">
-          {totalExpenses} despesa(s) encontrada(s){totalPages > 1 ? ` — página ${expPage + 1} de ${totalPages}` : ""}
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm text-muted-foreground">
+            {totalExpenses} despesa(s) encontrada(s){totalPages > 1 ? ` — página ${expPage + 1} de ${totalPages}` : ""}{selectedExpenseIds.size > 0 ? ` · ${selectedExpenseIds.size} selecionada(s)` : ""}
+          </div>
+          {expenses.length > 0 && (
+            <button
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+              onClick={toggleAllExpenses}
+            >
+              {selectedExpenseIds.size === expenses.length ? "Desmarcar todos" : "Selecionar todos"}
+            </button>
+          )}
         </div>
         <div className="space-y-2">
           {expenses.map((exp: any) => {
             const st = EXPENSE_STATUS_LABELS[exp.status] ?? { label: exp.status, color: "bg-gray-100 text-gray-700" };
             return (
-              <Card key={exp.id}>
+              <Card key={exp.id} className={selectedExpenseIds.has(exp.id) ? "ring-2 ring-indigo-400" : ""}>
                 <CardContent className="py-3 px-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="space-y-0.5">
+                    <div className="flex items-start gap-3 flex-1">
+                      <Checkbox
+                        checked={selectedExpenseIds.has(exp.id)}
+                        onCheckedChange={() => toggleExpenseSelection(exp.id)}
+                        className="mt-0.5 shrink-0"
+                      />
+                      <div className="space-y-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium text-sm">{exp.description}</p>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>{st.label}</span>
@@ -2531,6 +2818,7 @@ function ExpensesTab() {
                       </div>
                       {exp.recipientName && <p className="text-xs text-muted-foreground">{exp.recipientName}</p>}
                       <p className="text-xs text-muted-foreground">Venc: {fmtDate(exp.dueDate)}{exp.paidDate ? ` · Pago: ${fmtDate(exp.paidDate)}` : ""}</p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-sm">{fmt(parseFloat(String(exp.value ?? 0)))}</p>

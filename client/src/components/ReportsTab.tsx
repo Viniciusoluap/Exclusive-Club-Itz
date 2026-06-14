@@ -12,6 +12,11 @@ import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Cart
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
+const WEEKDAY_PT: Record<string, string> = {
+  Sunday: "Domingo", Monday: "Segunda", Tuesday: "Terça",
+  Wednesday: "Quarta", Thursday: "Quinta", Friday: "Sexta", Saturday: "Sábado",
+};
+
 export default function ReportsTab() {
   const [activeReportTab, setActiveReportTab] = useState("executive");
   const currentYear = new Date().getFullYear();
@@ -936,7 +941,7 @@ export default function ReportsTab() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={seasonality?.occupancyByWeekday || []}>
+                <BarChart data={(seasonality?.occupancyByWeekday || []).map((d: any) => ({ ...d, weekday: WEEKDAY_PT[d.weekday] ?? d.weekday }))}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="weekday" />
                   <YAxis />
