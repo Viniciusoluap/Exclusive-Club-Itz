@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import WhatsAppButton from "./components/WhatsAppButton";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -72,6 +72,12 @@ function Router() {
 //   to keep consistent foreground/background color across components
 // - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
+function ConditionalWhatsApp() {
+  const [location] = useLocation();
+  if (location.startsWith('/admin')) return null;
+  return <WhatsAppButton />;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -82,7 +88,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Router />
-          <WhatsAppButton />
+          <ConditionalWhatsApp />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
