@@ -1191,12 +1191,17 @@ export const bpoRouter = router({
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      const yearVal = input?.year || String(new Date().getFullYear());
+      const yearVal = input?.year || null;
       const monthVal = input?.month || "all";
-      let dateFilter = `due_date LIKE '${yearVal}-%'`;
-      if (monthVal && monthVal !== "all") {
-        const m = monthVal.padStart(2, "0");
-        dateFilter = `due_date LIKE '${yearVal}-${m}-%'`;
+      let dateFilter: string;
+      if (yearVal) {
+        dateFilter = monthVal !== "all"
+          ? `due_date LIKE '${yearVal}-${monthVal.padStart(2, "0")}-%'`
+          : `due_date LIKE '${yearVal}-%'`;
+      } else {
+        dateFilter = monthVal !== "all"
+          ? `MONTH(due_date) = ${parseInt(monthVal)}`
+          : `1=1`;
       }
       const [bpoRows] = (await db.execute(sql.raw(`
         SELECT
@@ -1211,9 +1216,12 @@ export const bpoRouter = router({
       const bpoByType = Array.isArray(bpoRows) ? bpoRows : [];
       const totalRevenue = bpoByType.reduce((sum: number, r: any) => sum + parseFloat(r.received ?? "0"), 0);
       const totalExpected = bpoByType.reduce((sum: number, r: any) => sum + parseFloat(r.expected ?? "0"), 0);
-      let expenseDateFilter = `YEAR(due_date) = ${parseInt(yearVal)}`;
-      if (monthVal && monthVal !== "all") {
-        expenseDateFilter += ` AND MONTH(due_date) = ${parseInt(monthVal)}`;
+      let expenseDateFilter: string;
+      if (yearVal) {
+        expenseDateFilter = `YEAR(due_date) = ${parseInt(yearVal)}`;
+        if (monthVal !== "all") expenseDateFilter += ` AND MONTH(due_date) = ${parseInt(monthVal)}`;
+      } else {
+        expenseDateFilter = monthVal !== "all" ? `MONTH(due_date) = ${parseInt(monthVal)}` : `1=1`;
       }
       const [expRows] = (await db.execute(sql.raw(`
         SELECT
