@@ -2196,7 +2196,7 @@ function ExpensesTab() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     costCenter: "operational", description: "", recipientName: "",
-    value: "", dueDate: "", status: "pending", notes: "",
+    value: "", dueDate: "", status: "pending", notes: "", repeatMonths: "1",
   });
 
   // Estado do dialog de edição
@@ -2238,12 +2238,13 @@ function ExpensesTab() {
   });
 
   const createMutation = trpc.expenses.create.useMutation({
-    onSuccess: () => {
-      toast.success("Despesa criada com sucesso");
+    onSuccess: (data) => {
+      const count = (data as any).count ?? 1;
+      toast.success(count > 1 ? `${count} despesas criadas com sucesso` : "Despesa criada com sucesso");
       utils.expenses.list.invalidate();
       utils.expenses.stats.invalidate();
       setShowForm(false);
-      setForm({ costCenter: "operational", description: "", recipientName: "", value: "", dueDate: "", status: "pending", notes: "" });
+      setForm({ costCenter: "operational", description: "", recipientName: "", value: "", dueDate: "", status: "pending", notes: "", repeatMonths: "1" });
     },
     onError: (err) => toast.error(`Erro: ${err.message}`),
   });
@@ -2442,16 +2443,31 @@ function ExpensesTab() {
                 <label className="text-xs font-medium mb-1 block">Vencimento *</label>
                 <Input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
               </div>
-              <div>
-                <label className="text-xs font-medium mb-1 block">Status</label>
-                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pendente</SelectItem>
-                    <SelectItem value="paid">Pago</SelectItem>
-                    <SelectItem value="overdue">Vencido</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="sm:col-span-2 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Status</label>
+                  <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="paid">Pago</SelectItem>
+                      <SelectItem value="overdue">Vencido</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium mb-1 block">Repetir por (meses)</label>
+                  <Select value={form.repeatMonths} onValueChange={v => setForm(f => ({ ...f, repeatMonths: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 24 }, (_, i) => i + 1).map(n => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n === 1 ? "Apenas este mês" : `${n} meses`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
             <div>
@@ -2472,6 +2488,7 @@ function ExpensesTab() {
                   dueDate: form.dueDate,
                   status: form.status as any,
                   notes: form.notes || undefined,
+                  repeatMonths: parseInt(form.repeatMonths) || 1,
                 });
               }}
               disabled={createMutation.isPending}
