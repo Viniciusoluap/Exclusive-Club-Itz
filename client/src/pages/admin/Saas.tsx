@@ -344,6 +344,20 @@ export default function Saas() {
     onError: (err) => toast.error(`Erro ao excluir: ${err.message}`),
   });
 
+  const [showCombineModal, setShowCombineModal] = useState(false);
+  const [keepChargeId, setKeepChargeId] = useState<number | null>(null);
+
+  const combineChargesMutation = trpc.bpo.combineCharges.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message);
+      setSelectedChargeIds(new Set());
+      setShowCombineModal(false);
+      utils.bpo.getStats.invalidate();
+      utils.bpo.listCharges.invalidate();
+    },
+    onError: (err) => toast.error(`Erro ao combinar: ${err.message}`),
+  });
+
   function toggleChargeSelection(id: number) {
     setSelectedChargeIds(prev => {
       const next = new Set(prev);
@@ -679,6 +693,24 @@ export default function Saas() {
         <TabsContent value="charges" className="space-y-4">
           {/* Botões de ação — apenas na aba Cobranças */}
           <div className="flex gap-2 flex-wrap justify-end">
+            {selectedChargeIds.size >= 2 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                onClick={() => {
+                  const ids = Array.from(selectedChargeIds);
+                  setKeepChargeId(ids[0]);
+                  setShowCombineModal(true);
+                }}
+                disabled={combineChargesMutation.isPending}
+              >
+                {combineChargesMutation.isPending
+                  ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  : <GitCompare className="h-4 w-4 mr-2" />}
+                Combinar Pagamentos ({selectedChargeIds.size})
+              </Button>
+            )}
             {selectedChargeIds.size > 0 && (
               <Button
                 size="sm"
@@ -2122,6 +2154,68 @@ function UnclassifiedChargeCard({
             >
               {linkLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
               Vincular
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Dialog: Combinar Pagamentos ─── */}
+      <Dialog open={showCombineModal} onOpenChange={(open) => { if (!open) setShowCombineModal(false); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Combinar Pagamentos</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Selecione qual cobrança manter. As demais serão canceladas como duplicatas.
+            </p>
+            <div className="space-y-2">
+              {charges
+                .filter((c: any) => selectedChargeIds.has(c.id))
+                .map((c: any) => (
+                  <label
+                    key={c.id}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${keepChargeId === c.id ? 'border-teal-500 bg-teal-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    <input
+                      type="radio"
+                      name="keepCharge"
+                      value={c.id}
+                      checked={keepChargeId === c.id}
+                      onChange={() => setKeepChargeId(c.id)}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">{c.client_name || c.client_email || "Sem cliente"}</div>
+                      <div className="text-xs text-gray-500 truncate">{c.description || c.type}</div>
+                      <div className="flex gap-2 mt-1 text-xs">
+                        <span className={`px-1.5 py-0.5 rounded ${STATUS_LABELS[c.status]?.color ?? 'bg-gray-100 text-gray-800'}`}>
+                          {STATUS_LABELS[c.status]?.label ?? c.status}
+                        </span>
+                        <span className="font-semibold">{fmt(parseFloat(c.value ?? "0"))}</span>
+                        <span className="text-gray-400">Venc: {fmtDate(c.due_date)}</span>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+            </div>
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+              As {selectedChargeIds.size - 1} cobrança(s) não selecionada(s) serão canceladas com anotação de duplicata.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCombineModal(false)}>Cancelar</Button>
+            <Button
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+              disabled={!keepChargeId || combineChargesMutation.isPending}
+              onClick={() => {
+                if (!keepChargeId) return;
+                const cancelIds = Array.from(selectedChargeIds).filter(id => id !== keepChargeId);
+                combineChargesMutation.mutate({ keepId: keepChargeId, cancelIds });
+              }}
+            >
+              {combineChargesMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Confirmar Combinação
             </Button>
           </DialogFooter>
         </DialogContent>
