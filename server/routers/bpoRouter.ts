@@ -136,6 +136,7 @@ async function executeSplitPayment(input: {
         amountPaid: newAmountPaid.toFixed(2),
         paymentLinks: JSON.stringify(paymentLinks),
         paidDate: paidDateVal,
+        classifiedBy: 'manual',
       })
       .where(eq(bpoCharges.id, split.chargeId));
 
@@ -372,7 +373,10 @@ export const bpoRouter = router({
             await db
               .update(bpoCharges)
               .set(updateSet)
-              .where(eq(bpoCharges.asaasChargeId, charge.id));
+              .where(and(
+                eq(bpoCharges.asaasChargeId, charge.id),
+                sql`(${bpoCharges.classifiedBy} IS NULL OR ${bpoCharges.classifiedBy} != 'manual')`
+              ));
             report.updated++;
           } else {
             // Inserir novo registro com tipo e classificação já definidos
@@ -708,7 +712,10 @@ export const bpoRouter = router({
             syncedAt: sql`NOW()`,
             source: "asaas_webhook",
           })
-          .where(eq(bpoCharges.asaasChargeId, row.asaas_charge_id));
+          .where(and(
+            eq(bpoCharges.asaasChargeId, row.asaas_charge_id),
+            sql`(${bpoCharges.classifiedBy} IS NULL OR ${bpoCharges.classifiedBy} != 'manual')`
+          ));
 
         report.updated++;
         report.checked++;
@@ -752,7 +759,10 @@ export const bpoRouter = router({
           syncedAt: sql`NOW()`,
           source: "asaas_webhook",
         })
-        .where(eq(bpoCharges.asaasChargeId, input.asaasChargeId));
+        .where(and(
+          eq(bpoCharges.asaasChargeId, input.asaasChargeId),
+          sql`(${bpoCharges.classifiedBy} IS NULL OR ${bpoCharges.classifiedBy} != 'manual')`
+        ));
 
       return { success: true };
     }),
@@ -1854,6 +1864,36 @@ export const bpoRouter = router({
         deleted++;
       }
       return { success: true, deleted, message: `${deleted} cobrança(s) excluída(s)` };
+    }),
+
+  // ============================================================
+  // COMBINAR PAGAMENTOS — cancela cobranças duplicadas mantendo uma
+  // ============================================================
+  combineCharges: adminProcedure
+    .input(z.object({
+      keepId: z.number(),
+      cancelIds: z.array(z.number()).min(1),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const today = new Date().toISOString().split('T')[0];
+      let cancelled = 0;
+      for (const cid of input.cancelIds) {
+        if (cid === input.keepId) continue;
+        const rows = await db.select({ description: bpoCharges.description }).from(bpoCharges).where(eq(bpoCharges.id, cid)).limit(1);
+        if (rows.length === 0) continue;
+        const note = `[Duplicata cancelada em ${today} — mantida cobrança #${input.keepId}]`;
+        const newDesc = `${rows[0].description || ''} ${note}`.trim();
+        await db.update(bpoCharges).set({
+          status: 'cancelled',
+          classifiedBy: 'manual',
+          description: newDesc,
+        }).where(eq(bpoCharges.id, cid));
+        cancelled++;
+      }
+      return { success: true, cancelled, message: `${cancelled} duplicata(s) cancelada(s)` };
     }),
 
   // ============================================================
