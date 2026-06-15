@@ -1961,9 +1961,10 @@ Venc: {fmtDate(charge.due_date)}
             <DialogTitle>Combinar Pagamentos</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Selecione qual cobrança manter. As demais serão canceladas como duplicatas.
-            </p>
+            <div className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded p-3 space-y-1">
+              <p className="font-medium text-blue-800">Selecione a cobrança cadastrada (fatura original)</p>
+              <p className="text-xs text-blue-700">A cobrança selecionada receberá a baixa do pagamento. As demais serão canceladas e seus dados de pagamento serão transferidos para a selecionada.</p>
+            </div>
             <div className="space-y-2">
               {charges
                 .filter((c: any) => selectedChargeIds.has(c.id))
@@ -1983,19 +1984,23 @@ Venc: {fmtDate(charge.due_date)}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm">{c.client_name || c.client_email || "Sem cliente"}</div>
                       <div className="text-xs text-gray-500 truncate">{c.description || c.type}</div>
-                      <div className="flex gap-2 mt-1 text-xs">
+                      <div className="flex gap-2 mt-1 text-xs flex-wrap">
                         <span className={`px-1.5 py-0.5 rounded ${STATUS_LABELS[c.status]?.color ?? 'bg-gray-100 text-gray-800'}`}>
                           {STATUS_LABELS[c.status]?.label ?? c.status}
                         </span>
                         <span className="font-semibold">{fmt(parseFloat(c.value ?? "0"))}</span>
                         <span className="text-gray-400">Venc: {fmtDate(c.due_date)}</span>
+                        {c.paid_date && <span className="text-green-600">Pago: {fmtDate(c.paid_date)}</span>}
                       </div>
                     </div>
+                    {keepChargeId === c.id && (
+                      <span className="text-xs font-medium text-teal-700 bg-teal-100 px-2 py-0.5 rounded shrink-0">Manter</span>
+                    )}
                   </label>
                 ))}
             </div>
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
-              As {selectedChargeIds.size - 1} cobrança(s) não selecionada(s) serão canceladas com anotação de duplicata.
+              A cobrança selecionada será marcada como <strong>Recebido (Cash)</strong> com a data de pagamento das duplicatas. As demais serão canceladas.
             </p>
           </div>
           <DialogFooter>
