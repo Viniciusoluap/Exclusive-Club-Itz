@@ -285,7 +285,16 @@ export const notificationRouter = router({
       const [debtRows] = (await db.execute(sql.raw(`
         SELECT id, type, description, value, due_date, status, amount_paid
         FROM bpo_charges
-        WHERE client_id = ${input.clientId}
+        WHERE (
+          client_id = ${input.clientId}
+          OR (
+            asaas_customer_id IS NOT NULL
+            AND asaas_customer_id IN (
+              SELECT DISTINCT asaas_customer_id FROM bpo_charges
+              WHERE client_id = ${input.clientId} AND asaas_customer_id IS NOT NULL
+            )
+          )
+        )
           AND status IN ('pending', 'overdue', 'partiallyPaid')
         ORDER BY due_date ASC
         LIMIT 100
@@ -343,7 +352,16 @@ export const notificationRouter = router({
       const [debtRows] = (await db.execute(sql.raw(`
         SELECT id, type, description, value, due_date, status, amount_paid
         FROM bpo_charges
-        WHERE client_id = ${input.clientId}
+        WHERE (
+          client_id = ${input.clientId}
+          OR (
+            asaas_customer_id IS NOT NULL
+            AND asaas_customer_id IN (
+              SELECT DISTINCT asaas_customer_id FROM bpo_charges
+              WHERE client_id = ${input.clientId} AND asaas_customer_id IS NOT NULL
+            )
+          )
+        )
           AND (
             status = 'overdue'
             OR (status = 'partiallyPaid' AND due_date < CURDATE())
