@@ -444,6 +444,9 @@ export const bpoRouter = router({
       // Construir condições de filtro — idêntico ao listCharges
       const conditions: string[] = [];
 
+      // Cobranças canceladas nunca entram nas estatísticas
+      conditions.push(`status != 'cancelled'`);
+
       const yearFilter = input?.year || "";
       const monthFilter = input?.month || "";
       const dateFromFilter = input?.dateFrom || "";
@@ -550,6 +553,9 @@ export const bpoRouter = router({
       const offsetVal = input?.offset ?? 0;
 
       const conditions: string[] = [];
+
+      // Cobranças canceladas nunca aparecem na listagem
+      conditions.push(`status != 'cancelled'`);
 
       // Filtro de data
       if (dateFromFilter && dateToFilter) {
