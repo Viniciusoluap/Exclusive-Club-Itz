@@ -479,8 +479,17 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
     quotaNumber: 1, totalQuotas: 7, adhesionValue: 0, monthlyFee: 0, quotaPercentage: "14,29",
   };
 
-  // ── Dados da embarcação ──────────────────────────────────────
-  const boatDesc = firstQuota.boatName;
+  // ── Dados da embarcação — suporte a múltiplas embarcações ───
+  const uniqueVesselNames = [...new Set(data.quotas.map(q => q.boatName).filter(Boolean))];
+  const isMultiVessel = uniqueVesselNames.length > 1;
+  const vesselParts = uniqueVesselNames.map(name => `1 (uma) ${name}`);
+  const boatDesc = vesselParts.length === 0
+    ? firstQuota.boatName
+    : vesselParts.length === 1
+    ? vesselParts[0]
+    : vesselParts.slice(0, -1).join(", ") + " e " + vesselParts[vesselParts.length - 1];
+  const clausula11Prefix = isMultiVessel ? "das seguintes embarcações" : "da seguinte embarcação";
+  const clausula11Suffix = isMultiVessel ? "às embarcações" : "à embarcação";
 
   // ── Cálculo da quantidade de cotas ──────────────────────────
   const quotaAmount = data.quotas.reduce(
@@ -489,9 +498,17 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
   const quotaAmountDecimal = quotaAmount === 0.5 ? "0,5"
     : quotaAmount % 1 === 0 ? String(Math.round(quotaAmount))
     : quotaAmount.toFixed(1).replace(".", ",");
+  // Converte número fracionário (X.5) para extenso em português: "duas e meia"
+  function fractionalInWordsPT(n: number): string {
+    if (n % 1 === 0) return intToWordsPT(n).toLowerCase();
+    const whole = Math.floor(n);
+    return whole === 0 ? "meia" : `${intToWordsPT(whole).toLowerCase()} e meia`;
+  }
   const tipoCotas = quotaAmount === 0.5 ? "Meia cota (0,5 quota)"
     : quotaAmount === 1 ? "Cota Inteira (1 quota)"
-    : `${quotaAmountDecimal} (${intToWordsPT(Math.round(quotaAmount)).toLowerCase()}) Cotas Inteiras`;
+    : quotaAmount % 1 === 0
+    ? `${quotaAmountDecimal} (${intToWordsPT(Math.round(quotaAmount)).toLowerCase()}) Cotas Inteiras`
+    : `${quotaAmountDecimal} (${fractionalInWordsPT(quotaAmount)}) Cotas`;
 
   // ── Reservas ativas (cláusula 3.4) — dinâmico por tipo de cota ──
   const maxReservas = Math.round(quotaAmount * 2);
@@ -596,7 +613,7 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
 
     // CLÁUSULA 1
     { type: "h2", content: "CLÁUSULA 1 — OBJETO DO CONTRATO" },
-    { type: "paragraph", content: `1.1 O objeto do presente contrato é o uso compartilhado da seguinte embarcação: 1 (uma) ${boatDesc}, incluindo todos os itens de série e produtos adicionados posteriormente à embarcação.` },
+    { type: "paragraph", content: `1.1 O objeto do presente contrato é o uso compartilhado ${clausula11Prefix}: ${boatDesc}, incluindo todos os itens de série e produtos adicionados posteriormente ${clausula11Suffix}.` },
     { type: "paragraph", content: `A modalidade contratada é de uso compartilhado com outras pessoas que tenham celebrado ou venham a celebrar contrato similar com a EXCLUSIVE CLUB, em cada oportunidade de acordo com as disposições do presente instrumento.` },
     { type: "paragraph", content: `O CONTRATANTE declara estar ciente de que tem de manter-se apto e rigorosamente em dia, bem assim manter em situação regular, com relação a habilitações e autorizações necessárias, nos termos da legislação aplicável, para conduzir e usar embarcação nos termos deste contrato. Cópias autênticas da documentação referente à renovação ou autorização respectivas devem ser entregues à EXCLUSIVE CLUB, assim que disponíveis para o CONTRATANTE, em cada oportunidade.` },
 
