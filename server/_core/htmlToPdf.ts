@@ -248,9 +248,9 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
         case "signatureBlock": {
           const signers = section.signers || [];
           const numRows = Math.ceil(signers.length / 2);
-          // Each row: 20px top gap + 1px line + 14px name + 13px role + 13px extra + 10px local/data = ~75px
-          // Plus inter-row gap of 25px and date line of 30px
-          const sigBlockH = 30 + numRows * 75 + (numRows - 1) * 25;
+          // Each row: 20px top gap + line + 13px name + 13px role + 12px extra = ~58px
+          // Plus inter-row gap 25px, date line 30px, pre-space ~28px
+          const sigBlockH = 28 + 30 + numRows * 58 + (numRows - 1) * 25;
           const bottomMargin = doc.page.margins.bottom || 50;
 
           // Force new page if there isn't enough space for the full block
@@ -258,7 +258,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
             doc.addPage();
           }
 
-          doc.moveDown(0.5);
+          doc.moveDown(2);
 
           if (section.content) {
             doc.fillColor("#1a1a1a").fontSize(10).font("Helvetica")
@@ -291,12 +291,10 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
                 doc.fillColor(GRAY).fontSize(8)
                   .text(signers[idx].extra!, sx + 10, lineY + 29, { width: sigW - 20, align: "center", lineBreak: false });
               }
-              doc.fillColor(GRAY).fontSize(8)
-                .text("Local e Data: ___/___/______", sx + 10, lineY + 42, { width: sigW - 20, align: "center", lineBreak: false });
             }
 
-            // Advance y past the row (line 20 + name 13 + role 13 + extra 12 + local 12 = 70)
-            doc.y = rowY + 70;
+            // Advance y past the row (line 20 + name 13 + role 13 + extra 12 = 58)
+            doc.y = rowY + 58;
             doc.x = doc.page.margins.left;
           }
 
@@ -305,7 +303,11 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
         }
 
         case "footer": {
-          doc.fillColor(GRAY).fontSize(8).font("Helvetica").text(section.content || "", 50, doc.page.height - 40, {
+          // switchToPage ensures footer lands on the current last page without creating a blank page.
+          // y = page.height - 55 stays within the bottom margin (margin=50) to prevent auto-pagination.
+          const range = doc.bufferedPageRange();
+          doc.switchToPage(range.start + range.count - 1);
+          doc.fillColor(GRAY).fontSize(8).font("Helvetica").text(section.content || "", 50, doc.page.height - 55, {
             width: pageW,
             align: "center",
           });
@@ -479,8 +481,17 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
     quotaNumber: 1, totalQuotas: 7, adhesionValue: 0, monthlyFee: 0, quotaPercentage: "14,29",
   };
 
-  // ── Dados da embarcação ──────────────────────────────────────
-  const boatDesc = firstQuota.boatName;
+  // ── Dados da embarcação — suporte a múltiplas embarcações ───
+  const uniqueVesselNames = [...new Set(data.quotas.map(q => q.boatName).filter(Boolean))];
+  const isMultiVessel = uniqueVesselNames.length > 1;
+  const vesselParts = uniqueVesselNames.map(name => `1 (uma) ${name}`);
+  const boatDesc = vesselParts.length === 0
+    ? firstQuota.boatName
+    : vesselParts.length === 1
+    ? vesselParts[0]
+    : vesselParts.slice(0, -1).join(", ") + " e " + vesselParts[vesselParts.length - 1];
+  const clausula11Prefix = isMultiVessel ? "das seguintes embarcações" : "da seguinte embarcação";
+  const clausula11Suffix = isMultiVessel ? "às embarcações" : "à embarcação";
 
   // ── Cálculo da quantidade de cotas ──────────────────────────
   const quotaAmount = data.quotas.reduce(
@@ -489,9 +500,17 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
   const quotaAmountDecimal = quotaAmount === 0.5 ? "0,5"
     : quotaAmount % 1 === 0 ? String(Math.round(quotaAmount))
     : quotaAmount.toFixed(1).replace(".", ",");
+  // Converte número fracionário (X.5) para extenso em português: "duas e meia"
+  function fractionalInWordsPT(n: number): string {
+    if (n % 1 === 0) return intToWordsPT(n).toLowerCase();
+    const whole = Math.floor(n);
+    return whole === 0 ? "meia" : `${intToWordsPT(whole).toLowerCase()} e meia`;
+  }
   const tipoCotas = quotaAmount === 0.5 ? "Meia cota (0,5 quota)"
     : quotaAmount === 1 ? "Cota Inteira (1 quota)"
-    : `${quotaAmountDecimal} (${intToWordsPT(Math.round(quotaAmount)).toLowerCase()}) Cotas Inteiras`;
+    : quotaAmount % 1 === 0
+    ? `${quotaAmountDecimal} (${intToWordsPT(Math.round(quotaAmount)).toLowerCase()}) Cotas Inteiras`
+    : `${quotaAmountDecimal} (${fractionalInWordsPT(quotaAmount)}) Cotas`;
 
   // ── Reservas ativas (cláusula 3.4) — dinâmico por tipo de cota ──
   const maxReservas = Math.round(quotaAmount * 2);
@@ -512,8 +531,98 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
   const totalQuotasWords = intToWordsPT(totalQuotasNum);
   const totalQuotasDisplay = totalQuotasNum < 10 ? `0${totalQuotasNum}` : String(totalQuotasNum);
 
-  // ── Percentual de posse ──────────────────────────────────────
+  // ── Percentual de posse (firstQuota, fallback) ───────────────
   const percentual = firstQuota.quotaPercentage; // ex: "7,15"
+
+  // ── Resumo por embarcação (cláusulas 2.2, 2.3 e 2.8) ────────
+  const vesselGroupMap = new Map<string, { quotas: typeof data.quotas; totalQuotas: number; monthlyFee: number }>();
+  for (const q of data.quotas) {
+    if (!vesselGroupMap.has(q.boatName)) {
+      vesselGroupMap.set(q.boatName, { quotas: [], totalQuotas: q.totalQuotas, monthlyFee: q.monthlyFee });
+    }
+    vesselGroupMap.get(q.boatName)!.quotas.push(q);
+  }
+  const vesselSummaries = Array.from(vesselGroupMap.entries()).map(([name, vg]) => {
+    const count = vg.quotas.reduce((s, q) => s + (q.quotaType === "Meia Cota" ? 0.5 : 1), 0);
+    const pct = vg.totalQuotas > 0 ? (count / vg.totalQuotas) * 100 : 0;
+    const countDec = count === 0.5 ? "0,5" : count % 1 === 0 ? String(Math.round(count)) : count.toFixed(1).replace(".", ",");
+    const tq = vg.totalQuotas;
+    const mFee = vg.monthlyFee;
+    return {
+      boatName: name,
+      quotaCountDecimal: countDec,
+      percentage: pct.toFixed(2).replace(".", ","),
+      totalQuotasDisplay: tq < 10 ? `0${tq}` : String(tq),
+      totalQuotasWords: intToWordsPT(tq).toLowerCase(),
+      monthlyFee: mFee,
+      monthlyFmt: mFee > 0 ? `${fmtBRL(mFee)} (${numberToWordsPT(mFee)})` : "a negociar",
+    };
+  });
+
+  // Cláusula 2.1.1 — venda de cotas por embarcação (multi-vessel)
+  let clause211quotasText: string;
+  if (vesselSummaries.length <= 1) {
+    clause211quotasText = tipoCotas;
+  } else {
+    const parts211 = vesselSummaries.map(vs => {
+      const count = parseFloat(vs.quotaCountDecimal.replace(",", "."));
+      const label211 = count === 0.5 ? "Meia cota (0,5 quota)"
+        : count === 1 ? "Cota Inteira (1 quota)"
+        : count % 1 === 0
+        ? `${vs.quotaCountDecimal} (${intToWordsPT(Math.round(count)).toLowerCase()}) Cotas Inteiras`
+        : `${vs.quotaCountDecimal} (${fractionalInWordsPT(count)}) Cotas`;
+      return `${label211} da embarcação ${vs.boatName}`;
+    });
+    clause211quotasText = parts211.length === 2
+      ? `${parts211[0]} e ${parts211[1]}`
+      : parts211.slice(0, -1).join(", ") + " e " + parts211[parts211.length - 1];
+  }
+
+  // Cláusula 2.2 — limite e percentual de posse por embarcação
+  let clause22suffix: string;
+  if (vesselSummaries.length <= 1) {
+    const vs = vesselSummaries[0];
+    const tqD = vs?.totalQuotasDisplay ?? totalQuotasDisplay;
+    const tqW = vs?.totalQuotasWords ?? totalQuotasWords.toLowerCase();
+    const qDec = vs?.quotaCountDecimal ?? quotaAmountDecimal;
+    const pct = vs?.percentage ?? percentual;
+    clause22suffix = `O limite máximo é de ${tqD} (${tqW}) quotas para cada sócio usufrutuário. O preço é negociável ao preço de ocasião individualmente por cada quotista. O sócio possuidor/usufrutuário subscreve ${qDec} quota(s) em um total de ${pct}% da posse e do valor da embarcação.`;
+  } else {
+    const joinTwo = (arr: string[], sep = " e ", last = " e ") =>
+      arr.length === 2 ? arr[0] + last + arr[1] : arr.slice(0, -1).join(sep) + last + arr[arr.length - 1];
+    const limiteItems = vesselSummaries.map(vs =>
+      `${vs.totalQuotasDisplay} (${vs.totalQuotasWords}) quotas para a embarcação ${vs.boatName}`);
+    const subscreveItems = vesselSummaries.map(vs =>
+      `${vs.quotaCountDecimal} quota(s) da embarcação ${vs.boatName} (${vs.percentage}% da posse e do valor da embarcação)`);
+    clause22suffix = `O limite máximo é de ${joinTwo(limiteItems, ", ", " e ")} por sócio usufrutuário. O preço é negociável ao preço de ocasião individualmente por cada quotista. O sócio possuidor/usufrutuário subscreve: ${joinTwo(subscreveItems, "; ", " e ")}, do valor das respectivas embarcações.`;
+  }
+
+  // Cláusula 2.3 — taxa mensal por embarcação
+  const totalMonthlyAll = vesselSummaries.reduce((s, vs) => s + vs.monthlyFee, 0);
+  let clause23monthlyText: string;
+  if (vesselSummaries.length <= 1) {
+    clause23monthlyText = vesselSummaries[0]?.monthlyFmt ?? (firstQuota.monthlyFee > 0 ? `${fmtBRL(firstQuota.monthlyFee)} (${numberToWordsPT(firstQuota.monthlyFee)})` : "a negociar");
+  } else {
+    const totalFmt23 = totalMonthlyAll > 0 ? `${fmtBRL(totalMonthlyAll)} (${numberToWordsPT(totalMonthlyAll)})` : "a negociar";
+    const allSame = vesselSummaries.every(vs => Math.abs(vs.monthlyFee - vesselSummaries[0].monthlyFee) < 0.01);
+    if (allSame) {
+      clause23monthlyText = `${totalFmt23} no total (sendo ${vesselSummaries[0].monthlyFmt} por embarcação)`;
+    } else {
+      const items = vesselSummaries.map(vs => `${vs.monthlyFmt} referente à embarcação ${vs.boatName}`);
+      clause23monthlyText = `${totalFmt23} no total (sendo ${items.slice(0, -1).join("; ")} e ${items[items.length - 1]})`;
+    }
+  }
+
+  // Cláusula 2.8 — percentual de devolução por embarcação
+  let clause28devText: string;
+  if (vesselSummaries.length <= 1) {
+    clause28devText = `${vesselSummaries[0]?.percentage ?? percentual}% do valor negociado da embarcação`;
+  } else {
+    const items28 = vesselSummaries.map(vs => `${vs.percentage}% do valor negociado da embarcação ${vs.boatName}`);
+    clause28devText = items28.length === 2
+      ? `${items28[0]} e ${items28[1]}`
+      : items28.slice(0, -1).join(", ") + " e " + items28[items28.length - 1];
+  }
 
   // ── Valores financeiros ──────────────────────────────────────
   const adhesionTotal = data.installments.length > 0
@@ -596,21 +705,21 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
 
     // CLÁUSULA 1
     { type: "h2", content: "CLÁUSULA 1 — OBJETO DO CONTRATO" },
-    { type: "paragraph", content: `1.1 O objeto do presente contrato é o uso compartilhado da seguinte embarcação: 1 (uma) ${boatDesc}, incluindo todos os itens de série e produtos adicionados posteriormente à embarcação.` },
+    { type: "paragraph", content: `1.1 O objeto do presente contrato é o uso compartilhado ${clausula11Prefix}: ${boatDesc}, incluindo todos os itens de série e produtos adicionados posteriormente ${clausula11Suffix}.` },
     { type: "paragraph", content: `A modalidade contratada é de uso compartilhado com outras pessoas que tenham celebrado ou venham a celebrar contrato similar com a EXCLUSIVE CLUB, em cada oportunidade de acordo com as disposições do presente instrumento.` },
     { type: "paragraph", content: `O CONTRATANTE declara estar ciente de que tem de manter-se apto e rigorosamente em dia, bem assim manter em situação regular, com relação a habilitações e autorizações necessárias, nos termos da legislação aplicável, para conduzir e usar embarcação nos termos deste contrato. Cópias autênticas da documentação referente à renovação ou autorização respectivas devem ser entregues à EXCLUSIVE CLUB, assim que disponíveis para o CONTRATANTE, em cada oportunidade.` },
 
     // CLÁUSULA 2
     { type: "h2", content: "CLÁUSULA 2 — OBTENÇÃO DO DIREITO DE POSSE E USO DE EMBARCAÇÃO" },
     { type: "paragraph", content: "2.1 O CONTRATANTE obtém o direito da quota de posse e usufruto da embarcação mediante pagamento à EXCLUSIVE CLUB." },
-    { type: "paragraph", content: `2.1.1 O valor total da aquisição é de ${adhesionFmt}, referente a ${tipoCotas}.\n${parcelasTexto}\nEsse valor é doravante designado "Taxa de adesão". Pode ser negociada individualmente com cada quotista e é anexada ao contrato original.` },
-    { type: "paragraph", content: `2.2 A quota de posse e usufruto tem valor nominal de ${adhesionFmt}. O limite máximo é de ${totalQuotasDisplay} (${totalQuotasWords}) quotas para cada sócio usufrutuário. O preço é negociável ao preço de ocasião individualmente por cada quotista. O sócio possuidor/usufrutuário subscreve ${quotaAmountDecimal} quota(s) em um total de ${percentual}% da posse e do valor da embarcação.` },
-    { type: "paragraph", content: `2.3 O CONTRATANTE permanece com o direito da quota de posse e usufruto enquanto pague mensalmente à EXCLUSIVE CLUB a quantia de ${monthlyFmt}, doravante designada "taxa mensal" (ou "taxas mensais", no plural), com reajuste anual de acordo com o IPCA.` },
+    { type: "paragraph", content: `2.1.1 O valor total da aquisição é de ${adhesionFmt}, referente a ${clause211quotasText}.\n${parcelasTexto}\nEsse valor é doravante designado "Taxa de adesão". Pode ser negociada individualmente com cada quotista e é anexada ao contrato original.` },
+    { type: "paragraph", content: `2.2 A quota de posse e usufruto tem valor nominal de ${adhesionFmt}. ${clause22suffix}` },
+    { type: "paragraph", content: `2.3 O CONTRATANTE permanece com o direito da quota de posse e usufruto enquanto pague mensalmente à EXCLUSIVE CLUB a quantia de ${clause23monthlyText}, doravante designada "taxa mensal" (ou "taxas mensais", no plural), com reajuste anual de acordo com o IPCA.` },
     { type: "paragraph", content: `2.4 A 1ª taxa mensal vence no mesmo dia do mês-calendário imediatamente seguinte ao do pagamento da taxa inicial. As demais taxas mensais vencem no mesmo dia de cada um dos meses-calendário seguintes. Está sujeito às disposições das cláusulas 2.6 e 2.7.` },
     { type: "paragraph", content: `2.5 A taxa mensal deve ser paga no estabelecimento da EXCLUSIVE CLUB (endereço conforme qualificação acima), nas seguintes formas: presencialmente na EXCLUSIVE CLUB; transferência bancária comprovada e confirmada pela EXCLUSIVE CLUB; boletos bancários enviados pela EXCLUSIVE CLUB; PIX fornecido pelo contratado.` },
     { type: "paragraph", content: `2.6 O valor da taxa mensal fica sujeito a correção monetária anual de acordo com a variação, para maior, do Índice Geral de Preços do Mercado (IGP-M), divulgado pela Fundação Getúlio Vargas. Na falta desse índice, é adotado o Índice Nacional de Preços ao Consumidor (INPC), divulgado pela Fundação Instituto Brasileiro de Geografia e Estatística (IBGE). Em caso de falta de ambos, adota-se índice equivalente ou substituto.` },
     { type: "paragraph", content: `2.7 A falta de pagamento, no dia do vencimento, de taxa de adesão e/ou mensal, resulta em: (i) juro à razão de 1% (um por cento) ao mês e (ii) multa na base de 2% (dois por cento). O juro incide a partir do dia seguinte ao do vencimento até o dia do pagamento respectivo. A inadimplência de 30% do valor pago pela taxa de adesão OU 3 taxas mensais acarreta na perda do direito da quota de usufruto da embarcação.` },
-    { type: "paragraph", content: `2.8 As taxas de adesão e/ou mensal não são passíveis de devolução, sob qualquer hipótese. Caso a EXCLUSIVE CLUB desative suas atividades, o CONTRATADO irá devolver ${percentual}% do valor negociado da embarcação.` },
+    { type: "paragraph", content: `2.8 As taxas de adesão e/ou mensal não são passíveis de devolução, sob qualquer hipótese. Caso a EXCLUSIVE CLUB desative suas atividades, o CONTRATADO irá devolver ${clause28devText}.` },
     { type: "paragraph", content: `2.9 O CONTRATANTE pode solicitar a transferência desse contrato para uma terceira parte, desde que: mínimo de 2 (dois) meses de vigência do contrato; CONTRATANTE esteja em conformidade com todas as cláusulas do contrato; CONTRATANTE esteja em dia com as mensalidades; a terceira parte seja aprovada pelo EXCLUSIVE CLUB.` },
 
     // Tabela de parcelas (se houver)
