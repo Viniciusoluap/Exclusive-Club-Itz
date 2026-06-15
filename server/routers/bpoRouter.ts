@@ -1879,21 +1879,73 @@ export const bpoRouter = router({
       if (!db) throw new Error("Database not available");
 
       const today = new Date().toISOString().split('T')[0];
+
+      // Busca todas as cobranças envolvidas
+      const allIds = [input.keepId, ...input.cancelIds.filter(id => id !== input.keepId)];
+      const allCharges = await db.select().from(bpoCharges).where(inArray(bpoCharges.id, allIds));
+
+      const keepCharge = allCharges.find(c => c.id === input.keepId);
+      if (!keepCharge) throw new Error("Cobrança a manter não encontrada");
+
+      const cancelCharges = allCharges.filter(c => c.id !== input.keepId);
+
+      // Extrai dados de pagamento das cobranças a cancelar (PIX recebido, etc.)
+      let bestPaidDate: string | null = null;
+      let bestAmountPaid: string | null = null;
+      const mergedPaymentLinks: string[] = [];
+
+      for (const cc of cancelCharges) {
+        if (cc.paidDate && !bestPaidDate) bestPaidDate = cc.paidDate;
+        if (cc.amountPaid && parseFloat(String(cc.amountPaid)) > 0 && !bestAmountPaid) {
+          bestAmountPaid = String(cc.amountPaid);
+        }
+        if (cc.paymentLinks) {
+          try {
+            const links = JSON.parse(cc.paymentLinks);
+            if (Array.isArray(links)) mergedPaymentLinks.push(...links);
+          } catch {}
+        }
+      }
+
+      // Mantém dados do keep se já estiver pago, senão usa os das canceladas
+      const paidDate = keepCharge.paidDate || bestPaidDate || today;
+      const amountPaid = (keepCharge.amountPaid && parseFloat(String(keepCharge.amountPaid)) > 0)
+        ? String(keepCharge.amountPaid)
+        : bestAmountPaid || String(keepCharge.value);
+
+      // Mescla os payment links
+      const existingLinks: string[] = [];
+      if (keepCharge.paymentLinks) {
+        try {
+          const pl = JSON.parse(keepCharge.paymentLinks);
+          if (Array.isArray(pl)) existingLinks.push(...pl);
+        } catch {}
+      }
+      const allLinks = [...new Set([...existingLinks, ...mergedPaymentLinks])];
+
+      // Atualiza a cobrança mantida para receivedInCash com os dados de pagamento mesclados
+      await db.update(bpoCharges).set({
+        status: 'receivedInCash',
+        paidDate,
+        amountPaid: parseFloat(amountPaid || String(keepCharge.value)).toFixed(2),
+        classifiedBy: 'manual',
+        ...(allLinks.length > 0 ? { paymentLinks: JSON.stringify(allLinks) } : {}),
+      }).where(eq(bpoCharges.id, input.keepId));
+
+      // Cancela as duplicatas com nota de mesclagem
       let cancelled = 0;
-      for (const cid of input.cancelIds) {
-        if (cid === input.keepId) continue;
-        const rows = await db.select({ description: bpoCharges.description }).from(bpoCharges).where(eq(bpoCharges.id, cid)).limit(1);
-        if (rows.length === 0) continue;
-        const note = `[Duplicata cancelada em ${today} — mantida cobrança #${input.keepId}]`;
-        const newDesc = `${rows[0].description || ''} ${note}`.trim();
+      for (const cc of cancelCharges) {
+        const note = `[Mesclado em ${today} — pagamento atribuído à cobrança #${input.keepId}]`;
+        const newDesc = `${cc.description || ''} ${note}`.trim();
         await db.update(bpoCharges).set({
           status: 'cancelled',
           classifiedBy: 'manual',
           description: newDesc,
-        }).where(eq(bpoCharges.id, cid));
+        }).where(eq(bpoCharges.id, cc.id));
         cancelled++;
       }
-      return { success: true, cancelled, message: `${cancelled} duplicata(s) cancelada(s)` };
+
+      return { success: true, cancelled, message: `Pagamento mesclado: ${cancelled} duplicata(s) cancelada(s), baixa dada na cobrança #${input.keepId}` };
     }),
 
   // ============================================================
