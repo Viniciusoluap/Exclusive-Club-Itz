@@ -4591,25 +4591,47 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
           // Sincronizar com bpo_charges
           try {
-            const { syncStatusToSources } = await import('./routers/bpoRouter');
-            // Usar syncStatusToSources para atualizar inspection_charges já está feito acima,
-            // aqui só precisamos atualizar bpo_charges pelo asaas_charge_id
+            const chargeType = charge.charge_type === 'repair' ? 'repair' : 'inspection';
+            const chargeValue = parseFloat(String(charge.amount || 0));
+            const dueDate = charge.due_date ? String(charge.due_date).substring(0, 10) : '';
+
+            // 1. Atualizar pelo asaas_charge_id (campo mais confiável)
             if (charge.asaas_charge_id) {
-              // Atualizar bpo_charges pelo asaas_charge_id (campo mais confiável)
               const safeId = String(charge.asaas_charge_id).replace(/'/g, '');
               await db.execute(sql.raw(`
                 UPDATE bpo_charges
-                SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
+                SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
                 WHERE asaas_charge_id = '${safeId}'
               `));
-            } else if (charge.client_email) {
-              // Fallback: atualizar pelo email + tipo + valor (sem asaas_charge_id)
+            }
+
+            // 2. Fallback por client_id (busca o cliente pelo email no cadastro)
+            if (charge.client_email) {
               const safeEmail = String(charge.client_email).replace(/'/g, "''");
-              const chargeType = charge.charge_type === 'repair' ? 'repair' : 'inspection';
-              const chargeValue = parseFloat(String(charge.amount || 0));
+
+              // Tenta obter client_id via allowed_clients
+              const clientRow = await db.execute(sql.raw(`
+                SELECT id FROM allowed_clients WHERE LOWER(email) = LOWER('${safeEmail}') LIMIT 1
+              `)) as any;
+              const clientId = (Array.isArray(clientRow[0]) ? clientRow[0][0] : clientRow[0])?.id ?? null;
+
+              if (clientId) {
+                const dueDateFilter = dueDate ? `AND due_date LIKE '${dueDate}%'` : '';
+                await db.execute(sql.raw(`
+                  UPDATE bpo_charges
+                  SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
+                  WHERE client_id = ${clientId}
+                    AND type = '${chargeType}'
+                    AND ABS(CAST(value AS DECIMAL(10,2)) - ${chargeValue}) < 0.02
+                    ${dueDateFilter}
+                    AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
+                `));
+              }
+
+              // 3. Fallback por email direto (quando client_id não encontrado)
               await db.execute(sql.raw(`
                 UPDATE bpo_charges
-                SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
+                SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
                 WHERE LOWER(client_email) = LOWER('${safeEmail}')
                   AND type = '${chargeType}'
                   AND ABS(CAST(value AS DECIMAL(10,2)) - ${chargeValue}) < 0.02
