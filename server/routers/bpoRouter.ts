@@ -734,6 +734,15 @@ export const bpoRouter = router({
       }
     }
 
+    // Proteção retroativa: cobranças já pagas (receivedInCash/received/confirmed)
+    // sem classified_by = 'manual' ficam vulneráveis ao sync. Corrige em lote.
+    await db.execute(sql.raw(`
+      UPDATE bpo_charges
+      SET classified_by = 'manual'
+      WHERE status IN ('receivedInCash', 'received', 'confirmed', 'partiallyPaid')
+        AND (classified_by IS NULL OR classified_by != 'manual')
+    `));
+
     return report;
   }),
 
@@ -1840,11 +1849,18 @@ export const bpoRouter = router({
           await cancelCharge(charge.asaasChargeId);
         } catch (err) {
           console.warn("[bpo.deleteCharge] Falha ao cancelar no Asaas:", err);
-          // Continua mesmo se falhar no Asaas
         }
       }
 
-      await db.delete(bpoCharges).where(eq(bpoCharges.id, input.chargeId));
+      if (charge.asaasChargeId) {
+        // Soft-delete: marca como cancelada + manual para não ser re-importada pelo sync Asaas
+        await db.update(bpoCharges)
+          .set({ status: 'cancelled', classifiedBy: 'manual' })
+          .where(eq(bpoCharges.id, input.chargeId));
+      } else {
+        // Sem asaas_charge_id: pode apagar fisicamente (não será re-importada)
+        await db.delete(bpoCharges).where(eq(bpoCharges.id, input.chargeId));
+      }
 
       return { success: true, message: "Cobrança excluída com sucesso" };
     }),
@@ -1866,7 +1882,13 @@ export const bpoRouter = router({
         if (input.cancelInAsaas && charge.asaasChargeId) {
           try { await cancelCharge(charge.asaasChargeId); } catch {}
         }
-        await db.delete(bpoCharges).where(eq(bpoCharges.id, chargeId));
+        if (charge.asaasChargeId) {
+          await db.update(bpoCharges)
+            .set({ status: 'cancelled', classifiedBy: 'manual' })
+            .where(eq(bpoCharges.id, chargeId));
+        } else {
+          await db.delete(bpoCharges).where(eq(bpoCharges.id, chargeId));
+        }
         deleted++;
       }
       return { success: true, deleted, message: `${deleted} cobrança(s) excluída(s)` };
@@ -1996,6 +2018,7 @@ export const bpoRouter = router({
           status: "receivedInCash",
           amountPaid: String(paidValue),
           paidDate: paymentDate,
+          classifiedBy: "manual",
         })
         .where(eq(bpoCharges.id, input.chargeId));
 
