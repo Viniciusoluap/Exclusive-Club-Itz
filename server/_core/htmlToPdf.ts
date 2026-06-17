@@ -482,7 +482,7 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
   };
 
   // ── Dados da embarcação — suporte a múltiplas embarcações ───
-  const uniqueVesselNames = [...new Set(data.quotas.map(q => q.boatName).filter(Boolean))];
+  const uniqueVesselNames = Array.from(new Set(data.quotas.map(q => q.boatName).filter(Boolean)));
   const isMultiVessel = uniqueVesselNames.length > 1;
   const vesselParts = uniqueVesselNames.map(name => `1 (uma) ${name}`);
   const boatDesc = vesselParts.length === 0
