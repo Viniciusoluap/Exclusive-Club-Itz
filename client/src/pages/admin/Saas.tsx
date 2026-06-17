@@ -393,7 +393,7 @@ export default function Saas() {
       ]),
       styles: { fontSize: 7.5 },
       headStyles: { fillColor: [20, 184, 166] },
-      didAddPage: async (data) => {
+      didDrawPage: () => {
         const pg = (doc as any).internal.getNumberOfPages();
         if (pg > 1) {
           doc.setFillColor(10, 61, 107);
@@ -2784,7 +2784,7 @@ function ExpensesTab() {
       body,
       styles: { fontSize: 7.5 },
       headStyles: { fillColor: [79, 70, 229] },
-      didAddPage: () => {
+      didDrawPage: () => {
         const pg = (doc as any).internal.getNumberOfPages();
         if (pg > 1) {
           doc.setFillColor(10, 61, 107);
