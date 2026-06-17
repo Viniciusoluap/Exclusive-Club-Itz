@@ -2549,6 +2549,35 @@ export const bpoRouter = router({
       }
     }
 
+    // Retroactive status sync: atualiza bpo_charges existentes cujo status diverge da inspection_charge
+    const statusSyncRaw = await db.execute(sql.raw(`
+      SELECT bc.id AS bpoId, bc.status AS bpoStatus, ic.payment_status AS icStatus
+      FROM bpo_charges bc
+      JOIN inspection_charges ic ON ic.asaas_charge_id = bc.asaas_charge_id
+      WHERE ic.asaas_charge_id IS NOT NULL
+        AND (
+          (ic.payment_status = 'paid'    AND bc.status NOT IN ('receivedInCash','received','confirmed','cancelled'))
+          OR
+          (ic.payment_status = 'overdue' AND bc.status = 'pending')
+        )
+    `)) as any;
+    const statusSyncs: any[] = Array.isArray(statusSyncRaw[0]) ? statusSyncRaw[0] : statusSyncRaw;
+    let statusSynced = 0;
+    for (const row of statusSyncs) {
+      try {
+        const newStatus = row.icStatus === 'paid' ? 'receivedInCash' : 'overdue';
+        const paidClause = row.icStatus === 'paid' ? `, paid_date = CURDATE()` : '';
+        await db.execute(sql.raw(`
+          UPDATE bpo_charges
+          SET status = '${newStatus}'${paidClause}, classified_by = 'manual', synced_at = NOW()
+          WHERE id = ${row.bpoId}
+        `));
+        statusSynced++;
+      } catch (err: any) {
+        errors.push(`statusSync#${row.bpoId}: ${err.message}`);
+      }
+    }
+
     // Retroactive fix: criar saldo devedor para cobranças partiallyPaid sem saldo devedor
     const partialRaw = await db.execute(sql.raw(`
       SELECT bc.id, bc.value, bc.amount_paid AS amountPaid, bc.due_date AS dueDate,
@@ -2586,6 +2615,6 @@ export const bpoRouter = router({
       }
     }
 
-    return { total: orphans.length, synced, errors, retroSynced, retroTotal: partials.length };
+    return { total: orphans.length, synced, errors, retroSynced, retroTotal: partials.length, statusSynced };
   }),
 });
