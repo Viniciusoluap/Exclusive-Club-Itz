@@ -12,7 +12,7 @@ import { getDb } from "./db";
 import { listAllAsaasCharges } from "./_core/asaasService";
 import { bpoCharges } from "../drizzle/schema";
 import { normalizeBpoStatus, autoClassifyCharge } from "./routers/bpoRouter";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: auto-classificar despesa por palavras-chave
@@ -92,7 +92,7 @@ async function runSyncIncrementalBPO(): Promise<void> {
             .limit(1);
 
           if (existing.length > 0) {
-            // Atualizar status + datas
+            // Atualizar status + datas APENAS se não foi classificado/excluído manualmente
             await db
               .update(bpoCharges)
               .set({
@@ -103,7 +103,10 @@ async function runSyncIncrementalBPO(): Promise<void> {
                 syncedAt: sql`NOW()`,
                 source: "asaas_webhook",
               })
-              .where(eq(bpoCharges.asaasChargeId, charge.id));
+              .where(and(
+                eq(bpoCharges.asaasChargeId, charge.id),
+                sql`(${bpoCharges.classifiedBy} IS NULL OR ${bpoCharges.classifiedBy} != 'manual')`
+              ));
             updated++;
           } else {
             // Inserir nova cobrança com tipo e classificação já definidos
