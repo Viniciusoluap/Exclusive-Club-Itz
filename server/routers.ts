@@ -4106,12 +4106,13 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 COALESCE(i.client_email, b.client_email) as client_email,
                 v.name as vessel_name,
                 ac.id as client_id,
+                ac.name as ac_client_name,
                 ac.cpf_cnpj as client_cpf_cnpj,
                 ac.phone as client_phone
               FROM inspections i
               LEFT JOIN bookings b ON i.booking_id = b.id
               JOIN vessels v ON i.vessel_id = v.id
-              LEFT JOIN allowed_clients ac ON COALESCE(i.client_email, b.client_email) = ac.email
+              LEFT JOIN allowed_clients ac ON LOWER(TRIM(COALESCE(i.client_email, b.client_email))) = LOWER(TRIM(ac.email))
               WHERE i.id = ${input.inspectionId}
             `)) as any;
             
@@ -4137,8 +4138,9 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             }
 
             // Buscar/criar customer no Asaas (versão robusta com cache e CPF/CNPJ)
+            const resolvedClientName = inspection.ac_client_name || inspection.client_name || null;
             const customer = await getOrCreateAsaasCustomer({
-              name: inspection.client_name || inspection.client_email,
+              name: resolvedClientName || inspection.client_email,
               email: inspection.client_email,
               cpfCnpj: inspection.client_cpf_cnpj,
               phone: inspection.client_phone,
@@ -4179,17 +4181,17 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                 (${JSON.stringify(asaasCharge.id)},
                  ${JSON.stringify(customer.id)},
                  ${inspection.client_id ?? 'NULL'},
-                 ${inspection.client_name ? JSON.stringify(inspection.client_name) : 'NULL'},
+                 ${resolvedClientName ? JSON.stringify(resolvedClientName) : 'NULL'},
                  ${JSON.stringify(inspection.client_email)},
                  ${parseFloat(input.amount.toString()).toFixed(2)},
                  ${JSON.stringify(dueDateStr)},
-                 'pending', 'inspection', 'manual', 'PIX',
+                 'pending', 'repair', 'manual', 'PIX',
                  ${JSON.stringify(`Conserto de Danos - Vistoria ${new Date(inspection.created_at).toLocaleDateString('pt-BR')}`)},
                  ${asaasCharge.invoiceUrl ? JSON.stringify(asaasCharge.invoiceUrl) : 'NULL'},
                  ${asaasCharge.invoiceUrl ? JSON.stringify(asaasCharge.invoiceUrl) : 'NULL'},
                  'manual')
               ON DUPLICATE KEY UPDATE
-                type = 'inspection',
+                type = 'repair',
                 classified_by = 'manual',
                 client_id = COALESCE(VALUES(client_id), client_id),
                 client_name = COALESCE(VALUES(client_name), client_name),
@@ -4591,7 +4593,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
           // Sincronizar com bpo_charges
           try {
-            const chargeType = charge.charge_type === 'repair' ? 'repair' : 'inspection';
+            const chargeType = 'repair';
             const chargeValue = parseFloat(String(charge.amount || 0));
             const dueDate = charge.due_date ? String(charge.due_date).substring(0, 10) : '';
 
