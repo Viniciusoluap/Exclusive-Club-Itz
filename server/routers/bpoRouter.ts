@@ -2538,7 +2538,7 @@ export const bpoRouter = router({
           ? String(ic.due_date).substring(0, 10)
           : new Date().toISOString().substring(0, 10);
         const bpoStatus = statusMap[ic.payment_status] ?? 'pending';
-        const bpoType = ic.charge_type === 'repair' ? 'repair' : 'inspection';
+        const bpoType = 'repair';
         const value = parseFloat(ic.amount || '0').toFixed(2);
 
         await db.execute(sql.raw(`
@@ -2637,6 +2637,28 @@ export const bpoRouter = router({
         errors.push(`saldo#${p.id}: ${err.message}`);
       }
     }
+
+    // Retroactive fix: corrige bpo_charges com type='inspection' que deveriam ser 'repair'
+    try {
+      await db.execute(sql.raw(`
+        UPDATE bpo_charges bc
+        JOIN inspection_charges ic ON ic.asaas_charge_id = bc.asaas_charge_id
+        SET bc.type = 'repair', bc.classified_by = 'manual'
+        WHERE bc.type = 'inspection' AND ic.asaas_charge_id IS NOT NULL
+      `));
+    } catch (err: any) { errors.push(`typefix: ${err.message}`); }
+
+    // Retroactive fix: corrige client_name/client_id usando allowed_clients como fonte autoritativa
+    try {
+      await db.execute(sql.raw(`
+        UPDATE bpo_charges bc
+        JOIN inspection_charges ic ON ic.asaas_charge_id = bc.asaas_charge_id
+        JOIN allowed_clients ac ON LOWER(TRIM(ac.email)) = LOWER(TRIM(ic.client_email))
+        SET bc.client_id = ac.id, bc.client_name = ac.name, bc.client_email = ac.email
+        WHERE ic.asaas_charge_id IS NOT NULL
+          AND (bc.client_name IS NULL OR bc.client_id IS NULL OR bc.client_name NOT LIKE '% %')
+      `));
+    } catch (err: any) { errors.push(`namefix: ${err.message}`); }
 
     return { total: orphans.length, synced, errors, retroSynced, retroTotal: partials.length, statusSynced };
   }),
