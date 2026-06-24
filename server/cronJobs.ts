@@ -69,6 +69,29 @@ async function runSyncIncrementalBPO(): Promise<void> {
       if (client) clientMap.set(asaasId, client);
     }
 
+    // Clientes cujas TODAS as cobranças foram canceladas manualmente pelo admin.
+    // Novas cobranças desses clientes (novos IDs de assinatura Asaas) são
+    // inseridas automaticamente como cancelled+manual para não reaparecer no BPO.
+    const fullyRemovedCustomers = new Set<string>();
+    try {
+      const removedRaw = await db.execute(sql.raw(`
+        SELECT asaas_customer_id
+        FROM bpo_charges
+        WHERE asaas_customer_id IS NOT NULL
+        GROUP BY asaas_customer_id
+        HAVING
+          SUM(CASE WHEN status != 'cancelled' THEN 1 ELSE 0 END) = 0
+          AND SUM(CASE WHEN status = 'cancelled' AND classified_by = 'manual' THEN 1 ELSE 0 END) > 0
+      `)) as any;
+      const removedRows = Array.isArray(removedRaw[0]) ? removedRaw[0] : removedRaw;
+      for (const row of (Array.isArray(removedRows) ? removedRows : [])) {
+        if (row?.asaas_customer_id) fullyRemovedCustomers.add(row.asaas_customer_id);
+      }
+      if (fullyRemovedCustomers.size > 0) {
+        console.log(`[CronJob syncIncremental] ${fullyRemovedCustomers.size} clientes completamente removidos — novas cobranças serão auto-canceladas`);
+      }
+    } catch (e) { /* non-critical */ }
+
     while (hasMore) {
       const { charges: batch, hasMore: more } = await listAllAsaasCharges({
         limit: 100,
@@ -116,6 +139,14 @@ async function runSyncIncrementalBPO(): Promise<void> {
             const { type: chargeType, classifiedBy: chargeClassifiedBy } = isConsolidated
               ? { type: 'other' as const, classifiedBy: 'manual' as const }
               : autoClassifyCharge(charge.description ?? null, charge.externalReference ?? null);
+
+            // Se o cliente foi completamente removido pelo admin (todas as cobranças
+            // anteriores estão cancelled+manual), inserir esta nova cobrança também
+            // como cancelled+manual para que não reapareça no BPO.
+            const customerFullyRemoved = fullyRemovedCustomers.has(charge.customer);
+            const insertStatus = customerFullyRemoved ? 'cancelled' : newStatus;
+            const insertClassifiedBy = customerFullyRemoved ? 'manual' : chargeClassifiedBy;
+
             await db.insert(bpoCharges).values({
               asaasChargeId: charge.id,
               asaasCustomerId: charge.customer,
@@ -127,9 +158,9 @@ async function runSyncIncrementalBPO(): Promise<void> {
               amountPaid: isPaid ? String(charge.value) : "0",
               dueDate: charge.dueDate,
               paidDate: (charge as any).paymentDate || null,
-              status: newStatus,
+              status: insertStatus,
               type: chargeType,
-              classifiedBy: chargeClassifiedBy,
+              classifiedBy: insertClassifiedBy,
               billingType: charge.billingType || null,
               description: charge.description || null,
               externalReference: charge.externalReference || null,
