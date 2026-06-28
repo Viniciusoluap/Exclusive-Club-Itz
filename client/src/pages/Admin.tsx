@@ -23,8 +23,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Bell, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, FileText, Fuel, HardDrive, Loader2, Menu, Pencil, Plus, Send, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
-import { useState } from "react";
+import { BarChart3, Bell, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, FileText, Fuel, HardDrive, Loader2, Menu, Pencil, Plus, Search, Send, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import ReportsTab from "@/components/ReportsTab";
@@ -253,6 +253,8 @@ export default function Admin() {
   // Booking Management State
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [bookingTimeFilter, setBookingTimeFilter] = useState<"future" | "past">("future");
+  const [bookingLimit, setBookingLimit] = useState<14 | null>(14);
+  const [bookingSearch, setBookingSearch] = useState("");
   const [bookingForm, setBookingForm] = useState({
     clientEmail: "",
     vesselId: 0,
@@ -284,6 +286,23 @@ export default function Admin() {
       enabled: isAuthenticated && user?.role === "admin",
     }
   );
+
+  const filteredBookings = useMemo(() => {
+    let result = bookings ?? [];
+    if (bookingSearch.trim()) {
+      const q = bookingSearch.toLowerCase().trim();
+      result = result.filter(b =>
+        b.clientName?.toLowerCase().includes(q) ||
+        b.clientEmail?.toLowerCase().includes(q) ||
+        b.vesselName?.toLowerCase().includes(q)
+      );
+      return result; // busca ativa: sem limite, mostra todos os resultados
+    }
+    if (bookingLimit !== null) {
+      result = result.slice(0, bookingLimit);
+    }
+    return result;
+  }, [bookings, bookingSearch, bookingLimit]);
 
   // Mutations
   const createClient = trpc.allowedClients.create.useMutation({
@@ -1095,22 +1114,74 @@ export default function Admin() {
                   </Button>
                 </div>
                 
-                {/* Filtro de tempo */}
-                <div className="flex items-center gap-2">
+                {/* Filtros */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Filtro futuras/passadas */}
                   <Button
                     variant={bookingTimeFilter === "future" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setBookingTimeFilter("future")}
+                    onClick={() => { setBookingTimeFilter("future"); setBookingLimit(14); setBookingSearch(""); }}
                   >
                     📅 Futuras
                   </Button>
                   <Button
                     variant={bookingTimeFilter === "past" ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setBookingTimeFilter("past")}
+                    onClick={() => { setBookingTimeFilter("past"); setBookingLimit(14); setBookingSearch(""); }}
                   >
                     📜 Reservas Passadas
                   </Button>
+
+                  <div className="w-px h-5 bg-border mx-1" />
+
+                  {/* Botão Todas / Próximas-Últimas 14 */}
+                  <Button
+                    variant={bookingLimit === null ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setBookingLimit(null)}
+                  >
+                    Mostrar Todas
+                  </Button>
+                  <Button
+                    variant={bookingLimit === 14 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setBookingLimit(14)}
+                  >
+                    {bookingTimeFilter === "future" ? "Próximas 14" : "Últimas 14"}
+                  </Button>
+
+                  <div className="w-px h-5 bg-border mx-1" />
+
+                  {/* Busca */}
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                    <input
+                      className="pl-7 pr-3 py-1 text-sm border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary w-44"
+                      placeholder="Buscar reserva..."
+                      value={bookingSearch}
+                      onChange={e => setBookingSearch(e.target.value)}
+                    />
+                    {bookingSearch && (
+                      <button
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setBookingSearch("")}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Contador */}
+                  {!bookingsLoading && bookings && (
+                    <span className="text-xs text-muted-foreground">
+                      {bookingSearch.trim()
+                        ? `${filteredBookings.length} resultado(s)`
+                        : bookingLimit !== null && bookings.length > bookingLimit
+                          ? `${filteredBookings.length} de ${bookings.length}`
+                          : `${bookings.length} reserva(s)`
+                      }
+                    </span>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -1118,9 +1189,9 @@ export default function Admin() {
                   <div className="flex justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
-                ) : bookings && bookings.length > 0 ? (
+                ) : filteredBookings.length > 0 ? (
                   <div className="space-y-2">
-                    {bookings.map((booking) => (
+                    {filteredBookings.map((booking) => (
                       <div
                         key={booking.id}
                         className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg gap-2"
@@ -1200,7 +1271,12 @@ export default function Admin() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-muted-foreground py-8">Nenhuma reserva encontrada</p>
+                  <p className="text-center text-muted-foreground py-8">
+                    {bookingSearch.trim()
+                      ? `Nenhuma reserva encontrada para "${bookingSearch}"`
+                      : "Nenhuma reserva encontrada"
+                    }
+                  </p>
                 )}
               </CardContent>
             </Card>
