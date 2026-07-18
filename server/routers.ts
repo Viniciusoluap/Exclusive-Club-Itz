@@ -778,16 +778,6 @@ export const appRouter = router({
           });
         }
 
-        // Check if it's a Monday (not allowed)
-        const bookingDate = new Date(input.bookingDate);
-        const dayOfWeek = bookingDate.getUTCDay();
-        if (dayOfWeek === 1) { // 1 = Monday
-          throw new TRPCError({ 
-            code: 'BAD_REQUEST', 
-            message: 'Reservas não são permitidas às segundas-feiras' 
-          });
-        }
-
         // Check if vessel is under maintenance for this date
         const maintenances = await db.getActiveMaintenancesByVesselAndDate(input.vesselId, input.bookingDate);
         if (maintenances.length > 0) {
@@ -2175,8 +2165,29 @@ Nenhuma reserva foi afetada.
         const db = await import('./db').then(m => m.getDb());
         if (!db) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database not available' });
 
-        let query = `
-          SELECT 
+        const { sql: sqlTag } = await import('drizzle-orm');
+
+        const conditions: any[] = [];
+        if (input.vesselId) {
+          conditions.push(sqlTag`vessel_id = ${input.vesselId}`);
+        }
+        if (input.month && input.year) {
+          conditions.push(sqlTag`MONTH(created_at) = ${Number(input.month)}`);
+          conditions.push(sqlTag`YEAR(created_at) = ${Number(input.year)}`);
+        } else {
+          if (input.startDate) {
+            conditions.push(sqlTag`created_at >= FROM_UNIXTIME(${input.startDate / 1000})`);
+          }
+          if (input.endDate) {
+            conditions.push(sqlTag`created_at <= FROM_UNIXTIME(${input.endDate / 1000})`);
+          }
+        }
+        const whereClause = conditions.length > 0
+          ? sqlTag`WHERE ${sqlTag.join(conditions, sqlTag` AND `)}`
+          : sqlTag``;
+
+        const result = await db.execute(sqlTag`
+          SELECT
             COUNT(*) as total_records,
             SUM(liters) as total_liters,
             SUM(total_amount) as total_cost,
@@ -2185,34 +2196,8 @@ Nenhuma reserva foi afetada.
             SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) as total_received,
             SUM(CASE WHEN payment_status = 'pending' THEN total_amount ELSE 0 END) as total_pending
           FROM fuel_records
-          WHERE 1=1
-        `;
-        const params: any[] = [];
-
-        if (input.vesselId) {
-          query += ' AND vessel_id = ?';
-          params.push(input.vesselId);
-        }
-
-        // Se month e year forem fornecidos, filtrar por mês/ano
-        if (input.month && input.year) {
-          query += ` AND MONTH(created_at) = ${input.month}`;
-          query += ` AND YEAR(created_at) = ${input.year}`;
-        } else {
-          // Caso contrário, usar startDate/endDate se fornecidos
-          if (input.startDate) {
-            query += ' AND created_at >= FROM_UNIXTIME(?)';
-            params.push(input.startDate / 1000);
-          }
-
-          if (input.endDate) {
-            query += ' AND created_at <= FROM_UNIXTIME(?)';
-            params.push(input.endDate / 1000);
-          }
-        }
-
-        const { sql: sqlTag } = await import('drizzle-orm');
-        const result = await db.execute(sqlTag.raw(query)) as any;
+          ${whereClause}
+        `) as any;
         const stats = (Array.isArray(result[0]) ? result[0][0] : result[0]);
 
         return {
@@ -2526,71 +2511,68 @@ Nenhuma reserva foi afetada.
             const dueDateStr = rec.due_date ? new Date(rec.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
             const valueInReais = ((rec.total_amount || 0) / 100).toFixed(2);
             const valueNum = parseFloat(valueInReais);
-            const safeEmail = rec.client_email ? String(rec.client_email).replace(/'/g, "''") : null;
-            const safeAsaasId = rec.asaas_charge_id ? String(rec.asaas_charge_id).replace(/'/g, '') : null;
+            const clientEmail = rec.client_email ? String(rec.client_email) : null;
+            const asaasId = rec.asaas_charge_id ? String(rec.asaas_charge_id) : null;
 
             let rowsUpdated = 0;
 
             // 1. Pelo asaas_charge_id (mais preciso)
-            if (safeAsaasId) {
-              const [r] = (await db.execute(drizzleSql.raw(`
+            if (asaasId) {
+              const [r] = (await db.execute(drizzleSql`
                 UPDATE bpo_charges
                 SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
-                WHERE asaas_charge_id = '${safeAsaasId}'
+                WHERE asaas_charge_id = ${asaasId}
                   AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
-              `))) as any;
+              `)) as any;
               rowsUpdated += r?.affectedRows ?? 0;
             }
 
             // 2. Fallback por email (case-insensitive) + tipo + valor com margem
-            if (rowsUpdated === 0 && safeEmail && valueNum > 0) {
-              const [r2] = (await db.execute(drizzleSql.raw(`
+            if (rowsUpdated === 0 && clientEmail && valueNum > 0) {
+              const [r2] = (await db.execute(drizzleSql`
                 UPDATE bpo_charges
                 SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
                 WHERE type = 'fuel'
-                  AND LOWER(client_email) = LOWER('${safeEmail}')
+                  AND LOWER(client_email) = LOWER(${clientEmail})
                   AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
                   AND ABS(CAST(value AS DECIMAL(10,2)) - ${valueNum}) < 0.02
-                ORDER BY ABS(DATEDIFF(due_date, '${dueDateStr}')) ASC
+                ORDER BY ABS(DATEDIFF(due_date, ${dueDateStr})) ASC
                 LIMIT 1
-              `))) as any;
+              `)) as any;
               rowsUpdated += r2?.affectedRows ?? 0;
             }
 
             // 3. Fallback amplo: qualquer fuel pendente/vencido do mesmo cliente (sem restrição de valor)
-            if (rowsUpdated === 0 && safeEmail) {
-              const [r3] = (await db.execute(drizzleSql.raw(`
+            if (rowsUpdated === 0 && clientEmail) {
+              const [r3] = (await db.execute(drizzleSql`
                 UPDATE bpo_charges
                 SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
                 WHERE type = 'fuel'
-                  AND LOWER(client_email) = LOWER('${safeEmail}')
+                  AND LOWER(client_email) = LOWER(${clientEmail})
                   AND status IN ('pending', 'overdue')
-                ORDER BY ABS(DATEDIFF(due_date, '${dueDateStr}')) ASC
+                ORDER BY ABS(DATEDIFF(due_date, ${dueDateStr})) ASC
                 LIMIT 1
-              `))) as any;
+              `)) as any;
               rowsUpdated += r3?.affectedRows ?? 0;
             }
 
             // 4. Nenhum registro encontrado — inserir como baixa manual para rastreio
             if (rowsUpdated === 0) {
-              const safeName = (rec.client_name || '').replace(/'/g, "''");
-              const safeDesc = `Abastecimento - Baixa manual (ID: ${input.id})`.replace(/'/g, "''");
-              const asaasIdSql = safeAsaasId ? `'${safeAsaasId}'` : 'NULL';
-              const emailSql = safeEmail ? `'${safeEmail}'` : 'NULL';
-              const nameSql = safeName ? `'${safeName}'` : 'NULL';
-              await db.execute(drizzleSql.raw(`
+              const clientName = rec.client_name || null;
+              const safeDesc = `Abastecimento - Baixa manual (ID: ${input.id})`;
+              await db.execute(drizzleSql`
                 INSERT INTO bpo_charges (
                   asaas_charge_id, client_name, client_email,
                   value, due_date, status, type, classified_by,
                   billing_type, description, source, synced_at
                 ) VALUES (
-                  ${asaasIdSql}, ${nameSql}, ${emailSql},
-                  ${valueInReais}, '${dueDateStr}', 'receivedInCash', 'fuel', 'manual',
-                  'PIX', '${safeDesc}', 'manual', NOW()
+                  ${asaasId}, ${clientName}, ${clientEmail},
+                  ${valueInReais}, ${dueDateStr}, 'receivedInCash', 'fuel', 'manual',
+                  'PIX', ${safeDesc}, 'manual', NOW()
                 )
                 ON DUPLICATE KEY UPDATE
                   status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
-              `));
+              `);
             }
           } catch (bpoErr: any) {
             console.warn('[fuelRecords.markAsPaid] Falha ao sincronizar bpo_charges:', bpoErr.message);
@@ -2599,9 +2581,9 @@ Nenhuma reserva foi afetada.
           return { success: true, message: 'Pagamento marcado como recebido' };
         } catch (error: any) {
           console.error('[markAsPaid] Erro:', error);
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR', 
-            message: `Erro ao marcar pagamento: ${error.message}` 
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Erro ao marcar pagamento. Tente novamente.'
           });
         }
       }),
@@ -4393,28 +4375,30 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           const { sql } = await import('drizzle-orm');
           
           // Filtros na subquery interna (usa effective_status calculado)
-          const innerFilters: string[] = [];
+          const innerConditions: any[] = [];
           if (input?.month) {
-            innerFilters.push(`MONTH(ic.due_date) = ${parseInt(input.month)}`);
+            innerConditions.push(sql`MONTH(ic.due_date) = ${parseInt(input.month)}`);
           }
           if (input?.year) {
-            innerFilters.push(`YEAR(ic.due_date) = ${parseInt(input.year)}`);
+            innerConditions.push(sql`YEAR(ic.due_date) = ${parseInt(input.year)}`);
           }
           if (input?.clientSearch && input.clientSearch.trim()) {
-            const escaped = input.clientSearch.replace(/'/g, "''");
-            innerFilters.push(`(ic.client_email LIKE '%${escaped}%' OR ac.name LIKE '%${escaped}%')`);
+            const searchPattern = `%${input.clientSearch.trim()}%`;
+            innerConditions.push(sql`(ic.client_email LIKE ${searchPattern} OR ac.name LIKE ${searchPattern})`);
           }
-          const innerWhere = innerFilters.length > 0 ? `WHERE ${innerFilters.join(' AND ')}` : '';
+          const innerWhere = innerConditions.length > 0
+            ? sql`WHERE ${sql.join(innerConditions, sql` AND `)}`
+            : sql``;
 
           // Filtro de status aplicado APÓS calcular effective_status
           const statusFilter = (input?.status && input.status !== 'all')
-            ? `WHERE effective_status = '${input.status}'`
-            : '';
+            ? sql`WHERE effective_status = ${input.status}`
+            : sql``;
 
-          const result = await db.execute(sql.raw(`
+          const result = await db.execute(sql`
             SELECT *
             FROM (
-              SELECT 
+              SELECT
                 ic.*,
                 COALESCE(ac.name, ic.client_email) AS client_name,
                 CASE
@@ -4436,7 +4420,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             ) AS sub
             ${statusFilter}
             ORDER BY created_at DESC
-          `)) as any;
+          `) as any;
           
           const charges = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
             ...row,
@@ -4599,46 +4583,56 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
             // 1. Atualizar pelo asaas_charge_id (campo mais confiável)
             if (charge.asaas_charge_id) {
-              const safeId = String(charge.asaas_charge_id).replace(/'/g, '');
-              await db.execute(sql.raw(`
+              await db.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
-                WHERE asaas_charge_id = '${safeId}'
-              `));
+                WHERE asaas_charge_id = ${String(charge.asaas_charge_id)}
+              `);
             }
 
             // 2. Fallback por client_id (busca o cliente pelo email no cadastro)
             if (charge.client_email) {
-              const safeEmail = String(charge.client_email).replace(/'/g, "''");
+              const clientEmail = String(charge.client_email);
 
               // Tenta obter client_id via allowed_clients
-              const clientRow = await db.execute(sql.raw(`
-                SELECT id FROM allowed_clients WHERE LOWER(email) = LOWER('${safeEmail}') LIMIT 1
-              `)) as any;
+              const clientRow = await db.execute(sql`
+                SELECT id FROM allowed_clients WHERE LOWER(email) = LOWER(${clientEmail}) LIMIT 1
+              `) as any;
               const clientId = (Array.isArray(clientRow[0]) ? clientRow[0][0] : clientRow[0])?.id ?? null;
 
               if (clientId) {
-                const dueDateFilter = dueDate ? `AND due_date LIKE '${dueDate}%'` : '';
-                await db.execute(sql.raw(`
-                  UPDATE bpo_charges
-                  SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
-                  WHERE client_id = ${clientId}
-                    AND type = '${chargeType}'
-                    AND ABS(CAST(value AS DECIMAL(10,2)) - ${chargeValue}) < 0.02
-                    ${dueDateFilter}
-                    AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
-                `));
+                if (dueDate) {
+                  const dueDatePattern = `${dueDate}%`;
+                  await db.execute(sql`
+                    UPDATE bpo_charges
+                    SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
+                    WHERE client_id = ${clientId}
+                      AND type = ${chargeType}
+                      AND ABS(CAST(value AS DECIMAL(10,2)) - ${chargeValue}) < 0.02
+                      AND due_date LIKE ${dueDatePattern}
+                      AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
+                  `);
+                } else {
+                  await db.execute(sql`
+                    UPDATE bpo_charges
+                    SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
+                    WHERE client_id = ${clientId}
+                      AND type = ${chargeType}
+                      AND ABS(CAST(value AS DECIMAL(10,2)) - ${chargeValue}) < 0.02
+                      AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
+                  `);
+                }
               }
 
               // 3. Fallback por email direto (quando client_id não encontrado)
-              await db.execute(sql.raw(`
+              await db.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
-                WHERE LOWER(client_email) = LOWER('${safeEmail}')
-                  AND type = '${chargeType}'
+                WHERE LOWER(client_email) = LOWER(${clientEmail})
+                  AND type = ${chargeType}
                   AND ABS(CAST(value AS DECIMAL(10,2)) - ${chargeValue}) < 0.02
                   AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
-              `));
+              `);
             }
           } catch (bpoErr: any) {
             console.warn('[inspectionCharges.markAsPaid] Falha ao sincronizar bpo_charges:', bpoErr.message);
@@ -4647,9 +4641,9 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           return { success: true };
         } catch (error: any) {
           console.error('[inspectionCharges.markAsPaid] Error:', error);
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR', 
-            message: `Erro ao marcar cobrança como recebida: ${error.message}` 
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Erro ao marcar cobrança como recebida. Tente novamente.'
           });
         }
       }),
@@ -4671,16 +4665,19 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           const { sql } = await import('drizzle-orm');
           
           // Construir filtro de data se fornecido (aplica na data da vistoria)
-          let dateFilter = '';
+          const dateConditions: any[] = [];
           if (input.monthYear) {
             const [year, month] = input.monthYear.split('-');
-            dateFilter = `AND YEAR(i.created_at) = ${year} AND MONTH(i.created_at) = ${month}`;
+            dateConditions.push(sql`YEAR(i.created_at) = ${Number(year)}`);
+            dateConditions.push(sql`MONTH(i.created_at) = ${Number(month)}`);
           }
-          
+          const dateFilter = dateConditions.length > 0
+            ? sql`AND ${sql.join(dateConditions, sql` AND `)}`
+            : sql``;
+
           // Buscar vistorias reprovadas do cliente (com ou sem cobrança)
-          // Usa LEFT JOIN para pegar vistorias mesmo sem cobrança criada
-          const result = await db.execute(sql.raw(`
-            SELECT 
+          const result = await db.execute(sql`
+            SELECT
               i.id as inspection_id,
               i.vessel_name,
               i.client_name,
@@ -4703,11 +4700,11 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             LEFT JOIN inspection_charges ic ON ic.inspection_id = i.id AND ic.charge_type = 'inspection'
             WHERE i.status = 'rejected'
               AND i.client_name IN (
-                SELECT DISTINCT client_name FROM bookings WHERE client_email = '${ctx.user.email}'
+                SELECT DISTINCT client_name FROM bookings WHERE client_email = ${ctx.user.email}
               )
               ${dateFilter}
             ORDER BY i.created_at DESC
-          `)) as any;
+          `) as any;
           
           const inspections = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => {
             // Extrair itens reprovados do inspection_data
@@ -4892,36 +4889,37 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           const { sql } = await import('drizzle-orm');
           
           // Verificar se a cobrança pertence ao cliente
-          const result = await db.execute(sql.raw(`
+          const result = await db.execute(sql`
             SELECT * FROM inspection_charges
-            WHERE id = ${input.chargeId} AND client_email = '${ctx.user.email}'
-          `)) as any;
-          
+            WHERE id = ${input.chargeId} AND client_email = ${ctx.user.email}
+          `) as any;
+
           const charges = (Array.isArray(result[0]) ? result[0] : result);
           if (charges.length === 0) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Cobrança não encontrada' });
           }
-          
+
           const charge = charges[0];
-          
+
           // Inserir solicitação no banco de dados
           const reasonText = input.reason || '';
-          const escapedReason = reasonText.replace(/'/g, "\\'");
-          
-          await db.execute(sql.raw(`
-            INSERT INTO due_date_change_requests 
+          const oldDueDateStr = new Date(charge.due_date).toISOString().slice(0, 19).replace('T', ' ');
+          const newDueDateStr = new Date(input.newDueDate).toISOString().slice(0, 19).replace('T', ' ');
+
+          await db.execute(sql`
+            INSERT INTO due_date_change_requests
             (charge_id, client_email, old_due_date, new_due_date, reason, status, created_at, updated_at)
             VALUES (
               ${input.chargeId},
-              '${ctx.user.email}',
-              '${new Date(charge.due_date).toISOString().slice(0, 19).replace('T', ' ')}',
-              '${new Date(input.newDueDate).toISOString().slice(0, 19).replace('T', ' ')}',
-              '${escapedReason}',
+              ${ctx.user.email},
+              ${oldDueDateStr},
+              ${newDueDateStr},
+              ${reasonText},
               'pending',
               NOW(),
               NOW()
             )
-          `));
+          `);
           
           // Notificar admin
           const { notifyOwner } = await import('./_core/notification');
@@ -4939,9 +4937,9 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           };
         } catch (error: any) {
           console.error('[inspectionCharges.requestDueDateChange] Error:', error);
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR', 
-            message: `Erro ao solicitar mudança: ${error.message}` 
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Erro ao solicitar mudança de vencimento. Tente novamente.'
           });
         }
       }),
@@ -5150,13 +5148,13 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
         try {
           const { sql } = await import('drizzle-orm');
-          const ids = input.chargeIds.join(',');
-          
+          const idsSQL = sql.join(input.chargeIds.map((id: number) => sql`${id}`), sql`, `);
+
           // Buscar cobranças
-          const result = await db.execute(sql.raw(`
+          const result = await db.execute(sql`
             SELECT * FROM inspection_charges
-            WHERE id IN (${ids}) AND client_email = '${ctx.user.email}'
-          `)) as any;
+            WHERE id IN (${idsSQL}) AND client_email = ${ctx.user.email}
+          `) as any;
           
           const charges = (Array.isArray(result[0]) ? result[0] : result);
           if (charges.length === 0) {
@@ -5340,8 +5338,21 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         try {
           const { sql } = await import('drizzle-orm');
           
-          let query = `
-            SELECT 
+          const conditions: any[] = [];
+          if (input.status && input.status !== 'all') {
+            conditions.push(sql`r.status = ${input.status}`);
+          }
+          if (input.monthYear) {
+            const [year, month] = input.monthYear.split('-');
+            conditions.push(sql`YEAR(r.created_at) = ${Number(year)}`);
+            conditions.push(sql`MONTH(r.created_at) = ${Number(month)}`);
+          }
+          const extraWhere = conditions.length > 0
+            ? sql`AND ${sql.join(conditions, sql` AND `)}`
+            : sql``;
+
+          const result = await db.execute(sql`
+            SELECT
               r.*,
               c.charge_type,
               c.vessel_name,
@@ -5350,26 +5361,15 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             FROM due_date_change_requests r
             JOIN inspection_charges c ON r.charge_id = c.id
             WHERE 1=1
-          `;
-          
-          if (input.status && input.status !== 'all') {
-            query += ` AND r.status = '${input.status}'`;
-          }
-          
-          if (input.monthYear) {
-            const [year, month] = input.monthYear.split('-');
-            query += ` AND YEAR(r.created_at) = ${year} AND MONTH(r.created_at) = ${month}`;
-          }
-          
-          query += ` ORDER BY r.created_at DESC`;
-          
-          const result = await db.execute(sql.raw(query)) as any;
+            ${extraWhere}
+            ORDER BY r.created_at DESC
+          `) as any;
           return (Array.isArray(result[0]) ? result[0] : result);
         } catch (error: any) {
           console.error('[dueDateRequests.list] Error:', error);
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR', 
-            message: `Erro ao listar solicitações: ${error.message}` 
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Erro ao listar solicitações. Tente novamente.'
           });
         }
       }),
@@ -5387,39 +5387,40 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           const { sql } = await import('drizzle-orm');
           
           // Buscar solicitação
-          const requestResult = await db.execute(sql.raw(`
+          const requestResult = await db.execute(sql`
             SELECT * FROM due_date_change_requests WHERE id = ${input.requestId}
-          `)) as any;
-          
+          `) as any;
+
           const requests = (Array.isArray(requestResult[0]) ? requestResult[0] : requestResult);
           if (requests.length === 0) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Solicitação não encontrada' });
           }
-          
+
           const request = requests[0];
-          
+          const newDueDateApproved = new Date(request.new_due_date).toISOString().split('T')[0];
+
           // Atualizar vencimento na cobrança
-          await db.execute(sql.raw(`
+          await db.execute(sql`
             UPDATE inspection_charges
-            SET due_date = '${new Date(request.new_due_date).toISOString().split('T')[0]}'
+            SET due_date = ${newDueDateApproved}
             WHERE id = ${request.charge_id}
-          `));
-          
+          `);
+
           // Atualizar status da solicitação
-          await db.execute(sql.raw(`
+          await db.execute(sql`
             UPDATE due_date_change_requests
             SET status = 'approved',
-                processed_by = '${ctx.user?.email}',
+                processed_by = ${ctx.user?.email ?? null},
                 updated_at = NOW()
             WHERE id = ${input.requestId}
-          `));
-          
+          `);
+
           // Buscar dados da cobrança para enviar email
-          const chargeResult = await db.execute(sql.raw(`
+          const chargeResult = await db.execute(sql`
             SELECT charge_type, vessel_name, client_email
             FROM inspection_charges
             WHERE id = ${request.charge_id}
-          `)) as any;
+          `) as any;
           
           const charges = (Array.isArray(chargeResult[0]) ? chargeResult[0] : chargeResult);
           if (charges.length > 0) {
