@@ -2,6 +2,8 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
@@ -31,6 +33,21 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // Security headers
+  app.use(helmet({ contentSecurityPolicy: false }));
+
+  // Rate limiting
+  const generalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false });
+  const uploadLimiter  = rateLimit({ windowMs: 15 * 60 * 1000, max: 30,  standardHeaders: true, legacyHeaders: false });
+  const webhookLimiter = rateLimit({ windowMs:  1 * 60 * 1000, max: 60,  standardHeaders: true, legacyHeaders: false });
+  app.use('/api/trpc', generalLimiter);
+  app.use('/api/upload', uploadLimiter);
+  app.use('/api/upload-receipt', uploadLimiter);
+  app.use('/api/upload-client-document', uploadLimiter);
+  app.use('/api/upload-inspection-photo', uploadLimiter);
+  app.use('/api/webhooks/asaas', webhookLimiter);
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -53,8 +70,8 @@ async function startServer() {
     if (!await requireAuth(req, res)) return;
     try {
       const multer = await import('multer');
-      const upload = multer.default({ storage: multer.memoryStorage() });
-      
+      const upload = multer.default({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
       upload.single('file')(req, res, async (err: any) => {
         if (err) {
           console.error('[upload-receipt] Multer error:', err);
@@ -66,9 +83,16 @@ async function startServer() {
           return res.status(400).json({ error: 'Nenhum arquivo enviado' });
         }
 
+        const allowedReceiptTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+        if (!allowedReceiptTypes.includes(file.mimetype)) {
+          return res.status(400).json({ error: 'Tipo de arquivo inválido. Permitidos: JPG, PNG, WEBP, PDF' });
+        }
+
         try {
           const { storagePut } = await import('../storage');
-          const fileKey = `receipts/${Date.now()}-${file.originalname}`;
+          const ext = file.originalname.split('.').pop() || 'jpg';
+          const randomSuffix = Math.random().toString(36).substring(2, 15);
+          const fileKey = `receipts/${Date.now()}-${randomSuffix}.${ext}`;
           const { url } = await storagePut(fileKey, file.buffer, file.mimetype);
           
           res.json({ url });
@@ -163,8 +187,14 @@ async function startServer() {
           return res.status(400).json({ error: 'Nenhum arquivo enviado' });
         }
 
+        const ALLOWED_FOLDERS = ['uploads', 'photos', 'receipts', 'vessels', 'inspections', 'gallery'];
+        const ALLOWED_UPLOAD_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
         const { folder } = req.body;
-        const folderPath = folder || 'uploads';
+        const folderPath = ALLOWED_FOLDERS.includes(folder) ? folder : 'uploads';
+
+        if (!ALLOWED_UPLOAD_TYPES.includes(file.mimetype)) {
+          return res.status(400).json({ error: 'Tipo de arquivo inválido. Permitidos: JPG, PNG, WEBP, PDF' });
+        }
 
         try {
           const { storagePut } = await import('../storage');
@@ -210,6 +240,11 @@ async function startServer() {
         const { itemName, vesselId } = req.body;
         if (!itemName || !vesselId) {
           return res.status(400).json({ error: 'itemName e vesselId são obrigatórios' });
+        }
+
+        const allowedInspectionTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!allowedInspectionTypes.includes(file.mimetype)) {
+          return res.status(400).json({ error: 'Apenas imagens são permitidas (JPG, PNG, WEBP)' });
         }
 
         try {
@@ -266,19 +301,18 @@ async function startServer() {
       const { sql: drizzleSql } = await import('drizzle-orm');
       const db = await getDb();
       if (!db) { console.error('[Webhook Asaas] Database não disponível'); return; }
-      const asaasId = String(payment.id).replace(/'/g, '');
+      const asaasId = String(payment.id);
       const newStatus = normalizeBpoStatus(payment.status || '');
       const isPaid = ['received', 'confirmed', 'receivedInCash'].includes(newStatus);
-      const paidDate = payment.paymentDate || null;
+      const paidDate: Date | null = payment.paymentDate ? new Date(payment.paymentDate) : null;
       const value = payment.value ?? null;
-      const paidDateSqlVal = paidDate ? `'${String(paidDate).replace(/'/g, '')}'` : 'NULL';
       const amountPaidVal = isPaid && value !== null ? Number(value) : 0;
-      const [bpoResult] = (await db.execute(drizzleSql.raw(`
+      const [bpoResult] = (await db.execute(drizzleSql`
         UPDATE bpo_charges
-        SET status = '${newStatus}', paid_date = ${paidDateSqlVal},
+        SET status = ${newStatus}, paid_date = ${paidDate},
             amount_paid = ${amountPaidVal}, synced_at = NOW(), source = 'asaas_webhook'
-        WHERE asaas_charge_id = '${asaasId}'
-      `))) as any;
+        WHERE asaas_charge_id = ${asaasId}
+      `)) as any;
       const affectedRows = (bpoResult as any)?.affectedRows ?? 0;
       console.log('[Webhook Asaas] bpo_charges atualizado:', asaasId, '->', newStatus, '| rows:', affectedRows);
 
@@ -302,18 +336,18 @@ async function startServer() {
               const idsStr = parts.slice(1, -1).join('-');
               const originalIds = idsStr.split(',').map((s: string) => parseInt(s, 10)).filter((n: number) => !isNaN(n) && n > 0);
               if (originalIds.length > 0) {
-                const idList = originalIds.join(',');
-                await db.execute(drizzleSql.raw(`
+                const idsSQL = drizzleSql.join(originalIds.map((id: number) => drizzleSql`${id}`), drizzleSql`, `);
+                await db.execute(drizzleSql`
                   UPDATE bpo_charges
-                  SET status = 'receivedInCash', paid_date = ${paidDateSqlVal}, synced_at = NOW(), source = 'asaas_webhook'
-                  WHERE id IN (${idList})
+                  SET status = 'receivedInCash', paid_date = ${paidDate}, synced_at = NOW(), source = 'asaas_webhook'
+                  WHERE id IN (${idsSQL})
                     AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
-                `));
-                console.log('[Webhook Asaas] Cobranças originais marcadas como pagas:', idList);
+                `);
+                console.log('[Webhook Asaas] Cobranças originais marcadas como pagas:', originalIds.join(','));
                 // Sincronizar inspection_charges e fuel_records para cada cobrança original
-                const [origRows] = (await db.execute(drizzleSql.raw(`
-                  SELECT asaas_charge_id FROM bpo_charges WHERE id IN (${idList})
-                `))) as any;
+                const [origRows] = (await db.execute(drizzleSql`
+                  SELECT asaas_charge_id FROM bpo_charges WHERE id IN (${idsSQL})
+                `)) as any;
                 for (const row of (Array.isArray(origRows) ? origRows : [])) {
                   if (row?.asaas_charge_id) {
                     const { syncStatusToSources } = await import('../routers/bpoRouter');
@@ -329,12 +363,12 @@ async function startServer() {
       }
       // Gravar log do webhook para auditoria
       try {
-        const payloadStr = JSON.stringify(payload).replace(/'/g, "''").substring(0, 4000);
-        const errorVal = affectedRows === 0 ? `'Cobrança não encontrada: ${asaasId}'` : 'NULL';
-        await db.execute(drizzleSql.raw(`
+        const payloadStr = JSON.stringify(payload).substring(0, 4000);
+        const errorMsg: string | null = affectedRows === 0 ? `Cobrança não encontrada: ${asaasId.substring(0, 100)}` : null;
+        await db.execute(drizzleSql`
           INSERT INTO webhook_logs (event, asaas_payment_id, payload, processed, error, created_at)
-          VALUES ('${event}', '${asaasId}', '${payloadStr}', ${affectedRows > 0 ? 1 : 0}, ${errorVal}, NOW())
-        `));
+          VALUES (${event}, ${asaasId}, ${payloadStr}, ${affectedRows > 0 ? 1 : 0}, ${errorMsg}, NOW())
+        `);
       } catch (logErr: any) {
         console.warn('[Webhook Asaas] Falha ao gravar log:', logErr?.message);
       }
