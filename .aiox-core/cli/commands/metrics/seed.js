@@ -9,7 +9,6 @@
  */
 
 const { Command } = require('commander');
-const { seedMetrics } = require('../../../quality/seed-metrics');
 
 /**
  * Create the seed subcommand
@@ -71,6 +70,7 @@ function createSeedCommand() {
         }
 
         // Generate and save
+        const { seedMetrics } = require('../../../quality/seed-metrics');
         const metrics = await seedMetrics(seedOptions);
 
         console.log('\n✅ Seed Data Generated');
