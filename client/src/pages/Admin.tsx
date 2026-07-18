@@ -2168,9 +2168,9 @@ export default function Admin() {
                   <SelectValue placeholder="Selecione um cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients?.map((client) => (
+                  {clients?.filter((client) => client.isActive).map((client) => (
                     <SelectItem key={client.id} value={client.email}>
-                      {client.name} ({client.email})
+                      {client.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
