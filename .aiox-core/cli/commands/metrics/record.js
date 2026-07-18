@@ -9,7 +9,6 @@
  */
 
 const { Command } = require('commander');
-const { MetricsCollector } = require('../../../quality/metrics-collector');
 
 /**
  * Create the record subcommand
@@ -39,6 +38,7 @@ function createRecordCommand() {
     .option('-v, --verbose', 'Show detailed output', false)
     .action(async (options) => {
       try {
+        const { MetricsCollector } = require('../../../quality/metrics-collector');
         const collector = new MetricsCollector();
 
         const layerNum = parseInt(options.layer, 10);
