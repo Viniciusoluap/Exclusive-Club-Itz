@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import archiver from 'archiver';
@@ -16,9 +17,90 @@ const execAsync = promisify(exec);
 // Diretório onde os backups serão salvos
 const BACKUP_DIR = '/home/ubuntu/backups';
 
-// Garante que o diretório de backups existe
-if (!fs.existsSync(BACKUP_DIR)) {
-  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+// Garante que o diretório de backups existe.
+// Envolto em try/catch para que a simples importação deste módulo (ex.: em testes
+// unitários) não derrube o processo em ambientes onde o caminho não é gravável.
+try {
+  if (!fs.existsSync(BACKUP_DIR)) {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  }
+} catch (error) {
+  console.warn(`⚠️  Não foi possível criar o diretório de backups (${BACKUP_DIR}):`, error);
+}
+
+// Algoritmo de criptografia at-rest do artefato de backup (autenticado).
+const BACKUP_ENCRYPTION_ALGO = 'aes-256-gcm';
+// Marcador do container criptografado (8 bytes): "ECBK" + versão 1.
+const BACKUP_ENC_MAGIC = Buffer.from('ECBK\x01\x00\x00\x00', 'latin1');
+
+/**
+ * Lê e valida a chave de criptografia de backup do ambiente.
+ *
+ * SEGURANÇA: se a chave não estiver configurada, o backup DEVE falhar
+ * explicitamente — nunca gerar/enviar um artefato sem criptografia.
+ */
+export function getBackupEncryptionKey(): Buffer {
+  const raw = process.env.BACKUP_ENCRYPTION_KEY;
+
+  if (!raw || raw.trim().length === 0) {
+    throw new Error(
+      'BACKUP_ENCRYPTION_KEY não configurada. Backup ABORTADO para evitar a geração de ' +
+        'artefato sem criptografia. Defina BACKUP_ENCRYPTION_KEY (>= 32 caracteres) no ambiente ' +
+        '(ver .env.example) antes de executar o backup.'
+    );
+  }
+
+  if (raw.trim().length < 32) {
+    throw new Error(
+      'BACKUP_ENCRYPTION_KEY muito curta. Use pelo menos 32 caracteres de entropia ' +
+        '(ex.: `openssl rand -base64 48`).'
+    );
+  }
+
+  return Buffer.from(raw, 'utf8');
+}
+
+/**
+ * Criptografa um buffer com AES-256-GCM.
+ *
+ * Formato do container: MAGIC(8) | SALT(16) | IV(12) | AUTH_TAG(16) | CIPHERTEXT.
+ * A chave de 32 bytes é derivada por arquivo via scrypt(keyMaterial, salt), de modo
+ * que o mesmo segredo do ambiente produz artefatos com chaves distintas.
+ */
+export function encryptBackupBuffer(plaintext: Buffer, keyMaterial: Buffer): Buffer {
+  const salt = crypto.randomBytes(16);
+  const iv = crypto.randomBytes(12);
+  const key = crypto.scryptSync(keyMaterial, salt, 32);
+
+  const cipher = crypto.createCipheriv(BACKUP_ENCRYPTION_ALGO, key, iv);
+  const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+
+  return Buffer.concat([BACKUP_ENC_MAGIC, salt, iv, authTag, ciphertext]);
+}
+
+/**
+ * Descriptografa um container gerado por {@link encryptBackupBuffer}.
+ * Usado por rotinas de restore/validação. Lança se o auth tag não conferir
+ * (proteção de integridade/adulteração do GCM).
+ */
+export function decryptBackupBuffer(container: Buffer, keyMaterial: Buffer): Buffer {
+  const magic = container.subarray(0, BACKUP_ENC_MAGIC.length);
+  if (!magic.equals(BACKUP_ENC_MAGIC)) {
+    throw new Error('Container de backup criptografado inválido (magic inesperado).');
+  }
+
+  let offset = BACKUP_ENC_MAGIC.length;
+  const salt = container.subarray(offset, (offset += 16));
+  const iv = container.subarray(offset, (offset += 12));
+  const authTag = container.subarray(offset, (offset += 16));
+  const ciphertext = container.subarray(offset);
+
+  const key = crypto.scryptSync(keyMaterial, salt, 32);
+  const decipher = crypto.createDecipheriv(BACKUP_ENCRYPTION_ALGO, key, iv);
+  decipher.setAuthTag(authTag);
+
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 }
 
 /**
@@ -38,13 +120,38 @@ async function exportDatabase(): Promise<string> {
   }
 }
 /**
- * Cria arquivo ZIP com backup completo
+ * Padrões de arquivos que NUNCA devem entrar em um backup, mesmo que apareçam
+ * dentro de um diretório de uploads. Defesa em profundidade contra vazamento de
+ * segredos/credenciais (o backup só deve conter dado de negócio legítimo).
+ */
+const BACKUP_SECRET_IGNORE = [
+  '**/.env',
+  '**/.env.*',
+  '**/*.key',
+  '**/*.pem',
+  '**/*.p12',
+  '**/*.pfx',
+  '**/google-drive-*.json',
+  '**/credentials.json',
+  '**/token.json',
+  '**/*credential*.json',
+  '**/*token*.json',
+];
+
+/**
+ * Cria o arquivo ZIP de backup.
+ *
+ * SEGURANÇA (SYS-22): o backup contém APENAS dados de negócio — o dump do banco
+ * de dados e, quando existir localmente, o diretório de uploads de usuário.
+ * O código-fonte do servidor, `.env`, tokens OAuth e demais segredos NÃO são
+ * empacotados (antes, `archive.glob('**\/*', { cwd: process.cwd() })` empacotava
+ * o repositório inteiro, incluindo `.env` e `google-drive-token.json`).
  */
 async function createBackupZip(dbBackupPath: string): Promise<{ zipPath: string; fileSizeBytes: number }> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const zipPath = path.join(BACKUP_DIR, `exclusive-club-backup-${timestamp}.zip`);
 
-  console.log('📦 Criando arquivo ZIP...');
+  console.log('📦 Criando arquivo ZIP (somente dados de negócio)...');
 
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(zipPath);
@@ -62,21 +169,26 @@ async function createBackupZip(dbBackupPath: string): Promise<{ zipPath: string;
 
     archive.pipe(output);
 
-    // Adiciona banco de dados
+    // 1. Dump do banco de dados (dado de negócio principal).
     archive.file(dbBackupPath, { name: path.basename(dbBackupPath) });
 
-    // Adiciona código-fonte (excluindo node_modules e arquivos temporários)
-    archive.glob('**/*', {
-      cwd: process.cwd(),
-      ignore: [
-        'node_modules/**',
-        '.git/**',
-        'dist/**',
-        '*.zip',
-        '*.log',
-        'backups/**'
-      ]
-    });
+    // 2. Uploads de usuário, se existirem localmente. NÃO inclui código-fonte,
+    //    `.env`, tokens OAuth nem qualquer credencial (ver BACKUP_SECRET_IGNORE).
+    const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+    if (fs.existsSync(uploadsDir) && fs.statSync(uploadsDir).isDirectory()) {
+      console.log(`📁 Incluindo uploads de usuário: ${uploadsDir}`);
+      archive.glob(
+        '**/*',
+        {
+          cwd: uploadsDir,
+          dot: false,
+          ignore: BACKUP_SECRET_IGNORE,
+        },
+        { prefix: 'uploads' }
+      );
+    } else {
+      console.log('ℹ️  Nenhum diretório local de uploads encontrado — backup conterá apenas o dump do banco.');
+    }
 
     archive.finalize();
   });
@@ -147,6 +259,11 @@ export async function runBackup(): Promise<void> {
   const db = await getDb();
 
   try {
+    // 0. Valida a chave de criptografia ANTES de qualquer coisa. Se ausente,
+    //    aborta o backup imediatamente (não dumpa PII para o disco nem gera
+    //    artefato sem criptografia).
+    const encryptionKey = getBackupEncryptionKey();
+
     // Registra início do backup no banco
     if (db) {
       const result = await db.insert(backupHistory).values({
@@ -160,27 +277,32 @@ export async function runBackup(): Promise<void> {
     // 1. Exporta banco de dados
     dbBackupPath = await exportDatabase();
 
-    // 2. Cria arquivo ZIP
-    const { zipPath, fileSizeBytes } = await createBackupZip(dbBackupPath);
-    const fileName = path.basename(zipPath);
+    // 2. Cria arquivo ZIP (somente dados de negócio)
+    const { zipPath } = await createBackupZip(dbBackupPath);
 
     // 3. Remove arquivo SQL temporário
     cleanupTempFiles(dbBackupPath);
 
-    // 4. Upload para S3
-    console.log('☁️  Fazendo upload para S3...');
-    const s3Key = `backups/${fileName}`;
-    const fileBuffer = fs.readFileSync(zipPath);
-    const { url: s3Url } = await storagePut(s3Key, fileBuffer, 'application/zip');
-    console.log(`✅ Upload S3 concluído: ${s3Url}`);
+    // 4. Criptografa o artefato (AES-256-GCM) ANTES do upload ao storage externo.
+    console.log('🔐 Criptografando artefato de backup...');
+    const plainZipBuffer = fs.readFileSync(zipPath);
+    const encryptedBuffer = encryptBackupBuffer(plainZipBuffer, encryptionKey);
+    const fileName = `${path.basename(zipPath)}.enc`;
+    const fileSizeBytes = encryptedBuffer.length;
 
-    // 5. Remove arquivo local após upload S3
+    // 5. Upload do artefato criptografado para o storage (proxy Forge/S3).
+    console.log('☁️  Fazendo upload do backup criptografado...');
+    const s3Key = `backups/${fileName}`;
+    const { url: s3Url } = await storagePut(s3Key, encryptedBuffer, 'application/octet-stream');
+    console.log(`✅ Upload concluído: ${s3Url}`);
+
+    // 6. Remove arquivo local (zip em claro) após upload
     if (fs.existsSync(zipPath)) {
       fs.unlinkSync(zipPath);
-      console.log('✅ Arquivo local removido (mantido apenas no S3)');
+      console.log('✅ Arquivo local removido (mantido apenas criptografado no storage)');
     }
 
-    // 6. Limpa backups antigos
+    // 7. Limpa backups antigos
     await cleanupOldBackups();
 
     // Calcula duração

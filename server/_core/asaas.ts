@@ -6,24 +6,46 @@
  * que não injeta ASAAS_API_KEY corretamente no ambiente.
  */
 import { getSetting } from "../systemSettings";
+import { ENV } from "./env";
 
 /**
- * Busca chave API do Asaas (banco de dados ou env)
+ * Resolução ÚNICA e canônica da chave da API do Asaas.
+ *
+ * Prioridade:
+ *   1. process.env.ASAAS_API_KEY (via ENV.asaasApiKey) — override avançado opcional,
+ *      permite mover a credencial para fora do banco sem quebrar nada.
+ *   2. getSetting('asaas_api_key') do banco — fonte "oficial", editável pelo painel
+ *      admin (client/src/pages/SystemSettings.tsx). Comportamento histórico preservado.
+ *
+ * Se a env var não estiver configurada (caso atual), o comportamento é 100% idêntico
+ * ao anterior: lê do banco. Retorna null quando nenhuma fonte tem a chave.
+ *
+ * NUNCA loga o valor da chave.
+ */
+export async function resolveAsaasApiKey(): Promise<string | null> {
+  const fromEnv = ENV.asaasApiKey;
+  if (fromEnv && fromEnv.length > 0) {
+    return fromEnv;
+  }
+
+  const fromDb = await getSetting("asaas_api_key");
+  if (fromDb && fromDb.length > 0) {
+    return fromDb;
+  }
+
+  return null;
+}
+
+/**
+ * Variante que lança erro quando a chave não está configurada.
+ * Usada internamente pelas chamadas à API do Asaas que exigem a credencial.
  */
 async function getAsaasApiKey(): Promise<string> {
-  // Primeiro tenta buscar do banco (workaround)
-  const keyFromDb = await getSetting("asaas_api_key");
-  if (keyFromDb) {
-    return keyFromDb;
+  const apiKey = await resolveAsaasApiKey();
+  if (!apiKey) {
+    throw new Error("ASAAS_API_KEY não configurada. Configure em /admin/configuracoes");
   }
-
-  // Fallback para env (caso Manus corrija o bug)
-  const keyFromEnv = process.env.ASAAS_API_KEY;
-  if (keyFromEnv) {
-    return keyFromEnv;
-  }
-
-  throw new Error("ASAAS_API_KEY não configurada. Configure em /admin/configuracoes");
+  return apiKey;
 }
 
 /**

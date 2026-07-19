@@ -7,32 +7,134 @@ on:
     branches: [main]
 
 jobs:
-  typecheck:
-    name: Type Check
+  build-test:
+    name: Type Check, Test & Build
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
 
+    # DATABASE_URL points at the ephemeral TiDB instance started below.
+    # drizzle.config.ts and the test global setup both require it to be present.
+    env:
+      DATABASE_URL: mysql://root:@127.0.0.1:3306/test
+
     steps:
       - uses: actions/checkout@v4
+
+      # Production is TiDB Cloud, not vanilla MySQL. We first tried mysql:8.0 as
+      # a "faithful stand-in" (GitHub Actions `services:` only runs plain images,
+      # it can't pass TiDB's custom startup flags) and it broke on a real,
+      # already-in-production migration: 0033_good_lila_cheney.sql does
+      # `ALTER TABLE ... DROP PRIMARY KEY` on 14 tables and never re-adds a key.
+      # That is invalid on InnoDB/MySQL for an AUTO_INCREMENT column
+      # (ER_WRONG_AUTO_KEY / errno 1075) but is valid on TiDB, which does not
+      # require AUTO_INCREMENT columns to be covered by an explicit key the same
+      # way InnoDB does. This migration already ran successfully against real
+      # production, so it must not be rewritten here (Story 6 / Phase 1 owns
+      # migration-history reconciliation) — CI has to match the engine that
+      # actually accepts it. `--store=unistore` runs a fully standalone,
+      # single-binary TiDB with an embedded mock KV store (no separate PD/TiKV
+      # needed) — this is PingCAP's own documented lightweight setup for CI/test
+      # use, and is MySQL wire-protocol compatible so drizzle-orm/mysql2 and
+      # drizzle-kit work against it unchanged.
+      - name: Start ephemeral TiDB (production-faithful, not vanilla MySQL)
+        run: |
+          docker run -d --name tidb --network host \
+            pingcap/tidb:latest \
+            --store=unistore --path="" -P 3306 --host=0.0.0.0 \
+            --log-slow-query="" 2>&1 | tee /tmp/tidb-start.log
+
+          echo "Waiting for TiDB to accept connections..."
+          for i in $(seq 1 60); do
+            if mysql -h 127.0.0.1 -P 3306 -uroot -e "SELECT 1;" >/dev/null 2>&1; then
+              echo "TiDB is up after ${i}0s"
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "::error::TiDB did not become ready in time"
+              docker logs tidb || true
+              exit 1
+            fi
+            sleep 10
+          done
+
+          mysql -h 127.0.0.1 -P 3306 -uroot -e "CREATE DATABASE IF NOT EXISTS test;"
+
+          # Root cause (captured via TiDB's own log on the previous run):
+          # [ddl:8200] "Unsupported drop primary key when the table is using
+          # clustered index". This TiDB image defaults to
+          # tidb_enable_clustered_index=INT_ONLY, so a fresh `allowed_clients`
+          # (single-column int AUTO_INCREMENT PK) is created as a clustered-index
+          # table — and 0033_good_lila_cheney.sql's `DROP PRIMARY KEY` on it (and
+          # 13 other tables) is explicitly disallowed on clustered tables. Real
+          # production TiDB Cloud accepted this migration, so its tables must be
+          # non-clustered (older default / explicit setting from when they were
+          # created). Disable clustering globally before any table exists, so
+          # fresh CI tables match production's actual on-disk representation.
+          mysql -h 127.0.0.1 -P 3306 -uroot -e "SET GLOBAL tidb_enable_clustered_index = 'OFF';"
+
+      # pnpm is the project's package manager (packageManager: pnpm@10.33.4).
+      # action-setup reads that field and installs the matching version.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: pnpm
 
       - name: Checkpoint after checkout
-        run: echo "ok" > /tmp/cp-checkout.txt && node --version && npm --version
+        run: |
+          echo "ok" > /tmp/cp-checkout.txt
+          node --version
+          pnpm --version
 
-      - name: Disable corepack
-        run: corepack disable || true
-
+      # --frozen-lockfile: fail if pnpm-lock.yaml is out of date instead of
+      # silently resolving different versions (the SYS-15 bug we are fixing).
       - name: Install dependencies
-        run: npm install --legacy-peer-deps --ignore-scripts --no-optional 2>&1 | tee /tmp/npm-install.log; exit ${PIPESTATUS[0]}
+        run: pnpm install --frozen-lockfile 2>&1 | tee /tmp/install.log; exit ${PIPESTATUS[0]}
+
+      # SCOPE CHANGE, backed by evidence from 3 failed CI runs: we tried
+      # `drizzle-kit migrate` (replaying drizzle/*.sql in journal order) because
+      # push had failed once already. With clustered-index off, migrate got
+      # much further (all 14 DROP PRIMARY KEY statements in 0033 now succeed),
+      # but then hit a SECOND, independent bug in the same file: many
+      # `MODIFY COLUMN ... DEFAULT 'CURRENT_TIMESTAMP'` statements use a quoted
+      # STRING LITERAL instead of the bare keyword, which both MySQL and TiDB
+      # reject ([ddl:1067] Invalid default value) — this exact pattern repeats
+      # ~16 times in 0033 alone. Replaying the full historical migration
+      # journal from an empty database is not reliably possible without fixing
+      # a series of bugs baked into old migration files — that is Story 6's
+      # job (baseline reconciliation), not this story's.
+      #
+      # What CI actually needs is simpler: does the CURRENT code (schema.ts)
+      # work against a fresh database — not "can 63 historical migrations be
+      # replayed byte-for-byte". `drizzle-kit push --force` builds DDL directly
+      # from schema.ts (no journal replay), which sidesteps both bugs above
+      # entirely. It also means the `password_hash` orphan-migration workaround
+      # that used to follow this step is no longer needed: schema.ts already
+      # has that column, so push creates it correctly the first time.
+      - name: Apply schema to ephemeral DB
+        run: pnpm run db:push:ci 2>&1 | tee /tmp/dbpush.log; exit ${PIPESTATUS[0]}
+
+      # DIAGNOSTIC (always runs, even on failure above): drizzle-kit's CLI does
+      # not reliably print the underlying SQL error to stdout/stderr on this
+      # codepath. The TiDB server's own log has the real error/query, so
+      # capture it unconditionally for the PR comment.
+      - name: Dump TiDB server log (diagnostic)
+        if: always()
+        run: docker logs tidb --tail 300 > /tmp/tidb-server.log 2>&1 || true
 
       - name: Type check
-        run: npm run check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
+        run: pnpm run check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
+
+      - name: Run tests
+        run: pnpm test 2>&1 | tee /tmp/test-output.log; exit ${PIPESTATUS[0]}
+
+      - name: Build (production)
+        run: pnpm run build 2>&1 | tee /tmp/build.log; exit ${PIPESTATUS[0]}
 
       - name: Post error to PR comment
         if: failure() && github.event_name == 'pull_request'
@@ -40,24 +142,37 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const readLog = (path, maxLines) => {
+            const readTail = (path, maxLines) => {
               try {
-                const c = fs.readFileSync(path, 'utf8');
-                return c.split('\n').slice(-maxLines).join('\n');
-              } catch(e) { return null; }
+                return fs.readFileSync(path, 'utf8').split('\n').slice(-maxLines).join('\n');
+              } catch (e) { return null; }
             };
             const checkoutDone = fs.existsSync('/tmp/cp-checkout.txt');
             let body = `## CI Diagnostics\n\nCheckout step completed: **${checkoutDone}**\n\n`;
-            const installLog = readLog('/tmp/npm-install.log', 30);
-            body += '### npm install (last 30 lines)\n```\n' + (installLog ?? '_not run_') + '\n```\n\n';
-            const tscRaw = (() => { try { return fs.readFileSync('/tmp/tsc-output.log', 'utf8'); } catch(e) { return null; } })();
+
+            const install = readTail('/tmp/install.log', 30);
+            body += '### pnpm install (last 30 lines)\n```\n' + (install ?? '_not run_') + '\n```\n\n';
+
+            const dbpush = readTail('/tmp/dbpush.log', 30);
+            body += '### drizzle-kit push (last 30 lines)\n```\n' + (dbpush ?? '_not run_') + '\n```\n\n';
+
+            const tidbLog = readTail('/tmp/tidb-server.log', 150);
+            body += '### TiDB server log — real error/query (last 150 lines)\n```\n' + (tidbLog ?? '_not run_') + '\n```\n\n';
+
+            const tscRaw = (() => { try { return fs.readFileSync('/tmp/tsc-output.log', 'utf8'); } catch (e) { return null; } })();
             if (tscRaw) {
-              const lines = tscRaw.split('\n');
-              const errors = lines.filter(l => l.includes('error TS'));
-              body += '### tsc errors (' + errors.length + ' total)\n```\n' + errors.join('\n') + '\n```\n';
+              const errors = tscRaw.split('\n').filter(l => l.includes('error TS'));
+              body += '### tsc errors (' + errors.length + ' total)\n```\n' + (errors.join('\n') || '_none_') + '\n```\n\n';
             } else {
-              body += '### tsc output\n```\n_not run_\n```\n';
+              body += '### tsc output\n```\n_not run_\n```\n\n';
             }
+
+            const test = readTail('/tmp/test-output.log', 40);
+            body += '### vitest (last 40 lines)\n```\n' + (test ?? '_not run_') + '\n```\n\n';
+
+            const build = readTail('/tmp/build.log', 30);
+            body += '### build (last 30 lines)\n```\n' + (build ?? '_not run_') + '\n```\n';
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
