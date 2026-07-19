@@ -62,11 +62,31 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile 2>&1 | tee /tmp/install.log; exit ${PIPESTATUS[0]}
 
-      # Sync the empty CI database directly from drizzle/schema.ts. `push --force`
-      # is intentional here: it does NOT depend on drizzle/meta/_journal.json,
-      # whose reconciliation is tracked separately (Story 6 / Phase 1).
+      # Apply the tracked SQL migrations literally via `drizzle-kit migrate`.
+      # We deliberately do NOT use `drizzle-kit push --force`: for this schema on
+      # drizzle-kit@0.31.x, push generates invalid DDL for `allowed_clients`
+      # (drops the `CONSTRAINT ... PRIMARY KEY(id)` clause, triggering
+      # ER_WRONG_AUTO_KEY / errno 1075) and does NOT surface it as a non-zero
+      # exit code, leaving a half-applied schema. The literal SQL files in
+      # drizzle/*.sql are known-good, so migrate is the reliable path.
       - name: Apply schema to ephemeral DB
-        run: pnpm run db:push:ci 2>&1 | tee /tmp/dbpush.log; exit ${PIPESTATUS[0]}
+        run: pnpm run db:migrate:ci 2>&1 | tee /tmp/dbpush.log; exit ${PIPESTATUS[0]}
+
+      # WORKAROUND (temporary, until Story 6 / Phase 1 reconciles the journal):
+      # drizzle/0062_add_password_hash.sql is an ORPHAN migration — it is NOT in
+      # drizzle/meta/_journal.json (it was applied manually in production, outside
+      # drizzle-kit), so `drizzle-kit migrate` above never runs it. But
+      # drizzle/schema.ts already assumes users.password_hash exists, so the CI DB
+      # needs the column too. We add it here directly and idempotently.
+      # NOTE: this is NOT a tracked migration — do not add 0062 to the journal, or
+      # a future `migrate` against production (where the column already exists)
+      # would re-run the ALTER and fail, blocking the whole migration chain.
+      # `ADD COLUMN IF NOT EXISTS` (MySQL 8) keeps this safe to re-run.
+      - name: Apply orphan password_hash column (CI workaround)
+        run: |
+          mysql -h 127.0.0.1 -uroot -proot test \
+            -e "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash varchar(255);" \
+            2>&1 | tee /tmp/password-hash.log; exit ${PIPESTATUS[0]}
 
       - name: Type check
         run: pnpm run check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
@@ -95,7 +115,7 @@ jobs:
             body += '### pnpm install (last 30 lines)\n```\n' + (install ?? '_not run_') + '\n```\n\n';
 
             const dbpush = readTail('/tmp/dbpush.log', 30);
-            body += '### drizzle-kit push (last 30 lines)\n```\n' + (dbpush ?? '_not run_') + '\n```\n\n';
+            body += '### drizzle-kit migrate (last 30 lines)\n```\n' + (dbpush ?? '_not run_') + '\n```\n\n';
 
             const tscRaw = (() => { try { return fs.readFileSync('/tmp/tsc-output.log', 'utf8'); } catch (e) { return null; } })();
             if (tscRaw) {
