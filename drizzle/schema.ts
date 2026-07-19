@@ -2,7 +2,7 @@ import { mysqlTable, mysqlSchema, AnyMySqlColumn, index, int, varchar, text, tim
 import { sql } from "drizzle-orm"
 
 export const allowedClients = mysqlTable("allowed_clients", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	email: varchar({ length: 320 }).notNull(),
 	name: text().notNull(),
 	phone: varchar({ length: 20 }),
@@ -25,7 +25,7 @@ export const allowedClients = mysqlTable("allowed_clients", {
 ]);
 
 export const bookings = mysqlTable("bookings", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	clientEmail: varchar("client_email", { length: 320 }).notNull(),
 	clientName: text("client_name").notNull(),
 	vesselId: int("vessel_id").notNull(),
@@ -38,7 +38,7 @@ export const bookings = mysqlTable("bookings", {
 });
 
 export const clientQuotas = mysqlTable("client_quotas", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	clientId: int("client_id").notNull(),
 	vesselId: int("vessel_id").notNull(),
 	quotaType: mysqlEnum("quota_type", ['full','half']).notNull(),
@@ -49,7 +49,7 @@ export const clientQuotas = mysqlTable("client_quotas", {
 });
 
 export const dueDateChangeRequests = mysqlTable("due_date_change_requests", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	chargeId: int("charge_id").notNull(),
 	clientEmail: varchar("client_email", { length: 320 }).notNull(),
 	oldDueDate: timestamp("old_due_date", { mode: 'string' as const }).notNull(),
@@ -63,7 +63,7 @@ export const dueDateChangeRequests = mysqlTable("due_date_change_requests", {
 });
 
 export const employees = mysqlTable("employees", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	name: text().notNull(),
 	email: varchar({ length: 320 }).notNull(),
 	phone: varchar({ length: 20 }),
@@ -77,7 +77,7 @@ export const employees = mysqlTable("employees", {
 ]);
 
 export const fuelBudget = mysqlTable("fuel_budget", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	monthYear: varchar("month_year", { length: 7 }).notNull(),
 	totalBudget: int("total_budget").default(0).notNull(),
 	totalSpent: int("total_spent").default(0).notNull(),
@@ -92,7 +92,7 @@ export const fuelBudget = mysqlTable("fuel_budget", {
 ]);
 
 export const fuelPurchases = mysqlTable("fuel_purchases", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	monthYear: varchar("month_year", { length: 7 }).notNull(),
 	litersPurchased: int("liters_purchased").notNull(),
 	amountPaid: int("amount_paid").notNull(),
@@ -105,7 +105,7 @@ export const fuelPurchases = mysqlTable("fuel_purchases", {
 });
 
 export const fuelRecords = mysqlTable("fuel_records", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	bookingId: int("booking_id"), // Nullable para abastecimentos operacionais
 	vesselId: int("vessel_id").notNull(),
 	vesselName: text("vessel_name").notNull(),
@@ -141,7 +141,7 @@ export const fuelRecords = mysqlTable("fuel_records", {
 });
 
 export const gallonStock = mysqlTable("gallon_stock", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	gallonNumber: int("gallon_number").notNull(),
 	stockLiters: int("stock_liters").default(0).notNull(),
 	lastPricePerLiter: int("last_price_per_liter").default(0).notNull(),
@@ -153,7 +153,7 @@ export const gallonStock = mysqlTable("gallon_stock", {
 ]);
 
 export const inspectionCharges = mysqlTable("inspection_charges", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	chargeType: mysqlEnum("charge_type", ['inspection','repair']).default('inspection').notNull(),
 	inspectionId: int("inspection_id"),
 	vesselId: int("vessel_id"),
@@ -172,7 +172,7 @@ export const inspectionCharges = mysqlTable("inspection_charges", {
 });
 
 export const inspections = mysqlTable("inspections", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	bookingId: int("booking_id"),
 	vesselId: int("vessel_id").notNull(),
 	vesselName: text("vessel_name").notNull(),
@@ -188,7 +188,7 @@ export const inspections = mysqlTable("inspections", {
 });
 
 export const maintenances = mysqlTable("maintenances", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	vesselId: int("vessel_id").notNull(),
 	vesselName: text("vessel_name").notNull(),
 	startDate: bigint("start_date", { mode: "number" }).notNull(),
@@ -201,7 +201,7 @@ export const maintenances = mysqlTable("maintenances", {
 });
 
 export const reviews = mysqlTable("reviews", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	bookingId: int("booking_id").notNull(),
 	clientEmail: varchar("client_email", { length: 320 }).notNull(),
 	clientName: text("client_name").notNull(),
@@ -215,7 +215,7 @@ export const reviews = mysqlTable("reviews", {
 });
 
 export const systemSettings = mysqlTable("system_settings", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	key: varchar({ length: 100 }).notNull(),
 	value: text().notNull(),
 	description: text(),
@@ -228,7 +228,7 @@ export const systemSettings = mysqlTable("system_settings", {
 ]);
 
 export const users = mysqlTable("users", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	openId: varchar({ length: 64 }).notNull(),
 	name: text(),
 	email: varchar({ length: 320 }),
@@ -244,7 +244,7 @@ export const users = mysqlTable("users", {
 ]);
 
 export const fuelRecordContainers = mysqlTable("fuel_record_containers", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	fuelRecordId: int("fuel_record_id").notNull(),
 	gallonNumber: int("gallon_number").notNull(),
 	litersInitial: int("liters_initial").notNull(),
@@ -261,7 +261,7 @@ export const fuelRecordContainers = mysqlTable("fuel_record_containers", {
 ]);
 
 export const backupHistory = mysqlTable("backup_history", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	startedAt: timestamp("started_at", { mode: 'string' as const }).notNull(),
 	completedAt: timestamp("completed_at", { mode: 'string' as const }),
 	status: mysqlEnum(['running','success','failed']).notNull(),
@@ -278,7 +278,7 @@ export const backupHistory = mysqlTable("backup_history", {
 // subscriptions e subscription_charges removidas — substituídas por bpo_charges
 
 export const vessels = mysqlTable("vessels", {
-	id: int().autoincrement().notNull(),
+	id: int().autoincrement().notNull().primaryKey(),
 	name: text().notNull(),
 	type: mysqlEnum(['lancha','jetski']).notNull(),
 	description: text(),
