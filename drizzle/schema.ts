@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlSchema, AnyMySqlColumn, index, int, varchar, text, timestamp, mysqlEnum, foreignKey, decimal, tinyint, bigint } from "drizzle-orm/mysql-core"
+import { mysqlTable, mysqlSchema, AnyMySqlColumn, index, uniqueIndex, int, varchar, text, timestamp, mysqlEnum, foreignKey, decimal, tinyint, bigint } from "drizzle-orm/mysql-core"
 import { sql } from "drizzle-orm"
 
 export const allowedClients = mysqlTable("allowed_clients", {
@@ -73,7 +73,7 @@ export const employees = mysqlTable("employees", {
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 },
 (table) => [
-	index("email").on(table.email),
+	uniqueIndex("email").on(table.email),
 ]);
 
 export const fuelBudget = mysqlTable("fuel_budget", {

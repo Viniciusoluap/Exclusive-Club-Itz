@@ -23,15 +23,23 @@
 
 **Verificação:** `tsc --noEmit` limpo. Suíte completa rodada 2x contra MySQL 8.0 real: de 26 falhas (1ª rodada, antes dos 2 fixes extras) para 23 falhas (2ª rodada). Todas as categorias acima confirmadas resolvidas nessa suíte real.
 
-## Pendente de decisão do responsável do projeto (NÃO decidido unilateralmente)
+## Decisões do responsável do projeto (resolvidas)
 
-### A) `quotas.test.ts > deve bloquear reservas em segundas-feiras`
+### A) `quotas.test.ts > deve bloquear reservas em segundas-feiras` — decisão: é intencional
 
-`bookings.create` (cliente) bloqueia reserva às segundas-feiras; `bookings.createForClient` (admin reservando em nome de cliente) **não tem essa checagem**. Só ficou visível agora que a embarcação passou a ser encontrada (antes o teste falhava antes de chegar nessa lógica). Pode ser intencional (admin abre exceção) ou bug. **Aguardando decisão.**
+Confirmado: a exceção do admin é intencional (admin pode abrir reserva em nome do cliente mesmo às segundas). O teste original foi dividido em dois: um cobrindo o bloqueio real (via `bookings.create`, fluxo do cliente) e outro confirmando explicitamente a exceção do admin (via `bookings.createForClient`). Nenhuma mudança de comportamento do sistema, só o teste passou a refletir a regra de negócio correta.
 
-### B) `employees.email-extensions.test.ts > deve rejeitar email duplicado`
+### B) `employees.email-extensions.test.ts > deve rejeitar email duplicado` — decisão: corrigir imediatamente
 
-`employees.create` tenta capturar erro de duplicidade do MySQL (`ER_DUP_ENTRY`/1062), mas a coluna `employees.email` só tem `INDEX` comum, não `UNIQUE` — o erro nunca é lançado, emails duplicados são aceitos silenciosamente. Correção exigiria migration (`UNIQUE INDEX`), com risco de falhar se já existir duplicata em produção. **Aguardando decisão.**
+Corrigido com uma constraint `UNIQUE` real em `employees.email` (`drizzle/schema.ts` + migration `drizzle/0064_employees_email_unique.sql`). Antes, a coluna só tinha `INDEX` comum — o catch de `ER_DUP_ENTRY` em `employees.create` nunca disparava, então duplicatas eram aceitas silenciosamente.
+
+**Achado histórico relevante:** a migration `0033_good_lila_cheney.sql` (linha 7) mostra que essa coluna **já teve** uma constraint `employees_email_unique` no passado, e foi explicitamente dropada naquela migration (substituída por um índice comum). Esse mesmo arquivo já tinha outros 2 bugs confirmados anteriormente nesta investigação (`DROP PRIMARY KEY` sem substituto, `DEFAULT 'CURRENT_TIMESTAMP'` como string). É plausível que a perda da constraint única tenha sido um efeito colateral não intencional daquela migration, não uma decisão de negócio — o código da aplicação nunca parou de esperar esse comportamento.
+
+**⚠️ Pré-requisito antes de aplicar em produção:** se já existir mais de um funcionário com o mesmo email hoje, a migration falha (testado localmente: `ALTER TABLE ... ADD CONSTRAINT ... UNIQUE` rejeita com `ER_DUP_ENTRY` quando há duplicata pré-existente). Antes de aplicar, rodar:
+```sql
+SELECT email, COUNT(*) FROM employees GROUP BY email HAVING COUNT(*) > 1;
+```
+e resolver manualmente qualquer duplicata encontrada. Migration testada localmente nos dois cenários (com e sem duplicata) — comportamento confirmado.
 
 ## Débito remanescente — pré-existente, não relacionado a este trabalho
 
@@ -45,6 +53,6 @@
 
 ## Resumo
 
-- **~13 testes corrigidos nesta rodada** (Categorias 1-6 + 2 extras encontrados) + **37 ocorrências de SQL injection eliminadas** em `bpoRouter.ts`.
-- **2 itens aguardam decisão de negócio/risco** antes de fechar (regra de segunda-feira no admin; constraint de email único).
-- **~20 falhas remanescentes são débito pré-existente e não relacionado**: testes órfãos (módulos deletados), dependência de rede/API externa bloqueada neste sandbox, e um gap de configuração de notificação — nenhum bloqueia as correções desta rodada.
+- **15 testes corrigidos nesta rodada** (Categorias 1-6 + 2 extras encontrados + as 2 decisões resolvidas) + **37 ocorrências de SQL injection eliminadas** em `bpoRouter.ts` + **1 migration de integridade de dados** (email único de funcionários).
+- Suíte completa rodada 3x contra MySQL 8.0 real ao longo do processo: 26 → 23 → **21 falhas**, todas remanescentes confirmadas como débito pré-existente e não relacionado.
+- **~21 falhas remanescentes são débito pré-existente e não relacionado**: testes órfãos (módulos deletados: `webhookRouter`, `googleDriveUpload`), dependência de rede/API externa bloqueada neste sandbox (Asaas sandbox, 16 testes), e um gap de configuração de notificação (`ENV.forgeApiUrl`) — nenhum bloqueia as correções desta rodada nem foi causado por ela.
