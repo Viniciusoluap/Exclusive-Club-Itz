@@ -54,6 +54,10 @@ O primeiro run do CI real (GitHub Actions, TiDB efêmero) confirmou exatamente o
 
 **Verificação:** suíte completa rodada de novo localmente sem `ASAAS_API_KEY` configurada — caiu de 21 para **7 falhas**, todas as 16 chamadas de rede Asaas agora aparecem como *skipped* (não failed). O comportamento com o secret configurado só pode ser confirmado no CI real, não neste sandbox (rede bloqueada aqui).
 
+**Confirmado no CI real (2ª rodada):** exatamente os 7 esperados falharam, todos por falta dos secrets (ainda não cadastrados) — nenhuma regressão nova. Nota técnica: como o GitHub Actions substitui um secret inexistente por string vazia `""` em vez de deixar a env var indefinida, os testes que antes falhavam com `expected undefined to be defined` agora falham com `expected '' not to be ''` — mesma causa raiz, mensagem de assert diferente. `it.skipIf` não é afetado (`""` e `undefined` são igualmente falsy).
+
+**Achado adicional, não corrigido (fora de escopo desta rodada):** `asaas.auth.test.ts > deve lançar erro se ASAAS_API_KEY não estiver configurada` tenta simular "chave ausente" com `delete process.env.ASAAS_API_KEY` em runtime, mas `resolveAsaasApiKey()` lê `ENV.asaasApiKey` (`server/_core/env.ts`), uma constante calculada **uma única vez** na primeira importação do módulo — a partir daí, apagar `process.env.ASAAS_API_KEY` em runtime não tem efeito nenhum sobre esse valor já capturado. Ou seja: mesmo depois que os secrets forem cadastrados, esse teste específico provavelmente vai continuar falhando (por um motivo diferente do atual). Corrigir exigiria decidir entre reescrever o teste (mock em vez de deletar env var) ou mudar `ENV` para ler `process.env` sob demanda em vez de capturar no import — mudança de escopo maior, não incluída aqui.
+
 ## Débito remanescente — pré-existente, não relacionado a este trabalho
 
 | Falha | Causa | Ação sugerida |
