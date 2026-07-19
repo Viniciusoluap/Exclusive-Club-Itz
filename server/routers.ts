@@ -2831,16 +2831,11 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
         const { sql } = await import('drizzle-orm');
         const asaas = await import('./_core/asaas');
-        const { getSetting } = await import('./systemSettings');
 
-        // Buscar ASAAS_API_KEY do banco de dados (configurações do sistema)
-        let apiKey = await getSetting('asaas_api_key');
-        
-        // Fallback para variável de ambiente (caso esteja configurada)
-        if (!apiKey) {
-          apiKey = process.env.ASAAS_API_KEY || null;
-        }
-        
+        // Resolve a chave da API do Asaas via resolvedor único (env override → banco).
+        // Ver server/_core/asaas.ts :: resolveAsaasApiKey
+        const apiKey = await asaas.resolveAsaasApiKey();
+
         if (!apiKey) {
           console.error('[generatePayment] ASAAS_API_KEY não configurada');
           throw new TRPCError({ 
@@ -5744,7 +5739,8 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
     testConnection: adminProcedure
       .mutation(async () => {
-        const apiKey = await systemSettings.getSetting('asaas_api_key');
+        const { resolveAsaasApiKey } = await import('./_core/asaas');
+        const apiKey = await resolveAsaasApiKey();
         if (!apiKey) {
           return { success: false, message: 'Chave API não configurada. Salve a chave antes de testar.' };
         }

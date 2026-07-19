@@ -509,9 +509,8 @@ export const expensesRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
-      const { getSetting } = await import('../systemSettings');
-      const keyFromDb = await getSetting('asaas_api_key');
-      const apiKey = keyFromDb || process.env.ASAAS_API_KEY || '';
+      const { resolveAsaasApiKey } = await import('../_core/asaas');
+      const apiKey = await resolveAsaasApiKey();
       if (!apiKey) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'ASAAS_API_KEY não configurada.' });
       const apiUrl = apiKey.startsWith('$aact_prod_') ? 'https://api.asaas.com/v3' : 'https://sandbox.asaas.com/api/v3';
 

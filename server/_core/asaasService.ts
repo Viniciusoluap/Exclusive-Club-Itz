@@ -9,7 +9,7 @@
  * - Cache de clientes Asaas
  * - Logs de auditoria
  */
-import { getSetting } from "../systemSettings";
+import { resolveAsaasApiKey } from "./asaas";
 import { getDb } from "../db";
 import { sql } from "drizzle-orm";
 
@@ -57,20 +57,15 @@ const MAX_RETRIES = 3;
 const INITIAL_DELAY_MS = 1000;
 
 /**
- * Busca chave API do Asaas (banco de dados ou env)
+ * Busca chave API do Asaas usando o resolvedor único (server/_core/asaas.ts):
+ * prioridade env → banco. Lança erro se não configurada.
  */
 async function getAsaasApiKey(): Promise<string> {
-  const keyFromDb = await getSetting("asaas_api_key");
-  if (keyFromDb) {
-    return keyFromDb;
+  const apiKey = await resolveAsaasApiKey();
+  if (!apiKey) {
+    throw new Error("ASAAS_API_KEY não configurada. Configure em /admin/configuracoes");
   }
-
-  const keyFromEnv = process.env.ASAAS_API_KEY;
-  if (keyFromEnv) {
-    return keyFromEnv;
-  }
-
-  throw new Error("ASAAS_API_KEY não configurada. Configure em /admin/configuracoes");
+  return apiKey;
 }
 
 /**

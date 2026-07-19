@@ -196,9 +196,8 @@ async function runSyncExpenses(): Promise<void> {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const { getSetting } = await import("./systemSettings");
-    const keyFromDb = await getSetting("asaas_api_key");
-    const apiKey = keyFromDb || process.env.ASAAS_API_KEY || "";
+    const { resolveAsaasApiKey } = await import("./_core/asaas");
+    const apiKey = await resolveAsaasApiKey();
     if (!apiKey) {
       console.warn("[CronJob syncExpenses] ASAAS_API_KEY não configurada — pulando.");
       return;
