@@ -2013,27 +2013,27 @@ Nenhuma reserva foi afetada.
         // Sincronizar imediatamente com bpo_charges para aparecer na tela do cliente
         if (!input.isOperational && asaasChargeId) {
           try {
-            const { bpoCharges: bpoChargesTable } = await import('../drizzle/schema');
             const dueDateStr = asaas.formatDateForAsaas(dueDate);
-            const valueInReais = (totalAmount / 100).toFixed(2);
-            await database.execute(`
+            const valueInReais = Number((totalAmount / 100).toFixed(2));
+            const fuelDescription = `Abastecimento - ${booking.vessel_name_actual || ''} - ${finalLiters.toFixed(2)}L`;
+            await database.execute(sql`
               INSERT INTO bpo_charges (
                 asaas_charge_id, asaas_customer_id, client_id, client_name, client_email,
                 value, due_date, status, type, classified_by, billing_type, description,
                 payment_link, invoice_url, source
               ) VALUES (
-                '${asaasChargeId}', ${asaasCustomerId ? `'${asaasCustomerId}'` : 'NULL'}, NULL,
-                '${(booking.client_name || '').replace(/'/g, "''")}', '${(booking.client_email || '').replace(/'/g, "''")}',
-                ${valueInReais}, '${dueDateStr}', 'pending', 'fuel', 'manual', 'PIX',
-                'Abastecimento - ${(booking.vessel_name_actual || '').replace(/'/g, "''")} - ${finalLiters.toFixed(2)}L',
-                ${paymentUrl ? `'${paymentUrl}'` : 'NULL'}, ${paymentUrl ? `'${paymentUrl}'` : 'NULL'}, 'manual'
+                ${asaasChargeId}, ${asaasCustomerId || null}, NULL,
+                ${booking.client_name || ''}, ${booking.client_email || ''},
+                ${valueInReais}, ${dueDateStr}, 'pending', 'fuel', 'manual', 'PIX',
+                ${fuelDescription},
+                ${paymentUrl || null}, ${paymentUrl || null}, 'manual'
               )
               ON DUPLICATE KEY UPDATE
                 type = 'fuel',
                 value = ${valueInReais},
-                client_name = '${(booking.client_name || '').replace(/'/g, "''")}',
-                client_email = '${(booking.client_email || '').replace(/'/g, "''")}',
-                description = 'Abastecimento - ${(booking.vessel_name_actual || '').replace(/'/g, "''")} - ${finalLiters.toFixed(2)}L'
+                client_name = ${booking.client_name || ''},
+                client_email = ${booking.client_email || ''},
+                description = ${fuelDescription}
             `);
             console.log('[fuelRecords.create] ✅ bpo_charges sincronizado com type=fuel');
           } catch (bpoErr: any) {
@@ -3906,7 +3906,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           const { sql } = await import('drizzle-orm');
           
           // Buscar últimas 3 vistorias reprovadas do cliente
-          const result = await db.execute(sql.raw(`
+          const result = await db.execute(sql`
             SELECT 
               i.id,
               i.created_at,
@@ -3926,11 +3926,11 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             FROM inspections i
             LEFT JOIN bookings b ON i.booking_id = b.id
             LEFT JOIN inspection_charges ic ON ic.inspection_id = i.id
-            WHERE i.status = 'rejected' 
-              AND b.client_email = '${ctx.user.email}'
+            WHERE i.status = 'rejected'
+              AND b.client_email = ${ctx.user.email}
             ORDER BY i.created_at DESC
             LIMIT 3
-          `)) as any;
+          `) as any;
           
           const inspections = (Array.isArray(result[0]) ? result[0] : result).map((row: any) => ({
             id: row.id,
@@ -4779,7 +4779,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           const { sql } = await import('drizzle-orm');
           
           // Buscar embarcações do cliente (via client_quotas)
-          const vesselsResult = await db.execute(sql.raw(`
+          const vesselsResult = await db.execute(sql`
             SELECT DISTINCT 
               cq.vessel_id,
               CASE 
@@ -4789,26 +4789,26 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               END as quota_share
             FROM client_quotas cq
             JOIN allowed_clients ac ON cq.client_id = ac.id
-            WHERE ac.email = '${ctx.user.email}' AND cq.is_active = 1
-          `)) as any;
+            WHERE ac.email = ${ctx.user.email} AND cq.is_active = 1
+          `) as any;
           
           const vessels = (Array.isArray(vesselsResult[0]) ? vesselsResult[0] : vesselsResult);
           if (vessels.length === 0) {
             return [];
           }
           
-          const vesselIds = vessels.map((v: any) => v.vessel_id).join(',');
+          const vesselIdList = sql.join(vessels.map((v: any) => sql`${v.vessel_id}`), sql`, `);
           const vesselQuotas = new Map<number, number>(vessels.map((v: any) => [v.vessel_id, parseFloat(v.quota_share)]));
           
           // Construir filtro de data se fornecido
-          let dateFilter = '';
+          let dateFilter = sql``;
           if (input.monthYear) {
             const [year, month] = input.monthYear.split('-');
-            dateFilter = `AND YEAR(ic.created_at) = ${year} AND MONTH(ic.created_at) = ${month}`;
+            dateFilter = sql`AND YEAR(ic.created_at) = ${Number(year)} AND MONTH(ic.created_at) = ${Number(month)}`;
           }
           
           // Buscar reparos das embarcações do cliente
-          const result = await db.execute(sql.raw(`
+          const result = await db.execute(sql`
             SELECT 
               ic.id,
               ic.charge_type as chargeType,
@@ -4830,11 +4830,11 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               ic.client_email as clientEmail
             FROM inspection_charges ic
             WHERE ic.charge_type = 'repair'
-              AND ic.vessel_id IN (${vesselIds})
-              AND ic.client_email = '${ctx.user.email}'
+              AND ic.vessel_id IN (${vesselIdList})
+              AND ic.client_email = ${ctx.user.email}
               ${dateFilter}
             ORDER BY ic.created_at DESC
-          `)) as any;
+          `) as any;
           
           const repairs = (Array.isArray(result[0]) ? result[0] : result);
           
@@ -4956,15 +4956,15 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
         try {
           const { sql } = await import('drizzle-orm');
-          const result = await db.execute(sql.raw(`
-            SELECT 
+          const result = await db.execute(sql`
+            SELECT
               COUNT(*) as total_charges,
               SUM(CASE WHEN payment_status = 'paid' THEN amount ELSE 0 END) as total_paid,
               SUM(CASE WHEN payment_status = 'pending' THEN amount ELSE 0 END) as total_pending,
               SUM(CASE WHEN payment_status = 'overdue' THEN amount ELSE 0 END) as total_overdue
             FROM inspection_charges
-            WHERE client_email = '${ctx.user.email}'
-          `)) as any;
+            WHERE client_email = ${ctx.user.email}
+          `) as any;
           
           const stats = (Array.isArray(result[0]) ? result[0][0] : result[0]);
           
@@ -5464,9 +5464,9 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           const { sql } = await import('drizzle-orm');
           
           // Buscar solicitação antes de atualizar
-          const requestResult = await db.execute(sql.raw(`
+          const requestResult = await db.execute(sql`
             SELECT * FROM due_date_change_requests WHERE id = ${input.requestId}
-          `)) as any;
+          `) as any;
           
           const requests = (Array.isArray(requestResult[0]) ? requestResult[0] : requestResult);
           if (requests.length === 0) {
@@ -5476,21 +5476,21 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           const request = requests[0];
           
           // Atualizar status da solicitação
-          await db.execute(sql.raw(`
+          await db.execute(sql`
             UPDATE due_date_change_requests
             SET status = 'rejected',
-                admin_response = '${input.reason.replace(/'/g, "\\'")}',
-                processed_by = '${ctx.user?.email}',
+                admin_response = ${input.reason},
+                processed_by = ${ctx.user?.email ?? null},
                 updated_at = NOW()
             WHERE id = ${input.requestId}
-          `));
+          `);
           
           // Buscar dados da cobrança para enviar email
-          const chargeResult = await db.execute(sql.raw(`
+          const chargeResult = await db.execute(sql`
             SELECT charge_type, vessel_name, client_email
             FROM inspection_charges
             WHERE id = ${request.charge_id}
-          `)) as any;
+          `) as any;
           
           const charges = (Array.isArray(chargeResult[0]) ? chargeResult[0] : chargeResult);
           if (charges.length > 0) {
@@ -5572,17 +5572,16 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
       const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
 
       // Busca cobranças vencidas: status=overdue OU (status=pending E dueDate < hoje)
-      const emailEsc = ctx.user.email.replace(/'/g, "''");
-      const [rows] = (await dbConn.execute(sql.raw(`
+      const [rows] = (await dbConn.execute(sql`
         SELECT id, type, description, due_date as dueDate, value,
                asaas_charge_id as asaasChargeId, asaas_customer_id as asaasCustomerId, status
         FROM bpo_charges
-        WHERE client_email = '${emailEsc}'
+        WHERE client_email = ${ctx.user.email}
           AND status NOT IN ('received','confirmed','receivedInCash','refunded')
-          AND (status = 'overdue' OR (status = 'pending' AND due_date < '${todayStr}'))
+          AND (status = 'overdue' OR (status = 'pending' AND due_date < ${todayStr}))
           AND (external_reference IS NULL OR external_reference NOT LIKE 'consolidated-%')
         ORDER BY due_date ASC
-      `))) as any;
+      `)) as any;
       const charges = Array.isArray(rows) ? rows : [];
       const now = new Date();
 
@@ -5620,16 +5619,14 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         if (!dbConn) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'DB indisponível' });
 
         // Buscar as cobranças selecionadas e validar que pertencem ao cliente
-        const placeholders = input.chargeIds.map(() => '?').join(',');
-        const emailEsc2 = ctx.user.email.replace(/'/g, "''");
-        const idList = input.chargeIds.join(',');
-        const [rows] = (await dbConn.execute(sql.raw(`
+        const idParams = sql.join(input.chargeIds.map((id) => sql`${id}`), sql`, `);
+        const [rows] = (await dbConn.execute(sql`
           SELECT id, type, description, value, asaas_customer_id as asaasCustomerId
           FROM bpo_charges
-          WHERE id IN (${idList})
-            AND client_email = '${emailEsc2}'
+          WHERE id IN (${idParams})
+            AND client_email = ${ctx.user.email}
             AND status NOT IN ('received','confirmed','receivedInCash','refunded')
-        `))) as any;
+        `)) as any;
         const charges = Array.isArray(rows) ? rows : [];
         if (!charges || charges.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Nenhuma cobrança vencida encontrada' });
@@ -5678,27 +5675,22 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         // Pré-inserir na bpo_charges com classified_by='manual' para evitar que o
         // "Importar do Asaas" crie uma linha duplicada como "Não Classificada"
         try {
-          const asaasChargeIdEsc = String(charge.id || '').replace(/'/g, '');
-          const asaasCustomerIdEsc = String(customer.id || '').replace(/'/g, '');
-          const descEsc = description.replace(/'/g, "''");
-          const externalRefEsc = externalRef.replace(/'/g, "''");
-          const invoiceUrlEsc = ((charge.invoiceUrl || charge.bankSlipUrl || '') as string).replace(/'/g, "''");
-          const clientEmailEsc = ctx.user.email.replace(/'/g, "''");
-          await dbConn.execute(sql.raw(`
+          const invoiceUrl = (charge.invoiceUrl || charge.bankSlipUrl || '') as string;
+          await dbConn.execute(sql`
             INSERT INTO bpo_charges (
               asaas_charge_id, asaas_customer_id, client_email,
               value, due_date, status, type, classified_by, billing_type,
               description, external_reference, payment_link, invoice_url, source, synced_at
             ) VALUES (
-              '${asaasChargeIdEsc}', '${asaasCustomerIdEsc}', '${clientEmailEsc}',
-              ${totalRounded}, '${dueDateStr}', 'pending', 'other', 'manual', 'PIX',
-              '${descEsc}', '${externalRefEsc}',
-              '${invoiceUrlEsc}', '${invoiceUrlEsc}', 'manual', NOW()
+              ${String(charge.id || '')}, ${String(customer.id || '')}, ${ctx.user.email},
+              ${totalRounded}, ${dueDateStr}, 'pending', 'other', 'manual', 'PIX',
+              ${description}, ${externalRef},
+              ${invoiceUrl}, ${invoiceUrl}, 'manual', NOW()
             )
             ON DUPLICATE KEY UPDATE
               status = VALUES(status),
               synced_at = NOW()
-          `));
+          `);
         } catch (insertErr: any) {
           console.warn('[generateConsolidatedCharge] Falha ao pré-inserir bpo_charges:', insertErr?.message);
         }
