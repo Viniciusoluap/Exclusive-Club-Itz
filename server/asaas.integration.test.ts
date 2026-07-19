@@ -29,6 +29,10 @@ function createAdminContext(): TrpcContext {
   };
 }
 
+// Chamadas reais à API sandbox da Asaas exigem ASAAS_API_KEY (secret do
+// repositório, ausente em PRs de forks) — ver docs/reviews/fase0-known-test-failures.md.
+const hasAsaasKey = !!process.env.ASAAS_API_KEY;
+
 describe("Asaas Integration", () => {
   it("should have ASAAS_API_KEY configured", () => {
     const apiKey = process.env.ASAAS_API_KEY;
@@ -37,7 +41,7 @@ describe("Asaas Integration", () => {
     expect(apiKey).toMatch(/^\$aact_(prod_)?/);
   });
 
-  it("should be able to create or get customer", async () => {
+  it.skipIf(!hasAsaasKey)("should be able to create or get customer", async () => {
     const asaas = await import("./_core/asaas");
     
     const customer = await asaas.getOrCreateCustomer({
@@ -50,7 +54,7 @@ describe("Asaas Integration", () => {
     expect(typeof customer.id).toBe("string");
   });
 
-  it("should be able to create charge", async () => {
+  it.skipIf(!hasAsaasKey)("should be able to create charge", async () => {
     const asaas = await import("./_core/asaas");
     
     // Primeiro criar/buscar cliente

@@ -3,14 +3,19 @@ import * as asaas from "./_core/asaas";
 
 /**
  * Testes de autenticação e integração com API Asaas
- * 
+ *
  * Estes testes validam:
  * 1. Credenciais ASAAS_API_KEY configuradas
  * 2. Autenticação básica com API Asaas
  * 3. Busca de clientes por email
  * 4. Criação de clientes
  * 5. Criação de cobranças
+ *
+ * Os testes que fazem chamadas reais à API sandbox da Asaas são pulados
+ * quando ASAAS_API_KEY não está configurada (ex: PRs de forks, que não têm
+ * acesso a secrets do repositório) — ver docs/reviews/fase0-known-test-failures.md.
  */
+const hasAsaasKey = !!process.env.ASAAS_API_KEY;
 
 describe("Asaas API - Autenticação e Credenciais", () => {
   it("deve ter ASAAS_API_KEY configurada", () => {
@@ -37,7 +42,7 @@ describe("Asaas API - Autenticação e Credenciais", () => {
 });
 
 describe("Asaas API - Busca e Criação de Clientes", () => {
-  it("deve buscar ou criar cliente por email", async () => {
+  it.skipIf(!hasAsaasKey)("deve buscar ou criar cliente por email", async () => {
     const testEmail = `teste-${Date.now()}@exclusiveclubitz.com`;
     
     try {
@@ -58,7 +63,7 @@ describe("Asaas API - Busca e Criação de Clientes", () => {
     }
   }, 15000); // Timeout de 15s para chamadas de API
 
-  it("deve retornar cliente existente ao buscar por email duplicado", async () => {
+  it.skipIf(!hasAsaasKey)("deve retornar cliente existente ao buscar por email duplicado", async () => {
     const testEmail = `teste-duplicado-${Date.now()}@exclusiveclubitz.com`;
     
     try {
@@ -84,7 +89,7 @@ describe("Asaas API - Busca e Criação de Clientes", () => {
 });
 
 describe("Asaas API - Criação de Cobranças", () => {
-  it("deve criar cobrança com sucesso", async () => {
+  it.skipIf(!hasAsaasKey)("deve criar cobrança com sucesso", async () => {
     const testEmail = `teste-cobranca-${Date.now()}@exclusiveclubitz.com`;
     
     try {
@@ -132,7 +137,7 @@ describe("Asaas API - Criação de Cobranças", () => {
 });
 
 describe("Asaas API - Tratamento de Erros", () => {
-  it("deve lançar erro ao tentar criar cobrança com customer_id inválido", async () => {
+  it.skipIf(!hasAsaasKey)("deve lançar erro ao tentar criar cobrança com customer_id inválido", async () => {
     try {
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 7);

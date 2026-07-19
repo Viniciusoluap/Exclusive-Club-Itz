@@ -14,9 +14,14 @@ import { getOrCreateCustomer } from "./_core/asaas";
  * 1. Adicionado campo cpf_cnpj na tabela allowed_clients
  * 2. Query de busca de cotas agora inclui ac.cpf_cnpj
  * 3. Chamada getOrCreateCustomer agora passa cpfCnpj do cliente
+ *
+ * Requer ASAAS_API_KEY (secret do repositório, ausente em PRs de forks) —
+ * ver docs/reviews/fase0-known-test-failures.md.
  */
+const hasAsaasKey = !!process.env.ASAAS_API_KEY;
+
 describe("inspectionCharges - Correção Bug CPF/CNPJ em Reparos", () => {
-  it("getOrCreateCustomer aceita cpfCnpj como parâmetro", async () => {
+  it.skipIf(!hasAsaasKey)("getOrCreateCustomer aceita cpfCnpj como parâmetro", async () => {
     const customer = await getOrCreateCustomer({
       name: "Test Client with CPF",
       email: "test-cpf-fix@example.com",
@@ -40,7 +45,7 @@ describe("inspectionCharges - Correção Bug CPF/CNPJ em Reparos", () => {
     }
   });
 
-  it("getOrCreateCustomer funciona mesmo sem cpfCnpj (retrocompatibilidade)", async () => {
+  it.skipIf(!hasAsaasKey)("getOrCreateCustomer funciona mesmo sem cpfCnpj (retrocompatibilidade)", async () => {
     const customer = await getOrCreateCustomer({
       name: "Test Client without CPF",
       email: "test-no-cpf@example.com",
@@ -58,7 +63,7 @@ describe("inspectionCharges - Correção Bug CPF/CNPJ em Reparos", () => {
     expect(customer.email).toBe("test-no-cpf@example.com");
   });
 
-  it("getOrCreateCustomer aceita CNPJ (14 dígitos)", async () => {
+  it.skipIf(!hasAsaasKey)("getOrCreateCustomer aceita CNPJ (14 dígitos)", async () => {
     const customer = await getOrCreateCustomer({
       name: "Test Company",
       email: "test-cnpj-fix@example.com",
