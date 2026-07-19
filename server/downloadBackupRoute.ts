@@ -5,6 +5,7 @@ import { getDb } from './db';
 import { backupHistory } from '../drizzle/schema';
 import { eq } from 'drizzle-orm';
 import { sdk } from './_core/sdk';
+import { storageGet } from './storage';
 
 /**
  * Rota para download de arquivos de backup
@@ -46,19 +47,38 @@ export async function downloadBackupRoute(req: Request, res: Response) {
 
     const backupData = backup[0];
 
-    // Prioriza URL do S3 (arquivo local é removido após upload)
+    // Nunca cachear respostas que expõem/redirecionam para artefatos de backup.
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+
+    // Preferencial: gera uma URL de download NOVA e de curta duração (assinada
+    // pelo storage proxy) a cada requisição, em vez de reutilizar uma URL
+    // persistida que poderia ser previsível/longeva. O gate admin acima já
+    // garante que só administradores autenticados chegam aqui.
+    if (backupData.fileName) {
+      try {
+        const { url } = await storageGet(`backups/${backupData.fileName}`);
+        if (url) {
+          return res.redirect(url);
+        }
+      } catch (signError) {
+        console.warn('Falha ao gerar URL assinada de backup, tentando fallback:', signError);
+      }
+    }
+
+    // Fallback: URL persistida do storage (backups anteriores a esta correção).
     if (backupData.s3Url) {
       return res.redirect(backupData.s3Url);
     }
 
-    // Fallback: arquivo local (backups antigos antes da migração para S3)
+    // Fallback: arquivo local (backups antigos antes da migração para o storage)
     if (!backupData.localFilePath || !fs.existsSync(backupData.localFilePath)) {
       return res.status(404).json({ error: 'Arquivo de backup não encontrado. O arquivo pode ter sido removido do servidor.' });
     }
 
     // Define headers para download
     const fileName = backupData.fileName || path.basename(backupData.localFilePath);
-    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.setHeader('Content-Length', backupData.fileSizeBytes?.toString() || '0');
 
