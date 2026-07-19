@@ -7,32 +7,75 @@ on:
     branches: [main]
 
 jobs:
-  typecheck:
-    name: Type Check
+  build-test:
+    name: Type Check, Test & Build
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
 
+    # DATABASE_URL points at the ephemeral MySQL service below. drizzle.config.ts
+    # and the test global setup both require it to be present.
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/test
+
+    # Ephemeral MySQL for the DB-backed test suite. Production is TiDB Cloud
+    # (MySQL wire-protocol compatible), so mysql:8.0 is a faithful CI stand-in.
+    # The job only starts running steps once the service reports healthy.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+          --health-start-period=30s
+
     steps:
       - uses: actions/checkout@v4
+
+      # pnpm is the project's package manager (packageManager: pnpm@10.33.4).
+      # action-setup reads that field and installs the matching version.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: pnpm
 
       - name: Checkpoint after checkout
-        run: echo "ok" > /tmp/cp-checkout.txt && node --version && npm --version
+        run: |
+          echo "ok" > /tmp/cp-checkout.txt
+          node --version
+          pnpm --version
 
-      - name: Disable corepack
-        run: corepack disable || true
-
+      # --frozen-lockfile: fail if pnpm-lock.yaml is out of date instead of
+      # silently resolving different versions (the SYS-15 bug we are fixing).
       - name: Install dependencies
-        run: npm install --legacy-peer-deps --ignore-scripts --no-optional 2>&1 | tee /tmp/npm-install.log; exit ${PIPESTATUS[0]}
+        run: pnpm install --frozen-lockfile 2>&1 | tee /tmp/install.log; exit ${PIPESTATUS[0]}
+
+      # Sync the empty CI database directly from drizzle/schema.ts. `push --force`
+      # is intentional here: it does NOT depend on drizzle/meta/_journal.json,
+      # whose reconciliation is tracked separately (Story 6 / Phase 1).
+      - name: Apply schema to ephemeral DB
+        run: pnpm run db:push:ci 2>&1 | tee /tmp/dbpush.log; exit ${PIPESTATUS[0]}
 
       - name: Type check
-        run: npm run check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
+        run: pnpm run check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
+
+      - name: Run tests
+        run: pnpm test 2>&1 | tee /tmp/test-output.log; exit ${PIPESTATUS[0]}
+
+      - name: Build (production)
+        run: pnpm run build 2>&1 | tee /tmp/build.log; exit ${PIPESTATUS[0]}
 
       - name: Post error to PR comment
         if: failure() && github.event_name == 'pull_request'
@@ -40,24 +83,34 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const readLog = (path, maxLines) => {
+            const readTail = (path, maxLines) => {
               try {
-                const c = fs.readFileSync(path, 'utf8');
-                return c.split('\n').slice(-maxLines).join('\n');
-              } catch(e) { return null; }
+                return fs.readFileSync(path, 'utf8').split('\n').slice(-maxLines).join('\n');
+              } catch (e) { return null; }
             };
             const checkoutDone = fs.existsSync('/tmp/cp-checkout.txt');
             let body = `## CI Diagnostics\n\nCheckout step completed: **${checkoutDone}**\n\n`;
-            const installLog = readLog('/tmp/npm-install.log', 30);
-            body += '### npm install (last 30 lines)\n```\n' + (installLog ?? '_not run_') + '\n```\n\n';
-            const tscRaw = (() => { try { return fs.readFileSync('/tmp/tsc-output.log', 'utf8'); } catch(e) { return null; } })();
+
+            const install = readTail('/tmp/install.log', 30);
+            body += '### pnpm install (last 30 lines)\n```\n' + (install ?? '_not run_') + '\n```\n\n';
+
+            const dbpush = readTail('/tmp/dbpush.log', 30);
+            body += '### drizzle-kit push (last 30 lines)\n```\n' + (dbpush ?? '_not run_') + '\n```\n\n';
+
+            const tscRaw = (() => { try { return fs.readFileSync('/tmp/tsc-output.log', 'utf8'); } catch (e) { return null; } })();
             if (tscRaw) {
-              const lines = tscRaw.split('\n');
-              const errors = lines.filter(l => l.includes('error TS'));
-              body += '### tsc errors (' + errors.length + ' total)\n```\n' + errors.join('\n') + '\n```\n';
+              const errors = tscRaw.split('\n').filter(l => l.includes('error TS'));
+              body += '### tsc errors (' + errors.length + ' total)\n```\n' + (errors.join('\n') || '_none_') + '\n```\n\n';
             } else {
-              body += '### tsc output\n```\n_not run_\n```\n';
+              body += '### tsc output\n```\n_not run_\n```\n\n';
             }
+
+            const test = readTail('/tmp/test-output.log', 40);
+            body += '### vitest (last 40 lines)\n```\n' + (test ?? '_not run_') + '\n```\n\n';
+
+            const build = readTail('/tmp/build.log', 30);
+            body += '### build (last 30 lines)\n```\n' + (build ?? '_not run_') + '\n```\n';
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
