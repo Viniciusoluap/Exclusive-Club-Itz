@@ -1,82 +1,50 @@
-# Testes Falhando Pós-Fase 0 — Débito Documentado
+# Testes Falhando — Débito Documentado (atualizado pós-correção)
 
-> Levantado em 2026-07-19, durante a implementação da Fase 0 (Story 1 — habilitar CI real).
-> Estes ~17 testes falham com o CI agora **realmente funcional** (TiDB efêmero + schema completo
-> aplicado + typecheck). Nenhum deles está relacionado às 5 correções de segurança da Fase 0
-> (SQL injection, backup, webhook_logs, chave Asaas, CI) — são problemas pré-existentes que o CI
-> nunca tinha tido a chance de expor, porque antes da Story 1 o pipeline só rodava `tsc`.
->
-> Decisão do responsável pelo projeto: não corrigir agora, documentar como débito e priorizar depois.
-> Enquanto não forem corrigidos, o CI deste PR permanece "failing" — isso é esperado e correto
-> (é exatamente o que a Story 1 foi desenhada para revelar), não uma regressão introduzida por ela.
+> Levantado em 2026-07-19. Versão original deste documento foi baseada no log de
+> diagnóstico do PR #38, que mostrava só as **últimas 40 linhas** do output do
+> vitest (limite do step de diagnóstico do CI) — por isso a contagem original de
+> "~17 testes" estava **incompleta**. Esta versão foi verificada rodando a suíte
+> completa (`pnpm test`) contra um banco MySQL 8.0 real e local (schema aplicado
+> via `drizzle-kit push`, mesmo mecanismo do CI), o que dá uma imagem completa.
 
-## Categoria 1 — Rota tRPC ausente (possível gap real, ligado a SYS-19)
+## O que foi corrigido nesta rodada
 
-**Arquivo:** `server/webhookAsaas.test.ts` (3 testes)
-**Erro:** `TRPCError: No procedure found on path "webhooks,asaas"`
+| Categoria | Causa raiz | Correção |
+|---|---|---|
+| 1 — `webhookAsaas.test.ts` (3) | Testava procedure tRPC `webhooks.asaas` inexistente — o webhook real é uma rota Express crua | Lógica extraída para `server/_core/asaasWebhookHandler.ts` (testável), rota Express agora só chama a função. Teste reescrito para chamar a função direto. |
+| 1b — `fuelRecords.asaas.test.ts` (2) | Mesmo bug da Categoria 1, em outro arquivo (não capturado no log truncado original) | Mesma correção: chama `processAsaasWebhookEvent` diretamente. |
+| 2 — `quotas.test.ts`, `maintenances.*.test.ts` (7) | Banco de teste efêmero (CI) não tem embarcações/manutenções que os testes assumem existir (dado de produção) | Seed em `test-global-setup.ts`: 2 embarcações de teste + 1 manutenção; `maintenances.create.test.ts` busca embarcação dinamicamente em vez de `vesselId: 4` hardcoded. |
+| 2b — `fuelRecords.delete.stockReturn.test.ts` (1) | Mesmo padrão: `gallon_stock` vazio num banco novo | Seed condicional (só se vazio) de 1 galão de referência — não é dado de teste descartável, é referência operacional. |
+| 3 — `inspectionCharges.myCharges.test.ts` (1) | Fixture com `due_date` fixo no passado (`2025-12-31`) virou "overdue" com o tempo | Data relativa (`Date.now() + 30 dias`). |
+| 4 — `inspectionCharges.requestDueDateChange.test.ts` (3) | Catch genérico mascarava `TRPCError NOT_FOUND` intencional com mensagem fallback | `if (error instanceof TRPCError) throw error;` antes do catch genérico. Mesma correção aplicada a 2 irmãos idênticos (`inspectionCharges.markAsPaid`, `fuelRecords.markAsPaid`). |
+| 5 — `pdf.generation.test.ts` (1) | `data.quotas[0]` quebrava se `data.quotas` fosse `undefined` (só o `[0]` era guardado, não o array todo) | `const quotas = data.quotas ?? [];` usado em todas as 4 dereferências. |
+| 6 — `expensesRouter.test.ts` (2) | Router renomeado: teste chamava `saas.getFilteredStats`, rota real é `bpo.getStats` | Corrigidas as 2 chamadas. |
+| SQLi `bpoRouter.ts` (achado durante a Categoria 6) | 37 ocorrências de `sql.raw()` com interpolação de string — mesma classe de vulnerabilidade da Story 2 (Fase 0), mas neste arquivo não coberta | Todas convertidas para `sql\`\`` parametrizado. 3 exceções documentadas (LIMIT/OFFSET numérico validado por zod, sem vetor de injeção). |
 
-Os testes chamam um procedure `webhooks.asaas` que não existe na árvore de routers atual.
-Pode ser: (a) um router renomeado/removido sem atualizar o teste, ou (b) um gap real na
-integração de webhook — vale checar junto da Story 9 (Fase 1, "Webhook Asaas transacional,
-idempotente e sem 200 antecipado", SYS-19) quando essa story for trabalhada.
+**Verificação:** `tsc --noEmit` limpo. Suíte completa rodada 2x contra MySQL 8.0 real: de 26 falhas (1ª rodada, antes dos 2 fixes extras) para 23 falhas (2ª rodada). Todas as categorias acima confirmadas resolvidas nessa suíte real.
 
-## Categoria 2 — Isolamento entre testes (dados de um teste dependem de outro)
+## Pendente de decisão do responsável do projeto (NÃO decidido unilateralmente)
 
-**Arquivos:** `server/quotas.test.ts` (5), `server/maintenances.create.test.ts` (1),
-`server/maintenances.getActive.test.ts` (2)
+### A) `quotas.test.ts > deve bloquear reservas em segundas-feiras`
 
-Erros como "Lancha não encontrada", "Jetski não encontrado", "Embarcações não encontradas",
-"Embarcação não encontrada", "expected 0 to be greater than 0" — sintoma clássico de testes que
-esperam registros (embarcações, vistorias) criados por OUTRO arquivo/teste rodando antes, numa
-suíte que compartilha um único banco efêmero sem isolamento/transação por teste. Corrigir exige
-ou fixtures próprias por teste, ou uma estratégia de isolamento (schema/transação por arquivo de
-teste).
+`bookings.create` (cliente) bloqueia reserva às segundas-feiras; `bookings.createForClient` (admin reservando em nome de cliente) **não tem essa checagem**. Só ficou visível agora que a embarcação passou a ser encontrada (antes o teste falhava antes de chegar nessa lógica). Pode ser intencional (admin abre exceção) ou bug. **Aguardando decisão.**
 
-## Categoria 3 — Teste sensível à data atual
+### B) `employees.email-extensions.test.ts > deve rejeitar email duplicado`
 
-**Arquivo:** `server/inspectionCharges.myCharges.test.ts` (1 teste)
-**Erro:** esperado `status: 'pending'`, recebido `status: 'overdue'`
+`employees.create` tenta capturar erro de duplicidade do MySQL (`ER_DUP_ENTRY`/1062), mas a coluna `employees.email` só tem `INDEX` comum, não `UNIQUE` — o erro nunca é lançado, emails duplicados são aceitos silenciosamente. Correção exigiria migration (`UNIQUE INDEX`), com risco de falhar se já existir duplicata em produção. **Aguardando decisão.**
 
-A fixture usa uma data de vencimento fixa no passado; como "hoje" avança a cada execução, o
-status calculado (`pending` vs `overdue`) muda. Precisa de uma data relativa (`Date.now() + N
-dias`) em vez de fixa.
+## Débito remanescente — pré-existente, não relacionado a este trabalho
 
-## Categoria 4 — Mensagem de erro divergente
-
-**Arquivo:** `server/inspectionCharges.requestDueDateChange.test.ts` (3 testes)
-**Erro:** esperado `"Cobrança não encontrada"`, recebido `"Erro ao solicitar mudança de
-vencimento. Tente novamente."`
-
-O código parece ter uma mensagem de erro genérica de fallback que está mascarando a mensagem
-específica que o teste espera — possível regressão de um catch genérico em algum ponto do
-handler, ou o teste está desatualizado em relação ao comportamento atual.
-
-## Categoria 5 — Bug real de runtime
-
-**Arquivo:** `server/pdf.generation.test.ts` (1 teste)
-**Erro:** `TypeError: Cannot read properties of undefined (reading '0')` em
-`server/_core/htmlToPdf.ts:479`
-
-Este parece ser um bug de verdade na geração de PDF de contrato (acesso a um array/objeto
-indefinido), não um problema de fixture/isolamento. Candidato a investigação prioritária dentro
-deste grupo, já que os demais são majoritariamente débito de teste.
-
-## Categoria 6 — Mensagem de asserção genérica (baixa prioridade)
-
-**Arquivo:** `server/routers/expensesRouter.test.ts` (1 teste)
-Mensagem de erro não bate com o regex esperado (`/database|Database|INTERNAL_SERVER_ERROR/i`) —
-provavelmente um efeito colateral da mesma rota `saas.getFilteredStats` não encontrada, correlato
-à Categoria 1.
+| Falha | Causa | Ação sugerida |
+|---|---|---|
+| `webhook.phase2.test.ts` (arquivo inteiro) | Importa `./webhookRouter`, módulo que **nunca existiu** no histórico do repo (confirmado via `git log`) | Arquivo de teste morto/órfão — remover ou reescrever contra a interface real, fora de escopo aqui. |
+| `googleDriveUpload.test.ts` (3) | Import `./googleDriveUpload` não resolve (path/arquivo ausente) | Mesma categoria: teste órfão, investigar separadamente. |
+| `asaas.auth.test.ts` (6), `asaas.integration.test.ts` (3), `asaas.test.ts` (2), `inspectionCharges.cpfcnpj.test.ts` (3), `inspectionCharges.customer.test.ts` (2) | Dependem de `ASAAS_API_KEY` real e acesso de rede a `sandbox.asaas.com` — bloqueado neste sandbox local; **incerto se `ci.yml` configura isso** para o GitHub Actions real | Verificar se `ci.yml` precisa de um secret `ASAAS_API_KEY` de sandbox para esses testes passarem em CI real. |
+| `maintenances.create.test.ts` | Após corrigir a busca de embarcação (Categoria 2), passou a falhar em outro ponto: `Notification service URL is not configured` (`ENV.forgeApiUrl` ausente) | Gap de configuração de ambiente de teste, não relacionado à correção desta rodada — documentar para Fase 1. |
+| `backupRouter.test.ts > getStats` | MySQL 8.0 (modo estrito) rejeita datetime `'...Z'` (ISO 8601) em `INSERT` direto — pode ser específico de MySQL vanilla e não reproduzir em TiDB (que é o que o CI real usa) | Verificar contra TiDB real antes de tratar como bug — pode ser um falso positivo da minha verificação local. |
 
 ## Resumo
 
-| Categoria | Testes | Prioridade sugerida |
-|-----------|--------|----------------------|
-| 1 — Rota tRPC ausente | 3-4 | Média (checar junto com Story 9 / SYS-19) |
-| 2 — Isolamento entre testes | 8 | Média (débito de infraestrutura de teste) |
-| 3 — Data fixa na fixture | 1 | Baixa (fix trivial) |
-| 4 — Mensagem de erro divergente | 3 | Baixa-Média (checar se é regressão real) |
-| 5 — Bug de runtime em PDF | 1 | **Alta** (bug de produto, não de teste) |
-| 6 — Correlato à Categoria 1 | 1 | Baixa |
-
-**Total: ~17 testes.** Nenhum bloqueia as correções de segurança da Fase 0 — são independentes.
+- **~13 testes corrigidos nesta rodada** (Categorias 1-6 + 2 extras encontrados) + **37 ocorrências de SQL injection eliminadas** em `bpoRouter.ts`.
+- **2 itens aguardam decisão de negócio/risco** antes de fechar (regra de segunda-feira no admin; constraint de email único).
+- **~20 falhas remanescentes são débito pré-existente e não relacionado**: testes órfãos (módulos deletados), dependência de rede/API externa bloqueada neste sandbox, e um gap de configuração de notificação — nenhum bloqueia as correções desta rodada.

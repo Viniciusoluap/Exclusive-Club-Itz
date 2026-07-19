@@ -229,13 +229,13 @@ async function syncStatusToSources(
 
   try {
     if (icStatus) {
-      await db.execute(sql.raw(`UPDATE inspection_charges SET payment_status = '${icStatus}' WHERE asaas_charge_id = '${safeId}'`));
+      await db.execute(sql`UPDATE inspection_charges SET payment_status = ${icStatus} WHERE asaas_charge_id = ${safeId}`);
     }
   } catch (e: any) { console.warn('[syncStatusToSources] inspection_charges:', e?.message); }
 
   try {
     if (frStatus) {
-      await db.execute(sql.raw(`UPDATE fuel_records SET payment_status = '${frStatus}' WHERE asaas_charge_id = '${safeId}'`));
+      await db.execute(sql`UPDATE fuel_records SET payment_status = ${frStatus} WHERE asaas_charge_id = ${safeId}`);
     }
   } catch (e: any) { console.warn('[syncStatusToSources] fuel_records:', e?.message); }
 }
@@ -267,12 +267,11 @@ async function createOrUpdateRemainderCharge(
   const paid  = parseFloat(String(originalCharge.amountPaid));
   const remaining = Math.max(0, total - paid);
   const ref = `saldo-${originalCharge.id}`;
-  const esc = (s: string | null) => s === null ? 'NULL' : `'${String(s).replace(/'/g, "''")}'`;
 
   if (remaining < 0.01) {
-    await db.execute(sql.raw(
-      `UPDATE bpo_charges SET status = 'cancelled' WHERE external_reference = '${ref}' AND status NOT IN ('receivedInCash', 'cancelled')`
-    ));
+    await db.execute(
+      sql`UPDATE bpo_charges SET status = 'cancelled' WHERE external_reference = ${ref} AND status NOT IN ('receivedInCash', 'cancelled')`
+    );
     return;
   }
 
@@ -281,20 +280,19 @@ async function createOrUpdateRemainderCharge(
   const status = dueDate < today ? 'overdue' : 'pending';
   const description = `Saldo devedor — ${originalCharge.description || 'Cobrança parcial'}`;
 
-  const existingRaw = await db.execute(sql.raw(
-    `SELECT id FROM bpo_charges WHERE external_reference = '${ref}' LIMIT 1`
-  )) as any;
+  const existingRaw = await db.execute(
+    sql`SELECT id FROM bpo_charges WHERE external_reference = ${ref} LIMIT 1`
+  ) as any;
   const existing = (Array.isArray(existingRaw[0]) ? existingRaw[0] : existingRaw)[0];
 
   if (existing) {
-    await db.execute(sql.raw(
-      `UPDATE bpo_charges SET value = ${remaining.toFixed(2)}, status = '${status}', due_date = '${dueDate}', amount_paid = 0.00 WHERE id = ${existing.id}`
-    ));
+    await db.execute(
+      sql`UPDATE bpo_charges SET value = ${remaining.toFixed(2)}, status = ${status}, due_date = ${dueDate}, amount_paid = 0.00 WHERE id = ${existing.id}`
+    );
   } else {
-    const clientIdSql = originalCharge.clientId !== null ? originalCharge.clientId : 'NULL';
-    await db.execute(sql.raw(
-      `INSERT INTO bpo_charges (client_id, client_name, client_email, asaas_customer_id, value, due_date, status, type, classified_by, billing_type, description, external_reference, source) VALUES (${clientIdSql}, ${esc(originalCharge.clientName)}, ${esc(originalCharge.clientEmail)}, ${esc(originalCharge.asaasCustomerId)}, ${remaining.toFixed(2)}, '${dueDate}', '${status}', '${originalCharge.type || 'other'}', 'manual', 'PIX', ${esc(description)}, '${ref}', 'system')`
-    ));
+    await db.execute(
+      sql`INSERT INTO bpo_charges (client_id, client_name, client_email, asaas_customer_id, value, due_date, status, type, classified_by, billing_type, description, external_reference, source) VALUES (${originalCharge.clientId ?? null}, ${originalCharge.clientName}, ${originalCharge.clientEmail}, ${originalCharge.asaasCustomerId}, ${remaining.toFixed(2)}, ${dueDate}, ${status}, ${originalCharge.type || 'other'}, 'manual', 'PIX', ${description}, ${ref}, 'system')`
+    );
   }
 }
 
@@ -442,10 +440,10 @@ export const bpoRouter = router({
       if (!db) throw new Error("Database not available");
 
       // Construir condições de filtro — idêntico ao listCharges
-      const conditions: string[] = [];
+      const conditions: any[] = [];
 
       // Cobranças canceladas nunca entram nas estatísticas
-      conditions.push(`status != 'cancelled'`);
+      conditions.push(sql`status != 'cancelled'`);
 
       const yearFilter = input?.year || "";
       const monthFilter = input?.month || "";
@@ -453,43 +451,44 @@ export const bpoRouter = router({
       const dateToFilter = input?.dateTo || "";
       const typeVal = input?.type || "all";
       const statusVal = input?.status || "all";
-      const searchVal = (input?.search || "").replace(/'/g, "''");
+      const searchVal = input?.search || "";
 
       // Filtro de data
       if (dateFromFilter && dateToFilter) {
-        conditions.push(`due_date BETWEEN '${dateFromFilter}' AND '${dateToFilter}'`);
+        conditions.push(sql`due_date BETWEEN ${dateFromFilter} AND ${dateToFilter}`);
       } else if (monthFilter && monthFilter !== "all") {
         const m = monthFilter.padStart(2, "0");
         if (yearFilter) {
-          conditions.push(`due_date LIKE '${yearFilter}-${m}-%'`);
+          conditions.push(sql`due_date LIKE ${`${yearFilter}-${m}-%`}`);
         } else {
           // Todos os anos: filtrar a partir de 2025-01-01 no mês específico
-          conditions.push(`(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(m)})`);
+          conditions.push(sql`(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(m)})`);
         }
       } else if (yearFilter) {
-        conditions.push(`due_date LIKE '${yearFilter}-%'`);
+        conditions.push(sql`due_date LIKE ${`${yearFilter}-%`}`);
       } else {
         // Todos os anos: tudo a partir de 01/01/2025
-        conditions.push(`due_date >= '2025-01-01'`);
+        conditions.push(sql`due_date >= '2025-01-01'`);
       }
 
       // Filtro de tipo
       if (typeVal !== "all" && typeVal) {
-        conditions.push(`type = '${typeVal}'`);
+        conditions.push(sql`type = ${typeVal}`);
       }
 
       // Filtro de busca
       if (searchVal) {
+        const searchLike = `%${searchVal}%`;
         conditions.push(
-          `(client_name LIKE '%${searchVal}%' OR client_email LIKE '%${searchVal}%' OR description LIKE '%${searchVal}%')`
+          sql`(client_name LIKE ${searchLike} OR client_email LIKE ${searchLike} OR description LIKE ${searchLike})`
         );
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+      const whereClause = conditions.length > 0 ? sql`WHERE ${sql.join(conditions, sql` AND `)}` : sql``;
 
       // Os cards mostram TODOS os status do conjunto filtrado
       // (não filtramos por status nos cards — o filtro de status é só para a lista)
-      const [rows] = (await db.execute(sql.raw(`
+      const [rows] = (await db.execute(sql`
         SELECT
           COALESCE(SUM(value), 0) as totalExpected,
           COALESCE(SUM(CASE WHEN status IN ('received','confirmed','receivedInCash') THEN value ELSE 0 END), 0) as totalPaid,
@@ -501,7 +500,7 @@ export const bpoRouter = router({
           COUNT(*) as totalCount
         FROM bpo_charges
         ${whereClause}
-      `))) as any;
+      `)) as any;
 
       const s = Array.isArray(rows) ? rows[0] : rows;
       return {
@@ -548,127 +547,131 @@ export const bpoRouter = router({
       const yearFilter = input?.year; // undefined = todos os anos
       const dateFromFilter = input?.dateFrom;
       const dateToFilter = input?.dateTo;
-      const searchFilter = (input?.search ?? "").replace(/'/g, "''");
+      const searchFilter = input?.search ?? "";
       const limitVal = input?.limit ?? 50;
       const offsetVal = input?.offset ?? 0;
 
-      const conditions: string[] = [];
+      const conditions: any[] = [];
 
       // Cobranças canceladas nunca aparecem na listagem
-      conditions.push(`status != 'cancelled'`);
+      conditions.push(sql`status != 'cancelled'`);
 
       // Filtro de data
       if (dateFromFilter && dateToFilter) {
-        conditions.push(`due_date BETWEEN '${dateFromFilter}' AND '${dateToFilter}'`);
+        conditions.push(sql`due_date BETWEEN ${dateFromFilter} AND ${dateToFilter}`);
       } else if (monthFilter && monthFilter !== "all") {
         const m = monthFilter.padStart(2, "0");
         if (yearFilter) {
-          conditions.push(`due_date LIKE '${yearFilter}-${m}-%'`);
+          conditions.push(sql`due_date LIKE ${`${yearFilter}-${m}-%`}`);
         } else {
           // Todos os anos: filtrar a partir de 2025-01-01 no mês específico
-          conditions.push(`(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(m)})`);
+          conditions.push(sql`(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(m)})`);
         }
       } else if (yearFilter) {
-        conditions.push(`due_date LIKE '${yearFilter}-%'`);
+        conditions.push(sql`due_date LIKE ${`${yearFilter}-%`}`);
       } else {
         // Todos os anos: tudo a partir de 01/01/2025
-        conditions.push(`due_date >= '2025-01-01'`);
+        conditions.push(sql`due_date >= '2025-01-01'`);
       }
 
       // Filtro de status
       if (statusFilter !== "all") {
         if (statusFilter === "overdue") {
-          conditions.push(`(status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()))`);
+          conditions.push(sql`(status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()))`);
         } else if (statusFilter === "paid") {
-          conditions.push(`status IN ('received','confirmed','receivedInCash')`);
+          conditions.push(sql`status IN ('received','confirmed','receivedInCash')`);
         } else if (statusFilter === "pending") {
-          conditions.push(`(status = 'pending' AND due_date >= CURDATE())`);
+          conditions.push(sql`(status = 'pending' AND due_date >= CURDATE())`);
         } else {
-          conditions.push(`status = '${statusFilter}'`);
+          conditions.push(sql`status = ${statusFilter}`);
         }
       }
 
       // Filtro de tipo
       if (typeFilter !== "all") {
-        conditions.push(`type = '${typeFilter}'`);
+        conditions.push(sql`type = ${typeFilter}`);
       }
 
       // Filtro de cliente
       if (input?.clientId) {
-        conditions.push(`client_id = ${input.clientId}`);
+        conditions.push(sql`client_id = ${input.clientId}`);
       }
 
       // Filtro de busca
       if (searchFilter) {
+        const searchLike = `%${searchFilter}%`;
         conditions.push(
-          `(client_name LIKE '%${searchFilter}%' OR client_email LIKE '%${searchFilter}%' OR description LIKE '%${searchFilter}%')`
+          sql`(client_name LIKE ${searchLike} OR client_email LIKE ${searchLike} OR description LIKE ${searchLike})`
         );
       }
 
       // Excluir cobranças de consolidação (tentativas PIX agrupadas não pagas)
       // Essas cobranças têm external_reference iniciando com 'consolidated-'
       if (input?.excludeConsolidation) {
-        conditions.push(`(external_reference IS NULL OR external_reference NOT LIKE 'consolidated-%')`);
+        conditions.push(sql`(external_reference IS NULL OR external_reference NOT LIKE 'consolidated-%')`);
       }
 
       // Filtro por embarcação — via client_quotas (clientes com cota ativa na embarcação)
       if (input?.vesselName) {
         // Buscar o vessel_id pelo nome
-        const [vesselRows] = (await db.execute(sql.raw(
-          `SELECT id FROM vessels WHERE name = '${input.vesselName.replace(/'/g, "''")}' LIMIT 1`
-        ))) as any;
+        const [vesselRows] = (await db.execute(
+          sql`SELECT id FROM vessels WHERE name = ${input.vesselName} LIMIT 1`
+        )) as any;
         const vesselRow = Array.isArray(vesselRows) ? vesselRows[0] : null;
         if (vesselRow?.id) {
           // Buscar client_ids com cota ativa nessa embarcação, ordenados por quota_number
           // NOTA: não usar ORDER BY com SELECT DISTINCT em colunas fora do SELECT (MySQL/TiDB error)
-          const [quotaRows] = (await db.execute(sql.raw(
-            `SELECT cq.client_id, ac.email, MIN(cq.quota_number) as quota_number
+          const [quotaRows] = (await db.execute(
+            sql`SELECT cq.client_id, ac.email, MIN(cq.quota_number) as quota_number
              FROM client_quotas cq
              JOIN allowed_clients ac ON ac.id = cq.client_id
              WHERE cq.vessel_id = ${vesselRow.id} AND cq.is_active = 1
              GROUP BY cq.client_id, ac.email
              ORDER BY quota_number ASC`
-          ))) as any;
-          const quotaEmails: string[] = Array.isArray(quotaRows)
-            ? quotaRows.map((r: any) => `'${r.email.replace(/'/g, "''")}'`)
+          )) as any;
+          const quotaEmails: any[] = Array.isArray(quotaRows)
+            ? quotaRows.map((r: any) => sql`${r.email}`)
             : [];
           if (quotaEmails.length > 0) {
-            conditions.push(`client_email IN (${quotaEmails.join(",")})`);
+            conditions.push(sql`client_email IN (${sql.join(quotaEmails, sql`, `)})`);
           } else {
             // Nenhum cotista nessa embarcação — retornar vazio
-            conditions.push(`1 = 0`);
+            conditions.push(sql`1 = 0`);
           }
         } else {
-          conditions.push(`1 = 0`);
+          conditions.push(sql`1 = 0`);
         }
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+      const whereClause = conditions.length > 0 ? sql`WHERE ${sql.join(conditions, sql` AND `)}` : sql``;
 
       // Ordenar por quota_number quando filtro por embarcação estiver ativo
-      let orderBy = "ORDER BY due_date DESC";
+      let orderBy = sql`ORDER BY due_date DESC`;
       if (input?.vesselName) {
-        orderBy = `ORDER BY (
+        orderBy = sql`ORDER BY (
           SELECT cq.quota_number FROM client_quotas cq
           JOIN allowed_clients ac ON ac.id = cq.client_id
           JOIN vessels v ON v.id = cq.vessel_id
           WHERE ac.email = bpo_charges.client_email
-            AND v.name = '${(input.vesselName ?? "").replace(/'/g, "''")}'
+            AND v.name = ${input.vesselName ?? ""}
             AND cq.is_active = 1
           LIMIT 1
         ) ASC, due_date DESC`;
       }
 
-      const [rows] = (await db.execute(sql.raw(`
+      // LIMIT/OFFSET são numéricos (validados por zod, z.number) e não representam
+      // vetor de injeção. Inlinados via sql.raw(String(n)) para preservar o SQL
+      // emitido idêntico ao anterior e evitar o quirk de placeholder em LIMIT do mysql2.
+      const [rows] = (await db.execute(sql`
         SELECT * FROM bpo_charges
         ${whereClause}
         ${orderBy}
-        LIMIT ${limitVal} OFFSET ${offsetVal}
-      `))) as any;
+        LIMIT ${sql.raw(String(limitVal))} OFFSET ${sql.raw(String(offsetVal))}
+      `)) as any;
 
-      const [countRows] = (await db.execute(sql.raw(`
+      const [countRows] = (await db.execute(sql`
         SELECT COUNT(*) as total FROM bpo_charges ${whereClause}
-      `))) as any;
+      `)) as any;
 
       const items = Array.isArray(rows) ? rows : [];
       const total = parseInt(
@@ -688,13 +691,13 @@ export const bpoRouter = router({
     const report = { checked: 0, updated: 0, errors: 0 };
 
     // Buscar cobranças pendentes/vencidas com asaas_charge_id dos últimos 90 dias
-    const [pendingRows] = (await db.execute(sql.raw(`
+    const [pendingRows] = (await db.execute(sql`
       SELECT asaas_charge_id FROM bpo_charges
       WHERE status IN ('pending','overdue')
         AND asaas_charge_id IS NOT NULL
         AND due_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
       LIMIT 200
-    `))) as any;
+    `)) as any;
 
     const pending = Array.isArray(pendingRows) ? pendingRows : [];
 
@@ -736,12 +739,12 @@ export const bpoRouter = router({
 
     // Proteção retroativa: cobranças já pagas (receivedInCash/received/confirmed)
     // sem classified_by = 'manual' ficam vulneráveis ao sync. Corrige em lote.
-    await db.execute(sql.raw(`
+    await db.execute(sql`
       UPDATE bpo_charges
       SET classified_by = 'manual'
       WHERE status IN ('receivedInCash', 'received', 'confirmed', 'partiallyPaid')
         AND (classified_by IS NULL OR classified_by != 'manual')
-    `));
+    `);
 
     return report;
   }),
@@ -1077,18 +1080,18 @@ export const bpoRouter = router({
       }
 
       // 5. Buscar cobranças pendentes do mesmo cliente com o mesmo tipo
-      const [pendingRows] = (await db.execute(sql.raw(`
+      const [pendingRows] = (await db.execute(sql`
         SELECT id, value, amount_paid as amountPaid, due_date as dueDate, description, status,
                external_reference as externalReference, client_name as clientName,
                client_email as clientEmail, asaas_customer_id as asaasCustomerId, type
         FROM bpo_charges
         WHERE client_id = ${clientId}
-          AND type = '${input.type}'
+          AND type = ${input.type}
           AND status IN ('pending', 'overdue', 'partiallyPaid')
           AND id != ${input.chargeId}
         ORDER BY due_date ASC
         LIMIT 20
-      `))) as any;
+      `)) as any;
 
       const pendingCharges: Array<{ id: number; value: string; amountPaid: string; dueDate: string; description: string; status: string }> =
         Array.isArray(pendingRows) ? pendingRows : [];
@@ -1218,17 +1221,17 @@ export const bpoRouter = router({
       if (!db) throw new Error("Database not available");
       const yearVal = input?.year || null;
       const monthVal = input?.month || "all";
-      let dateFilter: string;
+      let dateFilter: any;
       if (yearVal) {
         dateFilter = monthVal !== "all"
-          ? `due_date LIKE '${yearVal}-${monthVal.padStart(2, "0")}-%'`
-          : `due_date LIKE '${yearVal}-%'`;
+          ? sql`due_date LIKE ${`${yearVal}-${monthVal.padStart(2, "0")}-%`}`
+          : sql`due_date LIKE ${`${yearVal}-%`}`;
       } else {
         dateFilter = monthVal !== "all"
-          ? `(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(monthVal)})`
-          : `due_date >= '2025-01-01'`;
+          ? sql`(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(monthVal)})`
+          : sql`due_date >= '2025-01-01'`;
       }
-      const [bpoRows] = (await db.execute(sql.raw(`
+      const [bpoRows] = (await db.execute(sql`
         SELECT
           COALESCE(type, 'other') as type,
           COALESCE(SUM(CASE WHEN status IN ('received','confirmed','receivedInCash') THEN CAST(amount_paid AS DECIMAL(10,2)) ELSE 0 END), 0) as received,
@@ -1237,18 +1240,18 @@ export const bpoRouter = router({
         FROM bpo_charges
         WHERE ${dateFilter}
         GROUP BY COALESCE(type, 'other')
-      `))) as any;
+      `)) as any;
       const bpoByType = Array.isArray(bpoRows) ? bpoRows : [];
       const totalRevenue = bpoByType.reduce((sum: number, r: any) => sum + parseFloat(r.received ?? "0"), 0);
       const totalExpected = bpoByType.reduce((sum: number, r: any) => sum + parseFloat(r.expected ?? "0"), 0);
-      let expenseDateFilter: string;
+      let expenseDateFilter: any;
       if (yearVal) {
-        expenseDateFilter = `YEAR(due_date) = ${parseInt(yearVal)}`;
-        if (monthVal !== "all") expenseDateFilter += ` AND MONTH(due_date) = ${parseInt(monthVal)}`;
+        expenseDateFilter = sql`YEAR(due_date) = ${parseInt(yearVal)}`;
+        if (monthVal !== "all") expenseDateFilter = sql`${expenseDateFilter} AND MONTH(due_date) = ${parseInt(monthVal)}`;
       } else {
-        expenseDateFilter = monthVal !== "all" ? `(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(monthVal)})` : `due_date >= '2025-01-01'`;
+        expenseDateFilter = monthVal !== "all" ? sql`(due_date >= '2025-01-01' AND MONTH(due_date) = ${parseInt(monthVal)})` : sql`due_date >= '2025-01-01'`;
       }
-      const [expRows] = (await db.execute(sql.raw(`
+      const [expRows] = (await db.execute(sql`
         SELECT
           cost_center,
           COALESCE(SUM(CASE WHEN status = 'paid' THEN CAST(value AS DECIMAL(10,2)) ELSE 0 END), 0) as paid,
@@ -1257,7 +1260,7 @@ export const bpoRouter = router({
         FROM expense_records
         WHERE ${expenseDateFilter}
         GROUP BY cost_center
-      `))) as any;
+      `)) as any;
       const expByCenter = Array.isArray(expRows) ? expRows : [];
       const totalExpenses = expByCenter.reduce((sum: number, r: any) => sum + parseFloat(r.paid ?? "0"), 0);
       const totalExpensesAll = expByCenter.reduce((sum: number, r: any) => sum + parseFloat(r.total ?? "0"), 0);
@@ -1319,12 +1322,12 @@ export const bpoRouter = router({
       const monthVal = input.month ?? "all";
 
       // Build date filter for bpo_charges (sempre usa alias bc.)
-      let dateFilter = `bc.due_date >= '2025-01-01'`;
+      let dateFilter: any = sql`bc.due_date >= '2025-01-01'`;
       if (yearVal !== "all") {
-        dateFilter = `YEAR(bc.due_date) = ${parseInt(yearVal)}`;
+        dateFilter = sql`YEAR(bc.due_date) = ${parseInt(yearVal)}`;
         if (monthVal && monthVal !== "all") {
           const m = monthVal.padStart(2, "0");
-          dateFilter = `bc.due_date LIKE '${yearVal}-${m}-%'`;
+          dateFilter = sql`bc.due_date LIKE ${`${yearVal}-${m}-%`}`;
         }
       }
 
@@ -1333,7 +1336,7 @@ export const bpoRouter = router({
       if (input.vesselId) {
         // Filtra bpo_charges pelos clientes com cota ativa na embarcação selecionada.
         // Usa subquery para evitar o erro ONLY_FULL_GROUP_BY do MySQL com LEFT JOIN + IS NULL.
-        const [rows] = (await db.execute(sql.raw(`
+        const [rows] = (await db.execute(sql`
           SELECT
             COALESCE(bc.type, 'other') as type,
             COALESCE(SUM(CASE WHEN bc.status IN ('received','confirmed','receivedInCash') THEN CAST(bc.amount_paid AS DECIMAL(10,2)) ELSE 0 END), 0) as received,
@@ -1349,10 +1352,10 @@ export const bpoRouter = router({
             )
           GROUP BY COALESCE(bc.type, 'other')
           ORDER BY received DESC
-        `))) as any;
+        `)) as any;
         revenueRows = Array.isArray(rows) ? rows : [];
       } else {
-        const [rows] = (await db.execute(sql.raw(`
+        const [rows] = (await db.execute(sql`
           SELECT
             COALESCE(v.id, 0) as vessel_id,
             COALESCE(v.name, 'Sem embarcação') as vessel_name,
@@ -1365,19 +1368,19 @@ export const bpoRouter = router({
           WHERE ${dateFilter}
           GROUP BY COALESCE(v.id, 0), COALESCE(v.name, 'Sem embarcação')
           ORDER BY received DESC
-        `))) as any;
+        `)) as any;
         revenueRows = Array.isArray(rows) ? rows : [];
       }
 
       // 2. Despesas por centro de custo (globais)
-      let expDateFilter = `due_date >= '2025-01-01'`;
+      let expDateFilter: any = sql`due_date >= '2025-01-01'`;
       if (yearVal !== "all") {
-        expDateFilter = `YEAR(due_date) = ${parseInt(yearVal)}`;
+        expDateFilter = sql`YEAR(due_date) = ${parseInt(yearVal)}`;
         if (monthVal && monthVal !== "all") {
-          expDateFilter += ` AND MONTH(due_date) = ${parseInt(monthVal)}`;
+          expDateFilter = sql`${expDateFilter} AND MONTH(due_date) = ${parseInt(monthVal)}`;
         }
       }
-      const [expRows] = (await db.execute(sql.raw(`
+      const [expRows] = (await db.execute(sql`
         SELECT
           COALESCE(cost_center, 'other') as cost_center,
           COALESCE(SUM(CASE WHEN status = 'paid' THEN CAST(value AS DECIMAL(10,2)) ELSE 0 END), 0) as paid,
@@ -1387,7 +1390,7 @@ export const bpoRouter = router({
         WHERE ${expDateFilter}
         GROUP BY COALESCE(cost_center, 'other')
         ORDER BY paid DESC
-      `))) as any;
+      `)) as any;
       const expByCenter = Array.isArray(expRows) ? expRows : [];
 
       const totalRevenue = revenueRows.reduce((s: number, r: any) => s + parseFloat(r.received ?? "0"), 0);
@@ -1455,12 +1458,12 @@ export const bpoRouter = router({
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      const [rows] = (await db.execute(sql.raw(`
+      const [rows] = (await db.execute(sql`
         SELECT id, event, asaas_payment_id, payload, processed, error, created_at
         FROM webhook_logs ORDER BY created_at DESC
-        LIMIT ${input.limit} OFFSET ${input.offset}
-      `))) as any;
-      const [countRows] = (await db.execute(sql.raw(`SELECT COUNT(*) as total FROM webhook_logs`))) as any;
+        LIMIT ${sql.raw(String(input.limit))} OFFSET ${sql.raw(String(input.offset))}
+      `)) as any;
+      const [countRows] = (await db.execute(sql`SELECT COUNT(*) as total FROM webhook_logs`)) as any;
       const logs = Array.isArray(rows) ? rows : [];
       const total = parseInt((Array.isArray(countRows) ? countRows[0] : countRows)?.total ?? "0");
       return { logs, total };
@@ -1473,16 +1476,16 @@ export const bpoRouter = router({
     .query(async () => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
-      const [rows] = (await db.execute(sql.raw(`
+      const [rows] = (await db.execute(sql`
         SELECT id, asaas_charge_id, client_name, client_email, value, status, due_date, synced_at
         FROM bpo_charges
         WHERE status IN ('pending','overdue')
           AND asaas_charge_id IS NOT NULL
           AND due_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
         ORDER BY due_date ASC LIMIT 100
-      `))) as any;
+      `)) as any;
       const pending = Array.isArray(rows) ? rows : [];
-      const [divergentRows] = (await db.execute(sql.raw(`
+      const [divergentRows] = (await db.execute(sql`
         SELECT id, asaas_charge_id, client_name, value, status, due_date, synced_at
         FROM bpo_charges
         WHERE status IN ('pending','overdue')
@@ -1490,14 +1493,14 @@ export const bpoRouter = router({
           AND (synced_at IS NULL OR synced_at < DATE_SUB(NOW(), INTERVAL 7 DAY))
           AND due_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
         LIMIT 50
-      `))) as any;
+      `)) as any;
       const divergent = Array.isArray(divergentRows) ? divergentRows : [];
-      const [statsRows] = (await db.execute(sql.raw(`
+      const [statsRows] = (await db.execute(sql`
         SELECT status, COUNT(*) as count, COALESCE(SUM(CAST(value AS DECIMAL(10,2))), 0) as total
         FROM bpo_charges
         WHERE due_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
         GROUP BY status
-      `))) as any;
+      `)) as any;
       const stats = Array.isArray(statsRows) ? statsRows : [];
       return {
         pendingCharges: pending.map((r: any) => ({
@@ -1564,14 +1567,14 @@ export const bpoRouter = router({
       }).from(acTable).where(eq(acTable.isActive, 1));
 
       // Buscar cobranças com cliente vinculado para match por valor+data
-      const [pendingRows] = (await db.execute(sql.raw(`
+      const [pendingRows] = (await db.execute(sql`
         SELECT id, client_id, client_name, client_email, value, due_date, type
         FROM bpo_charges
         WHERE client_id IS NOT NULL
           AND classified_by != 'unclassified'
           AND due_date >= '2025-01-01'
         LIMIT 2000
-      `))) as any;
+      `)) as any;
       const pendingCharges: Array<{
         id: number; client_id: number; client_name: string; client_email: string;
         value: string; due_date: string; type: string;
@@ -1799,14 +1802,14 @@ export const bpoRouter = router({
         if (clientRow.length > 0) {
           const c = clientRow[0];
           // Atualizar cobrança com dados do cliente
-          await db.execute(sql.raw(`
+          await db.execute(sql`
             UPDATE bpo_charges
             SET client_id = ${c.id},
-                client_name = '${(c.name ?? "").replace(/'/g, "''")}',
-                client_email = '${(c.email ?? "").replace(/'/g, "''")}',
+                client_name = ${c.name ?? ""},
+                client_email = ${c.email ?? ""},
                 updated_at = NOW()
             WHERE id = ${input.chargeId}
-          `));
+          `);
         }
       }
 
@@ -2143,16 +2146,16 @@ export const bpoRouter = router({
       if (!db) throw new Error("Database not available");
 
       // Buscar email do cliente para também encontrar cobranças com client_id NULL
-      const [clientRows] = (await db.execute(sql.raw(`
+      const [clientRows] = (await db.execute(sql`
         SELECT email FROM allowed_clients WHERE id = ${input.clientId} LIMIT 1
-      `))) as any;
+      `)) as any;
       const clientEmail = Array.isArray(clientRows) && clientRows.length > 0 ? clientRows[0]?.email : null;
 
       const emailCondition = clientEmail
-        ? `OR (client_id IS NULL AND client_email = '${clientEmail.replace(/'/g, "\\'")}')`
-        : '';
+        ? sql`OR (client_id IS NULL AND client_email = ${clientEmail})`
+        : sql``;
 
-      const [rows] = (await db.execute(sql.raw(`
+      const [rows] = (await db.execute(sql`
         SELECT id, due_date as dueDate, value, amount_paid as amountPaid,
                status, type, description, asaas_charge_id as asaasChargeId,
                client_name as client_name
@@ -2161,7 +2164,7 @@ export const bpoRouter = router({
           AND status IN ('pending', 'overdue', 'partiallyPaid')
         ORDER BY due_date ASC
         LIMIT 50
-      `))) as any;
+      `)) as any;
 
       return Array.isArray(rows) ? rows : [];
     }),
@@ -2175,13 +2178,13 @@ export const bpoRouter = router({
       if (!db) throw new Error("Database not available");
 
       // Buscar todas as cobranças com tipo 'other' ou classifiedBy 'unclassified'
-      const [rows] = (await db.execute(sql.raw(`
+      const [rows] = (await db.execute(sql`
         SELECT id, description, external_reference as externalReference
         FROM bpo_charges
         WHERE (type = 'other' OR classified_by = 'unclassified')
           AND due_date >= '2025-01-01'
         LIMIT 500
-      `))) as any;
+      `)) as any;
 
       const charges: Array<{ id: number; description: string | null; externalReference: string | null }> =
         Array.isArray(rows) ? rows : [];
@@ -2192,11 +2195,11 @@ export const bpoRouter = router({
       for (const charge of charges) {
         const { type, classifiedBy } = autoClassifyCharge(charge.description, charge.externalReference);
         if (type !== "other" || classifiedBy === "auto") {
-          await db.execute(sql.raw(`
+          await db.execute(sql`
             UPDATE bpo_charges
-            SET type = '${type}', classified_by = '${classifiedBy}', updated_at = NOW()
+            SET type = ${type}, classified_by = ${classifiedBy}, updated_at = NOW()
             WHERE id = ${charge.id}
-          `));
+          `);
           classified++;
         } else {
           unchanged++;
@@ -2234,14 +2237,14 @@ export const bpoRouter = router({
       if (!client) throw new Error("Cliente não encontrado");
 
       // Atualizar a cobrança com os dados do cliente
-      await db.execute(sql.raw(`
+      await db.execute(sql`
         UPDATE bpo_charges
         SET client_id = ${client.id},
-            client_name = '${client.name.replace(/'/g, "''")}',
-            client_email = '${client.email.replace(/'/g, "''")}',
+            client_name = ${client.name},
+            client_email = ${client.email},
             updated_at = NOW()
         WHERE id = ${input.chargeId}
-      `));
+      `);
 
       return { success: true, clientName: client.name, clientEmail: client.email };
     }),
@@ -2274,12 +2277,12 @@ export const bpoRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
       // Retornar apenas embarcações que tenham pelo menos um cotista ativo
-      const [rows] = (await db.execute(sql.raw(`
+      const [rows] = (await db.execute(sql`
         SELECT DISTINCT v.id, v.name
         FROM vessels v
         INNER JOIN client_quotas cq ON cq.vessel_id = v.id AND cq.is_active = 1
         ORDER BY v.name ASC
-      `))) as any;
+      `)) as any;
       return Array.isArray(rows) ? rows : [];
     }),
 
@@ -2506,7 +2509,7 @@ export const bpoRouter = router({
     };
 
     // Busca todas as inspection_charges sem par em bpo_charges
-    const orphansRaw = await db.execute(sql.raw(`
+    const orphansRaw = await db.execute(sql`
       SELECT
         ic.id,
         ic.asaas_charge_id,
@@ -2525,7 +2528,7 @@ export const bpoRouter = router({
       WHERE bc.id IS NULL
         AND ic.asaas_charge_id IS NOT NULL
         AND ic.client_email IS NOT NULL
-    `)) as any;
+    `) as any;
 
     const orphans: any[] = Array.isArray(orphansRaw[0]) ? orphansRaw[0] : orphansRaw;
 
@@ -2541,22 +2544,25 @@ export const bpoRouter = router({
         const bpoType = 'repair';
         const value = parseFloat(ic.amount || '0').toFixed(2);
 
-        await db.execute(sql.raw(`
+        const insertDescription = ic.description
+          ? ic.description
+          : `${bpoType === 'repair' ? 'Reparo' : 'Vistoria'} - ${ic.vessel_name || ''}`;
+        await db.execute(sql`
           INSERT INTO bpo_charges
             (asaas_charge_id, client_id, client_name, client_email,
              value, due_date, status, type, classified_by, billing_type,
              description, source)
           VALUES
-            (${JSON.stringify(ic.asaas_charge_id)},
-             ${ic.client_id ?? 'NULL'},
-             ${ic.client_name ? JSON.stringify(ic.client_name) : 'NULL'},
-             ${JSON.stringify(ic.client_email)},
+            (${ic.asaas_charge_id},
+             ${ic.client_id ?? null},
+             ${ic.client_name ?? null},
+             ${ic.client_email},
              ${value},
-             ${JSON.stringify(dueDate)},
-             ${JSON.stringify(bpoStatus)},
-             ${JSON.stringify(bpoType)},
+             ${dueDate},
+             ${bpoStatus},
+             ${bpoType},
              'manual', 'PIX',
-             ${ic.description ? JSON.stringify(ic.description) : JSON.stringify(`${bpoType === 'repair' ? 'Reparo' : 'Vistoria'} - ${ic.vessel_name || ''}`)},
+             ${insertDescription},
              'manual')
           ON DUPLICATE KEY UPDATE
             type         = VALUES(type),
@@ -2565,7 +2571,7 @@ export const bpoRouter = router({
             client_id    = COALESCE(VALUES(client_id), client_id),
             client_name  = COALESCE(VALUES(client_name), client_name),
             client_email = COALESCE(VALUES(client_email), client_email)
-        `));
+        `);
         synced++;
       } catch (err: any) {
         errors.push(`ic#${ic.id}: ${err.message}`);
@@ -2573,7 +2579,7 @@ export const bpoRouter = router({
     }
 
     // Retroactive status sync: atualiza bpo_charges existentes cujo status diverge da inspection_charge
-    const statusSyncRaw = await db.execute(sql.raw(`
+    const statusSyncRaw = await db.execute(sql`
       SELECT bc.id AS bpoId, bc.status AS bpoStatus, ic.payment_status AS icStatus
       FROM bpo_charges bc
       JOIN inspection_charges ic ON ic.asaas_charge_id = bc.asaas_charge_id
@@ -2583,18 +2589,18 @@ export const bpoRouter = router({
           OR
           (ic.payment_status = 'overdue' AND bc.status = 'pending')
         )
-    `)) as any;
+    `) as any;
     const statusSyncs: any[] = Array.isArray(statusSyncRaw[0]) ? statusSyncRaw[0] : statusSyncRaw;
     let statusSynced = 0;
     for (const row of statusSyncs) {
       try {
         const newStatus = row.icStatus === 'paid' ? 'receivedInCash' : 'overdue';
-        const paidClause = row.icStatus === 'paid' ? `, paid_date = CURDATE()` : '';
-        await db.execute(sql.raw(`
+        const paidClause = row.icStatus === 'paid' ? sql`, paid_date = CURDATE()` : sql``;
+        await db.execute(sql`
           UPDATE bpo_charges
-          SET status = '${newStatus}'${paidClause}, classified_by = 'manual', synced_at = NOW()
+          SET status = ${newStatus}${paidClause}, classified_by = 'manual', synced_at = NOW()
           WHERE id = ${row.bpoId}
-        `));
+        `);
         statusSynced++;
       } catch (err: any) {
         errors.push(`statusSync#${row.bpoId}: ${err.message}`);
@@ -2602,7 +2608,7 @@ export const bpoRouter = router({
     }
 
     // Retroactive fix: criar saldo devedor para cobranças partiallyPaid sem saldo devedor
-    const partialRaw = await db.execute(sql.raw(`
+    const partialRaw = await db.execute(sql`
       SELECT bc.id, bc.value, bc.amount_paid AS amountPaid, bc.due_date AS dueDate,
              bc.type, bc.client_id AS clientId, bc.client_name AS clientName,
              bc.client_email AS clientEmail, bc.description,
@@ -2615,7 +2621,7 @@ export const bpoRouter = router({
           WHERE sd.external_reference = CONCAT('saldo-', bc.id)
             AND sd.status NOT IN ('cancelled')
         )
-    `)) as any;
+    `) as any;
     const partials: any[] = Array.isArray(partialRaw[0]) ? partialRaw[0] : partialRaw;
     let retroSynced = 0;
     for (const p of partials) {
@@ -2640,24 +2646,24 @@ export const bpoRouter = router({
 
     // Retroactive fix: corrige bpo_charges com type='inspection' que deveriam ser 'repair'
     try {
-      await db.execute(sql.raw(`
+      await db.execute(sql`
         UPDATE bpo_charges bc
         JOIN inspection_charges ic ON ic.asaas_charge_id = bc.asaas_charge_id
         SET bc.type = 'repair', bc.classified_by = 'manual'
         WHERE bc.type = 'inspection' AND ic.asaas_charge_id IS NOT NULL
-      `));
+      `);
     } catch (err: any) { errors.push(`typefix: ${err.message}`); }
 
     // Retroactive fix: corrige client_name/client_id usando allowed_clients como fonte autoritativa
     try {
-      await db.execute(sql.raw(`
+      await db.execute(sql`
         UPDATE bpo_charges bc
         JOIN inspection_charges ic ON ic.asaas_charge_id = bc.asaas_charge_id
         JOIN allowed_clients ac ON LOWER(TRIM(ac.email)) = LOWER(TRIM(ic.client_email))
         SET bc.client_id = ac.id, bc.client_name = ac.name, bc.client_email = ac.email
         WHERE ic.asaas_charge_id IS NOT NULL
           AND (bc.client_name IS NULL OR bc.client_id IS NULL OR bc.client_name NOT LIKE '% %')
-      `));
+      `);
     } catch (err: any) { errors.push(`namefix: ${err.message}`); }
 
     return { total: orphans.length, synced, errors, retroSynced, retroTotal: partials.length, statusSynced };

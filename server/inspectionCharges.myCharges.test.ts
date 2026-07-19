@@ -112,6 +112,13 @@ describe("inspectionCharges.myCharges", () => {
 
     const inspectionId = inspectionResult[0]?.insertId || inspectionResult.insertId;
 
+    // Data de vencimento sempre no futuro (30 dias a partir de agora). Uma data fixa
+    // no passado faria o sistema calcular o status efetivo como "overdue" em vez de
+    // "pending", quebrando a asserção abaixo.
+    const futureDueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
     // Criar cobrança para a vistoria
     await db.execute(sql.raw(`
       INSERT INTO inspection_charges (
@@ -129,7 +136,7 @@ describe("inspectionCharges.myCharges", () => {
         'Test Vessel',
         'inspection',
         150.00,
-        '2025-12-31',
+        '${futureDueDate}',
         'pending'
       )
     `));

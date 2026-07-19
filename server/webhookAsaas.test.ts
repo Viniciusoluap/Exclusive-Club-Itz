@@ -1,32 +1,15 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { appRouter } from './routers';
-import type { TrpcContext } from './_core/context';
+import { processAsaasWebhookEvent } from './_core/asaasWebhookHandler';
 
 describe('Webhook Asaas - Schema Flexível', () => {
-  let mockContext: TrpcContext;
-
   beforeAll(() => {
     // Garantir que o token está configurado para os testes
     if (!process.env.ASAAS_WEBHOOK_TOKEN) {
       process.env.ASAAS_WEBHOOK_TOKEN = 'test-token-for-unit-tests';
     }
-    
-    // Mock do contexto com headers do webhook
-    mockContext = {
-      user: null,
-      req: {
-        protocol: 'https',
-        headers: {
-          'asaas-access-token': process.env.ASAAS_WEBHOOK_TOKEN,
-        },
-      } as TrpcContext['req'],
-      res: {} as TrpcContext['res'],
-    };
   });
 
   it('deve aceitar payload com campos extras no nível raiz', async () => {
-    const caller = appRouter.createCaller(mockContext);
-
     const payloadComCamposExtras = {
       event: 'PAYMENT_RECEIVED',
       payment: {
@@ -44,14 +27,15 @@ describe('Webhook Asaas - Schema Flexível', () => {
     };
 
     // Não deve lançar erro de validação de schema
-    await expect(
-      caller.webhooks.asaas(payloadComCamposExtras)
-    ).resolves.toBeDefined();
+    const result = await processAsaasWebhookEvent(
+      payloadComCamposExtras,
+      process.env.ASAAS_WEBHOOK_TOKEN!
+    );
+    expect(result).toBeDefined();
+    expect(result.accepted).toBe(true);
   });
 
   it('deve aceitar payload com campos extras no objeto payment', async () => {
-    const caller = appRouter.createCaller(mockContext);
-
     const payloadComCamposExtrasPayment = {
       event: 'PAYMENT_OVERDUE',
       payment: {
@@ -68,14 +52,15 @@ describe('Webhook Asaas - Schema Flexível', () => {
     };
 
     // Não deve lançar erro de validação de schema
-    await expect(
-      caller.webhooks.asaas(payloadComCamposExtrasPayment)
-    ).resolves.toBeDefined();
+    const result = await processAsaasWebhookEvent(
+      payloadComCamposExtrasPayment,
+      process.env.ASAAS_WEBHOOK_TOKEN!
+    );
+    expect(result).toBeDefined();
+    expect(result.accepted).toBe(true);
   });
 
   it('deve aceitar payload mínimo válido', async () => {
-    const caller = appRouter.createCaller(mockContext);
-
     const payloadMinimo = {
       event: 'PAYMENT_DELETED',
       payment: {
@@ -85,8 +70,11 @@ describe('Webhook Asaas - Schema Flexível', () => {
     };
 
     // Não deve lançar erro de validação de schema
-    await expect(
-      caller.webhooks.asaas(payloadMinimo)
-    ).resolves.toBeDefined();
+    const result = await processAsaasWebhookEvent(
+      payloadMinimo,
+      process.env.ASAAS_WEBHOOK_TOKEN!
+    );
+    expect(result).toBeDefined();
+    expect(result.accepted).toBe(true);
   });
 });
