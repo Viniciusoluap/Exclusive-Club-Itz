@@ -61,6 +61,19 @@ jobs:
 
           mysql -h 127.0.0.1 -P 3306 -uroot -e "CREATE DATABASE IF NOT EXISTS test;"
 
+          # Root cause (captured via TiDB's own log on the previous run):
+          # [ddl:8200] "Unsupported drop primary key when the table is using
+          # clustered index". This TiDB image defaults to
+          # tidb_enable_clustered_index=INT_ONLY, so a fresh `allowed_clients`
+          # (single-column int AUTO_INCREMENT PK) is created as a clustered-index
+          # table — and 0033_good_lila_cheney.sql's `DROP PRIMARY KEY` on it (and
+          # 13 other tables) is explicitly disallowed on clustered tables. Real
+          # production TiDB Cloud accepted this migration, so its tables must be
+          # non-clustered (older default / explicit setting from when they were
+          # created). Disable clustering globally before any table exists, so
+          # fresh CI tables match production's actual on-disk representation.
+          mysql -h 127.0.0.1 -P 3306 -uroot -e "SET GLOBAL tidb_enable_clustered_index = 'OFF';"
+
       # pnpm is the project's package manager (packageManager: pnpm@10.33.4).
       # action-setup reads that field and installs the matching version.
       - name: Setup pnpm
