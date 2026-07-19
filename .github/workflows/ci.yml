@@ -93,6 +93,15 @@ jobs:
       - name: Apply schema to ephemeral DB
         run: pnpm run db:migrate:ci 2>&1 | tee /tmp/dbpush.log; exit ${PIPESTATUS[0]}
 
+      # DIAGNOSTIC (always runs, even on failure above): drizzle-kit's CLI does
+      # not reliably print the underlying SQL error to stdout/stderr on this
+      # codepath (confirmed across two failed runs — it just shows the spinner
+      # then "Command failed with exit code 1"). The TiDB server's own log has
+      # the real error/query, so capture it unconditionally for the PR comment.
+      - name: Dump TiDB server log (diagnostic)
+        if: always()
+        run: docker logs tidb --tail 300 > /tmp/tidb-server.log 2>&1 || true
+
       # WORKAROUND (temporary, until Story 6 / Phase 1 reconciles the journal):
       # drizzle/0062_add_password_hash.sql is an ORPHAN migration — it is NOT in
       # drizzle/meta/_journal.json (it was applied manually in production, outside
@@ -138,6 +147,9 @@ jobs:
 
             const dbpush = readTail('/tmp/dbpush.log', 30);
             body += '### drizzle-kit migrate (last 30 lines)\n```\n' + (dbpush ?? '_not run_') + '\n```\n\n';
+
+            const tidbLog = readTail('/tmp/tidb-server.log', 150);
+            body += '### TiDB server log — real error/query (last 150 lines)\n```\n' + (tidbLog ?? '_not run_') + '\n```\n\n';
 
             const tscRaw = (() => { try { return fs.readFileSync('/tmp/tsc-output.log', 'utf8'); } catch (e) { return null; } })();
             if (tscRaw) {
