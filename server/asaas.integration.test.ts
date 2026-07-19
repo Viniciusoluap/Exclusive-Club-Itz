@@ -57,10 +57,12 @@ describe("Asaas Integration", () => {
   it.skipIf(!hasAsaasKey)("should be able to create charge", async () => {
     const asaas = await import("./_core/asaas");
     
-    // Primeiro criar/buscar cliente
+    // Primeiro criar/buscar cliente (cpfCnpj obrigatório: Asaas rejeita
+    // criação de cobrança para cliente sem CPF/CNPJ)
     const customer = await asaas.getOrCreateCustomer({
       name: "Cliente Teste Cobrança",
       email: "cliente.cobranca@example.com",
+      cpfCnpj: "24971563792",
     });
 
     // Criar cobrança

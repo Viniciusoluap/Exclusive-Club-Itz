@@ -93,10 +93,13 @@ describe("Asaas API - Criação de Cobranças", () => {
     const testEmail = `teste-cobranca-${Date.now()}@exclusiveclubitz.com`;
     
     try {
-      // Primeiro cria o cliente
+      // Primeiro cria o cliente (cpfCnpj obrigatório: Asaas rejeita criação de
+      // cobrança para cliente sem CPF/CNPJ, mesmo cadastro válido de teste
+      // usado em inspectionCharges.cpfcnpj.test.ts)
       const customer = await asaas.getOrCreateCustomer({
         name: "Cliente Teste Cobrança",
         email: testEmail,
+        cpfCnpj: "24971563792",
       });
 
       // Depois cria a cobrança

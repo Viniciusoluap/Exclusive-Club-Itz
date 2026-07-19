@@ -6,24 +6,29 @@
  * que não injeta ASAAS_API_KEY corretamente no ambiente.
  */
 import { getSetting } from "../systemSettings";
-import { ENV } from "./env";
 
 /**
  * Resolução ÚNICA e canônica da chave da API do Asaas.
  *
  * Prioridade:
- *   1. process.env.ASAAS_API_KEY (via ENV.asaasApiKey) — override avançado opcional,
- *      permite mover a credencial para fora do banco sem quebrar nada.
+ *   1. process.env.ASAAS_API_KEY — override avançado opcional, permite mover
+ *      a credencial para fora do banco sem quebrar nada.
  *   2. getSetting('asaas_api_key') do banco — fonte "oficial", editável pelo painel
  *      admin (client/src/pages/SystemSettings.tsx). Comportamento histórico preservado.
  *
  * Se a env var não estiver configurada (caso atual), o comportamento é 100% idêntico
  * ao anterior: lê do banco. Retorna null quando nenhuma fonte tem a chave.
  *
+ * Lê process.env diretamente (não via server/_core/env.ts::ENV) porque ENV
+ * captura process.env uma única vez na primeira importação do módulo — uma
+ * leitura congelada é inadequada aqui, já que esta função precisa refletir
+ * mudanças em process.env.ASAAS_API_KEY feitas em runtime (ex: testes que
+ * simulam a chave ausente).
+ *
  * NUNCA loga o valor da chave.
  */
 export async function resolveAsaasApiKey(): Promise<string | null> {
-  const fromEnv = ENV.asaasApiKey;
+  const fromEnv = process.env.ASAAS_API_KEY;
   if (fromEnv && fromEnv.length > 0) {
     return fromEnv;
   }
