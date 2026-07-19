@@ -14,7 +14,7 @@ export const allowedClients = mysqlTable("allowed_clients", {
 	state: varchar("state", { length: 2 }),
 	zipCode: varchar("zip_code", { length: 10 }),
 	isActive: tinyint("is_active").default(1).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 	contractUrl: text("contract_url"),
 	contract2Url: text("contract2_url"),
@@ -33,7 +33,7 @@ export const bookings = mysqlTable("bookings", {
 	bookingDate: bigint("booking_date", { mode: "number" }).notNull(),
 	status: mysqlEnum(['pending','confirmed','used','cancelled']).default('confirmed').notNull(),
 	notes: text(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 });
 
@@ -43,7 +43,7 @@ export const clientQuotas = mysqlTable("client_quotas", {
 	vesselId: int("vessel_id").notNull(),
 	quotaType: mysqlEnum("quota_type", ['full','half']).notNull(),
 	isActive: tinyint("is_active").default(1).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 	quotaNumber: int("quota_number").notNull(),
 });
@@ -58,7 +58,7 @@ export const dueDateChangeRequests = mysqlTable("due_date_change_requests", {
 	status: mysqlEnum(['pending','approved','rejected']).default('pending').notNull(),
 	adminResponse: text("admin_response"),
 	processedBy: varchar("processed_by", { length: 320 }),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 });
 
@@ -69,7 +69,7 @@ export const employees = mysqlTable("employees", {
 	phone: varchar({ length: 20 }),
 	vesselIds: text("vessel_ids"),
 	isActive: tinyint("is_active").default(1).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 },
 (table) => [
@@ -82,7 +82,7 @@ export const fuelBudget = mysqlTable("fuel_budget", {
 	totalBudget: int("total_budget").default(0).notNull(),
 	totalSpent: int("total_spent").default(0).notNull(),
 	totalReceived: int("total_received").default(0).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 	stockLiters: int("stock_liters").default(0).notNull(),
 	lastPricePerLiter: int("last_price_per_liter").default(0).notNull(),
@@ -97,10 +97,10 @@ export const fuelPurchases = mysqlTable("fuel_purchases", {
 	litersPurchased: int("liters_purchased").notNull(),
 	amountPaid: int("amount_paid").notNull(),
 	pricePerLiter: int("price_per_liter").notNull(),
-	purchasedAt: timestamp("purchased_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	purchasedAt: timestamp("purchased_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	purchasedBy: int("purchased_by").references(() => users.id),
 	notes: text(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	gallonNumber: int("gallon_number").default(1).notNull(),
 });
 
@@ -115,14 +115,14 @@ export const fuelRecords = mysqlTable("fuel_records", {
 	pricePerLiter: int("price_per_liter").notNull(),
 	totalAmount: int("total_amount").notNull(),
 	notes: text(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	asaasChargeId: varchar("asaas_charge_id", { length: 100 }),
 	paymentStatus: mysqlEnum("payment_status", ['pending','paid','cancelled','overdue']).default('pending').notNull(),
 	paidAt: timestamp("paid_at", { mode: 'string' as const }),
-	dueDate: timestamp("due_date", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	dueDate: timestamp("due_date", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	receiptUrl: text("receipt_url"),
 	recordedBy: varchar("recorded_by", { length: 320 }).default('system@exclusive.club').notNull(),
-	recordedAt: timestamp("recorded_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	recordedAt: timestamp("recorded_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	asaasCustomerId: varchar("asaas_customer_id", { length: 100 }),
 	paymentUrl: text("payment_url"),
 	syncStatus: mysqlEnum("sync_status", ['pending','synced','failed','manual']).default('pending').notNull(),
@@ -145,7 +145,7 @@ export const gallonStock = mysqlTable("gallon_stock", {
 	gallonNumber: int("gallon_number").notNull(),
 	stockLiters: int("stock_liters").default(0).notNull(),
 	lastPricePerLiter: int("last_price_per_liter").default(0).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 },
 (table) => [
@@ -167,7 +167,7 @@ export const inspectionCharges = mysqlTable("inspection_charges", {
 	paymentStatus: mysqlEnum("payment_status", ['pending','paid','overdue','partiallyPaid','cancelled']).default('pending').notNull(),
 	amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default('0.00').notNull(),
 	receiptUrl: text("receipt_url"),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 });
 
@@ -183,7 +183,7 @@ export const inspections = mysqlTable("inspections", {
 	observations: text(),
 	status: mysqlEnum(['approved','rejected']).notNull(),
 	inspectedBy: text("inspected_by"),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	reprovationPhotos: text("reprovation_photos"),
 });
 
@@ -196,7 +196,7 @@ export const maintenances = mysqlTable("maintenances", {
 	description: text().notNull(),
 	status: mysqlEnum(['scheduled','in_progress','completed','cancelled']).default('scheduled').notNull(),
 	createdBy: int("created_by").default(1).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 });
 
@@ -210,7 +210,7 @@ export const reviews = mysqlTable("reviews", {
 	rating: int().notNull(),
 	comment: text(),
 	isApproved: tinyint("is_approved").default(0).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 });
 
@@ -220,7 +220,7 @@ export const systemSettings = mysqlTable("system_settings", {
 	value: text().notNull(),
 	description: text(),
 	updatedBy: varchar("updated_by", { length: 320 }),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 },
 (table) => [
@@ -235,9 +235,9 @@ export const users = mysqlTable("users", {
 	loginMethod: varchar({ length: 64 }),
 	role: mysqlEnum(['user','admin','employee']).default('user').notNull(),
 	passwordHash: varchar("password_hash", { length: 255 }),
-	createdAt: timestamp({ mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp({ mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
-	lastSignedIn: timestamp({ mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	lastSignedIn: timestamp({ mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 },
 (table) => [
 	index("users_openId_unique").on(table.openId),
@@ -254,7 +254,7 @@ export const fuelRecordContainers = mysqlTable("fuel_record_containers", {
 	litersUsed: int("liters_used").notNull(),
 	photoBeforeUrl: text("photo_before_url").notNull(),
 	photoAfterUrl: text("photo_after_url").notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 },
 (table) => [
 	index("fuel_record_id_idx").on(table.fuelRecordId),
@@ -285,7 +285,7 @@ export const vessels = mysqlTable("vessels", {
 	imageUrl: text("image_url"),
 	capacity: int(),
 	isActive: tinyint("is_active").default(1).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 	quotaCount: int("quota_count").default(6).notNull(),
 	documentUrl: text("document_url"),
@@ -330,7 +330,7 @@ export const expenseRecords = mysqlTable("expense_records", {
 	notes: text(),
 	/** Usuário que cadastrou */
 	createdBy: int("created_by"),
-	createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 },
 (table) => [
@@ -475,7 +475,7 @@ export const webhookLogs = mysqlTable("webhook_logs", {
   payload: text("payload"),
   processed: tinyint("processed").default(0).notNull(),
   error: text("error"),
-  createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
   index("wl_event").on(table.event),
   index("wl_asaas_payment_id").on(table.asaasPaymentId),
