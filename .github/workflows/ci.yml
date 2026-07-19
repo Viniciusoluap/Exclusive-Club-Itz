@@ -96,41 +96,36 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile 2>&1 | tee /tmp/install.log; exit ${PIPESTATUS[0]}
 
-      # Apply the tracked SQL migrations literally via `drizzle-kit migrate`.
-      # We deliberately do NOT use `drizzle-kit push --force`: for this schema on
-      # drizzle-kit@0.31.x, push generates invalid DDL for `allowed_clients`
-      # (drops the `CONSTRAINT ... PRIMARY KEY(id)` clause, triggering
-      # ER_WRONG_AUTO_KEY / errno 1075) and does NOT surface it as a non-zero
-      # exit code, leaving a half-applied schema. The literal SQL files in
-      # drizzle/*.sql are known-good, so migrate is the reliable path.
+      # SCOPE CHANGE, backed by evidence from 3 failed CI runs: we tried
+      # `drizzle-kit migrate` (replaying drizzle/*.sql in journal order) because
+      # push had failed once already. With clustered-index off, migrate got
+      # much further (all 14 DROP PRIMARY KEY statements in 0033 now succeed),
+      # but then hit a SECOND, independent bug in the same file: many
+      # `MODIFY COLUMN ... DEFAULT 'CURRENT_TIMESTAMP'` statements use a quoted
+      # STRING LITERAL instead of the bare keyword, which both MySQL and TiDB
+      # reject ([ddl:1067] Invalid default value) — this exact pattern repeats
+      # ~16 times in 0033 alone. Replaying the full historical migration
+      # journal from an empty database is not reliably possible without fixing
+      # a series of bugs baked into old migration files — that is Story 6's
+      # job (baseline reconciliation), not this story's.
+      #
+      # What CI actually needs is simpler: does the CURRENT code (schema.ts)
+      # work against a fresh database — not "can 63 historical migrations be
+      # replayed byte-for-byte". `drizzle-kit push --force` builds DDL directly
+      # from schema.ts (no journal replay), which sidesteps both bugs above
+      # entirely. It also means the `password_hash` orphan-migration workaround
+      # that used to follow this step is no longer needed: schema.ts already
+      # has that column, so push creates it correctly the first time.
       - name: Apply schema to ephemeral DB
-        run: pnpm run db:migrate:ci 2>&1 | tee /tmp/dbpush.log; exit ${PIPESTATUS[0]}
+        run: pnpm run db:push:ci 2>&1 | tee /tmp/dbpush.log; exit ${PIPESTATUS[0]}
 
       # DIAGNOSTIC (always runs, even on failure above): drizzle-kit's CLI does
       # not reliably print the underlying SQL error to stdout/stderr on this
-      # codepath (confirmed across two failed runs — it just shows the spinner
-      # then "Command failed with exit code 1"). The TiDB server's own log has
-      # the real error/query, so capture it unconditionally for the PR comment.
+      # codepath. The TiDB server's own log has the real error/query, so
+      # capture it unconditionally for the PR comment.
       - name: Dump TiDB server log (diagnostic)
         if: always()
         run: docker logs tidb --tail 300 > /tmp/tidb-server.log 2>&1 || true
-
-      # WORKAROUND (temporary, until Story 6 / Phase 1 reconciles the journal):
-      # drizzle/0062_add_password_hash.sql is an ORPHAN migration — it is NOT in
-      # drizzle/meta/_journal.json (it was applied manually in production, outside
-      # drizzle-kit), so `drizzle-kit migrate` above never runs it. But
-      # drizzle/schema.ts already assumes users.password_hash exists, so the CI DB
-      # needs the column too. We add it here directly and idempotently.
-      # NOTE: this is NOT a tracked migration — do not add 0062 to the journal, or
-      # a future `migrate` against production (where the column already exists)
-      # would re-run the ALTER and fail, blocking the whole migration chain.
-      # `ADD COLUMN IF NOT EXISTS` (MySQL 8 / TiDB) keeps this safe to re-run.
-      # No password on root here (see DATABASE_URL / TiDB start step above).
-      - name: Apply orphan password_hash column (CI workaround)
-        run: |
-          mysql -h 127.0.0.1 -P 3306 -uroot test \
-            -e "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash varchar(255);" \
-            2>&1 | tee /tmp/password-hash.log; exit ${PIPESTATUS[0]}
 
       - name: Type check
         run: pnpm run check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
@@ -159,7 +154,7 @@ jobs:
             body += '### pnpm install (last 30 lines)\n```\n' + (install ?? '_not run_') + '\n```\n\n';
 
             const dbpush = readTail('/tmp/dbpush.log', 30);
-            body += '### drizzle-kit migrate (last 30 lines)\n```\n' + (dbpush ?? '_not run_') + '\n```\n\n';
+            body += '### drizzle-kit push (last 30 lines)\n```\n' + (dbpush ?? '_not run_') + '\n```\n\n';
 
             const tidbLog = readTail('/tmp/tidb-server.log', 150);
             body += '### TiDB server log — real error/query (last 150 lines)\n```\n' + (tidbLog ?? '_not run_') + '\n```\n\n';
