@@ -43,10 +43,14 @@ describe("Asaas Integration", () => {
 
   it.skipIf(!hasAsaasKey)("should be able to create or get customer", async () => {
     const asaas = await import("./_core/asaas");
-    
+
+    // Email único por execução: getOrCreateCustomer busca por email antes de
+    // criar, e o sandbox da Asaas persiste clientes entre execuções de CI —
+    // um email fixo reencontraria (e nunca atualizaria) um cliente de uma
+    // execução anterior.
     const customer = await asaas.getOrCreateCustomer({
       name: "Cliente Teste",
-      email: "cliente.teste@example.com",
+      email: `cliente.teste.${Date.now()}@example.com`,
     });
 
     expect(customer).toBeDefined();
@@ -56,12 +60,12 @@ describe("Asaas Integration", () => {
 
   it.skipIf(!hasAsaasKey)("should be able to create charge", async () => {
     const asaas = await import("./_core/asaas");
-    
-    // Primeiro criar/buscar cliente (cpfCnpj obrigatório: Asaas rejeita
-    // criação de cobrança para cliente sem CPF/CNPJ)
+
+    // Email único por execução (mesmo motivo acima) + cpfCnpj obrigatório:
+    // Asaas rejeita criação de cobrança para cliente sem CPF/CNPJ.
     const customer = await asaas.getOrCreateCustomer({
       name: "Cliente Teste Cobrança",
-      email: "cliente.cobranca@example.com",
+      email: `cliente.cobranca.${Date.now()}@example.com`,
       cpfCnpj: "24971563792",
     });
 
