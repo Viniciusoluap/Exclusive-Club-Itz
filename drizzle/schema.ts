@@ -455,3 +455,31 @@ export const asaasCustomers = mysqlTable("asaas_customers", {
 ]);
 export type AsaasCustomer = typeof asaasCustomers.$inferSelect;
 export type InsertAsaasCustomer = typeof asaasCustomers.$inferInsert;
+
+// Trilha de auditoria de webhooks de pagamento (Asaas). DB-21 / Story 5.
+// Recriada após ter sido dropada em 0033_good_lila_cheney.sql (linha 5) e nunca
+// recriada — o INSERT de server/_core/index.ts falhava 100% em silêncio.
+// O schema abaixo é o schema CANÔNICO efetivamente em produção
+// (ver scripts/restore-missing-tables.mjs) e alinhado ao INSERT do webhook e ao
+// SELECT do painel admin (bpoRouter.listWebhookLogs).
+//
+// RETENÇÃO / TTL (DB-21 AC): esta tabela cresce indefinidamente. Um job de
+// limpeza (cron/scheduler) DEVE expurgar registros com created_at < NOW() - 90 dias.
+// TODO(DB-21): implementar o job de retenção de 90 dias (fora do escopo desta story;
+//   a story cobre a recriação da tabela + correção das falhas silenciosas de insert).
+//   Query de expurgo: DELETE FROM webhook_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
+export const webhookLogs = mysqlTable("webhook_logs", {
+  id: int().autoincrement().primaryKey(),
+  event: varchar("event", { length: 100 }).notNull(),
+  asaasPaymentId: varchar("asaas_payment_id", { length: 255 }),
+  payload: text("payload"),
+  processed: tinyint("processed").default(0).notNull(),
+  error: text("error"),
+  createdAt: timestamp("created_at", { mode: 'string' as const }).default('CURRENT_TIMESTAMP').notNull(),
+}, (table) => [
+  index("wl_event").on(table.event),
+  index("wl_asaas_payment_id").on(table.asaasPaymentId),
+  index("wl_created_at").on(table.createdAt),
+]);
+export type WebhookLog = typeof webhookLogs.$inferSelect;
+export type InsertWebhookLog = typeof webhookLogs.$inferInsert;

@@ -266,18 +266,17 @@ export async function logWebhook(params: {
   if (!db) return null;
   
   try {
+    // Alinhado ao schema canônico de webhook_logs (DB-21): colunas reais são
+    // event, asaas_payment_id, payload, processed, error, created_at.
+    // As colunas antigas (source, event_type, headers, ip_address) não existem
+    // na tabela recriada — este INSERT falharia em silêncio se as usasse.
+    // Preservamos a origem prefixando o evento com a source.
+    const eventName = params.source ? `${params.source}:${params.eventType}` : params.eventType;
     const result = await db.execute(sql`
-      INSERT INTO webhook_logs 
-      (source, event_type, payload, headers, ip_address)
-      VALUES (
-        ${params.source},
-        ${params.eventType},
-        ${JSON.stringify(params.payload)},
-        ${params.headers ? JSON.stringify(params.headers) : null},
-        ${params.ipAddress || null}
-      )
+      INSERT INTO webhook_logs (event, payload, processed)
+      VALUES (${eventName}, ${JSON.stringify(params.payload)}, 0)
     `) as any;
-    
+
     return result[0]?.insertId || null;
   } catch (error) {
     console.error('[Asaas] Erro ao registrar log de webhook:', error);
@@ -298,13 +297,14 @@ export async function updateWebhookLog(params: {
   if (!db) return;
   
   try {
+    // Alinhado ao schema canônico de webhook_logs (DB-21): as colunas
+    // processed_at / error_message / related_payment_id não existem na tabela
+    // recriada. Mapeamos para as colunas reais processed (tinyint) e error.
     await db.execute(sql`
-      UPDATE webhook_logs 
-      SET 
-        processed = ${params.processed},
-        processed_at = NOW(),
-        error_message = ${params.errorMessage || null},
-        related_payment_id = ${params.relatedPaymentId || null}
+      UPDATE webhook_logs
+      SET
+        processed = ${params.processed ? 1 : 0},
+        error = ${params.errorMessage || null}
       WHERE id = ${params.id}
     `);
   } catch (error) {
