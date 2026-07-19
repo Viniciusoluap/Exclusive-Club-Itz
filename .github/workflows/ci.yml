@@ -14,31 +14,52 @@ jobs:
       contents: read
       pull-requests: write
 
-    # DATABASE_URL points at the ephemeral MySQL service below. drizzle.config.ts
-    # and the test global setup both require it to be present.
+    # DATABASE_URL points at the ephemeral TiDB instance started below.
+    # drizzle.config.ts and the test global setup both require it to be present.
     env:
-      DATABASE_URL: mysql://root:root@127.0.0.1:3306/test
-
-    # Ephemeral MySQL for the DB-backed test suite. Production is TiDB Cloud
-    # (MySQL wire-protocol compatible), so mysql:8.0 is a faithful CI stand-in.
-    # The job only starts running steps once the service reports healthy.
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=15
-          --health-start-period=30s
+      DATABASE_URL: mysql://root:@127.0.0.1:3306/test
 
     steps:
       - uses: actions/checkout@v4
+
+      # Production is TiDB Cloud, not vanilla MySQL. We first tried mysql:8.0 as
+      # a "faithful stand-in" (GitHub Actions `services:` only runs plain images,
+      # it can't pass TiDB's custom startup flags) and it broke on a real,
+      # already-in-production migration: 0033_good_lila_cheney.sql does
+      # `ALTER TABLE ... DROP PRIMARY KEY` on 14 tables and never re-adds a key.
+      # That is invalid on InnoDB/MySQL for an AUTO_INCREMENT column
+      # (ER_WRONG_AUTO_KEY / errno 1075) but is valid on TiDB, which does not
+      # require AUTO_INCREMENT columns to be covered by an explicit key the same
+      # way InnoDB does. This migration already ran successfully against real
+      # production, so it must not be rewritten here (Story 6 / Phase 1 owns
+      # migration-history reconciliation) — CI has to match the engine that
+      # actually accepts it. `--store=unistore` runs a fully standalone,
+      # single-binary TiDB with an embedded mock KV store (no separate PD/TiKV
+      # needed) — this is PingCAP's own documented lightweight setup for CI/test
+      # use, and is MySQL wire-protocol compatible so drizzle-orm/mysql2 and
+      # drizzle-kit work against it unchanged.
+      - name: Start ephemeral TiDB (production-faithful, not vanilla MySQL)
+        run: |
+          docker run -d --name tidb --network host \
+            pingcap/tidb:latest \
+            --store=unistore --path="" -P 3306 --host=0.0.0.0 \
+            --log-slow-query="" 2>&1 | tee /tmp/tidb-start.log
+
+          echo "Waiting for TiDB to accept connections..."
+          for i in $(seq 1 60); do
+            if mysql -h 127.0.0.1 -P 3306 -uroot -e "SELECT 1;" >/dev/null 2>&1; then
+              echo "TiDB is up after ${i}0s"
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "::error::TiDB did not become ready in time"
+              docker logs tidb || true
+              exit 1
+            fi
+            sleep 10
+          done
+
+          mysql -h 127.0.0.1 -P 3306 -uroot -e "CREATE DATABASE IF NOT EXISTS test;"
 
       # pnpm is the project's package manager (packageManager: pnpm@10.33.4).
       # action-setup reads that field and installs the matching version.
@@ -81,10 +102,11 @@ jobs:
       # NOTE: this is NOT a tracked migration — do not add 0062 to the journal, or
       # a future `migrate` against production (where the column already exists)
       # would re-run the ALTER and fail, blocking the whole migration chain.
-      # `ADD COLUMN IF NOT EXISTS` (MySQL 8) keeps this safe to re-run.
+      # `ADD COLUMN IF NOT EXISTS` (MySQL 8 / TiDB) keeps this safe to re-run.
+      # No password on root here (see DATABASE_URL / TiDB start step above).
       - name: Apply orphan password_hash column (CI workaround)
         run: |
-          mysql -h 127.0.0.1 -uroot -proot test \
+          mysql -h 127.0.0.1 -P 3306 -uroot test \
             -e "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash varchar(255);" \
             2>&1 | tee /tmp/password-hash.log; exit ${PIPESTATUS[0]}
 
