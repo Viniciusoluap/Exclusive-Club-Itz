@@ -1,14 +1,26 @@
 import { and, desc, eq, gte, lte, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { createPool, type Pool } from "mysql2/promise";
 import { InsertUser, users, allowedClients, InsertAllowedClient, vessels, InsertVessel, bookings, InsertBooking, clientQuotas, InsertClientQuota, maintenances, InsertMaintenance, employees } from "../drizzle/schema";
+import * as schema from "../drizzle/schema";
+import * as relations from "../drizzle/relations";
 import { ENV } from './_core/env';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+const fullSchema = { ...schema, ...relations };
 
+let _db: ReturnType<typeof drizzle<typeof fullSchema, Pool>> | null = null;
+
+// Pool (not a single Connection) so mysql2 handles reconnects on dropped/idle
+// connections automatically; a bare Connection dies permanently on the first
+// network hiccup and getDb() would keep returning that dead connection forever
+// (it's only created once, on first call). Passing `schema` here also enables
+// the typed relational query builder (`db.query.<table>.findMany(...)`) as an
+// alternative to `sql.raw()`/`db.execute(sql\`...\`)` for future queries.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const pool = createPool(process.env.DATABASE_URL);
+      _db = drizzle(pool, { schema: fullSchema, mode: "default" });
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
