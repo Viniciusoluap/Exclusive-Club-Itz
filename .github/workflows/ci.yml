@@ -96,28 +96,30 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile 2>&1 | tee /tmp/install.log; exit ${PIPESTATUS[0]}
 
-      # SCOPE CHANGE, backed by evidence from 3 failed CI runs: we tried
-      # `drizzle-kit migrate` (replaying drizzle/*.sql in journal order) because
-      # push had failed once already. With clustered-index off, migrate got
-      # much further (all 14 DROP PRIMARY KEY statements in 0033 now succeed),
-      # but then hit a SECOND, independent bug in the same file: many
-      # `MODIFY COLUMN ... DEFAULT 'CURRENT_TIMESTAMP'` statements use a quoted
-      # STRING LITERAL instead of the bare keyword, which both MySQL and TiDB
-      # reject ([ddl:1067] Invalid default value) — this exact pattern repeats
-      # ~16 times in 0033 alone. Replaying the full historical migration
-      # journal from an empty database is not reliably possible without fixing
-      # a series of bugs baked into old migration files — that is Story 6's
-      # job (baseline reconciliation), not this story's.
+      # Story 6 (Fase 1) update: the migration history is now a clean,
+      # replayable baseline (drizzle/0000_initial_baseline.sql), so CI applies
+      # it via `drizzle-kit migrate` — real journal replay, not a schema diff.
+      # This is a strictly stronger gate than `push --force` was: it also
+      # catches any future migration file that doesn't actually apply
+      # cleanly to an empty database, which push's diff-based approach could
+      # never detect.
       #
-      # What CI actually needs is simpler: does the CURRENT code (schema.ts)
-      # work against a fresh database — not "can 63 historical migrations be
-      # replayed byte-for-byte". `drizzle-kit push --force` builds DDL directly
-      # from schema.ts (no journal replay), which sidesteps both bugs above
-      # entirely. It also means the `password_hash` orphan-migration workaround
-      # that used to follow this step is no longer needed: schema.ts already
-      # has that column, so push creates it correctly the first time.
+      # History: the previous ~65-file migration journal had two independent
+      # bugs blocking `migrate` on an empty DB — `0033_good_lila_cheney.sql`
+      # did `ALTER TABLE ... DROP PRIMARY KEY` on 14 tables without ever
+      # re-adding a key, and 28 `MODIFY/ADD COLUMN ... DEFAULT
+      # 'CURRENT_TIMESTAMP'` statements across 9 files used a quoted STRING
+      # LITERAL instead of the bare keyword (both invalid DDL, rejected by
+      # MySQL and TiDB alike: ER_WRONG_AUTO_KEY / [ddl:1067]). Since that SQL
+      # could never have run as written, those files were never a faithful
+      # record of what actually happened to production — production's real
+      # schema was independently confirmed to match the current schema.ts
+      # (via `push --force`, used as a stopgap since Story 1). The old
+      # journal was archived to drizzle/_archive-pre-baseline/ (audit trail,
+      # not deleted) and replaced with a single fresh baseline generated from
+      # schema.ts — see drizzle/BASELINE.md for the full writeup.
       - name: Apply schema to ephemeral DB
-        run: pnpm run db:push:ci 2>&1 | tee /tmp/dbpush.log; exit ${PIPESTATUS[0]}
+        run: pnpm run db:migrate:ci 2>&1 | tee /tmp/dbpush.log; exit ${PIPESTATUS[0]}
 
       # DIAGNOSTIC (always runs, even on failure above): drizzle-kit's CLI does
       # not reliably print the underlying SQL error to stdout/stderr on this

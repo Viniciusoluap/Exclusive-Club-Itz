@@ -13,6 +13,7 @@
     "test": "vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "db:push:ci": "drizzle-kit push --force",
+    "db:migrate:ci": "drizzle-kit migrate",
     "backup": "tsx server/backup.ts",
     "setup-drive": "tsx server/setup-google-drive.ts",
     "backup-scheduler": "tsx server/schedule-backup.ts"
