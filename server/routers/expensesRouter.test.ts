@@ -120,7 +120,7 @@ describe("saasRouter - getFilteredStats usa unclassified_charges", () => {
     const { ctx } = createAdminContext();
     const caller = appRouter.createCaller(ctx);
     try {
-      const result = await caller.saas.getFilteredStats({});
+      const result = await caller.bpo.getStats({});
       // Validar estrutura da resposta
       expect(typeof result.totalPaid).toBe("number");
       expect(typeof result.totalPending).toBe("number");
@@ -143,7 +143,7 @@ describe("saasRouter - getFilteredStats usa unclassified_charges", () => {
   it("deve negar acesso para não-admin", async () => {
     const { ctx } = createNonAdminContext();
     const caller = appRouter.createCaller(ctx);
-    await expect(caller.saas.getFilteredStats({})).rejects.toThrow();
+    await expect(caller.bpo.getStats({})).rejects.toThrow();
   });
 });
 

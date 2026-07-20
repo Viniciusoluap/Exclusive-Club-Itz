@@ -40,14 +40,14 @@ describe("Sistema de Cotas - Limites", () => {
     expect(quotaInfo.maxBookings).toBe(2); // 1 cota inteira = 2 reservas
   });
 
-  it("deve bloquear reservas em segundas-feiras", async () => {
+  it("deve bloquear reservas em segundas-feiras (cliente)", async () => {
     const ctx = createTestContext("test@example.com", "Test User", "admin");
     const caller = appRouter.createCaller(ctx);
 
     // Primeiro, criar um cliente de teste
     const vessels = await caller.vessels.listAll();
     const lancha = vessels.find(v => v.type === "lancha");
-    
+
     const uniqueEmail = `testmonday${Date.now()}@example.com`;
     await caller.allowedClients.create({
       name: "Test Client Monday",
@@ -64,15 +64,50 @@ describe("Sistema de Cotas - Limites", () => {
     const monday = new Date(2025, 11, 1); // Mês 11 = dezembro (0-indexed)
     const mondayTimestamp = monday.getTime();
 
-    // Admin pode tentar criar reserva, mas segunda-feira deve ser bloqueada
+    // O fluxo do próprio cliente (bookings.create) bloqueia segunda-feira.
+    const clientCtx = createTestContext(uniqueEmail, "Test Client Monday");
+    const clientCaller = appRouter.createCaller(clientCtx);
     await expect(
-      caller.bookings.createForClient({
-        clientEmail: uniqueEmail,
+      clientCaller.bookings.create({
         vesselId: lancha!.id,
         bookingDate: mondayTimestamp,
         notes: "Teste segunda-feira",
       })
     ).rejects.toThrow("Reservas não são permitidas às segundas-feiras");
+  });
+
+  it("admin pode reservar em nome de cliente na segunda-feira (exceção intencional)", async () => {
+    const ctx = createTestContext("test@example.com", "Test User", "admin");
+    const caller = appRouter.createCaller(ctx);
+
+    const vessels = await caller.vessels.listAll();
+    const lancha = vessels.find(v => v.type === "lancha");
+
+    const uniqueEmail = `testmondayadmin${Date.now()}@example.com`;
+    await caller.allowedClients.create({
+      name: "Test Client Monday Admin",
+      email: uniqueEmail,
+      phone: "99999999999",
+      quotas: [{
+        vesselId: lancha!.id,
+        quotaType: "full" as const,
+        quotaNumber: 1,
+      }],
+    });
+
+    const monday = new Date(2025, 11, 1);
+    const mondayTimestamp = monday.getTime();
+
+    // bookings.createForClient (admin reservando em nome do cliente) não bloqueia
+    // segunda-feira por decisão de negócio: é uma exceção intencional que permite
+    // ao admin abrir a reserva manualmente quando necessário.
+    const result = await caller.bookings.createForClient({
+      clientEmail: uniqueEmail,
+      vesselId: lancha!.id,
+      bookingDate: mondayTimestamp,
+      notes: "Teste segunda-feira via admin",
+    });
+    expect(result.success).toBe(true);
   });
 
   it("deve permitir reservas em terças-feiras", async () => {

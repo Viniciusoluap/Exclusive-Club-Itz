@@ -476,13 +476,20 @@ export async function generateNotificationPdf(data: NotificationData): Promise<B
 // ============================================================
 
 export async function generateContractPdf(data: ContractData): Promise<Buffer> {
-  const firstQuota = data.quotas[0] ?? {
+  // Guarda defensiva: `data.quotas` pode chegar undefined por chamadas legadas
+  // (formato antigo de cota única sem o array). Normaliza para [] antes de
+  // qualquer dereferência para evitar "Cannot read properties of undefined".
+  // Quando o array existe (caminho de produção via contractRouter), o
+  // comportamento permanece idêntico — `quotas === data.quotas`.
+  const quotas = data.quotas ?? [];
+
+  const firstQuota = quotas[0] ?? {
     boatName: "", boatDescription: "", quotaType: "Cota Inteira",
     quotaNumber: 1, totalQuotas: 7, adhesionValue: 0, monthlyFee: 0, quotaPercentage: "14,29",
   };
 
   // ── Dados da embarcação — suporte a múltiplas embarcações ───
-  const uniqueVesselNames = Array.from(new Set(data.quotas.map(q => q.boatName).filter(Boolean)));
+  const uniqueVesselNames = Array.from(new Set(quotas.map(q => q.boatName).filter(Boolean)));
   const isMultiVessel = uniqueVesselNames.length > 1;
   const vesselParts = uniqueVesselNames.map(name => `1 (uma) ${name}`);
   const boatDesc = vesselParts.length === 0
@@ -494,7 +501,7 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
   const clausula11Suffix = isMultiVessel ? "às embarcações" : "à embarcação";
 
   // ── Cálculo da quantidade de cotas ──────────────────────────
-  const quotaAmount = data.quotas.reduce(
+  const quotaAmount = quotas.reduce(
     (s, q) => s + (q.quotaType === "Meia Cota" ? 0.5 : 1), 0
   );
   const quotaAmountDecimal = quotaAmount === 0.5 ? "0,5"
@@ -536,7 +543,7 @@ export async function generateContractPdf(data: ContractData): Promise<Buffer> {
 
   // ── Resumo por embarcação (cláusulas 2.2, 2.3 e 2.8) ────────
   const vesselGroupMap = new Map<string, { quotas: typeof data.quotas; totalQuotas: number; monthlyFee: number }>();
-  for (const q of data.quotas) {
+  for (const q of quotas) {
     if (!vesselGroupMap.has(q.boatName)) {
       vesselGroupMap.set(q.boatName, { quotas: [], totalQuotas: q.totalQuotas, monthlyFee: q.monthlyFee });
     }

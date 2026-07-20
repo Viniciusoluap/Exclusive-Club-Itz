@@ -2580,6 +2580,11 @@ Nenhuma reserva foi afetada.
 
           return { success: true, message: 'Pagamento marcado como recebido' };
         } catch (error: any) {
+          // Re-lança TRPCErrors intencionais (ex.: NOT_FOUND 'Registro de
+          // abastecimento não encontrado') sem mascará-los com a mensagem genérica.
+          if (error instanceof TRPCError) {
+            throw error;
+          }
           console.error('[markAsPaid] Erro:', error);
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
@@ -4635,6 +4640,11 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
           return { success: true };
         } catch (error: any) {
+          // Re-lança TRPCErrors intencionais (ex.: NOT_FOUND 'Cobrança não
+          // encontrada') sem mascará-los com a mensagem genérica.
+          if (error instanceof TRPCError) {
+            throw error;
+          }
           console.error('[inspectionCharges.markAsPaid] Error:', error);
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
@@ -4931,6 +4941,12 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             message: 'Solicitação enviada com sucesso! O administrador irá analisar seu pedido.',
           };
         } catch (error: any) {
+          // Re-lança TRPCErrors intencionais (ex.: NOT_FOUND 'Cobrança não
+          // encontrada') sem mascará-los. Só envolve em INTERNAL_SERVER_ERROR
+          // genérico os erros inesperados de verdade (ex.: falha de conexão).
+          if (error instanceof TRPCError) {
+            throw error;
+          }
           console.error('[inspectionCharges.requestDueDateChange] Error:', error);
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',

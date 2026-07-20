@@ -37,9 +37,14 @@ describe("maintenances.create", () => {
     const startDate = new Date("2025-12-20T08:00:00").getTime();
     const endDate = new Date("2025-12-25T18:00:00").getTime();
 
+    // Busca dinâmica de uma embarcação real (não depende de id fixo do banco de produção).
+    const vessels = await caller.vessels.listAll();
+    const vessel = vessels.find((v) => v.name === "Teste Focker Lancha") ?? vessels[0];
+    if (!vessel) throw new Error("Nenhuma embarcação disponível para teste");
+
     // @ts-ignore - maintenances router exists
     const result = await caller.maintenances.create({
-      vesselId: 4,
+      vesselId: vessel.id,
       startDate,
       endDate,
       description: "Teste vitest - revisão completa",
@@ -58,10 +63,15 @@ describe("maintenances.create", () => {
     const startDate = new Date("2025-12-25T18:00:00").getTime();
     const endDate = new Date("2025-12-20T08:00:00").getTime(); // End before start
 
+    // Busca dinâmica de uma embarcação real (não depende de id fixo do banco de produção).
+    const vessels = await caller.vessels.listAll();
+    const vessel = vessels.find((v) => v.name === "Teste Focker Lancha") ?? vessels[0];
+    if (!vessel) throw new Error("Nenhuma embarcação disponível para teste");
+
     await expect(
       // @ts-ignore
       caller.maintenances.create({
-        vesselId: 4,
+        vesselId: vessel.id,
         startDate,
         endDate,
         description: "Teste com datas inválidas",

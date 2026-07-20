@@ -125,7 +125,7 @@ describe("fuelRecords.generatePayment", () => {
 
     await expect(
       caller.fuelRecords.generatePayment({ recordIds: [99999] })
-    ).rejects.toThrow('Nenhum abastecimento pendente encontrado para pagamento');
+    ).rejects.toThrow('Abastecimento não encontrado ou já foi pago');
   });
 
   it("deve validar estrutura do retorno quando bem-sucedido", async () => {

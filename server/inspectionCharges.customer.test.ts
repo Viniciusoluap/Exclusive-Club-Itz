@@ -8,9 +8,14 @@ import { getOrCreateCustomer } from "./_core/asaas";
  * para o campo "customer" do Asaas, mas a API espera um customer ID (ex: cus_000012345)
  * 
  * Correção: Agora o código chama getOrCreateCustomer() primeiro para obter o ID
+ *
+ * Requer ASAAS_API_KEY (secret do repositório, ausente em PRs de forks) —
+ * ver docs/reviews/fase0-known-test-failures.md.
  */
+const hasAsaasKey = !!process.env.ASAAS_API_KEY;
+
 describe("inspectionCharges - Correção Bug invalid_customer", () => {
-  it("getOrCreateCustomer retorna customer com ID válido", async () => {
+  it.skipIf(!hasAsaasKey)("getOrCreateCustomer retorna customer com ID válido", async () => {
     const customer = await getOrCreateCustomer({
       name: "Test Client",
       email: "test-customer-fix@example.com",
@@ -28,7 +33,7 @@ describe("inspectionCharges - Correção Bug invalid_customer", () => {
     expect(customer.email).toBe("test-customer-fix@example.com");
   });
 
-  it("getOrCreateCustomer reutiliza customer existente", async () => {
+  it.skipIf(!hasAsaasKey)("getOrCreateCustomer reutiliza customer existente", async () => {
     const email = "test-reuse-customer@example.com";
     
     // Criar customer pela primeira vez
