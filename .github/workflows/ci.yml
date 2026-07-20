@@ -130,7 +130,15 @@ jobs:
       - name: Type check
         run: pnpm run check 2>&1 | tee /tmp/tsc-output.log; exit ${PIPESTATUS[0]}
 
+      # ASAAS_API_KEY/ASAAS_WEBHOOK_TOKEN: sandbox-only credentials, set as repo
+      # secrets (Settings > Secrets and variables > Actions). Tests that need
+      # them skip gracefully via `it.skipIf` when the secrets aren't configured
+      # (e.g. on forks, which don't get access to secrets) — see
+      # docs/reviews/fase0-known-test-failures.md for which tests these are.
       - name: Run tests
+        env:
+          ASAAS_API_KEY: ${{ secrets.ASAAS_API_KEY }}
+          ASAAS_WEBHOOK_TOKEN: ${{ secrets.ASAAS_WEBHOOK_TOKEN }}
         run: pnpm test 2>&1 | tee /tmp/test-output.log; exit ${PIPESTATUS[0]}
 
       - name: Build (production)

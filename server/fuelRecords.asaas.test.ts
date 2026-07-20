@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
+import { processAsaasWebhookEvent } from "./_core/asaasWebhookHandler";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -179,8 +180,8 @@ describe("fuelBudget", () => {
 
 describe("webhooks.asaas", () => {
   it("processa evento PAYMENT_RECEIVED corretamente", async () => {
-    const ctx = createAdminContext();
-    const caller = appRouter.createCaller(ctx);
+    // createAdminContext() define ASAAS_WEBHOOK_TOKEN como efeito colateral.
+    createAdminContext();
 
     // Simular webhook de pagamento recebido
     const webhookPayload = {
@@ -196,16 +197,14 @@ describe("webhooks.asaas", () => {
       },
     };
 
-    const result = await caller.webhooks.asaas(webhookPayload);
+    const result = await processAsaasWebhookEvent(webhookPayload, process.env.ASAAS_WEBHOOK_TOKEN!);
 
     expect(result).toBeDefined();
-    // Webhook pode retornar success: true ou message dependendo se encontrou o registro
-    expect(result.success !== undefined || result.message !== undefined).toBe(true);
+    expect(result.accepted).toBe(true);
   });
 
   it("processa evento PAYMENT_OVERDUE corretamente", async () => {
-    const ctx = createAdminContext();
-    const caller = appRouter.createCaller(ctx);
+    createAdminContext();
 
     const webhookPayload = {
       event: 'PAYMENT_OVERDUE',
@@ -215,10 +214,10 @@ describe("webhooks.asaas", () => {
       },
     };
 
-    const result = await caller.webhooks.asaas(webhookPayload);
+    const result = await processAsaasWebhookEvent(webhookPayload, process.env.ASAAS_WEBHOOK_TOKEN!);
 
     expect(result).toBeDefined();
-    expect(result.success !== undefined || result.message !== undefined).toBe(true);
+    expect(result.accepted).toBe(true);
   });
 });
 

@@ -29,6 +29,10 @@ function createAdminContext(): TrpcContext {
   };
 }
 
+// Chamadas reais à API sandbox da Asaas exigem ASAAS_API_KEY (secret do
+// repositório, ausente em PRs de forks) — ver docs/reviews/fase0-known-test-failures.md.
+const hasAsaasKey = !!process.env.ASAAS_API_KEY;
+
 describe("Asaas Integration", () => {
   it("should have ASAAS_API_KEY configured", () => {
     const apiKey = process.env.ASAAS_API_KEY;
@@ -37,12 +41,16 @@ describe("Asaas Integration", () => {
     expect(apiKey).toMatch(/^\$aact_(prod_)?/);
   });
 
-  it("should be able to create or get customer", async () => {
+  it.skipIf(!hasAsaasKey)("should be able to create or get customer", async () => {
     const asaas = await import("./_core/asaas");
-    
+
+    // Email único por execução: getOrCreateCustomer busca por email antes de
+    // criar, e o sandbox da Asaas persiste clientes entre execuções de CI —
+    // um email fixo reencontraria (e nunca atualizaria) um cliente de uma
+    // execução anterior.
     const customer = await asaas.getOrCreateCustomer({
       name: "Cliente Teste",
-      email: "cliente.teste@example.com",
+      email: `cliente.teste.${Date.now()}@example.com`,
     });
 
     expect(customer).toBeDefined();
@@ -50,13 +58,15 @@ describe("Asaas Integration", () => {
     expect(typeof customer.id).toBe("string");
   });
 
-  it("should be able to create charge", async () => {
+  it.skipIf(!hasAsaasKey)("should be able to create charge", async () => {
     const asaas = await import("./_core/asaas");
-    
-    // Primeiro criar/buscar cliente
+
+    // Email único por execução (mesmo motivo acima) + cpfCnpj obrigatório:
+    // Asaas rejeita criação de cobrança para cliente sem CPF/CNPJ.
     const customer = await asaas.getOrCreateCustomer({
       name: "Cliente Teste Cobrança",
-      email: "cliente.cobranca@example.com",
+      email: `cliente.cobranca.${Date.now()}@example.com`,
+      cpfCnpj: "24971563792",
     });
 
     // Criar cobrança
