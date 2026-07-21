@@ -66,14 +66,14 @@ describe("inspectionCharges - Validação de Permissões", () => {
         failedItems: [{ name: "Casco", status: "Reprovado" }],
         amount: 150.0,
       })
-    ).rejects.toThrow("Admin access required");
+    ).rejects.toThrow("You do not have required permission");
   });
 
   it("cliente não pode listar todas as cobranças (apenas admin)", async () => {
     const { ctx } = createClientContext();
     const caller = appRouter.createCaller(ctx);
 
-    await expect(caller.inspectionCharges.listAll()).rejects.toThrow("Admin access required");
+    await expect(caller.inspectionCharges.listAll()).rejects.toThrow("You do not have required permission");
   });
 
   it("cliente não pode atualizar cobranças (apenas admin)", async () => {
@@ -84,7 +84,7 @@ describe("inspectionCharges - Validação de Permissões", () => {
       caller.inspectionCharges.update({
         chargeId: 1,
       })
-    ).rejects.toThrow("Admin access required");
+    ).rejects.toThrow("You do not have required permission");
   });
 
   it("cliente não pode deletar cobranças (apenas admin)", async () => {
@@ -95,7 +95,7 @@ describe("inspectionCharges - Validação de Permissões", () => {
       caller.inspectionCharges.delete({
         chargeId: 1,
       })
-    ).rejects.toThrow("Admin access required");
+    ).rejects.toThrow("You do not have required permission");
   });
 });
 

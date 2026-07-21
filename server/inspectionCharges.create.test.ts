@@ -92,7 +92,7 @@ describe("inspectionCharges.create", () => {
         failedItems: [{ name: "Casco", status: "Reprovado" }],
         amount: 150.0,
       })
-    ).rejects.toThrow("Admin access required");
+    ).rejects.toThrow("You do not have required permission");
   });
 
   it("rejeita cobrança com valor negativo", async () => {

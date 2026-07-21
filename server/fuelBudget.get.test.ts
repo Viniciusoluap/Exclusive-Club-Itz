@@ -116,7 +116,7 @@ describe("fuelBudget.get - Employee Access", () => {
 
     await expect(
       caller.fuelBudget.get({ monthYear })
-    ).rejects.toThrow("Acesso negado");
+    ).rejects.toThrow("Employee access required");
   });
 
   it("should return lastPricePerLiter as a number", async () => {
