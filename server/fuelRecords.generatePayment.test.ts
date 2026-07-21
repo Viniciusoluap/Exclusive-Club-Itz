@@ -102,7 +102,7 @@ describe("fuelRecords.generatePayment", () => {
 
     await expect(
       caller.fuelRecords.generatePayment({ recordIds: [1] })
-    ).rejects.toThrow('Usuário não autenticado');
+    ).rejects.toThrow('Please login');
   });
 
   it("deve rejeitar array vazio de recordIds", async () => {

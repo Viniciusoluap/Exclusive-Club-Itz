@@ -161,7 +161,7 @@ describe("Booking Business Rules", () => {
           email: "newclient@test.com",
           name: "New Client",
         })
-      ).rejects.toThrow("Admin access required");
+      ).rejects.toThrow("You do not have required permission");
     });
   });
 
@@ -189,7 +189,7 @@ describe("Booking Business Rules", () => {
           name: "Test Vessel",
           type: "lancha",
         })
-      ).rejects.toThrow("Admin access required");
+      ).rejects.toThrow("You do not have required permission");
     });
 
     it("should allow anyone to list active vessels", async () => {

@@ -79,7 +79,7 @@ describe("vessels.updateDocuments", () => {
         id: 1,
         documentUrl: "https://example.com/doc.pdf",
       })
-    ).rejects.toThrow("Admin access required");
+    ).rejects.toThrow("You do not have required permission");
   });
 
   it("atualiza apenas campos especificados", async () => {
@@ -131,7 +131,7 @@ describe("vessels.deleteDocument", () => {
         id: 1,
         documentType: "document",
       })
-    ).rejects.toThrow("Admin access required");
+    ).rejects.toThrow("You do not have required permission");
   });
 
   it("valida tipo de documento", async () => {
