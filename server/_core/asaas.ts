@@ -54,13 +54,23 @@ async function getAsaasApiKey(): Promise<string> {
 }
 
 /**
- * Determina URL da API baseado na chave
+ * Story 17 (Fase 1, SYS-04): resolução ÚNICA e canônica da URL base da API
+ * do Asaas a partir da chave — antes duplicada (com pequenas divergências
+ * de fallback) em server/_core/asaas.ts, server/_core/asaasService.ts,
+ * server/cronJobs.ts, server/routers.ts (x2) e
+ * server/routers/expensesRouter.ts. Sandbox e produção usam prefixos de
+ * chave diferentes ($aact_prod_ vs $aact_hmlg_/outros); essa é a única
+ * forma confiável de decidir sem guardar o ambiente separadamente.
  */
-async function getAsaasApiUrl(): Promise<string> {
-  const apiKey = await getAsaasApiKey();
+export function resolveAsaasApiUrl(apiKey: string): string {
   return apiKey.startsWith("$aact_prod_")
     ? "https://api.asaas.com/v3"
     : "https://sandbox.asaas.com/api/v3";
+}
+
+async function getAsaasApiUrl(): Promise<string> {
+  const apiKey = await getAsaasApiKey();
+  return resolveAsaasApiUrl(apiKey);
 }
 
 /**
