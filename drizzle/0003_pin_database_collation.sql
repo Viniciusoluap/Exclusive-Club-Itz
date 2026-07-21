@@ -1,0 +1,26 @@
+-- Story 14 (Fase 1, DB-20): fixa explicitamente o charset/collation padrão
+-- do banco em utf8mb4/utf8mb4_0900_ai_ci.
+--
+-- Verificação prévia (contra o baseline real de produção, reconciliado na
+-- Story 6): TODAS as colunas de email/client_email usadas em join/scoping
+-- (allowed_clients.email, users.email, bookings.client_email,
+-- bpo_charges.client_email, fuel_records.client_email,
+-- inspection_charges.client_email, inspections.client_email,
+-- reviews.client_email, due_date_change_requests.client_email,
+-- asaas_customers.client_email, employees.email) já usam
+-- utf8mb4/utf8mb4_0900_ai_ci de forma consistente — sem mismatch. Ver
+-- `pnpm tsx server/scripts/auditCollationConsistency.ts` para reproduzir.
+--
+-- drizzle-orm (mysql-core) não expõe charset/collation por coluna na API do
+-- schema.ts, então esta migration não pode ser gerada a partir de um diff de
+-- schema — é escrita à mão, como as Stories 9/13. O que ela resolve é o
+-- risco em aberto apontado pela revisão de dados (DB-20): schema.ts não
+-- declara charset/collation explicitamente, então tabelas/colunas novas
+-- dependem do default do SERVIDOR/conexão no momento da criação — se algum
+-- ambiente futuro (ex.: uma instância CI efêmera, um servidor gerenciado
+-- reconfigurado) tiver um default diferente, uma tabela nova nasceria com
+-- collation divergente das existentes, e comparações/joins por client_email
+-- entre a tabela nova e as antigas poderiam silenciosamente deixar de casar
+-- (ou lançar "Illegal mix of collations"). Fixar o default do BANCO (não só
+-- confiar no do servidor) remove essa dependência de ambiente.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
