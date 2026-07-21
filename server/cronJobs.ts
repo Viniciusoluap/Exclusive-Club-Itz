@@ -196,15 +196,13 @@ export async function runSyncExpenses(): Promise<void> {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const { resolveAsaasApiKey } = await import("./_core/asaas");
+    const { resolveAsaasApiKey, resolveAsaasApiUrl } = await import("./_core/asaas");
     const apiKey = await resolveAsaasApiKey();
     if (!apiKey) {
       console.warn("[CronJob syncExpenses] ASAAS_API_KEY não configurada — pulando.");
       return;
     }
-    const apiUrl = apiKey.startsWith("$aact_prod_")
-      ? "https://api.asaas.com/v3"
-      : "https://sandbox.asaas.com/api/v3";
+    const apiUrl = resolveAsaasApiUrl(apiKey);
 
     // Janela: últimos 60 dias (ampliada para capturar despesas mais antigas)
     const since = new Date();

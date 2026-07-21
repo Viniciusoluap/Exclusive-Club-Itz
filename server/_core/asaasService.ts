@@ -9,7 +9,7 @@
  * - Cache de clientes Asaas
  * - Logs de auditoria
  */
-import { resolveAsaasApiKey } from "./asaas";
+import { resolveAsaasApiKey, resolveAsaasApiUrl } from "./asaas";
 import { getDb } from "../db";
 import { sql } from "drizzle-orm";
 
@@ -69,13 +69,12 @@ async function getAsaasApiKey(): Promise<string> {
 }
 
 /**
- * Determina URL da API baseado na chave
+ * Determina URL da API baseado na chave (Story 17, SYS-04: usa o
+ * resolvedor único de server/_core/asaas.ts).
  */
 async function getAsaasApiUrl(): Promise<string> {
   const apiKey = await getAsaasApiKey();
-  return apiKey.startsWith("$aact_prod_")
-    ? "https://api.asaas.com/v3"
-    : "https://sandbox.asaas.com/api/v3";
+  return resolveAsaasApiUrl(apiKey);
 }
 
 /**
@@ -688,13 +687,12 @@ export async function fetchPaymentFromAsaas(paymentId: string): Promise<{
   paymentDate?: string;
   description?: string;
 } | null> {
-  const apiUrl = process.env.ASAAS_API_URL || 'https://api.asaas.com/v3';
-  const apiKey = process.env.ASAAS_API_KEY;
-
-  if (!apiUrl || !apiKey) {
-    console.error('[Asaas] API URL ou API Key não configurados');
+  const apiKey = await resolveAsaasApiKey();
+  if (!apiKey) {
+    console.error('[Asaas] API Key não configurada');
     return null;
   }
+  const apiUrl = resolveAsaasApiUrl(apiKey);
 
   try {
     const response = await fetchWithRetry(`${apiUrl}/payments/${paymentId}`, {
