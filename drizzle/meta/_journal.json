@@ -15,6 +15,13 @@
       "when": 1784599846222,
       "tag": "0001_webhook_logs_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1784604023000,
+      "tag": "0002_unique_email_openid",
+      "breakpoints": true
     }
   ]
 }
