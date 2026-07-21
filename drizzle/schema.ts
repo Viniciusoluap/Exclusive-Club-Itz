@@ -480,6 +480,13 @@ export const webhookLogs = mysqlTable("webhook_logs", {
   index("wl_event").on(table.event),
   index("wl_asaas_payment_id").on(table.asaasPaymentId),
   index("wl_created_at").on(table.createdAt),
+  // Story 9 (Fase 1, SYS-19): chave de idempotência do webhook. Um mesmo
+  // evento (event + payment.id) só pode ter uma linha "reivindicada" aqui —
+  // é essa constraint que impede reprocessar um reenvio do Asaas do mesmo
+  // evento como se fosse novo. MySQL/TiDB tratam múltiplos NULL em
+  // asaas_payment_id como distintos (não conflitam entre si), então isso
+  // não afeta payloads malformados que nunca chegam a ter payment.id.
+  uniqueIndex("wl_event_payment_unique").on(table.event, table.asaasPaymentId),
 ]);
 export type WebhookLog = typeof webhookLogs.$inferSelect;
 export type InsertWebhookLog = typeof webhookLogs.$inferInsert;

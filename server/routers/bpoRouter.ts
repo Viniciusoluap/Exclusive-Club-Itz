@@ -210,8 +210,15 @@ async function executeSplitPayment(input: {
 // (inspection_charges e fuel_records) usando o asaas_charge_id.
 // Deve ser chamado sempre que bpo_charges.status for atualizado.
 // ============================================================
+// Aceita tanto o `db` de getDb() quanto o `tx` de db.transaction(async (tx) => ...)
+// (Story 9, SYS-19: o webhook handler chama isto de dentro de uma transação, e o
+// tipo do `tx` do drizzle não tem a propriedade `$client` que o tipo de `db` exige).
+type DbOrTx =
+  | NonNullable<Awaited<ReturnType<typeof getDb>>>
+  | Parameters<Parameters<NonNullable<Awaited<ReturnType<typeof getDb>>>["transaction"]>[0]>[0];
+
 async function syncStatusToSources(
-  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  db: DbOrTx,
   asaasChargeId: string | null | undefined,
   bpoStatus: string
 ): Promise<void> {

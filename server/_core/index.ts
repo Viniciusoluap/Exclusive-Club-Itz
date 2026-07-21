@@ -267,13 +267,34 @@ async function startServer() {
 
   // ─── Webhook Asaas (endpoint raw — deve ficar ANTES do middleware tRPC) ───
   // O Asaas envia POST com JSON puro; não usa o protocolo tRPC.
-  // Responde 200 imediatamente para evitar penalização.
-  // Lógica de processamento em ./asaasWebhookHandler.ts (extraída para ser testável).
+  // Story 9 (Fase 1, SYS-19): NÃO responde 200 antecipado — aguarda o
+  // resultado real do processamento (idempotente e atômico, ver
+  // ./asaasWebhookHandler.ts) e só então escolhe o status HTTP. Um erro de
+  // processamento deve reportar falha ao Asaas (que reenvia), não mascarar
+  // com 200 como antes.
   app.post('/api/webhooks/asaas', async (req, res) => {
-    res.status(200).json({ received: true });
     const receivedToken = (req.headers['asaas-access-token'] as string) || '';
     const { processAsaasWebhookEvent } = await import('./asaasWebhookHandler');
-    await processAsaasWebhookEvent(req.body, receivedToken);
+    const result = await processAsaasWebhookEvent(req.body, receivedToken);
+
+    if (result.accepted) {
+      res.status(200).json({ received: true, duplicate: result.duplicate ?? false });
+      return;
+    }
+
+    switch (result.rejectReason) {
+      case 'invalid_token':
+        res.status(401).json({ error: 'Token inválido' });
+        return;
+      case 'invalid_payload':
+        res.status(400).json({ error: 'Payload inválido' });
+        return;
+      case 'database_unavailable':
+      case 'internal_error':
+      default:
+        res.status(500).json({ error: 'Erro ao processar webhook' });
+        return;
+    }
   });
 
   // tRPC API
