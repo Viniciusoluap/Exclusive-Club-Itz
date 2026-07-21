@@ -43,7 +43,16 @@ export const bookings = mysqlTable("bookings", {
 	notes: text(),
 	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
-});
+},
+(table) => [
+	// Story 16 (Fase 1, DB-06/DB-07): sem nenhum índice além da PK antes —
+	// portal do cliente (bookings.myBookings/getBookingsByEmail) e todo
+	// scoping por dono faziam full scan. booking_date cobre calendário e
+	// checagens de conflito (getByDateRange/getBookingsByVesselAndDate).
+	index("bookings_client_email_idx").on(table.clientEmail),
+	index("bookings_vessel_id_idx").on(table.vesselId),
+	index("bookings_booking_date_idx").on(table.bookingDate),
+]);
 
 export const clientQuotas = mysqlTable("client_quotas", {
 	id: int().autoincrement().notNull().primaryKey(),
@@ -54,7 +63,13 @@ export const clientQuotas = mysqlTable("client_quotas", {
 	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
 	quotaNumber: int("quota_number").notNull(),
-});
+},
+(table) => [
+	// getClientQuotasByClientId/getClientQuotaByVessel filtram por estas
+	// colunas em toda tela de reserva do cliente.
+	index("client_quotas_client_id_idx").on(table.clientId),
+	index("client_quotas_vessel_id_idx").on(table.vesselId),
+]);
 
 export const dueDateChangeRequests = mysqlTable("due_date_change_requests", {
 	id: int().autoincrement().notNull().primaryKey(),
@@ -68,7 +83,12 @@ export const dueDateChangeRequests = mysqlTable("due_date_change_requests", {
 	processedBy: varchar("processed_by", { length: 320 }),
 	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
-});
+},
+(table) => [
+	// Story 16 (Fase 1, DB-06/DB-07): join usado no portal de cobranças
+	// (routers.ts, LEFT JOIN due_date_change_requests ON charge_id = ic.id).
+	index("due_date_change_requests_charge_id_idx").on(table.chargeId),
+]);
 
 export const employees = mysqlTable("employees", {
 	id: int().autoincrement().notNull().primaryKey(),
@@ -110,7 +130,13 @@ export const fuelPurchases = mysqlTable("fuel_purchases", {
 	notes: text(),
 	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	gallonNumber: int("gallon_number").default(1).notNull(),
-});
+},
+(table) => [
+	// Story 16 (Fase 1, DB-06/DB-07): getMonthPurchasesByGallon/
+	// calculateGallonFinalStock agregam por (month_year, gallon_number) —
+	// sem índice, full scan em toda tela de orçamento/estoque de combustível.
+	index("fuel_purchases_month_year_gallon_idx").on(table.monthYear, table.gallonNumber),
+]);
 
 export const fuelRecords = mysqlTable("fuel_records", {
 	id: int().autoincrement().notNull().primaryKey(),
@@ -146,7 +172,17 @@ export const fuelRecords = mysqlTable("fuel_records", {
 	photoAfterUrl: text("photo_after_url"),
 	gallonNumber: int("gallon_number").default(1).notNull(),
 	isOperational: tinyint("is_operational").default(0).notNull(),
-});
+},
+(table) => [
+	// Story 16 (Fase 1, DB-06/DB-07): fuelRecords.myRecords (portal do
+	// cliente) filtra por client_email; fuelRecords.list/stats agregam por
+	// mês via created_at; fuelRecords.getByBooking filtra por booking_id.
+	// Nenhum índice existia além da PK — full scan em todas essas telas.
+	index("fuel_records_client_email_idx").on(table.clientEmail),
+	index("fuel_records_booking_id_idx").on(table.bookingId),
+	index("fuel_records_vessel_id_idx").on(table.vesselId),
+	index("fuel_records_created_at_idx").on(table.createdAt),
+]);
 
 export const gallonStock = mysqlTable("gallon_stock", {
 	id: int().autoincrement().notNull().primaryKey(),
@@ -177,7 +213,14 @@ export const inspectionCharges = mysqlTable("inspection_charges", {
 	receiptUrl: text("receipt_url"),
 	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
-});
+},
+(table) => [
+	// Story 16 (Fase 1, DB-06/DB-07): portal do cliente (myFailedInspections)
+	// e telas admin filtram por estas colunas.
+	index("inspection_charges_client_email_idx").on(table.clientEmail),
+	index("inspection_charges_inspection_id_idx").on(table.inspectionId),
+	index("inspection_charges_vessel_id_idx").on(table.vesselId),
+]);
 
 export const inspections = mysqlTable("inspections", {
 	id: int().autoincrement().notNull().primaryKey(),
@@ -193,7 +236,14 @@ export const inspections = mysqlTable("inspections", {
 	inspectedBy: text("inspected_by"),
 	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	reprovationPhotos: text("reprovation_photos"),
-});
+},
+(table) => [
+	// myFailedInspections (portal) filtra por client_email + status; list
+	// admin junta por booking_id/vessel_id.
+	index("inspections_client_email_idx").on(table.clientEmail),
+	index("inspections_booking_id_idx").on(table.bookingId),
+	index("inspections_vessel_id_idx").on(table.vesselId),
+]);
 
 export const maintenances = mysqlTable("maintenances", {
 	id: int().autoincrement().notNull().primaryKey(),
@@ -206,7 +256,12 @@ export const maintenances = mysqlTable("maintenances", {
 	createdBy: int("created_by").default(1).notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
-});
+},
+(table) => [
+	// checkConflicts/getActiveMaintenancesByVesselAndDate filtram por
+	// vessel_id no calendário de manutenções.
+	index("maintenances_vessel_id_idx").on(table.vesselId),
+]);
 
 export const reviews = mysqlTable("reviews", {
 	id: int().autoincrement().notNull().primaryKey(),
@@ -220,7 +275,13 @@ export const reviews = mysqlTable("reviews", {
 	isApproved: tinyint("is_approved").default(0).notNull(),
 	createdAt: timestamp("created_at", { mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' as const }).defaultNow().onUpdateNow().notNull(),
-});
+},
+(table) => [
+	// reviews.listByVessel/stats (público, mostrado na página da embarcação)
+	// filtra por vessel_id em toda visita.
+	index("reviews_vessel_id_idx").on(table.vesselId),
+	index("reviews_booking_id_idx").on(table.bookingId),
+]);
 
 export const systemSettings = mysqlTable("system_settings", {
 	id: int().autoincrement().notNull().primaryKey(),
@@ -457,6 +518,10 @@ export const bpoCharges = mysqlTable("bpo_charges", {
   index("bpo_charges_client_id_idx").on(table.clientId),
   index("bpo_charges_due_date_idx").on(table.dueDate),
   index("bpo_charges_status_idx").on(table.status),
+  // Story 16 (Fase 1, DB-06/DB-07): fallback por email (case-insensitive,
+  // ver Story 8/9 — markAsPaid, webhook) e o portal de cobranças filtram
+  // direto por client_email quando client_id é NULL.
+  index("bpo_charges_client_email_idx").on(table.clientEmail),
 ]);
 
 export type BpoCharge = typeof bpoCharges.$inferSelect;
