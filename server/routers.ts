@@ -2762,9 +2762,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
           });
         }
 
-        const ASAAS_API_URL = apiKey.startsWith('$aact_prod_')
-          ? 'https://api.asaas.com/v3'
-          : 'https://sandbox.asaas.com/api/v3';
+        const ASAAS_API_URL = asaas.resolveAsaasApiUrl(apiKey);
 
         // Buscar abastecimento selecionado (apenas 1)
         const recordId = input.recordIds[0];
@@ -5622,13 +5620,13 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
     testConnection: adminProcedure
       .mutation(async () => {
-        const { resolveAsaasApiKey } = await import('./_core/asaas');
+        const { resolveAsaasApiKey, resolveAsaasApiUrl } = await import('./_core/asaas');
         const apiKey = await resolveAsaasApiKey();
         if (!apiKey) {
           return { success: false, message: 'Chave API não configurada. Salve a chave antes de testar.' };
         }
         const isProd = apiKey.startsWith('$aact_prod_');
-        const apiUrl = isProd ? 'https://api.asaas.com/v3' : 'https://sandbox.asaas.com/api/v3';
+        const apiUrl = resolveAsaasApiUrl(apiKey);
         const env = isProd ? 'Produção' : 'Sandbox';
         try {
           const resp = await fetch(`${apiUrl}/myAccount`, {
