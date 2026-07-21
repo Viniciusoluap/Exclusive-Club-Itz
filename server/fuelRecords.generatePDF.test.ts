@@ -119,7 +119,7 @@ describe("fuelRecords.generateReport", () => {
       caller.fuelRecords.generateReport({
         recordIds: [1],
       })
-    ).rejects.toThrow("Acesso negado");
+    ).rejects.toThrow("Employee access required");
   });
 
   it("deve falhar ao tentar gerar PDF sem recordIds", async () => {

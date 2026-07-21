@@ -106,7 +106,7 @@ describe("bookings.getRecent", () => {
 
     await expect(
       caller.bookings.getRecent({ onlyUsed: true })
-    ).rejects.toThrow("Acesso negado");
+    ).rejects.toThrow("Employee access required");
   });
 
   it("retorna apenas reservas utilizadas quando onlyUsed=true", async () => {

@@ -107,6 +107,6 @@ describe("fuelRecords.myRecords", () => {
 
     const caller = appRouter.createCaller(ctx);
 
-    await expect(caller.fuelRecords.myRecords()).rejects.toThrow('Usuário não autenticado');
+    await expect(caller.fuelRecords.myRecords()).rejects.toThrow('Please login');
   });
 });

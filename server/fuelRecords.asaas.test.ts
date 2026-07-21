@@ -98,7 +98,7 @@ describe("fuelRecords.financialStats", () => {
     
     await expect(
       caller.fuelRecords.financialStats({ monthYear: currentMonth })
-    ).rejects.toThrow('Acesso negado');
+    ).rejects.toThrow('You do not have required permission');
   });
 });
 
@@ -139,7 +139,7 @@ describe("fuelRecords.myRecords", () => {
 
     await expect(
       caller.fuelRecords.myRecords()
-    ).rejects.toThrow('Usuário não autenticado');
+    ).rejects.toThrow('Please login');
   });
 });
 
@@ -241,6 +241,6 @@ describe("Integração Completa - Fluxo de Abastecimento", () => {
     // Cliente não tem permissão para deletar
     await expect(
       caller.fuelRecords.delete({ id: 999 })
-    ).rejects.toThrow('Acesso negado');
+    ).rejects.toThrow('Employee access required');
   });
 });

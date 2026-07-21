@@ -55,7 +55,7 @@ describe("Segurança de Acesso Admin", () => {
     const caller = appRouter.createCaller(ctx);
 
     // Should NOT be able to access admin routes
-    await expect(caller.allowedClients.list()).rejects.toThrow("Admin access required");
+    await expect(caller.allowedClients.list()).rejects.toThrow("You do not have required permission");
     await expect(caller.vessels.listAll()).rejects.toThrow();
     await expect(caller.bookings.listAll()).rejects.toThrow();
   });

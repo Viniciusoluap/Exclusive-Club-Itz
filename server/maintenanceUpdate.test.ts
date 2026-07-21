@@ -290,7 +290,7 @@ describe("maintenances.update", () => {
         id: 1,
         description: "New description",
       })
-    ).rejects.toThrow("Acesso negado");
+    ).rejects.toThrow("Employee access required");
   });
 
   it("should allow employee to update maintenance", async () => {
