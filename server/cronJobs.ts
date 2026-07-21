@@ -190,7 +190,7 @@ async function runSyncIncrementalBPO(): Promise<void> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Sync Incremental Despesas — importa transferências e taxas dos últimos 7 dias
 // ─────────────────────────────────────────────────────────────────────────────
-async function runSyncExpenses(): Promise<void> {
+export async function runSyncExpenses(): Promise<void> {
   console.log("[CronJob] syncExpenses — Iniciando importação incremental de despesas...");
   try {
     const db = await getDb();
@@ -231,10 +231,13 @@ async function runSyncExpenses(): Promise<void> {
         for (const tx of items) {
           if (tx.status === "CANCELLED" || tx.status === "FAILED") continue;
 
+          // tx.id/tx.description vêm da API Asaas (dado externo, não confiável —
+          // SQLi de 2ª ordem se interpolado direto em SQL). Bind params abaixo
+          // (sql`` do drizzle) em vez de sql.raw() com template string.
           const txId = `transfer_${tx.id}`;
-          const existing = await db.execute(
-            sql.raw(`SELECT id FROM expense_records WHERE asaas_payment_id = '${txId}' LIMIT 1`)
-          ) as any;
+          const existing = (await db.execute(
+            sql`SELECT id FROM expense_records WHERE asaas_payment_id = ${txId} LIMIT 1`
+          )) as any;
           const rows = Array.isArray(existing[0]) ? existing[0] : existing;
           if (rows.length > 0) { skipped++; continue; }
 
@@ -244,27 +247,25 @@ async function runSyncExpenses(): Promise<void> {
           const value = Math.abs(tx.value || tx.netValue || 0);
           if (value <= 0) continue;
 
-          const bankName = tx.bankAccount?.bank?.name
-            ? JSON.stringify(tx.bankAccount.bank.name)
-            : "NULL";
+          const bankName: string | null = tx.bankAccount?.bank?.name ?? null;
 
-          await db.execute(sql.raw(`
+          await db.execute(sql`
             INSERT INTO expense_records (cost_center, description, recipient_name, value, due_date, paid_date, status, asaas_payment_id, source_type, manually_classified, created_at, updated_at)
             VALUES (
-              '${costCenter}',
-              ${JSON.stringify(desc)},
+              ${costCenter},
+              ${desc},
               ${bankName},
               ${value},
-              '${dateStr}',
-              '${dateStr}',
+              ${dateStr},
+              ${dateStr},
               'paid',
-              '${txId}',
+              ${txId},
               'transfer',
               0,
               NOW(),
               NOW()
             )
-          `));
+          `);
           imported++;
         }
 
@@ -298,9 +299,9 @@ async function runSyncExpenses(): Promise<void> {
           if (!FEE_TYPES.has(tx.type)) continue;
 
           const txId = `fee_${tx.id}`;
-          const existing = await db.execute(
-            sql.raw(`SELECT id FROM expense_records WHERE asaas_payment_id = '${txId}' LIMIT 1`)
-          ) as any;
+          const existing = (await db.execute(
+            sql`SELECT id FROM expense_records WHERE asaas_payment_id = ${txId} LIMIT 1`
+          )) as any;
           const rows = Array.isArray(existing[0]) ? existing[0] : existing;
           if (rows.length > 0) { skipped++; continue; }
 
@@ -309,23 +310,23 @@ async function runSyncExpenses(): Promise<void> {
           const value = Math.abs(tx.value || 0);
           if (value <= 0) continue;
 
-          await db.execute(sql.raw(`
+          await db.execute(sql`
             INSERT INTO expense_records (cost_center, description, recipient_name, value, due_date, paid_date, status, asaas_payment_id, source_type, manually_classified, created_at, updated_at)
             VALUES (
               'operational',
-              ${JSON.stringify(desc)},
+              ${desc},
               'Asaas',
               ${value},
-              '${dateStr}',
-              '${dateStr}',
+              ${dateStr},
+              ${dateStr},
               'paid',
-              '${txId}',
+              ${txId},
               'fee',
               0,
               NOW(),
               NOW()
             )
-          `));
+          `);
           imported++;
         }
 
@@ -357,9 +358,9 @@ async function runSyncExpenses(): Promise<void> {
           if (!WITHDRAWAL_TYPES.has(tx.type)) continue;
 
           const txId = `withdrawal_${tx.id}`;
-          const existing = await db.execute(
-            sql.raw(`SELECT id FROM expense_records WHERE asaas_payment_id = '${txId}' LIMIT 1`)
-          ) as any;
+          const existing = (await db.execute(
+            sql`SELECT id FROM expense_records WHERE asaas_payment_id = ${txId} LIMIT 1`
+          )) as any;
           const rows = Array.isArray(existing[0]) ? existing[0] : existing;
           if (rows.length > 0) { skipped++; continue; }
 
@@ -370,23 +371,23 @@ async function runSyncExpenses(): Promise<void> {
 
           const costCenter = tx.type === "WITHDRAWAL" ? "withdrawal" : "operational";
 
-          await db.execute(sql.raw(`
+          await db.execute(sql`
             INSERT INTO expense_records (cost_center, description, recipient_name, value, due_date, paid_date, status, asaas_payment_id, source_type, manually_classified, created_at, updated_at)
             VALUES (
-              '${costCenter}',
-              ${JSON.stringify(desc)},
+              ${costCenter},
+              ${desc},
               'Asaas',
               ${value},
-              '${dateStr}',
-              '${dateStr}',
+              ${dateStr},
+              ${dateStr},
               'paid',
-              '${txId}',
+              ${txId},
               'withdrawal',
               0,
               NOW(),
               NOW()
             )
-          `));
+          `);
           imported++;
         }
 
