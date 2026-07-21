@@ -29,6 +29,13 @@
       "when": 1784604300000,
       "tag": "0003_pin_database_collation",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1784605865794,
+      "tag": "0004_hot_column_indexes",
+      "breakpoints": true
     }
   ]
 }
