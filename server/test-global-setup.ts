@@ -61,6 +61,12 @@ async function cleanupTestData() {
   await deleteIfExists("bookings", clientEmailCond);
   await deleteIfExists("subscription_charges", `subscription_id IN (SELECT s.id FROM subscriptions s INNER JOIN allowed_clients ac ON s.client_id = ac.id WHERE ${emailCond.replace(/email/g, "ac.email")})`);
   await deleteIfExists("subscriptions", `client_id IN (SELECT id FROM allowed_clients WHERE ${emailCond})`);
+  // client_quotas nunca era limpo aqui (achado pelo job de reconciliação da
+  // Story 15, DB-01) — allowedClients.create() nos testes de quotas.test.ts
+  // sempre cria client_quotas junto com o allowed_client, mas só o
+  // allowed_client era removido no fim, deixando client_quotas.client_id
+  // órfão a cada execução da suíte.
+  await deleteIfExists("client_quotas", `client_id IN (SELECT id FROM allowed_clients WHERE ${emailCond})`);
   await deleteIfExists("fuel_records", clientEmailCond);
   await deleteIfExists("asaas_payments", clientEmailCond);
   await deleteIfExists("employees", emailCond);
