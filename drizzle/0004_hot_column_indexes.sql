@@ -1,0 +1,21 @@
+CREATE INDEX `bookings_client_email_idx` ON `bookings` (`client_email`);--> statement-breakpoint
+CREATE INDEX `bookings_vessel_id_idx` ON `bookings` (`vessel_id`);--> statement-breakpoint
+CREATE INDEX `bookings_booking_date_idx` ON `bookings` (`booking_date`);--> statement-breakpoint
+CREATE INDEX `bpo_charges_client_email_idx` ON `bpo_charges` (`client_email`);--> statement-breakpoint
+CREATE INDEX `client_quotas_client_id_idx` ON `client_quotas` (`client_id`);--> statement-breakpoint
+CREATE INDEX `client_quotas_vessel_id_idx` ON `client_quotas` (`vessel_id`);--> statement-breakpoint
+CREATE INDEX `due_date_change_requests_charge_id_idx` ON `due_date_change_requests` (`charge_id`);--> statement-breakpoint
+CREATE INDEX `fuel_purchases_month_year_gallon_idx` ON `fuel_purchases` (`month_year`,`gallon_number`);--> statement-breakpoint
+CREATE INDEX `fuel_records_client_email_idx` ON `fuel_records` (`client_email`);--> statement-breakpoint
+CREATE INDEX `fuel_records_booking_id_idx` ON `fuel_records` (`booking_id`);--> statement-breakpoint
+CREATE INDEX `fuel_records_vessel_id_idx` ON `fuel_records` (`vessel_id`);--> statement-breakpoint
+CREATE INDEX `fuel_records_created_at_idx` ON `fuel_records` (`created_at`);--> statement-breakpoint
+CREATE INDEX `inspection_charges_client_email_idx` ON `inspection_charges` (`client_email`);--> statement-breakpoint
+CREATE INDEX `inspection_charges_inspection_id_idx` ON `inspection_charges` (`inspection_id`);--> statement-breakpoint
+CREATE INDEX `inspection_charges_vessel_id_idx` ON `inspection_charges` (`vessel_id`);--> statement-breakpoint
+CREATE INDEX `inspections_client_email_idx` ON `inspections` (`client_email`);--> statement-breakpoint
+CREATE INDEX `inspections_booking_id_idx` ON `inspections` (`booking_id`);--> statement-breakpoint
+CREATE INDEX `inspections_vessel_id_idx` ON `inspections` (`vessel_id`);--> statement-breakpoint
+CREATE INDEX `maintenances_vessel_id_idx` ON `maintenances` (`vessel_id`);--> statement-breakpoint
+CREATE INDEX `reviews_vessel_id_idx` ON `reviews` (`vessel_id`);--> statement-breakpoint
+CREATE INDEX `reviews_booking_id_idx` ON `reviews` (`booking_id`);
