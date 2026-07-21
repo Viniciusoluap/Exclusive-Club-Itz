@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeAll } from "vitest";
+import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 import * as systemSettings from "./systemSettings";
@@ -31,10 +31,12 @@ function createAuthContext(email: string = "client@example.com"): { ctx: TrpcCon
 }
 
 describe("fuelRecords.generatePayment", () => {
+  let seededAsaasApiKey = false;
+
   beforeAll(async () => {
     // Garantir que temos uma API key configurada no banco para os testes
     const existingKey = await systemSettings.getSetting("asaas_api_key");
-    
+
     if (!existingKey) {
       // Configurar uma chave de sandbox para teste
       await systemSettings.setSetting(
@@ -43,6 +45,17 @@ describe("fuelRecords.generatePayment", () => {
         "Chave API Asaas (Sandbox) - Configurada para testes",
         "sistema-teste"
       );
+      seededAsaasApiKey = true;
+    }
+  });
+
+  afterAll(async () => {
+    // Sem isto, a chave falsa fica em system_settings poluindo
+    // resolveAsaasApiKey() (fallback via banco) para QUALQUER outro arquivo
+    // de teste que rode depois na mesma suíte — só remove se foi esta
+    // suíte que a criou (não mexe numa chave real pré-existente).
+    if (seededAsaasApiKey) {
+      await systemSettings.deleteSetting("asaas_api_key");
     }
   });
 

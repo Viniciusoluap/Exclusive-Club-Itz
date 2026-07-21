@@ -1936,81 +1936,96 @@ Nenhuma reserva foi afetada.
         }
         } // Fechar bloco if (!input.isOperational)
 
-        const notesValue = input.notes ? `'${input.notes.replace(/'/g, "''")}'` : 'NULL';
-        const photoBeforeUrlValue = input.photoBeforeUrl ? `'${input.photoBeforeUrl}'` : 'NULL';
-        const photoAfterUrlValue = input.photoAfterUrl ? `'${input.photoAfterUrl}'` : 'NULL';
-        const asaasChargeIdValue = asaasChargeId ? `'${asaasChargeId}'` : 'NULL';
-        const asaasCustomerIdValue = asaasCustomerId ? `'${asaasCustomerId}'` : 'NULL';
-        const paymentUrlValue = paymentUrl ? `'${paymentUrl}'` : 'NULL';
-        const syncErrorValue = syncError ? `'${syncError.replace(/'/g, "''")}'` : 'NULL';
-        
         // Para múltiplos galões, usar dados do primeiro galão para o registro principal
         const primaryGallon = containersToSave.length > 0 ? containersToSave[0] : null;
-        const primaryPhotoBeforeUrl = primaryGallon ? `'${primaryGallon.photoBeforeUrl}'` : photoBeforeUrlValue;
-        const primaryPhotoAfterUrl = primaryGallon ? `'${primaryGallon.photoAfterUrl}'` : photoAfterUrlValue;
+        const primaryPhotoBeforeUrl = primaryGallon ? primaryGallon.photoBeforeUrl : (input.photoBeforeUrl || null);
+        const primaryPhotoAfterUrl = primaryGallon ? primaryGallon.photoAfterUrl : (input.photoAfterUrl || null);
         const primaryGallonNumber = primaryGallon ? primaryGallon.gallonNumber : input.gallonNumber;
-        
-        const insertResult = await database.execute(`
-          INSERT INTO fuel_records (
-            booking_id, vessel_id, vessel_name, client_email, client_name, 
-            liters, price_per_liter, total_amount, notes, 
-            liters_initial, weight_full, weight_after, weight_consumed, liters_calculated,
-            photo_before_url, photo_after_url,
-            asaas_charge_id, asaas_customer_id, payment_url, payment_status,
-            sync_status, sync_error, last_sync_attempt,
-            recorded_by, recorded_at, gallon_number, is_operational
-          )
-          VALUES (
-            ${input.bookingId || 'NULL'}, ${input.vesselId}, '${booking.vessel_name_actual}', 
-            '${booking.client_email}', '${booking.client_name}', 
-            ${finalLitersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${notesValue}, 
-            ${litersInitialInCents}, ${weightFullInGrams}, ${weightAfterInGrams}, ${weightConsumedInGrams}, ${litersCalculatedInCents},
-            ${primaryPhotoBeforeUrl}, ${primaryPhotoAfterUrl},
-            ${asaasChargeIdValue}, ${asaasCustomerIdValue}, ${paymentUrlValue}, 'pending',
-            '${syncStatus}', ${syncErrorValue}, NOW(),
-            ${ctx.user?.id || 'NULL'}, NOW(), ${primaryGallonNumber}, ${input.isOperational ? 1 : 0}
-          )
-        `) as any;
-        
-        
-        // Obter o ID do registro inserido
-        const fuelRecordId = insertResult[0]?.insertId || insertResult.insertId;
-        
-        // VALIDAÇÃO: Garantir que o registro principal foi criado antes de salvar containers
-        if (!fuelRecordId || fuelRecordId <= 0) {
-          console.error('[fuelRecords.create] ERRO: Falha ao obter ID do registro inserido. insertResult:', JSON.stringify(insertResult));
-          throw new TRPCError({ 
-            code: 'INTERNAL_SERVER_ERROR', 
-            message: 'Falha ao criar registro de abastecimento. Por favor, tente novamente.' 
-          });
-        }
-        
-        console.log('[fuelRecords.create] Registro principal criado com ID:', fuelRecordId);
-        
-        // NOVO: Salvar cada container na tabela fuel_record_containers
-        if (containersToSave.length > 0 && fuelRecordId) {
-          console.log('[fuelRecords.create] Salvando', containersToSave.length, 'containers para fuel_record_id:', fuelRecordId);
-          
-          for (const container of containersToSave) {
-            await database.execute(`
-              INSERT INTO fuel_record_containers (
-                fuel_record_id, gallon_number, liters_initial, weight_full, weight_after,
-                weight_consumed, liters_used, photo_before_url, photo_after_url
-              )
-              VALUES (
-                ${fuelRecordId}, ${container.gallonNumber}, ${container.litersInitial}, 
-                ${container.weightFull}, ${container.weightAfter}, ${container.weightConsumed},
-                ${container.litersUsed}, '${container.photoBeforeUrl}', '${container.photoAfterUrl}'
-              )
-            `);
+
+        // sql`` (não template string crua): booking.client_name/client_email/
+        // vessel_name_actual e input.notes/photoBeforeUrl/photoAfterUrl chegam
+        // de dados de reserva/formulário, não de constantes controladas pelo
+        // código — interpolar direto numa string SQL é injeção de SQL (mesma
+        // classe já corrigida para client_email na Fase 0 e em bpoRouter.ts).
+        //
+        // fuel_records + fuel_record_containers numa única transação: os
+        // containers não fazem sentido sem o registro principal (nem
+        // vice-versa) — um sucesso parcial aqui é corrupção de dado real.
+        // A cobrança no Asaas (asaas.createCharge, acima) já é uma chamada
+        // HTTP externa concluída antes deste bloco — não é revertível por
+        // rollback de banco, então NÃO entra nesta transação; e é exatamente
+        // por isso que o sync com bpo_charges (mais abaixo) também fica FORA:
+        // se ele falhasse dentro da mesma transação e revertesse o INSERT de
+        // fuel_records, perderíamos a única referência local à cobrança já
+        // criada (pior que o bug original, que ao menos preservava o registro).
+        const fuelRecordId: number = await database.transaction(async (tx) => {
+          const insertResult = await tx.execute(sql`
+            INSERT INTO fuel_records (
+              booking_id, vessel_id, vessel_name, client_email, client_name,
+              liters, price_per_liter, total_amount, notes,
+              liters_initial, weight_full, weight_after, weight_consumed, liters_calculated,
+              photo_before_url, photo_after_url,
+              asaas_charge_id, asaas_customer_id, payment_url, payment_status,
+              sync_status, sync_error, last_sync_attempt,
+              recorded_by, recorded_at, gallon_number, is_operational
+            )
+            VALUES (
+              ${input.bookingId || null}, ${input.vesselId}, ${booking.vessel_name_actual},
+              ${booking.client_email}, ${booking.client_name},
+              ${finalLitersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${input.notes || null},
+              ${litersInitialInCents}, ${weightFullInGrams}, ${weightAfterInGrams}, ${weightConsumedInGrams}, ${litersCalculatedInCents},
+              ${primaryPhotoBeforeUrl}, ${primaryPhotoAfterUrl},
+              ${asaasChargeId || null}, ${asaasCustomerId || null}, ${paymentUrl || null}, 'pending',
+              ${syncStatus}, ${syncError || null}, NOW(),
+              ${ctx.user?.id || null}, NOW(), ${primaryGallonNumber}, ${input.isOperational ? 1 : 0}
+            )
+          `) as any;
+
+          const insertedId = insertResult[0]?.insertId || insertResult.insertId;
+
+          // VALIDAÇÃO: Garantir que o registro principal foi criado antes de salvar containers
+          if (!insertedId || insertedId <= 0) {
+            console.error('[fuelRecords.create] ERRO: Falha ao obter ID do registro inserido. insertResult:', JSON.stringify(insertResult));
+            throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: 'Falha ao criar registro de abastecimento. Por favor, tente novamente.'
+            });
           }
-          
-          console.log('[fuelRecords.create] Containers salvos com sucesso!');
-        }
-        
+
+          console.log('[fuelRecords.create] Registro principal criado com ID:', insertedId);
+
+          // NOVO: Salvar cada container na tabela fuel_record_containers
+          if (containersToSave.length > 0) {
+            console.log('[fuelRecords.create] Salvando', containersToSave.length, 'containers para fuel_record_id:', insertedId);
+
+            for (const container of containersToSave) {
+              await tx.execute(sql`
+                INSERT INTO fuel_record_containers (
+                  fuel_record_id, gallon_number, liters_initial, weight_full, weight_after,
+                  weight_consumed, liters_used, photo_before_url, photo_after_url
+                )
+                VALUES (
+                  ${insertedId}, ${container.gallonNumber}, ${container.litersInitial},
+                  ${container.weightFull}, ${container.weightAfter}, ${container.weightConsumed},
+                  ${container.litersUsed}, ${container.photoBeforeUrl}, ${container.photoAfterUrl}
+                )
+              `);
+            }
+
+            console.log('[fuelRecords.create] Containers salvos com sucesso!');
+          }
+
+          return insertedId;
+        });
+
         console.log('[fuelRecords.create] Abastecimento salvo no banco com sync_status:', syncStatus);
 
-        // Sincronizar imediatamente com bpo_charges para aparecer na tela do cliente
+        // Sincronizar imediatamente com bpo_charges para aparecer na tela do cliente.
+        // Best-effort e deliberadamente fora da transação acima (ver comentário
+        // no início do bloco) — mas a falha não é mais silenciosa: reportada
+        // na resposta (bpoSyncFailed) em vez de só um console.warn perdido no
+        // log do servidor, para quem chama poder reagir/reconciliar depois.
+        let bpoSyncFailed = false;
         if (!input.isOperational && asaasChargeId) {
           try {
             const dueDateStr = asaas.formatDateForAsaas(dueDate);
@@ -2037,17 +2052,19 @@ Nenhuma reserva foi afetada.
             `);
             console.log('[fuelRecords.create] ✅ bpo_charges sincronizado com type=fuel');
           } catch (bpoErr: any) {
-            console.warn('[fuelRecords.create] Falha ao sincronizar bpo_charges:', bpoErr.message);
+            bpoSyncFailed = true;
+            console.error('[fuelRecords.create] Falha ao sincronizar bpo_charges (fuel_record_id ' + fuelRecordId + '):', bpoErr.message);
           }
         }
 
-        return { 
+        return {
           success: true,
           containersCount: containersToSave.length || 1,
-          totalLiters: finalLiters, 
+          totalLiters: finalLiters,
           totalCost: totalAmount / 100,
           paymentUrl: paymentUrl || undefined,
           asaasChargeId: asaasChargeId || undefined,
+          bpoSyncFailed: bpoSyncFailed || undefined,
         };
       }),
 
@@ -2493,21 +2510,24 @@ Nenhuma reserva foi afetada.
           const rec = (Array.isArray(recResult[0]) ? recResult[0][0] : recResult[0]);
           if (!rec) throw new TRPCError({ code: 'NOT_FOUND', message: 'Registro de abastecimento não encontrado' });
 
-          // 2. Atualizar fuel_records
-          await db.execute(sql`
-            UPDATE fuel_records 
-            SET 
-              payment_status = 'paid',
-              sync_status = 'manual',
-              paid_at = NOW(),
-              manual_payment_note = ${input.note || 'Pagamento recebido manualmente'}
-            WHERE id = ${input.id}
-          `);
+          // 2+3. Atualizar fuel_records e sincronizar bpo_charges como uma
+          // única transação: são as duas metades do mesmo evento de negócio
+          // ("este pagamento foi recebido") — sem chamada externa no meio
+          // (diferente de fuelRecords.create), então não há razão para
+          // aceitar sucesso parcial. Se o sync com bpo_charges falhar por
+          // qualquer motivo, a marcação de pago também é revertida, em vez
+          // de reportar sucesso enquanto o financeiro fica desatualizado.
+          await db.transaction(async (tx) => {
+            await tx.execute(sql`
+              UPDATE fuel_records
+              SET
+                payment_status = 'paid',
+                sync_status = 'manual',
+                paid_at = NOW(),
+                manual_payment_note = ${input.note || 'Pagamento recebido manualmente'}
+              WHERE id = ${input.id}
+            `);
 
-          // 3. Sincronizar com bpo_charges
-          try {
-            const { bpoCharges } = await import('../drizzle/schema');
-            const { sql: drizzleSql } = await import('drizzle-orm');
             const dueDateStr = rec.due_date ? new Date(rec.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
             const valueInReais = ((rec.total_amount || 0) / 100).toFixed(2);
             const valueNum = parseFloat(valueInReais);
@@ -2518,7 +2538,7 @@ Nenhuma reserva foi afetada.
 
             // 1. Pelo asaas_charge_id (mais preciso)
             if (asaasId) {
-              const [r] = (await db.execute(drizzleSql`
+              const [r] = (await tx.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
                 WHERE asaas_charge_id = ${asaasId}
@@ -2529,7 +2549,7 @@ Nenhuma reserva foi afetada.
 
             // 2. Fallback por email (case-insensitive) + tipo + valor com margem
             if (rowsUpdated === 0 && clientEmail && valueNum > 0) {
-              const [r2] = (await db.execute(drizzleSql`
+              const [r2] = (await tx.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
                 WHERE type = 'fuel'
@@ -2544,7 +2564,7 @@ Nenhuma reserva foi afetada.
 
             // 3. Fallback amplo: qualquer fuel pendente/vencido do mesmo cliente (sem restrição de valor)
             if (rowsUpdated === 0 && clientEmail) {
-              const [r3] = (await db.execute(drizzleSql`
+              const [r3] = (await tx.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
                 WHERE type = 'fuel'
@@ -2560,7 +2580,7 @@ Nenhuma reserva foi afetada.
             if (rowsUpdated === 0) {
               const clientName = rec.client_name || null;
               const safeDesc = `Abastecimento - Baixa manual (ID: ${input.id})`;
-              await db.execute(drizzleSql`
+              await tx.execute(sql`
                 INSERT INTO bpo_charges (
                   asaas_charge_id, client_name, client_email,
                   value, due_date, status, type, classified_by,
@@ -2574,9 +2594,7 @@ Nenhuma reserva foi afetada.
                   status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW()
               `);
             }
-          } catch (bpoErr: any) {
-            console.warn('[fuelRecords.markAsPaid] Falha ao sincronizar bpo_charges:', bpoErr.message);
-          }
+          });
 
           return { success: true, message: 'Pagamento marcado como recebido' };
         } catch (error: any) {
@@ -4557,33 +4575,35 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
         try {
           const { sql, eq } = await import('drizzle-orm');
           const { inspectionCharges } = await import('../drizzle/schema');
-          
+
           // Buscar cobrança
-          const chargeResult = await db.execute(sql.raw(`
+          const chargeResult = await db.execute(sql`
             SELECT * FROM inspection_charges WHERE id = ${input.chargeId}
-          `)) as any;
-          
+          `) as any;
+
           const charge = (Array.isArray(chargeResult[0]) ? chargeResult[0][0] : chargeResult[0]);
           if (!charge) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Cobrança não encontrada' });
           }
-          
-          // Atualizar status local para "paid"
-          await db.update(inspectionCharges)
-            .set({ 
-              paymentStatus: 'paid',
-            })
-            .where(eq(inspectionCharges.id, input.chargeId));
 
-          // Sincronizar com bpo_charges
-          try {
+          // Atualizar status local e sincronizar bpo_charges numa única
+          // transação (mesmo motivo do fuelRecords.markAsPaid: sem chamada
+          // externa no meio, então sucesso parcial não tem justificativa —
+          // se o sync falhar, a marcação de pago também é revertida).
+          await db.transaction(async (tx) => {
+            await tx.update(inspectionCharges)
+              .set({
+                paymentStatus: 'paid',
+              })
+              .where(eq(inspectionCharges.id, input.chargeId));
+
             const chargeType = 'repair';
             const chargeValue = parseFloat(String(charge.amount || 0));
             const dueDate = charge.due_date ? String(charge.due_date).substring(0, 10) : '';
 
             // 1. Atualizar pelo asaas_charge_id (campo mais confiável)
             if (charge.asaas_charge_id) {
-              await db.execute(sql`
+              await tx.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
                 WHERE asaas_charge_id = ${String(charge.asaas_charge_id)}
@@ -4595,7 +4615,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               const clientEmail = String(charge.client_email);
 
               // Tenta obter client_id via allowed_clients
-              const clientRow = await db.execute(sql`
+              const clientRow = await tx.execute(sql`
                 SELECT id FROM allowed_clients WHERE LOWER(email) = LOWER(${clientEmail}) LIMIT 1
               `) as any;
               const clientId = (Array.isArray(clientRow[0]) ? clientRow[0][0] : clientRow[0])?.id ?? null;
@@ -4603,7 +4623,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               if (clientId) {
                 if (dueDate) {
                   const dueDatePattern = `${dueDate}%`;
-                  await db.execute(sql`
+                  await tx.execute(sql`
                     UPDATE bpo_charges
                     SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
                     WHERE client_id = ${clientId}
@@ -4613,7 +4633,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                       AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
                   `);
                 } else {
-                  await db.execute(sql`
+                  await tx.execute(sql`
                     UPDATE bpo_charges
                     SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
                     WHERE client_id = ${clientId}
@@ -4625,7 +4645,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               }
 
               // 3. Fallback por email direto (quando client_id não encontrado)
-              await db.execute(sql`
+              await tx.execute(sql`
                 UPDATE bpo_charges
                 SET status = 'receivedInCash', paid_date = CURDATE(), synced_at = NOW(), classified_by = 'manual'
                 WHERE LOWER(client_email) = LOWER(${clientEmail})
@@ -4634,9 +4654,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
                   AND status NOT IN ('receivedInCash','received','confirmed','cancelled')
               `);
             }
-          } catch (bpoErr: any) {
-            console.warn('[inspectionCharges.markAsPaid] Falha ao sincronizar bpo_charges:', bpoErr.message);
-          }
+          });
 
           return { success: true };
         } catch (error: any) {
