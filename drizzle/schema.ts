@@ -21,7 +21,15 @@ export const allowedClients = mysqlTable("allowed_clients", {
 	documentUrl: text("document_url"),
 },
 (table) => [
-	index("allowed_clients_email_unique").on(table.email),
+	// Story 13 (Fase 1, DB-09/DB-14): apesar do nome "_unique", isto era um
+	// index() comum (não uniqueIndex()) — nenhuma constraint UNIQUE de fato
+	// existia no banco. getAllowedClientByEmail() já assume 1 cliente por
+	// email (usa .limit(1)); agora isso é garantido pelo schema também.
+	// Nome novo (sufixo _uq, não mais "_unique") de propósito: a migration
+	// cria esta constraint ANTES de derrubar o índice antigo do mesmo nome
+	// (ver drizzle/0002_unique_email_openid.sql) — precisa de um nome
+	// diferente para os dois coexistirem no instante da troca seguro.
+	uniqueIndex("allowed_clients_email_uq").on(table.email),
 ]);
 
 export const bookings = mysqlTable("bookings", {
@@ -240,7 +248,21 @@ export const users = mysqlTable("users", {
 	lastSignedIn: timestamp({ mode: 'string' as const }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 },
 (table) => [
-	index("users_openId_unique").on(table.openId),
+	// Story 13 (Fase 1, DB-09/DB-14): "users_openId_unique" também era um
+	// index() comum, não uma constraint UNIQUE real — o que significa que o
+	// upsertUser() (server/db.ts, INSERT ... ON DUPLICATE KEY UPDATE
+	// keyed em openId) nunca conseguia de fato disparar o caminho de UPDATE
+	// em condição de corrida (dois logins simultâneos do mesmo openId): sem
+	// uma chave única para colidir, o INSERT simplesmente cria uma segunda
+	// linha para o mesmo usuário. uniqueIndex() corrige o schema E a
+	// semântica do upsert ao mesmo tempo. Nome com sufixo _uq (não mais
+	// "_unique") pelo mesmo motivo do allowed_clients acima — ver
+	// drizzle/0002_unique_email_openid.sql.
+	uniqueIndex("users_open_id_uq").on(table.openId),
+	// email não tinha NENHUM índice/constraint antes — getUserByEmail() já
+	// assume 1 usuário por email (usa .limit(1)); múltiplos NULL continuam
+	// permitidos sob UNIQUE (usuários sem email cadastrado).
+	uniqueIndex("users_email_uq").on(table.email),
 ]);
 
 export const fuelRecordContainers = mysqlTable("fuel_record_containers", {
