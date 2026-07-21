@@ -71,6 +71,13 @@ async function cleanupTestData() {
   await deleteIfExists("maintenances", `description LIKE 'Teste vitest%' OR description LIKE 'Test maintenance%'`);
   await deleteIfExists("vessels", `name LIKE 'Test%' OR name LIKE 'Teste%'`);
   await deleteIfExists("excluded_asaas_charges", `asaas_charge_id IN ('test-charge-id','pay_test_123','pay_test_456','pay_test_789','pay_test_minimal','pay_test_no_allocs')`);
+  // fuelRecords.generatePayment.test.ts semeia uma asaas_api_key falsa em
+  // system_settings (updated_by = 'sistema-teste') sem nunca limpar depois —
+  // isso poluía resolveAsaasApiKey() (fallback via banco) para QUALQUER outro
+  // teste que rodasse depois na mesma suíte, incluindo os que verificam o
+  // comportamento de "chave não configurada". Só ficou visível depois que
+  // resolveAsaasApiKey() parou de ler um ENV.asaasApiKey congelado.
+  await deleteIfExists("system_settings", `updated_by = 'sistema-teste'`);
 }
 
 /**
