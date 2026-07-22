@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/hooks/useConfirm";
 import { AlertTriangle, ArrowLeft, Calendar, CheckCircle2, DollarSign, Edit, Loader2, Plus, Trash2, Upload, X, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -48,6 +49,7 @@ type ChargeType = "inspection" | "repair" | null;
 
 export default function CobrancasDanos() {
   const { user, loading: authLoading } = useAuth();
+  const confirm = useConfirm();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [chargeType, setChargeType] = useState<ChargeType>(null);
@@ -174,8 +176,12 @@ export default function CobrancasDanos() {
     },
   });
 
-  const handleApproveRequest = (requestId: number) => {
-    if (confirm("Tem certeza que deseja aprovar esta solicitação? O vencimento será atualizado.")) {
+  const handleApproveRequest = async (requestId: number) => {
+    if (await confirm({
+      title: "Aprovar solicitação",
+      description: "Tem certeza que deseja aprovar esta solicitação? O vencimento será atualizado.",
+      confirmText: "Aprovar",
+    })) {
       approveMutation.mutate({ requestId });
     }
   };
@@ -321,14 +327,23 @@ export default function CobrancasDanos() {
     }
   };
 
-  const handleDelete = (chargeId: number) => {
-    if (confirm("Tem certeza que deseja EXCLUIR PERMANENTEMENTE esta cobrança? Esta ação não pode ser desfeita.")) {
+  const handleDelete = async (chargeId: number) => {
+    if (await confirm({
+      title: "Excluir cobrança",
+      description: "Tem certeza que deseja EXCLUIR PERMANENTEMENTE esta cobrança? Esta ação não pode ser desfeita.",
+      variant: "destructive",
+      confirmText: "Excluir",
+    })) {
       deleteMutation.mutate({ chargeId });
     }
   };
 
-  const handleMarkAsPaid = (chargeId: number) => {
-    if (confirm("Confirma que recebeu este pagamento manualmente? O sistema irá sincronizar com o Asaas.")) {
+  const handleMarkAsPaid = async (chargeId: number) => {
+    if (await confirm({
+      title: "Confirmar pagamento manual",
+      description: "Confirma que recebeu este pagamento manualmente? O sistema irá sincronizar com o Asaas.",
+      confirmText: "Confirmar",
+    })) {
       markAsPaidMutation.mutate({ chargeId });
     }
   };

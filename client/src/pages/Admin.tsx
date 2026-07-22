@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/hooks/useConfirm";
 import { BarChart3, Bell, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, FileText, Fuel, HardDrive, Loader2, Menu, Pencil, Plus, Search, Send, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
@@ -165,6 +166,7 @@ function OldReportsTab() {
 
 export default function Admin() {
   const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
+  const confirm = useConfirm();
 
   const handleLogout = async () => {
     await logout();
@@ -971,8 +973,12 @@ export default function Admin() {
                             size="sm"
                             title="Enviar Contrato por E-mail"
                             disabled={contractClientId === client.id || sendContractMutation.isPending}
-                            onClick={() => {
-                              if (confirm(`Enviar contrato por e-mail para ${client.name} (${client.email})?`)) {
+                            onClick={async () => {
+                              if (await confirm({
+                                title: "Enviar contrato",
+                                description: `Enviar contrato por e-mail para ${client.name} (${client.email})?`,
+                                confirmText: "Enviar",
+                              })) {
                                 setContractClientId(client.id);
                                 sendContractMutation.mutate({ clientId: client.id });
                               }
@@ -990,8 +996,12 @@ export default function Admin() {
                             size="sm"
                             title="Enviar Notificação Extrajudicial"
                             disabled={notificationClientId === client.id || sendNotificationMutation.isPending}
-                            onClick={() => {
-                              if (confirm(`Enviar notificação extrajudicial de débitos por e-mail para ${client.name} (${client.email})?`)) {
+                            onClick={async () => {
+                              if (await confirm({
+                                title: "Enviar notificação extrajudicial",
+                                description: `Enviar notificação extrajudicial de débitos por e-mail para ${client.name} (${client.email})?`,
+                                confirmText: "Enviar",
+                              })) {
                                 setNotificationClientId(client.id);
                                 sendNotificationMutation.mutate({ clientId: client.id });
                               }
@@ -1007,8 +1017,13 @@ export default function Admin() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => {
-                              if (confirm("Tem certeza que deseja remover este cliente?")) {
+                            onClick={async () => {
+                              if (await confirm({
+                                title: "Remover cliente",
+                                description: "Tem certeza que deseja remover este cliente?",
+                                variant: "destructive",
+                                confirmText: "Remover",
+                              })) {
                                 deleteClient.mutate({ id: client.id });
                               }
                             }}
@@ -1078,8 +1093,13 @@ export default function Admin() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => {
-                              if (confirm("Tem certeza que deseja remover esta embarcação?")) {
+                            onClick={async () => {
+                              if (await confirm({
+                                title: "Remover embarcação",
+                                description: "Tem certeza que deseja remover esta embarcação?",
+                                variant: "destructive",
+                                confirmText: "Remover",
+                              })) {
                                 deleteVessel.mutate({ id: vessel.id });
                               }
                             }}
@@ -1243,8 +1263,14 @@ export default function Admin() {
                               variant="outline"
                               size="sm"
                               className="text-orange-600 hover:text-orange-700 border-orange-300"
-                              onClick={() => {
-                                if (confirm("Tem certeza que deseja cancelar esta reserva?")) {
+                              onClick={async () => {
+                                if (await confirm({
+                                  title: "Cancelar reserva",
+                                  description: "Tem certeza que deseja cancelar esta reserva?",
+                                  variant: "destructive",
+                                  confirmText: "Sim, cancelar",
+                                  cancelText: "Não, manter reserva",
+                                })) {
                                   updateBookingStatus.mutate({
                                     id: booking.id,
                                     status: "cancelled",
@@ -1258,8 +1284,13 @@ export default function Admin() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => {
-                              if (confirm("Tem certeza que deseja remover esta reserva?")) {
+                            onClick={async () => {
+                              if (await confirm({
+                                title: "Remover reserva",
+                                description: "Tem certeza que deseja remover esta reserva?",
+                                variant: "destructive",
+                                confirmText: "Remover",
+                              })) {
                                 deleteBooking.mutate({ id: booking.id });
                               }
                             }}
@@ -1610,7 +1641,12 @@ export default function Admin() {
                         onClick={async () => {
                           if (!editingClientId) return;
                           
-                          if (!confirm('Tem certeza que deseja excluir este documento?')) return;
+                          if (!(await confirm({
+                            title: "Excluir documento",
+                            description: "Tem certeza que deseja excluir este documento?",
+                            variant: "destructive",
+                            confirmText: "Excluir",
+                          }))) return;
                           
                           try {
                             await deleteDocumentMutation.mutateAsync({
@@ -1680,7 +1716,12 @@ export default function Admin() {
                         onClick={async () => {
                           if (!editingClientId) return;
                           
-                          if (!confirm('Tem certeza que deseja excluir este documento?')) return;
+                          if (!(await confirm({
+                            title: "Excluir documento",
+                            description: "Tem certeza que deseja excluir este documento?",
+                            variant: "destructive",
+                            confirmText: "Excluir",
+                          }))) return;
                           
                           try {
                             await deleteDocumentMutation.mutateAsync({
@@ -1750,7 +1791,12 @@ export default function Admin() {
                         onClick={async () => {
                           if (!editingClientId) return;
                           
-                          if (!confirm('Tem certeza que deseja excluir este documento?')) return;
+                          if (!(await confirm({
+                            title: "Excluir documento",
+                            description: "Tem certeza que deseja excluir este documento?",
+                            variant: "destructive",
+                            confirmText: "Excluir",
+                          }))) return;
                           
                           try {
                             await deleteDocumentMutation.mutateAsync({
@@ -2052,8 +2098,13 @@ export default function Admin() {
                     type="button"
                     variant="destructive"
                     size="sm"
-                    onClick={() => {
-                      if (confirm("Tem certeza que deseja excluir este documento?")) {
+                    onClick={async () => {
+                      if (await confirm({
+                        title: "Excluir documento",
+                        description: "Tem certeza que deseja excluir este documento?",
+                        variant: "destructive",
+                        confirmText: "Excluir",
+                      })) {
                         setVesselForm({ ...vesselForm, documentUrl: "" });
                         toast.success("Documento removido");
                       }
@@ -2114,8 +2165,13 @@ export default function Admin() {
                     type="button"
                     variant="destructive"
                     size="sm"
-                    onClick={() => {
-                      if (confirm("Tem certeza que deseja excluir este documento?")) {
+                    onClick={async () => {
+                      if (await confirm({
+                        title: "Excluir documento",
+                        description: "Tem certeza que deseja excluir este documento?",
+                        variant: "destructive",
+                        confirmText: "Excluir",
+                      })) {
                         setVesselForm({ ...vesselForm, extraDocumentUrl: "" });
                         toast.success("Documento extra removido");
                       }

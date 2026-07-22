@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -184,6 +185,7 @@ const MONTHS = [
 // ─── Página Principal ─────────────────────────────────────────────────────────
 
 export default function Saas() {
+  const confirm = useConfirm();
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("Todos os anos");
@@ -455,8 +457,13 @@ export default function Saas() {
     setEditClientSearch("");
   }
 
-  function handleDeleteClick(charge: any) {
-    if (window.confirm(`Excluir cobrança de ${fmt(parseFloat(charge.value ?? "0"))} de ${charge.client_name ?? "cliente"}? Esta ação também cancelará a cobrança no Asaas.`)) {
+  async function handleDeleteClick(charge: any) {
+    if (await confirm({
+      title: "Excluir cobrança",
+      description: `Excluir cobrança de ${fmt(parseFloat(charge.value ?? "0"))} de ${charge.client_name ?? "cliente"}? Esta ação também cancelará a cobrança no Asaas.`,
+      variant: "destructive",
+      confirmText: "Excluir",
+    })) {
       deleteChargeMutation.mutate({ chargeId: charge.id, cancelInAsaas: true });
     }
   }
@@ -715,8 +722,13 @@ export default function Saas() {
               <Button
                 size="sm"
                 variant="destructive"
-                onClick={() => {
-                  if (window.confirm(`Excluir ${selectedChargeIds.size} cobrança(s) selecionada(s)?`)) {
+                onClick={async () => {
+                  if (await confirm({
+                    title: "Excluir cobranças",
+                    description: `Excluir ${selectedChargeIds.size} cobrança(s) selecionada(s)?`,
+                    variant: "destructive",
+                    confirmText: "Excluir",
+                  })) {
                     bulkDeleteChargesMutation.mutate({ chargeIds: Array.from(selectedChargeIds) });
                   }
                 }}
@@ -2626,6 +2638,7 @@ const EXPENSE_STATUS_LABELS: Record<string, { label: string; color: string }> = 
 const PER_PAGE_EXPENSES = 50;
 
 function ExpensesTab() {
+  const confirm = useConfirm();
   const [expYear, setExpYear] = useState("all");
   const [expMonth, setExpMonth] = useState("all");
   const [expCostCenter, setExpCostCenter] = useState("all");
@@ -2889,8 +2902,13 @@ function ExpensesTab() {
             <Button
               size="sm"
               variant="destructive"
-              onClick={() => {
-                if (window.confirm(`Excluir ${selectedExpenseIds.size} despesa(s) selecionada(s)?`)) {
+              onClick={async () => {
+                if (await confirm({
+                  title: "Excluir despesas",
+                  description: `Excluir ${selectedExpenseIds.size} despesa(s) selecionada(s)?`,
+                  variant: "destructive",
+                  confirmText: "Excluir",
+                })) {
                   bulkDeleteExpensesMutation.mutate({ ids: Array.from(selectedExpenseIds) });
                 }
               }}
@@ -3133,8 +3151,10 @@ function ExpensesTab() {
                         variant="outline"
                         size="sm"
                         className="text-xs h-7 text-red-600 hover:text-red-700"
-                        onClick={() => {
-                          if (confirm("Excluir esta despesa?")) deleteMutation.mutate({ id: exp.id });
+                        onClick={async () => {
+                          if (await confirm({ title: "Excluir despesa", description: "Excluir esta despesa?", variant: "destructive", confirmText: "Excluir" })) {
+                            deleteMutation.mutate({ id: exp.id });
+                          }
                         }}
                         disabled={deleteMutation.isPending}
                       >

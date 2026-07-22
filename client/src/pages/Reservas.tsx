@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/hooks/useConfirm";
 import { ChevronLeft, ChevronRight, Loader2, Plus, X, Menu, ArrowLeft } from "lucide-react";
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
@@ -44,6 +45,7 @@ type DayStatus = 'available' | 'booked' | 'maintenance' | 'closed';
 
 export default function Reservas() {
   const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
+  const confirm = useConfirm();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedVessel, setSelectedVessel] = useState<number | null>(null);
@@ -262,10 +264,16 @@ export default function Reservas() {
     });
   };
 
-  const handleCancelBooking = () => {
+  const handleCancelBooking = async () => {
     if (!selectedBooking) return;
-    
-    if (window.confirm("Tem certeza que deseja cancelar esta reserva?")) {
+
+    if (await confirm({
+      title: "Cancelar reserva",
+      description: "Tem certeza que deseja cancelar esta reserva?",
+      variant: "destructive",
+      confirmText: "Sim, cancelar",
+      cancelText: "Não, manter reserva",
+    })) {
       cancelBooking.mutate({ id: selectedBooking.id });
     }
   };

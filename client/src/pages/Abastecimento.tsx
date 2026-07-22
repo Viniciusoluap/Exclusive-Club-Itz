@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -28,6 +29,7 @@ interface ContainerData {
 }
 
 export default function Abastecimento() {
+  const confirm = useConfirm();
   const utils = trpc.useUtils();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -216,8 +218,12 @@ export default function Abastecimento() {
     syncWithAsaasMutation.mutate({ id });
   };
 
-  const handleSyncAllPending = () => {
-    if (confirm('Deseja sincronizar todos os abastecimentos pendentes com o Asaas?')) {
+  const handleSyncAllPending = async () => {
+    if (await confirm({
+      title: "Sincronizar com Asaas",
+      description: "Deseja sincronizar todos os abastecimentos pendentes com o Asaas?",
+      confirmText: "Sincronizar",
+    })) {
       syncAllPendingMutation.mutate();
     }
   };
