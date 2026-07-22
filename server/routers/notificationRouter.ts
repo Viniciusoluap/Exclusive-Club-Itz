@@ -10,6 +10,7 @@ import { getDb } from "../db";
 import { sql } from "drizzle-orm";
 import { sendEmail } from "../_core/emailService";
 import { generateNotificationPdf } from "../_core/htmlToPdf";
+import { escapeHtml } from "../_core/htmlEscape";
 
 // ============================================================
 // Helper: formatar moeda BRL
@@ -85,7 +86,7 @@ function generateNotificationHtml(data: {
     <tr style="background: ${i % 2 === 0 ? "#fff" : "#f9fafb"};">
       <td style="padding: 8px 12px; border: 1px solid #e5e7eb;">${i + 1}</td>
       <td style="padding: 8px 12px; border: 1px solid #e5e7eb;">${typeLabels[d.type] || d.type}</td>
-      <td style="padding: 8px 12px; border: 1px solid #e5e7eb;">${d.description}</td>
+      <td style="padding: 8px 12px; border: 1px solid #e5e7eb;">${escapeHtml(d.description)}</td>
       <td style="padding: 8px 12px; border: 1px solid #e5e7eb; text-align: center;">${fmtDate(d.dueDate)}</td>
       <td style="padding: 8px 12px; border: 1px solid #e5e7eb; text-align: center; color: #dc2626; font-weight: bold;">${d.daysOverdue > 0 ? `${d.daysOverdue} dias` : "Pendente"}</td>
       <td style="padding: 8px 12px; border: 1px solid #e5e7eb; text-align: right; font-weight: bold;">${fmtBRL(d.value)}</td>
@@ -144,15 +145,15 @@ function generateNotificationHtml(data: {
   <div class="info-box">
     <div class="info-row">
       <span class="info-label">Nome/Razão Social:</span>
-      <span class="info-value">${clientName}</span>
+      <span class="info-value">${escapeHtml(clientName)}</span>
     </div>
     <div class="info-row">
       <span class="info-label">CPF/CNPJ:</span>
-      <span class="info-value">${clientCpfCnpj || "Não informado"}</span>
+      <span class="info-value">${escapeHtml(clientCpfCnpj) || "Não informado"}</span>
     </div>
     <div class="info-row">
       <span class="info-label">E-mail:</span>
-      <span class="info-value">${clientEmail}</span>
+      <span class="info-value">${escapeHtml(clientEmail)}</span>
     </div>
   </div>
 

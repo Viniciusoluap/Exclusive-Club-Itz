@@ -1,5 +1,6 @@
 import * as db from "./db";
 import { sendEmail } from "./_core/emailService";
+import { escapeHtml } from "./_core/htmlEscape";
 
 /**
  * Busca reservas que acontecerão em aproximadamente 24h
@@ -64,7 +65,7 @@ export async function sendBookingReminder(booking: {
       <div style="background-color: white; padding: 40px 30px; border-radius: 8px; margin: 20px;">
         <h2 style="color: #0891b2; margin-top: 0;">Lembrete de Reserva</h2>
         
-        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${booking.clientName}</strong>,</p>
+        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${escapeHtml(booking.clientName)}</strong>,</p>
         
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
           Lembramos que sua reserva está confirmada para <strong style="color: #0891b2;">amanhã</strong>. Seguem os detalhes:
@@ -73,8 +74,8 @@ export async function sendBookingReminder(booking: {
         <div style="background-color: #f0f9ff; padding: 20px; margin: 20px 0; border-left: 4px solid #0891b2;">
           <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data:</strong> ${dateStr}</p>
           <p style="margin: 8px 0; color: #1f2937;"><strong>⏰ Horário:</strong> ${timeStr}</p>
-          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${booking.vesselName}</p>
-          ${booking.quotaName ? `<p style="margin: 8px 0; color: #1f2937;"><strong>🎫 Cota:</strong> ${booking.quotaName}</p>` : ''}
+          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${escapeHtml(booking.vesselName)}</p>
+          ${booking.quotaName ? `<p style="margin: 8px 0; color: #1f2937;"><strong>🎫 Cota:</strong> ${escapeHtml(booking.quotaName)}</p>` : ''}
         </div>
         
         <div style="background-color: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">

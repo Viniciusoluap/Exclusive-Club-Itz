@@ -1,5 +1,6 @@
 import { sendEmail } from "./emailService";
 import { ENV } from "./env";
+import { escapeHtml } from "./htmlEscape";
 
 interface FailedItem {
   name: string;
@@ -62,9 +63,9 @@ async function sendAdminEmail(inspection: InspectionData): Promise<boolean> {
         <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #dc2626;">
           <h2 style="color: #111827; font-size: 18px; margin-top: 0;">Informações da Vistoria</h2>
           <p style="margin: 8px 0;"><strong>Data:</strong> ${inspection.inspectionDate}</p>
-          <p style="margin: 8px 0;"><strong>Cliente:</strong> ${inspection.clientName}</p>
-          <p style="margin: 8px 0;"><strong>Email:</strong> ${inspection.clientEmail}</p>
-          <p style="margin: 8px 0;"><strong>Embarcação:</strong> ${inspection.vesselName} (${inspection.vesselType})</p>
+          <p style="margin: 8px 0;"><strong>Cliente:</strong> ${escapeHtml(inspection.clientName)}</p>
+          <p style="margin: 8px 0;"><strong>Email:</strong> ${escapeHtml(inspection.clientEmail)}</p>
+          <p style="margin: 8px 0;"><strong>Embarcação:</strong> ${escapeHtml(inspection.vesselName)} (${escapeHtml(inspection.vesselType)})</p>
         </div>
         
         <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -120,11 +121,11 @@ async function sendClientEmail(inspection: InspectionData): Promise<boolean> {
       
       <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
         <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-          Olá <strong>${inspection.clientName}</strong>,
+          Olá <strong>${escapeHtml(inspection.clientName)}</strong>,
         </p>
-        
+
         <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-          Durante a vistoria da embarcação <strong>${inspection.vesselName}</strong> realizada em <strong>${inspection.inspectionDate}</strong>, 
+          Durante a vistoria da embarcação <strong>${escapeHtml(inspection.vesselName)}</strong> realizada em <strong>${inspection.inspectionDate}</strong>,
           identificamos alguns itens que não passaram na inspeção e necessitam de reparo.
         </p>
         
@@ -213,16 +214,16 @@ export async function notifyClientNewRepair(data: {
       
       <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
         <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-          Olá <strong>${data.clientName}</strong>,
+          Olá <strong>${escapeHtml(data.clientName)}</strong>,
         </p>
         
         <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-          Um novo reparo foi registrado na embarcação <strong>${data.vesselName}</strong>.
+          Um novo reparo foi registrado na embarcação <strong>${escapeHtml(data.vesselName)}</strong>.
         </p>
         
         <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
           <h3 style="color: #1d4ed8; font-size: 16px; margin-top: 0;">Detalhes do Reparo:</h3>
-          <p style="margin: 8px 0;"><strong>Descrição:</strong> ${data.description}</p>
+          <p style="margin: 8px 0;"><strong>Descrição:</strong> ${escapeHtml(data.description)}</p>
           <p style="margin: 8px 0;"><strong>Valor Individual:</strong> R$ ${data.individualAmount.toFixed(2)}</p>
           <p style="margin: 8px 0;"><strong>Vencimento:</strong> ${new Date(data.dueDate).toLocaleDateString('pt-BR')}</p>
         </div>
@@ -286,16 +287,16 @@ export async function notifyClientBudgetAvailable(data: {
       
       <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
         <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-          Olá <strong>${data.clientName}</strong>,
+          Olá <strong>${escapeHtml(data.clientName)}</strong>,
         </p>
         
         <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-          O orçamento do reparo da embarcação <strong>${data.vesselName}</strong> está disponível para pagamento!
+          O orçamento do reparo da embarcação <strong>${escapeHtml(data.vesselName)}</strong> está disponível para pagamento!
         </p>
         
         <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #10b981;">
           <h3 style="color: #059669; font-size: 16px; margin-top: 0;">Detalhes do Orçamento:</h3>
-          <p style="margin: 8px 0;"><strong>Descrição:</strong> ${data.description}</p>
+          <p style="margin: 8px 0;"><strong>Descrição:</strong> ${escapeHtml(data.description)}</p>
           <p style="margin: 8px 0;"><strong>Valor Total:</strong> R$ ${data.totalAmount.toFixed(2)}</p>
           <p style="margin: 8px 0;"><strong>Seu Valor:</strong> R$ ${data.individualAmount.toFixed(2)}</p>
         </div>
@@ -359,7 +360,7 @@ export async function notifyClientDueDateApproved(data: {
       
       <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
         <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-          Olá <strong>${data.clientName}</strong>,
+          Olá <strong>${escapeHtml(data.clientName)}</strong>,
         </p>
         
         <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
@@ -369,7 +370,7 @@ export async function notifyClientDueDateApproved(data: {
         <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #10b981;">
           <h3 style="color: #059669; font-size: 16px; margin-top: 0;">Detalhes:</h3>
           <p style="margin: 8px 0;"><strong>Tipo:</strong> ${typeLabel}</p>
-          <p style="margin: 8px 0;"><strong>Embarcação:</strong> ${data.vesselName}</p>
+          <p style="margin: 8px 0;"><strong>Embarcação:</strong> ${escapeHtml(data.vesselName)}</p>
           <p style="margin: 8px 0;"><strong>Novo Vencimento:</strong> ${new Date(data.newDueDate).toLocaleDateString('pt-BR')}</p>
         </div>
         
@@ -430,7 +431,7 @@ export async function notifyClientDueDateRejected(data: {
       
       <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
         <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-          Olá <strong>${data.clientName}</strong>,
+          Olá <strong>${escapeHtml(data.clientName)}</strong>,
         </p>
         
         <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
@@ -440,12 +441,12 @@ export async function notifyClientDueDateRejected(data: {
         <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #dc2626;">
           <h3 style="color: #991b1b; font-size: 16px; margin-top: 0;">Detalhes:</h3>
           <p style="margin: 8px 0;"><strong>Tipo:</strong> ${typeLabel}</p>
-          <p style="margin: 8px 0;"><strong>Embarcação:</strong> ${data.vesselName}</p>
+          <p style="margin: 8px 0;"><strong>Embarcação:</strong> ${escapeHtml(data.vesselName)}</p>
         </div>
         
         <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
           <h3 style="color: #92400e; font-size: 16px; margin-top: 0;">Motivo da Rejeição:</h3>
-          <p style="margin: 0; color: #374151;">${data.reason}</p>
+          <p style="margin: 0; color: #374151;">${escapeHtml(data.reason)}</p>
         </div>
         
         <div style="background: #dbeafe; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin-bottom: 20px;">

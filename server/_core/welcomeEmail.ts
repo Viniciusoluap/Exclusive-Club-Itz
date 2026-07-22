@@ -1,4 +1,5 @@
 import { sendEmail } from "./emailService";
+import { escapeHtml } from "./htmlEscape";
 
 export interface WelcomeEmailData {
   clientName: string;
@@ -21,7 +22,7 @@ export async function sendWelcomeEmail(data: WelcomeEmailData): Promise<boolean>
       <div style="background-color: white; padding: 40px 30px; border-radius: 8px; margin: 20px;">
         <h2 style="color: #0891b2; margin-top: 0;">Cadastro Realizado com Sucesso</h2>
         
-        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${data.clientName}</strong>,</p>
+        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${escapeHtml(data.clientName)}</strong>,</p>
         
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
           É com satisfação que confirmamos seu cadastro no <strong>Exclusive Club</strong>. 
@@ -29,7 +30,7 @@ export async function sendWelcomeEmail(data: WelcomeEmailData): Promise<boolean>
         </p>
         
         <div style="background-color: #f0f9ff; border-left: 4px solid #0891b2; padding: 20px; margin: 25px 0; border-radius: 4px;">
-          <p style="margin: 8px 0; color: #1f2937;"><strong>🎫 Sua Cota:</strong> ${data.quotaName}</p>
+          <p style="margin: 8px 0; color: #1f2937;"><strong>🎫 Sua Cota:</strong> ${escapeHtml(data.quotaName)}</p>
         </div>
         
         <h3 style="color: #0891b2; font-size: 18px; margin-top: 30px;">Como Funciona o Sistema</h3>
