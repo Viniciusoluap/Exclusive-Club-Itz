@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
-import { Loader2 } from "lucide-react";
+import { PageLoader } from "@/components/PageLoader";
 import { useEffect, type ComponentType } from "react";
 import { useLocation } from "wouter";
 
@@ -39,11 +39,7 @@ export default function ProtectedRoute({ component: Component, allowedRoles }: P
   }, [loading, isAuthenticated, isAuthorized, setLocation]);
 
   if (loading || !isAuthorized) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return <Component />;
