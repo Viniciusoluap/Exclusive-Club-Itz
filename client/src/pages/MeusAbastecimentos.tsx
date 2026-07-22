@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { PageLoader } from "@/components/PageLoader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Fuel, ExternalLink, DollarSign, TrendingUp, Loader2, AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Fuel, ExternalLink, DollarSign, TrendingUp, AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 
@@ -48,11 +49,7 @@ export default function MeusAbastecimentos() {
   const charges = data?.charges ?? [];
 
   if (authLoading || isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!user) {

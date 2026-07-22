@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 // import { InspectionChargesSection } from "@/components/InspectionChargesSection";
+import { PageLoader } from "@/components/PageLoader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -641,14 +642,7 @@ export default function Dashboard() {
   });
 
   if (loading || statsLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-cyan-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader className="bg-gradient-to-br from-blue-50 to-cyan-50" message="Carregando..." />;
   }
 
   if (!isAuthenticated) {
