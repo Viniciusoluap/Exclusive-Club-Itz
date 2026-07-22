@@ -72,17 +72,21 @@ export default function Abastecimento() {
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const currentMonthYear = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
 
-  const trpcAny = trpc as any;
-  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] };
-  const { data: fuelRecords, refetch } = trpcAny.fuelRecords?.list.useQuery({ 
-    month: selectedMonth, 
-    year: selectedYear 
-  }) || { data: [] };
+  const { data: recentBookings } = trpc.bookings.getRecent.useQuery({ onlyUsed: true });
+  const {
+    data: fuelRecords,
+    error: fuelRecordsError,
+    isLoading: fuelRecordsLoading,
+    refetch,
+  } = trpc.fuelRecords.list.useQuery({
+    month: selectedMonth,
+    year: selectedYear
+  });
   const { data: vessels } = trpc.vessels.list.useQuery();
-  const { data: financialStats } = trpcAny.fuelRecords?.financialStats.useQuery({ monthYear: currentMonthYear }) || { data: null };
-  const { data: budget } = trpcAny.fuelBudget?.get.useQuery({ monthYear: currentMonthYear }) || { data: null };
-  const { data: gallonStock, refetch: refetchGallonStock } = trpcAny.fuelPurchases?.getGallonStock.useQuery() || { data: [] };
-  const { data: balanceData } = trpcAny.fuelBudget?.getCurrentBalance.useQuery({ monthYear: currentMonthYear }) || { data: null };
+  const { data: financialStats } = trpc.fuelRecords.financialStats.useQuery({ monthYear: currentMonthYear });
+  const { data: budget } = trpc.fuelBudget.get.useQuery({ monthYear: currentMonthYear });
+  const { data: gallonStock, refetch: refetchGallonStock } = trpc.fuelPurchases.getGallonStock.useQuery();
+  const { data: balanceData } = trpc.fuelBudget.getCurrentBalance.useQuery({ monthYear: currentMonthYear });
 
   // BPO: dados financeiros de cobranças de abastecimento
   const { data: bpoFuelStats } = trpc.bpo.getStats.useQuery(
@@ -98,7 +102,7 @@ export default function Abastecimento() {
   console.log('[Abastecimento] fuelRecords:', fuelRecords);
   console.log('[Abastecimento] vessels:', vessels);
 
-  const createMutation = trpcAny.fuelRecords?.create.useMutation({
+  const createMutation = trpc.fuelRecords.create.useMutation({
     onSuccess: (data: any) => {
       const gallonsUsed = data.containersCount || 1;
       toast.success(`Abastecimento registrado com ${gallonsUsed} galão(ões)! Total: ${data.totalLiters?.toFixed(2) || data.liters?.toFixed(2) || 0}L - R$ ${data.totalCost?.toFixed(2) || 0}`);
@@ -112,7 +116,7 @@ export default function Abastecimento() {
     },
   });
 
-  const deleteMutation = trpcAny.fuelRecords?.delete.useMutation({
+  const deleteMutation = trpc.fuelRecords.delete.useMutation({
     onSuccess: () => {
       toast.success('Abastecimento excluído com sucesso!');
       setIsDeleteDialogOpen(false);
@@ -124,7 +128,7 @@ export default function Abastecimento() {
     },
   });
 
-  const generateReportMutation = trpcAny.fuelRecords?.generateReport.useMutation({
+  const generateReportMutation = trpc.fuelRecords.generateReport.useMutation({
     onSuccess: (data: any) => {
       try {
         const byteCharacters = atob(data.pdf);
@@ -163,7 +167,7 @@ export default function Abastecimento() {
     },
   });
 
-  const sendEmailMutation = trpcAny.fuelRecords?.sendReportByEmail.useMutation({
+  const sendEmailMutation = trpc.fuelRecords.sendReportByEmail.useMutation({
     onSuccess: (data: any) => {
       toast.success(`Relatório enviado para ${data.email} com sucesso!`);
       setIsEmailDialogOpen(false);
@@ -175,7 +179,7 @@ export default function Abastecimento() {
     },
   });
 
-  const syncWithAsaasMutation = trpcAny.fuelRecords?.syncWithAsaas.useMutation({
+  const syncWithAsaasMutation = trpc.fuelRecords.syncWithAsaas.useMutation({
     onSuccess: (data: any) => {
       toast.success(data.message || 'Sincronizado com sucesso!');
       refetch();
@@ -185,7 +189,7 @@ export default function Abastecimento() {
     },
   });
 
-  const syncAllPendingMutation = trpcAny.fuelRecords?.syncAllPending.useMutation({
+  const syncAllPendingMutation = trpc.fuelRecords.syncAllPending.useMutation({
     onSuccess: (data: any) => {
       toast.success(`Sincronização concluída! ${data.successCount} sucesso(s), ${data.failCount} falha(s)`);
       if (data.errors && data.errors.length > 0) {
@@ -198,7 +202,7 @@ export default function Abastecimento() {
     },
   });
 
-  const markAsPaidMutation = trpcAny.fuelRecords?.markAsPaid.useMutation({
+  const markAsPaidMutation = trpc.fuelRecords.markAsPaid.useMutation({
     onSuccess: () => {
       toast.success('Pagamento marcado como recebido!');
       refetch();
@@ -505,7 +509,7 @@ export default function Abastecimento() {
       }));
 
       createMutation.mutate({
-        bookingId: isOperational ? undefined : selectedBookingId,
+        bookingId: isOperational ? undefined : (selectedBookingId ?? undefined),
         vesselId: isOperational ? (vessels?.[0]?.id || 1) : booking?.vesselId,
         pricePerLiter: parseFloat(pricePerLiter),
         notes: notes || undefined,
@@ -600,7 +604,7 @@ export default function Abastecimento() {
     }
 
     createMutation.mutate({
-      bookingId: isOperational ? undefined : selectedBookingId,
+      bookingId: isOperational ? undefined : (selectedBookingId ?? undefined),
       vesselId: isOperational ? (vessels?.[0]?.id || 1) : booking?.vesselId,
       liters: finalLiters,
       pricePerLiter: parseFloat(pricePerLiter),
@@ -644,20 +648,20 @@ export default function Abastecimento() {
   const budgetUsedPercent = budgetAmount > 0 ? Math.min((totalCobrado / budgetAmount) * 100, 100) : 0;
   
   // Saldo com herança do mês anterior (fórmula: herdado + gasto - orçamento)
-  const inheritedBalance = balanceData?.inheritedBalance || 0;
+  const inheritedBalance = balanceData?.inherited || 0;
   const saldo = inheritedBalance + totalCobrado - budgetAmount;
 
   // Estoque total
   const totalStock = gallonStock?.reduce((sum: number, g: any) => sum + (g.stockLiters || 0), 0) || 0;
-  
+
   // Preço/L médio ponderado: (soma total R$ das compras) / (soma total litros das compras)
   // Calculado a partir dos dados de cada galão
   const totalLitersPurchased = gallonStock?.reduce((sum: number, g: any) => sum + (g.totalPurchased || 0), 0) || 0;
   const totalAmountPurchased = gallonStock?.reduce((sum: number, g: any) => sum + ((g.totalPurchased || 0) * (g.lastPricePerLiter || 0)), 0) || 0;
-  const avgPricePerLiter = totalLitersPurchased > 0 
+  const avgPricePerLiter = totalLitersPurchased > 0
     ? Math.ceil((totalAmountPurchased / totalLitersPurchased) * 100) / 100 // Arredondar para cima
-    : (gallonStock?.length > 0 
-        ? gallonStock.reduce((sum: number, g: any) => sum + (g.lastPricePerLiter || 0), 0) / gallonStock.length 
+    : ((gallonStock?.length ?? 0) > 0
+        ? gallonStock!.reduce((sum: number, g: any) => sum + (g.lastPricePerLiter || 0), 0) / gallonStock!.length
         : 0);
 
   return (
@@ -820,13 +824,13 @@ export default function Abastecimento() {
             </div>
           </div>
 
-          {financialStats?.operationalCost > 0 && (
+          {(financialStats?.operationalCost ?? 0) > 0 && (
             <div className="mt-3 pt-3 border-t flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Settings className="w-4 h-4 text-orange-600" />
-                <span className="text-sm font-medium">Custo Operacional ({financialStats.operationalCostYear}):</span>
+                <span className="text-sm font-medium">Custo Operacional ({financialStats?.operationalCostYear}):</span>
               </div>
-              <p className="font-bold text-orange-600">R$ {financialStats.operationalCost.toFixed(2)}</p>
+              <p className="font-bold text-orange-600">R$ {financialStats?.operationalCost.toFixed(2)}</p>
             </div>
           )}
         </CardContent>
@@ -941,7 +945,22 @@ export default function Abastecimento() {
           </div>
         </div>
 
-        {!fuelRecords || fuelRecords.length === 0 ? (
+        {fuelRecordsError ? (
+          <Card>
+            <CardContent className="py-8 flex flex-col items-center gap-3 text-center">
+              <p className="text-sm text-destructive">Não foi possível carregar os registros de abastecimento.</p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Tentar novamente
+              </Button>
+            </CardContent>
+          </Card>
+        ) : fuelRecordsLoading ? (
+          <Card>
+            <CardContent className="py-8 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ) : !fuelRecords || fuelRecords.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
               Nenhum registro de abastecimento encontrado

@@ -68,9 +68,8 @@ export default function Vistorias() {
   const [emailRecipient, setEmailRecipient] = useState("");
   const [showAllInspections, setShowAllInspections] = useState(false);
 
-  const trpcAny = trpc as any;
-  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] }; // Busca apenas reservas utilizadas
-  const { data: inspections, refetch } = trpcAny.inspections?.list.useQuery({}) || { data: [] };
+  const { data: recentBookings } = trpc.bookings.getRecent.useQuery({ onlyUsed: true }); // Busca apenas reservas utilizadas
+  const { data: inspections, error: inspectionsError, isLoading: inspectionsLoading, refetch } = trpc.inspections.list.useQuery({});
   const { data: vessels } = trpc.vessels.list.useQuery();
 
   // BPO: dados financeiros de cobranças de reparo
@@ -80,7 +79,7 @@ export default function Vistorias() {
     { enabled: true }
   );
 
-  const createMutation = trpcAny.inspections?.create.useMutation({
+  const createMutation = trpc.inspections.create.useMutation({
     onSuccess: () => {
       toast.success("Vistoria registrada com sucesso!");
       setIsCreateDialogOpen(false);
@@ -92,7 +91,7 @@ export default function Vistorias() {
     },
   });
 
-  const deleteMutation = trpcAny.inspections?.delete.useMutation({
+  const deleteMutation = trpc.inspections.delete.useMutation({
     onSuccess: () => {
       toast.success('Vistoria excluída com sucesso!');
       setIsDeleteDialogOpen(false);
@@ -104,7 +103,7 @@ export default function Vistorias() {
     },
   });
 
-  const generateReportMutation = trpcAny.inspections?.generateReport.useMutation({
+  const generateReportMutation = trpc.inspections.generateReport.useMutation({
     onSuccess: (data: any) => {
       // Baixar PDF automaticamente
       const link = document.createElement('a');
@@ -119,7 +118,7 @@ export default function Vistorias() {
     },
   });
 
-  const sendEmailMutation = trpcAny.inspections?.sendReportByEmail.useMutation({
+  const sendEmailMutation = trpc.inspections.sendReportByEmail.useMutation({
     onSuccess: (data: any) => {
       toast.success(`Relatório de ${data.count} vistoria(s) enviado para ${emailRecipient}!`);
       setIsEmailDialogOpen(false);
@@ -386,7 +385,22 @@ export default function Vistorias() {
             )}
           </div>
         </div>
-        {!inspections || inspections.length === 0 ? (
+        {inspectionsError ? (
+          <Card>
+            <CardContent className="py-8 flex flex-col items-center gap-3 text-center">
+              <p className="text-sm text-destructive">Não foi possível carregar as vistorias.</p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Tentar novamente
+              </Button>
+            </CardContent>
+          </Card>
+        ) : inspectionsLoading ? (
+          <Card>
+            <CardContent className="py-8 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ) : !inspections || inspections.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
               Nenhuma vistoria registrada

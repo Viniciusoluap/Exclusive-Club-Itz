@@ -15,11 +15,10 @@ export default function Funcionarios() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
 
-  const trpcAny = trpc as any;
-  const { data: employees, isLoading, refetch } = trpcAny.employees?.list.useQuery() || { data: undefined, isLoading: true, refetch: () => {} };
+  const { data: employees, isLoading, error: employeesError, refetch } = trpc.employees.list.useQuery();
   const { data: vessels } = trpc.vessels.list.useQuery();
-  
-  const createMutation = trpcAny.employees.create.useMutation({
+
+  const createMutation = trpc.employees.create.useMutation({
     onSuccess: () => {
       toast.success("Funcionário cadastrado com sucesso!");
       setIsCreateDialogOpen(false);
@@ -30,7 +29,7 @@ export default function Funcionarios() {
     },
   });
 
-  const updateMutation = trpcAny.employees.update.useMutation({
+  const updateMutation = trpc.employees.update.useMutation({
     onSuccess: () => {
       toast.success("Funcionário atualizado com sucesso!");
       setIsEditDialogOpen(false);
@@ -41,7 +40,7 @@ export default function Funcionarios() {
     },
   });
 
-  const deleteMutation = trpcAny.employees.delete.useMutation({
+  const deleteMutation = trpc.employees.delete.useMutation({
     onSuccess: () => {
       toast.success("Funcionário desativado com sucesso!");
       refetch();
@@ -97,6 +96,17 @@ export default function Funcionarios() {
       deleteMutation.mutate({ id });
     }
   };
+
+  if (employeesError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <p className="text-sm text-destructive">Não foi possível carregar os funcionários.</p>
+        <Button variant="outline" onClick={() => refetch()}>
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
