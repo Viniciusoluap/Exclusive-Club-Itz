@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
 import { ClipboardCheck, Copy, DollarSign, QrCode } from "lucide-react";
 import { useState, useMemo } from "react";
@@ -231,79 +232,65 @@ export function InspectionChargesSection() {
 
           {/* Tabela de Cobranças */}
           <div className="border rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="w-12 px-4 py-3"></th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">
-                      Data
-                    </th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">
-                      Embarcação
-                    </th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">
-                      Itens Danificados
-                    </th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">
-                      Valor
-                    </th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">
-                      Vencimento
-                    </th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {charges.map((charge: any) => {
-                    const isPending =
-                      charge.payment_status === "pending" ||
-                      charge.payment_status === "overdue";
-                    const failedItems = JSON.parse(charge.failed_items || "[]");
+            <Table>
+              <TableHeader className="bg-gray-50">
+                <TableRow>
+                  <TableHead className="w-12"></TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Embarcação</TableHead>
+                  <TableHead>Itens Danificados</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {charges.map((charge: any) => {
+                  const isPending =
+                    charge.payment_status === "pending" ||
+                    charge.payment_status === "overdue";
+                  const failedItems = JSON.parse(charge.failed_items || "[]");
 
-                    return (
-                      <tr key={charge.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                          {isPending && (
-                            <Checkbox
-                              checked={selectedCharges.includes(charge.id)}
-                              onCheckedChange={() => toggleCharge(charge.id)}
-                            />
+                  return (
+                    <TableRow key={charge.id}>
+                      <TableCell>
+                        {isPending && (
+                          <Checkbox
+                            checked={selectedCharges.includes(charge.id)}
+                            onCheckedChange={() => toggleCharge(charge.id)}
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {new Date(charge.inspection_date).toLocaleDateString("pt-BR")}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium">{charge.vessel_name}</TableCell>
+                      <TableCell className="text-sm whitespace-normal">
+                        <div className="max-w-xs">
+                          {failedItems.slice(0, 2).map((item: any, idx: number) => (
+                            <div key={idx} className="text-xs text-gray-600">
+                              • {item.name}
+                            </div>
+                          ))}
+                          {failedItems.length > 2 && (
+                            <div className="text-xs text-gray-500">
+                              +{failedItems.length - 2} mais
+                            </div>
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {new Date(charge.inspection_date).toLocaleDateString("pt-BR")}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">{charge.vessel_name}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <div className="max-w-xs">
-                            {failedItems.slice(0, 2).map((item: any, idx: number) => (
-                              <div key={idx} className="text-xs text-gray-600">
-                                • {item.name}
-                              </div>
-                            ))}
-                            {failedItems.length > 2 && (
-                              <div className="text-xs text-gray-500">
-                                +{failedItems.length - 2} mais
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm font-semibold">
-                          R$ {parseFloat(charge.amount).toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {new Date(charge.due_date).toLocaleDateString("pt-BR")}
-                        </td>
-                        <td className="px-4 py-3">{getStatusBadge(charge.payment_status)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm font-semibold">
+                        R$ {parseFloat(charge.amount).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {new Date(charge.due_date).toLocaleDateString("pt-BR")}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(charge.payment_status)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
