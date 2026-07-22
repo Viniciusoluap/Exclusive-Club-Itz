@@ -2655,7 +2655,7 @@ Nenhuma reserva foi afetada.
         const totalLiters = mappedRecords.reduce((sum, r) => sum + r.liters, 0) / 100;
         const totalAmount = mappedRecords.reduce((sum, r) => sum + r.totalAmount, 0) / 100;
 
-        await sendEmail({
+        const emailSent = await sendEmail({
           to: input.email,
           subject: `Relatório de Abastecimentos - ${new Date().toLocaleDateString('pt-BR')}`,
           html: `
@@ -2735,6 +2735,10 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
             contentType: 'application/pdf',
           }],
         });
+
+        if (!emailSent) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Falha ao enviar e-mail. Verifique as configurações SMTP.' });
+        }
 
         return { success: true, email: input.email };
       }),
@@ -3872,7 +3876,7 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
 
           // Enviar email
           const { sendEmail } = await import('./_core/emailService');
-          await sendEmail({
+          const emailSent = await sendEmail({
             to: input.email,
             subject: `Relatório de Vistorias - ${new Date().toLocaleDateString('pt-BR')}`,
             text: `Segue em anexo o relatório de ${inspections.length} vistoria(s).`,
@@ -3888,6 +3892,10 @@ Relatório gerado em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/S
               contentType: 'application/pdf',
             }],
           });
+
+          if (!emailSent) {
+            throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Falha ao enviar e-mail. Verifique as configurações SMTP.' });
+          }
 
           // Notificar owner
           const { notifyOwner } = await import('./_core/notification');
