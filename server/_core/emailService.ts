@@ -9,6 +9,10 @@ import nodemailer from 'nodemailer';
  * - Email: atendimento@exclusiveclubitz.com
  */
 
+if (!process.env.SMTP_PASS) {
+  console.warn('[Email Service] ⚠️ SMTP_PASS não configurada — envio de email falhará até definir a variável de ambiente');
+}
+
 // Criar transportador SMTP
 const transporter = nodemailer.createTransport({
   host: 'smtp.titan.email',
@@ -16,7 +20,7 @@ const transporter = nodemailer.createTransport({
   secure: false, // true para porta 465, false para outras portas
   auth: {
     user: process.env.SMTP_USER || 'atendimento@exclusiveclubitz.com',
-    pass: process.env.SMTP_PASS || 'Efficaz2010',
+    pass: process.env.SMTP_PASS || '',
   },
   tls: {
     // Não falhar em certificados inválidos (comum em hospedagens compartilhadas)
