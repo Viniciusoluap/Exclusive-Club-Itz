@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Plus, Fuel, TrendingUp, ArrowLeft, Trash2, FileText, Mail, DollarSign, AlertCircle, ExternalLink, Settings, RefreshCw, CheckCircle, XCircle, Clock, Banknote, Upload } from "lucide-react";
+import { Loader2, Plus, Fuel, ArrowLeft, Trash2, FileText, Mail, RefreshCw, Upload } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 import FuelManagementDialog from "@/components/FuelManagementDialog";
+import { FuelBalanceSummaryCards } from "@/components/FuelBalanceSummaryCards";
+import { FuelBudgetCard } from "@/components/FuelBudgetCard";
+import { FuelBpoStatsCard } from "@/components/FuelBpoStatsCard";
+import { FuelRecordCard } from "@/components/FuelRecordCard";
 
 // Interface para cada galão no abastecimento (múltiplos galões)
 interface ContainerData {
@@ -736,144 +740,25 @@ export default function Abastecimento() {
       </div>
 
       {/* Cards de Resumo Financeiro */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Herdado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${
-              balanceData && balanceData.inherited < 0 
-                ? 'text-red-600' 
-                : 'text-blue-600'
-            }`}>
-              R$ {balanceData?.inherited?.toFixed(2) || "0.00"}
-            </p>
-            <p className="text-xs text-muted-foreground">Do mês anterior</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Orçamento</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">R$ {balanceData?.budget?.toFixed(2) || "0.00"}</p>
-            <p className="text-xs text-muted-foreground">Compras do mês</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Gasto</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-orange-600">R$ {balanceData?.spent?.toFixed(2) || "0.00"}</p>
-            <p className="text-xs text-muted-foreground">Abastecimentos</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Atual</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${
-              balanceData && balanceData.current < 0 
-                ? 'text-red-600' 
-                : 'text-green-600'
-            }`}>
-              R$ {balanceData?.current?.toFixed(2) || "0.00"}
-            </p>
-            <p className="text-xs text-muted-foreground">Herdado + Gasto - Orçamento</p>
-          </CardContent>
-        </Card>
-      </div>
+      <FuelBalanceSummaryCards balanceData={balanceData} />
 
       {/* Card de Orçamento */}
-      <Card className="mb-6">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">Orçamento Mensal</CardTitle>
-              <CardDescription>
-                {new Date(selectedYear, selectedMonth - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-              </CardDescription>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setIsBudgetDialogOpen(true)}>
-              <Settings className="w-4 h-4 mr-2" />
-              Configurar
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm">Gasto: R$ {totalCobrado.toFixed(2)}</span>
-            <span className="text-sm">Orçamento: R$ {budgetAmount.toFixed(2)}</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
-            <div 
-              className={`h-full transition-all ${budgetUsedPercent > 90 ? 'bg-red-500' : budgetUsedPercent > 70 ? 'bg-yellow-500' : 'bg-green-500'}`}
-              style={{ width: `${budgetUsedPercent}%` }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">{budgetUsedPercent.toFixed(1)}% utilizado</p>
-          
-          <div className="mt-4 pt-4 border-t flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Fuel className="w-5 h-5 text-primary" />
-              <span className="text-sm font-medium">Estoque:</span>
-            </div>
-            <div className="text-right">
-              <p className="font-bold">{totalStock.toFixed(2)} L</p>
-              <p className="text-xs text-muted-foreground">Preço/L atual: R$ {avgPricePerLiter.toFixed(2)}</p>
-            </div>
-          </div>
-
-          {(financialStats?.operationalCost ?? 0) > 0 && (
-            <div className="mt-3 pt-3 border-t flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Settings className="w-4 h-4 text-orange-600" />
-                <span className="text-sm font-medium">Custo Operacional ({financialStats?.operationalCostYear}):</span>
-              </div>
-              <p className="font-bold text-orange-600">R$ {financialStats?.operationalCost.toFixed(2)}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <FuelBudgetCard
+        selectedYear={selectedYear}
+        selectedMonth={selectedMonth}
+        totalCobrado={totalCobrado}
+        budgetAmount={budgetAmount}
+        budgetUsedPercent={budgetUsedPercent}
+        totalStock={totalStock}
+        avgPricePerLiter={avgPricePerLiter}
+        operationalCost={financialStats?.operationalCost}
+        operationalCostYear={financialStats?.operationalCostYear}
+        onConfigure={() => setIsBudgetDialogOpen(true)}
+      />
 
       {/* Card BPO: Cobranças de Abastecimento */}
       {bpoFuelStats && (
-        <Card className="mb-6 border-blue-200 bg-blue-50/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Banknote className="w-4 h-4 text-blue-600" />
-              Cobranças BPO — Abastecimentos ({selectedYear})
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">Dados financeiros centralizados de bpo_charges</p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="text-center p-2 bg-white rounded-lg border">
-                <p className="text-xs text-muted-foreground">Total Cobrado</p>
-                <p className="font-bold text-sm">R$ {bpoFuelStats.totalExpected.toFixed(2)}</p>
-              </div>
-              <div className="text-center p-2 bg-white rounded-lg border">
-                <p className="text-xs text-muted-foreground">Recebido</p>
-                <p className="font-bold text-sm text-green-600">R$ {bpoFuelStats.totalPaid.toFixed(2)}</p>
-              </div>
-              <div className="text-center p-2 bg-white rounded-lg border">
-                <p className="text-xs text-muted-foreground">Pendente</p>
-                <p className="font-bold text-sm text-yellow-600">R$ {bpoFuelStats.totalPending.toFixed(2)}</p>
-              </div>
-              <div className="text-center p-2 bg-white rounded-lg border">
-                <p className="text-xs text-muted-foreground">Vencido</p>
-                <p className="font-bold text-sm text-red-600">R$ {bpoFuelStats.totalOverdue.toFixed(2)}</p>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">{bpoFuelStats.totalCount} cobranças registradas no BPO</p>
-          </CardContent>
-        </Card>
+        <FuelBpoStatsCard bpoFuelStats={bpoFuelStats} selectedYear={selectedYear} />
       )}
 
       {/* Botões de Ação */}
@@ -978,161 +863,16 @@ export default function Abastecimento() {
               const displayRecords = showAllRecords ? fuelRecords : fuelRecords.slice(0, 10);
               
               return displayRecords.map((record: any) => (
-                <Card key={record.id} className={selectedIds.includes(record.id) ? 'ring-2 ring-primary' : ''}>
-                  <CardHeader className="p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0 flex-1">
-                        <Checkbox 
-                          checked={selectedIds.includes(record.id)}
-                          onCheckedChange={() => handleToggleSelection(record.id)}
-                          className="mt-1 flex-shrink-0"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Fuel className="w-5 h-5 text-primary flex-shrink-0" />
-                            <CardTitle className="text-base sm:text-lg truncate">{record.vesselName}</CardTitle>
-                            <span className="bg-primary/20 text-primary text-xs font-bold px-2 py-0.5 rounded flex-shrink-0">
-                              Galão {record.gallonNumber || 1}
-                            </span>
-                          </div>
-                          <CardDescription className="mt-1 text-xs sm:text-sm break-words">
-                            {record.clientName} • {new Date(record.date).toLocaleDateString('pt-BR')}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-lg font-bold text-primary">R$ {record.total_cost?.toFixed(2)}</span>
-                        <div className="flex gap-1">
-                          {/* Ocultar botões de sync/pagamento para abastecimentos operacionais */}
-                          {!record.is_operational && record.payment_status === 'pending' && !record.asaas_charge_id && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSyncWithAsaas(record.id)}
-                              disabled={syncWithAsaasMutation.isPending}
-                              title="Sincronizar com Asaas"
-                            >
-                              <RefreshCw className={`w-4 h-4 ${syncWithAsaasMutation.isPending ? 'animate-spin' : ''}`} />
-                            </Button>
-                          )}
-                          {!record.is_operational && (record.payment_status === 'pending' || record.payment_status === 'overdue') && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleMarkAsPaid(record.id)}
-                              title="Recebido em Dinheiro"
-                            >
-                              <CheckCircle className="w-4 h-4 text-green-600" />
-                            </Button>
-                          )}
-                          {!record.is_operational && record.asaas_charge_id && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.open(`https://www.asaas.com/cobrancas/${record.asaas_charge_id}`, '_blank')}
-                              title="Ver cobrança no Asaas"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteClick(record.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Litros:</span>
-                        <span className="font-medium ml-1">{record.liters?.toFixed(2)} L</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Preço/L:</span>
-                        <span className="font-medium ml-1">R$ {record.price_per_liter?.toFixed(2)}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Subtotal:</span>
-                        <span className="font-medium ml-1">R$ {(record.liters * record.price_per_liter)?.toFixed(2)}</span>
-                      </div>
-                      {/* Ocultar status de pagamento para abastecimentos operacionais */}
-                      {!record.is_operational && (
-                        <div>
-                          <span className="text-muted-foreground">Status:</span>
-                          <span className={`ml-1 font-medium ${
-                            record.payment_status === 'paid' ? 'text-green-600' : 
-                            record.payment_status === 'overdue' ? 'text-red-600' : 
-                            'text-yellow-600'
-                          }`}>
-                            {record.payment_status === 'paid' ? '✓ Pago' : 
-                             record.payment_status === 'overdue' ? '⚠️ Vencido' : 
-                             '⏳ Pendente'}
-                          </span>
-                          {record.asaas_charge_id && (
-                            <span className="ml-1 text-xs text-muted-foreground">Asaas OK</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Detalhes de pesagem */}
-                    {record.weight_full && (
-                      <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-                        <p className="text-sm font-medium mb-2">⚖️ Abastecimento por Pesagem</p>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                          <div>
-                            <span className="text-muted-foreground">Litros Iniciais:</span>
-                            <span className="font-medium ml-1">{record.liters_initial?.toFixed(2)} L</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Peso Cheio:</span>
-                            <span className="font-medium ml-1">{record.weight_full?.toFixed(2)} kg</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Peso Após:</span>
-                            <span className="font-medium ml-1">{record.weight_after?.toFixed(2)} kg</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Consumido:</span>
-                            <span className="font-medium ml-1">{(record.weight_full - record.weight_after)?.toFixed(2)} kg</span>
-                          </div>
-                        </div>
-                        <p className="text-xs mt-2 text-muted-foreground">
-                          📊 Litros Calculados: {record.liters?.toFixed(2)} L
-                        </p>
-                        {(record.photo_before_url || record.photo_after_url) && (
-                          <div className="flex gap-2 mt-2">
-                            {record.photo_before_url && (
-                              <Button variant="outline" size="sm" onClick={() => window.open(record.photo_before_url, '_blank')}>
-                                📷 Ver Foto ANTES
-                              </Button>
-                            )}
-                            {record.photo_after_url && (
-                              <Button variant="outline" size="sm" onClick={() => window.open(record.photo_after_url, '_blank')}>
-                                📷 Ver Foto DEPOIS
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    {record.notes && (
-                      <div className="mt-2 text-xs text-muted-foreground italic border-t pt-2">
-                        {record.notes}
-                      </div>
-                    )}
-                    <div className="mt-2 text-xs text-muted-foreground border-t pt-2">
-                      Registrado por: {record.recorded_by_name || 'Sistema'} • {record.recorded_at ? new Date(record.recorded_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'Data não disponível'}
-                    </div>
-                  </CardContent>
-                </Card>
+                <FuelRecordCard
+                  key={record.id}
+                  record={record}
+                  isSelected={selectedIds.includes(record.id)}
+                  onToggleSelect={() => handleToggleSelection(record.id)}
+                  onSyncWithAsaas={() => handleSyncWithAsaas(record.id)}
+                  isSyncing={syncWithAsaasMutation.isPending}
+                  onMarkAsPaid={() => handleMarkAsPaid(record.id)}
+                  onDelete={() => handleDeleteClick(record.id)}
+                />
               ));
             })()}
           </div>
