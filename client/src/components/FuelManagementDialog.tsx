@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Plus, Trash2, Fuel, TrendingUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface FuelManagementDialogProps {
   open: boolean;
@@ -23,6 +24,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
   const [purchaseAmount, setPurchaseAmount] = useState("");
   const [purchaseNotes, setPurchaseNotes] = useState("");
   const [selectedGallon, setSelectedGallon] = useState<string>("1");
+  const confirm = useConfirm();
 
   const utils = trpc.useUtils();
 
@@ -116,8 +118,13 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
     });
   };
 
-  const handleDeletePurchase = (purchaseId: number) => {
-    if (confirm('Tem certeza que deseja excluir esta compra? Os litros serão devolvidos ao estoque do galão.')) {
+  const handleDeletePurchase = async (purchaseId: number) => {
+    if (await confirm({
+      title: "Excluir compra",
+      description: "Tem certeza que deseja excluir esta compra? Os litros serão devolvidos ao estoque do galão.",
+      variant: "destructive",
+      confirmText: "Excluir",
+    })) {
       deletePurchaseMutation.mutate({ purchaseId });
     }
   };

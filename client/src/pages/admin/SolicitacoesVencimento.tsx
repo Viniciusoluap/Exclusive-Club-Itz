@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
+import { useConfirm } from '@/hooks/useConfirm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,7 @@ import { Calendar, CheckCircle2, Clock, Loader2, TrendingUp, XCircle } from 'luc
 import { toast } from 'sonner';
 
 export default function SolicitacoesVencimento() {
+  const confirm = useConfirm();
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -49,8 +51,12 @@ export default function SolicitacoesVencimento() {
     },
   });
 
-  const handleApprove = (requestId: number) => {
-    if (confirm('Tem certeza que deseja aprovar esta solicitação?')) {
+  const handleApprove = async (requestId: number) => {
+    if (await confirm({
+      title: "Aprovar solicitação",
+      description: "Tem certeza que deseja aprovar esta solicitação?",
+      confirmText: "Aprovar",
+    })) {
       approveMutation.mutate({ requestId });
     }
   };
