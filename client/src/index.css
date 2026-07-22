@@ -119,6 +119,9 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Poppins vem do <link> Google Fonts em index.html (preconnect + display=swap).
+       Sem @font-face local: se o CDN falhar, a cadeia abaixo garante degradação
+       para as fontes nativas do sistema em vez de um fallback serif do browser. */
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   }
   button:not(:disabled),
