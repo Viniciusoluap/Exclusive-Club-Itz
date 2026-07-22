@@ -436,6 +436,7 @@ export default function Reservas() {
             variant="outline"
             size="icon"
             onClick={handlePreviousMonth}
+            aria-label="Mês anterior"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -462,6 +463,7 @@ export default function Reservas() {
             variant="outline"
             size="icon"
             onClick={handleNextMonth}
+            aria-label="Próximo mês"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>

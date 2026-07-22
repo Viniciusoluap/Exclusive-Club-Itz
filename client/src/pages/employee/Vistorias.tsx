@@ -449,6 +449,7 @@ export default function EmployeeVistorias() {
                           size="icon"
                           onClick={() => handleDeleteClick(inspection.id)}
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          aria-label="Excluir vistoria"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
