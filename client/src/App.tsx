@@ -4,6 +4,7 @@ import { ConfirmProvider } from "@/hooks/useConfirm";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import ProtectedRoute from "./components/ProtectedRoute";
 import WhatsAppButton from "./components/WhatsAppButton";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
@@ -43,21 +44,21 @@ function Router() {
       <Route path={"/galeria"} component={Galeria} />
       <Route path={"/reservas"} component={Reservas} />
       <Route path={"/acesso-negado"} component={AccessDenied} />
-      <Route path={"/admin"} component={Admin} />
-      <Route path={"/admin/manutencao"} component={AdminManutencao} />
-      <Route path={"/admin/funcionarios"} component={Funcionarios} />
-      <Route path={"/admin/abastecimento"} component={Abastecimento} />
-      <Route path={"/admin/vistorias"} component={Vistorias} />
-      <Route path={"/admin/cobrancas-danos"} component={CobrancasDanos} />
-      <Route path={"/admin/solicitacoes-vencimento"} component={SolicitacoesVencimento} />
-      <Route path={"/admin/configuracoes"} component={SystemSettings} />
+      <Route path={"/admin"} component={() => <ProtectedRoute component={Admin} allowedRoles={["admin"]} />} />
+      <Route path={"/admin/manutencao"} component={() => <ProtectedRoute component={AdminManutencao} allowedRoles={["admin"]} />} />
+      <Route path={"/admin/funcionarios"} component={() => <ProtectedRoute component={Funcionarios} allowedRoles={["admin"]} />} />
+      <Route path={"/admin/abastecimento"} component={() => <ProtectedRoute component={Abastecimento} allowedRoles={["admin"]} />} />
+      <Route path={"/admin/vistorias"} component={() => <ProtectedRoute component={Vistorias} allowedRoles={["admin"]} />} />
+      <Route path={"/admin/cobrancas-danos"} component={() => <ProtectedRoute component={CobrancasDanos} allowedRoles={["admin"]} />} />
+      <Route path={"/admin/solicitacoes-vencimento"} component={() => <ProtectedRoute component={SolicitacoesVencimento} allowedRoles={["admin"]} />} />
+      <Route path={"/admin/configuracoes"} component={() => <ProtectedRoute component={SystemSettings} allowedRoles={["admin"]} />} />
       <Route path={"/admin/pagamentos"} component={() => { const [, nav] = useLocation(); useEffect(() => { nav("/admin/saas"); }, []); return null; }} />
-      <Route path={"/admin/backups"} component={AdminBackups} />
-      <Route path={"/admin/saas"} component={AdminSaas} />
-      <Route path={"/employee/reservas"} component={EmployeeReservas} />
-      <Route path={"/employee/manutencoes"} component={EmployeeManutencoes} />
-      <Route path={"/employee/abastecimentos"} component={EmployeeAbastecimentos} />
-      <Route path={"/employee/vistorias"} component={EmployeeVistorias} />
+      <Route path={"/admin/backups"} component={() => <ProtectedRoute component={AdminBackups} allowedRoles={["admin"]} />} />
+      <Route path={"/admin/saas"} component={() => <ProtectedRoute component={AdminSaas} allowedRoles={["admin"]} />} />
+      <Route path={"/employee/reservas"} component={() => <ProtectedRoute component={EmployeeReservas} allowedRoles={["employee", "admin"]} />} />
+      <Route path={"/employee/manutencoes"} component={() => <ProtectedRoute component={EmployeeManutencoes} allowedRoles={["employee", "admin"]} />} />
+      <Route path={"/employee/abastecimentos"} component={() => <ProtectedRoute component={EmployeeAbastecimentos} allowedRoles={["employee", "admin"]} />} />
+      <Route path={"/employee/vistorias"} component={() => <ProtectedRoute component={EmployeeVistorias} allowedRoles={["employee", "admin"]} />} />
       <Route path={"/dashboard/meus-abastecimentos"} component={MeusAbastecimentos} />
       <Route path={"/pagamento-danos"} component={PagamentoDanos} />
       <Route path={"/mensalidades"} component={Mensalidades} />
