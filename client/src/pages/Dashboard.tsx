@@ -710,6 +710,7 @@ export default function Dashboard() {
                       }
                     }}
                     disabled={!newName.trim() || updateName.isPending}
+                    aria-label="Salvar nome"
                   >
                     <Check className="h-4 w-4" />
                   </Button>
@@ -721,6 +722,7 @@ export default function Dashboard() {
                       setIsEditingName(false);
                       setNewName("");
                     }}
+                    aria-label="Cancelar edição do nome"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -736,6 +738,7 @@ export default function Dashboard() {
                       setIsEditingName(true);
                       setNewName(user?.name || "");
                     }}
+                    aria-label="Editar nome"
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>

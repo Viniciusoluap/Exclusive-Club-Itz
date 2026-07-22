@@ -1721,6 +1721,7 @@ Venc: {fmtDate(charge.due_date)}
                     </div>
                     <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500 shrink-0"
                       onClick={() => setSplitForm(f => ({ ...f, splits: f.splits.filter((_, i) => i !== idx) }))}
+                      aria-label="Remover divisão de pagamento"
                     ><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 ))}
