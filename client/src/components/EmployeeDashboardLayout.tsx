@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { APP_LOGO, APP_TITLE } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { PageLoader } from "@/components/PageLoader";
 import { Calendar, Settings, LogOut, Menu, Fuel, ClipboardCheck, Home } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
@@ -37,11 +38,7 @@ export default function EmployeeDashboardLayout({ children }: EmployeeDashboardL
   ];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!user || (user.role !== "employee" && user.role !== "admin")) {
