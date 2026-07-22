@@ -1,5 +1,6 @@
 import { notifyOwner } from "./notification";
 import { sendEmail } from "./emailService";
+import { escapeHtml } from "./htmlEscape";
 
 /**
  * Helper para enviar notificações por email usando a API built-in do Manus
@@ -124,16 +125,16 @@ export async function notifyClientBookingConfirmation(data: BookingNotificationD
       <div style="background-color: white; padding: 40px 30px; border-radius: 8px; margin: 20px;">
         <h2 style="color: #059669; margin-top: 0;">Reserva Confirmada</h2>
         
-        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${data.clientName}</strong>,</p>
-        
+        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${escapeHtml(data.clientName)}</strong>,</p>
+
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
           Confirmamos o recebimento de sua solicitação de reserva. Seguem os detalhes:
         </p>
-        
+
         <div style="background-color: #f0fdf4; border-left: 4px solid #059669; padding: 20px; margin: 25px 0; border-radius: 4px;">
           <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data da Reserva:</strong> ${dateStr}</p>
-          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${data.vesselName}</p>
-          ${data.notes ? `<p style="margin: 8px 0; color: #1f2937;"><strong>📝 Observações:</strong> ${data.notes}</p>` : ''}
+          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${escapeHtml(data.vesselName)}</p>
+          ${data.notes ? `<p style="margin: 8px 0; color: #1f2937;"><strong>📝 Observações:</strong> ${escapeHtml(data.notes)}</p>` : ''}
         </div>
         
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
@@ -180,15 +181,15 @@ export async function notifyClientBookingCancellation(data: BookingCancellationD
       <div style="background-color: white; padding: 40px 30px; border-radius: 8px; margin: 20px;">
         <h2 style="color: #dc2626; margin-top: 0;">Reserva Cancelada</h2>
         
-        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${data.clientName}</strong>,</p>
-        
+        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${escapeHtml(data.clientName)}</strong>,</p>
+
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
           Informamos que sua reserva foi cancelada conforme solicitado.
         </p>
-        
+
         <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin: 25px 0; border-radius: 4px;">
           <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data da Reserva:</strong> ${dateStr}</p>
-          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${data.vesselName}</p>
+          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${escapeHtml(data.vesselName)}</p>
         </div>
         
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
@@ -248,21 +249,21 @@ export async function notifyClientMaintenanceCancellation(data: MaintenanceCance
       <div style="background-color: white; padding: 40px 30px; border-radius: 8px; margin: 20px;">
         <h2 style="color: #dc2626; margin-top: 0;">Reserva Cancelada</h2>
         
-        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${data.clientName}</strong>,</p>
-        
+        <p style="font-size: 16px; color: #374151;">Prezado(a) <strong>${escapeHtml(data.clientName)}</strong>,</p>
+
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
           Informamos que sua reserva foi <strong>cancelada automaticamente</strong> devido a uma manutenção programada.
         </p>
-        
+
         <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin: 25px 0; border-radius: 4px;">
           <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data da Reserva:</strong> ${bookingDateStr}</p>
-          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${data.vesselName}</p>
+          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${escapeHtml(data.vesselName)}</p>
         </div>
-        
+
         <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 25px 0; border-radius: 4px;">
           <p style="margin: 8px 0; color: #1f2937;"><strong>🔧 Período de Manutenção:</strong></p>
           <p style="margin: 8px 0; color: #1f2937;">${maintenanceStartStr} a ${maintenanceEndStr}</p>
-          ${data.maintenanceDescription ? `<p style="margin: 8px 0; color: #1f2937;"><strong>Motivo:</strong> ${data.maintenanceDescription}</p>` : ''}
+          ${data.maintenanceDescription ? `<p style="margin: 8px 0; color: #1f2937;"><strong>Motivo:</strong> ${escapeHtml(data.maintenanceDescription)}</p>` : ''}
         </div>
         
         <p style="font-size: 16px; color: #374151; line-height: 1.6;">
@@ -478,8 +479,8 @@ export async function sendInspectionReportToAdmin(data: {
         </p>
         
         <div style="background-color: #f0f9ff; border-left: 4px solid #0891b2; padding: 20px; margin: 25px 0; border-radius: 4px;">
-          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${data.vesselName}</p>
-          <p style="margin: 8px 0; color: #1f2937;"><strong>👤 Cliente:</strong> ${data.clientName}</p>
+          <p style="margin: 8px 0; color: #1f2937;"><strong>⛵ Embarcação:</strong> ${escapeHtml(data.vesselName)}</p>
+          <p style="margin: 8px 0; color: #1f2937;"><strong>👤 Cliente:</strong> ${escapeHtml(data.clientName)}</p>
           <p style="margin: 8px 0; color: #1f2937;"><strong>📅 Data da Vistoria:</strong> ${dateStr}</p>
         </div>
         
