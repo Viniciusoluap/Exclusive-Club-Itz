@@ -97,8 +97,8 @@ async function startServer() {
           
           res.json({ url });
         } catch (uploadError: any) {
-          console.error('[upload-receipt] S3 upload error:', uploadError);
-          res.status(500).json({ error: 'Erro ao fazer upload para S3' });
+          console.error('[upload-receipt] storage proxy upload error:', uploadError);
+          res.status(500).json({ error: 'Erro ao fazer upload para o storage (proxy Forge)' });
         }
       });
     } catch (error: any) {
@@ -156,8 +156,8 @@ async function startServer() {
           console.log(`[Upload] Documento ${documentType} do cliente ${clientId} enviado: ${url}`);
           res.json({ success: true, url, fileKey, documentType, clientId });
         } catch (uploadError: any) {
-          console.error('[upload-client-document] S3 upload error:', uploadError);
-          res.status(500).json({ error: 'Erro ao fazer upload para S3' });
+          console.error('[upload-client-document] storage proxy upload error:', uploadError);
+          res.status(500).json({ error: 'Erro ao fazer upload para o storage (proxy Forge)' });
         }
       });
     } catch (error: any) {
@@ -206,8 +206,8 @@ async function startServer() {
           console.log(`[upload] File uploaded successfully: ${fileKey}`);
           res.json({ success: true, url, key: fileKey });
         } catch (uploadError: any) {
-          console.error('[upload] S3 upload error:', uploadError);
-          res.status(500).json({ error: 'Erro ao fazer upload para S3' });
+          console.error('[upload] storage proxy upload error:', uploadError);
+          res.status(500).json({ error: 'Erro ao fazer upload para o storage (proxy Forge)' });
         }
       });
     } catch (error: any) {
@@ -255,8 +255,8 @@ async function startServer() {
           
           res.json({ success: true, itemName, photoUrl: url });
         } catch (uploadError: any) {
-          console.error('[upload-inspection-photo] S3 upload error:', uploadError);
-          res.status(500).json({ error: 'Erro ao fazer upload para S3' });
+          console.error('[upload-inspection-photo] storage proxy upload error:', uploadError);
+          res.status(500).json({ error: 'Erro ao fazer upload para o storage (proxy Forge)' });
         }
       });
     } catch (error: any) {

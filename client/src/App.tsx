@@ -1,8 +1,8 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConfirmProvider } from "@/hooks/useConfirm";
-import { Route, Switch } from "wouter";
-import { lazy, Suspense, useEffect } from "react";
+import { Redirect, Route, Switch } from "wouter";
+import { lazy, Suspense } from "react";
 import { useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -36,7 +36,6 @@ const SystemSettings = lazy(() => import("./pages/SystemSettings"));
 const RoleRedirect = lazy(() => import("./components/RoleRedirect"));
 const PagamentoDanos = lazy(() => import("./pages/PagamentoDanos"));
 const Mensalidades = lazy(() => import("./pages/Mensalidades"));
-// Pagamentos migrado para BPO Financeiro — mantido apenas para compatibilidade de import
 const AdminBackups = lazy(() => import("./pages/admin/Backups"));
 const AdminSaas = lazy(() => import("./pages/admin/Saas"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -60,7 +59,7 @@ function Router() {
         <Route path={"/admin/cobrancas-danos"} component={() => <ProtectedRoute component={CobrancasDanos} allowedRoles={["admin"]} />} />
         <Route path={"/admin/solicitacoes-vencimento"} component={() => <ProtectedRoute component={SolicitacoesVencimento} allowedRoles={["admin"]} />} />
         <Route path={"/admin/configuracoes"} component={() => <ProtectedRoute component={SystemSettings} allowedRoles={["admin"]} />} />
-        <Route path={"/admin/pagamentos"} component={() => { const [, nav] = useLocation(); useEffect(() => { nav("/admin/saas"); }, []); return null; }} />
+        <Route path={"/admin/pagamentos"} component={() => <Redirect to="/admin/saas" />} />
         <Route path={"/admin/backups"} component={() => <ProtectedRoute component={AdminBackups} allowedRoles={["admin"]} />} />
         <Route path={"/admin/saas"} component={() => <ProtectedRoute component={AdminSaas} allowedRoles={["admin"]} />} />
         <Route path={"/employee/reservas"} component={() => <ProtectedRoute component={EmployeeReservas} allowedRoles={["employee", "admin"]} />} />
