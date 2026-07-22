@@ -220,36 +220,45 @@ export default function Vistorias() {
 
     // Upload de fotos de itens reprovados
     const uploadedPhotos: Array<{itemName: string, photoUrl: string}> = [];
+    const failedUploads: string[] = [];
     const photoEntries = Object.entries(reprovationPhotos).filter(([_, file]) => file !== null);
-    
+
     if (photoEntries.length > 0) {
       toast.info(`Fazendo upload de ${photoEntries.length} foto(s)...`);
-      
+
       for (const [itemName, file] of photoEntries) {
         if (!file) continue;
-        
+
         try {
           const formData = new FormData();
           formData.append('photo', file);
           formData.append('itemName', itemName);
           formData.append('vesselId', booking.vesselId.toString());
-          
+
           const response = await fetch('/api/upload-inspection-photo', {
             method: 'POST',
             body: formData,
           });
-          
+
           if (!response.ok) {
             throw new Error(`Erro ao fazer upload da foto ${itemName}`);
           }
-          
+
           const data = await response.json();
           uploadedPhotos.push({ itemName: data.itemName, photoUrl: data.photoUrl });
         } catch (error: any) {
           console.error(`Erro ao fazer upload da foto ${itemName}:`, error);
-          toast.error(`Erro ao fazer upload da foto ${itemName}`);
+          failedUploads.push(itemName);
         }
       }
+    }
+
+    // Não submeter em silêncio: se alguma foto de item reprovado falhou, a
+    // vistoria fica sem evidência do problema. Bloquear e deixar o usuário
+    // tentar novamente, em vez de criar o registro com evidência faltando.
+    if (failedUploads.length > 0) {
+      toast.error(`Falha no upload da(s) foto(s) de: ${failedUploads.join(', ')}. Tente novamente antes de enviar a vistoria.`);
+      return;
     }
 
     createMutation.mutate({
