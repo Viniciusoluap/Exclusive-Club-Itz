@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -630,102 +631,103 @@ export default function CobrancasDanos() {
               <Loader2 className="w-6 h-6 animate-spin" />
             </div>
           ) : charges && charges.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">Tipo</th>
-                    <th className="text-left p-2">Cliente</th>
-                    <th className="text-left p-2">Embarcação</th>
-                    <th className="text-left p-2">Valor</th>
-                    <th className="text-left p-2">Vencimento</th>
-                    <th className="text-left p-2">Status</th>
-                    <th className="text-center p-2">Solicitações</th>
-                    <th className="text-right p-2">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {charges.map((charge: any) => (
-                    <tr key={charge.id} className={`border-b hover:bg-muted/50 ${charge.pending_due_date_request ? 'bg-amber-50' : ''}`}>
-                      <td className="p-2">{getTypeBadge(charge.charge_type)}</td>
-                      <td className="p-2">
-                        <div className="font-medium">{charge.client_name || charge.client_email}</div>
-                        <div className="text-xs text-muted-foreground">{charge.client_email}</div>
-                      </td>
-                      <td className="p-2">{charge.vessel_name}</td>
-                      <td className="p-2 font-medium">
-                        {formatCurrency(parseFloat(charge.amount))}
-                        {charge.payment_status === 'partiallyPaid' && charge.amount_paid && parseFloat(charge.amount_paid) > 0 && (
-                          <div className="text-xs text-orange-600 mt-0.5">
-                            Pago: {formatCurrency(parseFloat(charge.amount_paid))} · Saldo: {formatCurrency(Math.max(0, parseFloat(charge.amount) - parseFloat(charge.amount_paid)))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-2">{formatDate(charge.due_date)}</td>
-                      <td className="p-2">{getStatusBadge(charge.payment_status)}</td>
-                      <td className="p-2 text-center">
-                        {charge.pending_due_date_request ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200"
-                            onClick={() => {
-                              setSelectedRequest({
-                                ...charge.pending_due_date_request,
-                                charge_id: charge.id,
-                                client_email: charge.client_email,
-                                vessel_name: charge.vessel_name,
-                                amount: charge.amount,
-                                current_due_date: charge.due_date,
-                              });
-                              setShowRequestDialog(true);
-                            }}
-                          >
-                            <AlertTriangle className="w-4 h-4 mr-1" />
-                            Pendente
-                          </Button>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="p-2 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {(charge.payment_status === 'pending' || charge.payment_status === 'overdue' || charge.payment_status === 'partiallyPaid') && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleMarkAsPaid(charge.id)}
-                                title="Marcar como recebido"
-                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEdit(charge)}
-                                title="Editar cobrança"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(charge.id)}
-                            title="Excluir permanentemente"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Embarcação</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Solicitações</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {charges.map((charge: any) => (
+                  <TableRow
+                    key={charge.id}
+                    className={charge.pending_due_date_request ? "bg-amber-50" : ""}
+                  >
+                    <TableCell>{getTypeBadge(charge.charge_type)}</TableCell>
+                    <TableCell className="whitespace-normal">
+                      <div className="font-medium">{charge.client_name || charge.client_email}</div>
+                      <div className="text-xs text-muted-foreground">{charge.client_email}</div>
+                    </TableCell>
+                    <TableCell>{charge.vessel_name}</TableCell>
+                    <TableCell className="font-medium whitespace-normal">
+                      {formatCurrency(parseFloat(charge.amount))}
+                      {charge.payment_status === 'partiallyPaid' && charge.amount_paid && parseFloat(charge.amount_paid) > 0 && (
+                        <div className="text-xs text-orange-600 mt-0.5">
+                          Pago: {formatCurrency(parseFloat(charge.amount_paid))} · Saldo: {formatCurrency(Math.max(0, parseFloat(charge.amount) - parseFloat(charge.amount_paid)))}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      )}
+                    </TableCell>
+                    <TableCell>{formatDate(charge.due_date)}</TableCell>
+                    <TableCell>{getStatusBadge(charge.payment_status)}</TableCell>
+                    <TableCell className="text-center">
+                      {charge.pending_due_date_request ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200"
+                          onClick={() => {
+                            setSelectedRequest({
+                              ...charge.pending_due_date_request,
+                              charge_id: charge.id,
+                              client_email: charge.client_email,
+                              vessel_name: charge.vessel_name,
+                              amount: charge.amount,
+                              current_due_date: charge.due_date,
+                            });
+                            setShowRequestDialog(true);
+                          }}
+                        >
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          Pendente
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {(charge.payment_status === 'pending' || charge.payment_status === 'overdue' || charge.payment_status === 'partiallyPaid') && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleMarkAsPaid(charge.id)}
+                              title="Marcar como recebido"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(charge)}
+                              title="Editar cobrança"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(charge.id)}
+                          title="Excluir permanentemente"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               Nenhuma cobrança cadastrada
