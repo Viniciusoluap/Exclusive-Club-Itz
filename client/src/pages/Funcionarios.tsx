@@ -163,6 +163,7 @@ export default function Funcionarios() {
                       setSelectedEmployee(employee);
                       setIsEditDialogOpen(true);
                     }}
+                    aria-label={`Editar ${employee.name}`}
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
@@ -170,6 +171,7 @@ export default function Funcionarios() {
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDelete(employee.id)}
+                    aria-label={`Desativar ${employee.name}`}
                   >
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>

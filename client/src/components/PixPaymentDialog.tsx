@@ -183,6 +183,7 @@ export function PixPaymentDialog({
                   size="icon"
                   onClick={handleCopy}
                   className="shrink-0"
+                  aria-label="Copiar código PIX"
                 >
                   {copied ? (
                     <Check className="h-4 w-4 text-green-500" />

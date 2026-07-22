@@ -518,7 +518,7 @@ export default function CobrancasDanos() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/admin">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" aria-label="Voltar para Admin">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
@@ -856,6 +856,7 @@ export default function CobrancasDanos() {
                         variant="ghost"
                         size="icon"
                         onClick={() => setFormData({ ...formData, receiptFile: null })}
+                        aria-label="Remover comprovante"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -1041,6 +1042,7 @@ export default function CobrancasDanos() {
                       size="icon"
                       className="absolute top-2 right-2 h-8 w-8"
                       onClick={handleRemoveEditImage}
+                      aria-label="Remover imagem"
                     >
                       <X className="h-4 w-4" />
                     </Button>
