@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 // import { InspectionChargesSection } from "@/components/InspectionChargesSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
 import { APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
@@ -237,9 +238,9 @@ function OverdueChargesCard() {
     description: string;
   } | null>(null);
 
-  const { data: overdueCharges, isLoading } = (trpc as any).clientPayments.overdueCharges.useQuery();
+  const { data: overdueCharges, isLoading, error: overdueChargesError, refetch: refetchOverdueCharges } = trpc.clientPayments.overdueCharges.useQuery();
 
-  const generateCharge = (trpc as any).clientPayments.generateConsolidatedCharge.useMutation({
+  const generateCharge = trpc.clientPayments.generateConsolidatedCharge.useMutation({
     onSuccess: (result: any) => {
       setChargeResult(result);
       utils.clientPayments?.overdueCharges?.invalidate?.();
@@ -279,6 +280,19 @@ function OverdueChargesCard() {
           <span className="text-sm">Verificando débitos...</span>
         </CardContent>
       </Card>
+    );
+  }
+
+  if (overdueChargesError) {
+    return (
+      <Alert variant="destructive" style={{ marginBottom: '30px' }}>
+        <AlertDescription className="flex items-center justify-between gap-4">
+          <span>Não foi possível verificar débitos vencidos.</span>
+          <Button variant="outline" size="sm" onClick={() => refetchOverdueCharges()}>
+            Tentar novamente
+          </Button>
+        </AlertDescription>
+      </Alert>
     );
   }
 
@@ -432,16 +446,15 @@ function OverdueChargesCard() {
 
 function QuotaUsageSection() {
   const { user } = useAuth();
-  const trpcAny = trpc as any;
-  
+
   // Buscar quotas do usuário
-  const { data: myQuotas } = trpcAny.bookings?.myQuotas.useQuery() || { data: [] };
-  
+  const { data: myQuotas, error: myQuotasError, isLoading: myQuotasLoading, refetch: refetchMyQuotas } = trpc.bookings.myQuotas.useQuery();
+
   // Buscar reservas do usuário
-  const { data: myBookings } = trpc.bookings.myBookings.useQuery();
-  
+  const { data: myBookings, error: myBookingsError, isLoading: myBookingsLoading, refetch: refetchMyBookings } = trpc.bookings.myBookings.useQuery();
+
   // Buscar embarcações
-  const { data: vessels } = trpc.vessels.list.useQuery();
+  const { data: vessels, error: vesselsError, isLoading: vesselsLoading, refetch: refetchVessels } = trpc.vessels.list.useQuery();
   
   // Calcular uso de quotas por embarcação
   const quotaUsage = useMemo(() => {
@@ -490,6 +503,35 @@ function QuotaUsageSection() {
     });
   }, [myQuotas, myBookings, vessels]);
   
+  if (myQuotasError || myBookingsError || vesselsError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription className="flex items-center justify-between gap-4">
+          <span>Não foi possível carregar suas quotas.</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              refetchMyQuotas();
+              refetchMyBookings();
+              refetchVessels();
+            }}
+          >
+            Tentar novamente
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (myQuotasLoading || myBookingsLoading || vesselsLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   if (!quotaUsage || quotaUsage.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -497,7 +539,7 @@ function QuotaUsageSection() {
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-4">
       {quotaUsage.map((quota) => (

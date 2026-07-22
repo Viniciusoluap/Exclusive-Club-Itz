@@ -1577,6 +1577,7 @@ Nenhuma reserva foi afetada.
         liters: z.number().positive().optional(), // Opcional quando usa método por peso
         pricePerLiter: z.number().positive().optional(), // Opcional - busca do estoque se não informado
         notes: z.string().optional(),
+        receiptUrl: z.string().url().optional(), // Comprovante do modo galão único (antigo)
         // Campos opcionais do método de abastecimento por pesagem
         litersInitial: z.number().positive().optional(), // Litros iniciais no galão (ex: 50.05)
         weightFull: z.number().positive().optional(), // Peso do galão cheio em kg (ex: 37.80)
@@ -1891,7 +1892,7 @@ Nenhuma reserva foi afetada.
           const insertResult = await tx.execute(sql`
             INSERT INTO fuel_records (
               booking_id, vessel_id, vessel_name, client_email, client_name,
-              liters, price_per_liter, total_amount, notes,
+              liters, price_per_liter, total_amount, notes, receipt_url,
               liters_initial, weight_full, weight_after, weight_consumed, liters_calculated,
               photo_before_url, photo_after_url,
               asaas_charge_id, asaas_customer_id, payment_url, payment_status,
@@ -1901,7 +1902,7 @@ Nenhuma reserva foi afetada.
             VALUES (
               ${input.bookingId || null}, ${input.vesselId}, ${booking.vessel_name_actual},
               ${booking.client_email}, ${booking.client_name},
-              ${finalLitersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${input.notes || null},
+              ${finalLitersInCents}, ${pricePerLiterInCents}, ${totalAmount}, ${input.notes || null}, ${input.receiptUrl || null},
               ${litersInitialInCents}, ${weightFullInGrams}, ${weightAfterInGrams}, ${weightConsumedInGrams}, ${litersCalculatedInCents},
               ${primaryPhotoBeforeUrl}, ${primaryPhotoAfterUrl},
               ${asaasChargeId || null}, ${asaasCustomerId || null}, ${paymentUrl || null}, 'pending',
