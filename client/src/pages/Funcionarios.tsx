@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,6 +12,7 @@ import { Link } from "wouter";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function Funcionarios() {
+  const confirm = useConfirm();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
@@ -91,8 +93,13 @@ export default function Funcionarios() {
     });
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("Tem certeza que deseja desativar este funcionário?")) {
+  const handleDelete = async (id: number) => {
+    if (await confirm({
+      title: "Desativar funcionário",
+      description: "Tem certeza que deseja desativar este funcionário?",
+      variant: "destructive",
+      confirmText: "Desativar",
+    })) {
       deleteMutation.mutate({ id });
     }
   };

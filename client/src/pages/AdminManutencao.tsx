@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Calendar, Loader2, Pencil, Plus, Settings, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
@@ -25,6 +26,7 @@ import { toast } from "sonner";
 
 export default function AdminManutencao() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const confirm = useConfirm();
   const [, setLocation] = useLocation();
 
   // Create dialog state
@@ -185,8 +187,13 @@ export default function AdminManutencao() {
     setShowConflictDialog(false);
   };
 
-  const handleDelete = (id: number) => {
-    if (confirm("Tem certeza que deseja excluir esta manutenção?")) {
+  const handleDelete = async (id: number) => {
+    if (await confirm({
+      title: "Excluir manutenção",
+      description: "Tem certeza que deseja excluir esta manutenção?",
+      variant: "destructive",
+      confirmText: "Excluir",
+    })) {
       deleteMaintenance.mutate({ id });
     }
   };

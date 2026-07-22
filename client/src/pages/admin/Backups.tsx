@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { useState } from "react";
 
 export default function AdminBackups() {
   const { user, loading } = useAuth();
+  const confirm = useConfirm();
   const [, setLocation] = useLocation();
 
   const utils = trpc.useUtils();
@@ -71,14 +73,24 @@ export default function AdminBackups() {
     },
   });
 
-  const handleDelete = (backupId: number) => {
-    if (confirm('Tem certeza que deseja excluir este backup? Esta ação não pode ser desfeita.')) {
+  const handleDelete = async (backupId: number) => {
+    if (await confirm({
+      title: "Excluir backup",
+      description: "Tem certeza que deseja excluir este backup? Esta ação não pode ser desfeita.",
+      variant: "destructive",
+      confirmText: "Excluir",
+    })) {
       deleteBackupMutation.mutate({ backupId });
     }
   };
 
-  const handleRestore = (backupId: number) => {
-    if (confirm('Tem certeza que deseja restaurar este backup? O banco de dados atual será substituído. Esta ação não pode ser desfeita.')) {
+  const handleRestore = async (backupId: number) => {
+    if (await confirm({
+      title: "Restaurar backup",
+      description: "Tem certeza que deseja restaurar este backup? O banco de dados atual será SUBSTITUÍDO. Esta ação não pode ser desfeita.",
+      variant: "destructive",
+      confirmText: "Restaurar",
+    })) {
       toast.info('Iniciando restauração... Isso pode levar alguns minutos.');
       restoreBackupMutation.mutate({ backupId });
     }
@@ -391,9 +403,14 @@ export default function AdminBackups() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => {
+                          onClick={async () => {
                             if (backup.status === 'running') {
-                              if (!confirm('Este backup pode ainda estar em execução. Excluir mesmo assim?')) return;
+                              if (!(await confirm({
+                                title: "Backup em execução",
+                                description: "Este backup pode ainda estar em execução. Excluir mesmo assim?",
+                                variant: "destructive",
+                                confirmText: "Excluir mesmo assim",
+                              }))) return;
                             }
                             handleDelete(backup.id);
                           }}

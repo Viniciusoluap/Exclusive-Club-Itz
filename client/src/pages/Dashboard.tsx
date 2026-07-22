@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
 import { APP_TITLE, getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Anchor, BarChart3, Calendar, Ship, TrendingUp, Pencil, Check, X, CheckCircle2, XCircle, Fuel, DollarSign, Copy, QrCode, ArrowLeft, AlertTriangle, Wrench, CreditCard, Loader2, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 
 function ActiveBookingsSection() {
   const { user } = useAuth();
+  const confirm = useConfirm();
   const utils = trpc.useUtils();
   
   // Buscar reservas ativas do usuário
@@ -38,8 +40,14 @@ function ActiveBookingsSection() {
     },
   });
   
-  const handleCancelBooking = (bookingId: number) => {
-    if (window.confirm("Tem certeza que deseja cancelar esta reserva?")) {
+  const handleCancelBooking = async (bookingId: number) => {
+    if (await confirm({
+      title: "Cancelar reserva",
+      description: "Tem certeza que deseja cancelar esta reserva?",
+      variant: "destructive",
+      confirmText: "Sim, cancelar",
+      cancelText: "Não, manter reserva",
+    })) {
       cancelBooking.mutate({ id: bookingId });
     }
   };
