@@ -49,21 +49,25 @@ export default function EmployeeAbastecimentos() {
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1); // 1-12
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
 
-  const trpcAny = trpc as any;
-  const { data: recentBookings } = trpcAny.bookings?.getRecent.useQuery({ onlyUsed: true }) || { data: [] };
-  const { data: fuelRecords, refetch } = trpcAny.fuelRecords?.list.useQuery({ 
-    month: selectedMonth, 
-    year: selectedYear 
-  }) || { data: [] };
+  const { data: recentBookings } = trpc.bookings.getRecent.useQuery({ onlyUsed: true });
+  const {
+    data: fuelRecords,
+    error: fuelRecordsError,
+    isLoading: fuelRecordsLoading,
+    refetch,
+  } = trpc.fuelRecords.list.useQuery({
+    month: selectedMonth,
+    year: selectedYear
+  });
   const { data: vessels } = trpc.vessels.list.useQuery();
-  
+
   // Buscar orçamento para pegar preço/L e estoque
   const monthYear = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
-  const { data: budget } = trpcAny.fuelBudget?.get.useQuery({ monthYear }) || { data: null };
-  const { data: gallonStock, refetch: refetchGallonStock } = trpcAny.fuelPurchases?.getGallonStock.useQuery() || { data: [] };
-  
+  const { data: budget } = trpc.fuelBudget.get.useQuery({ monthYear });
+  const { data: gallonStock, refetch: refetchGallonStock } = trpc.fuelPurchases.getGallonStock.useQuery();
+
   // NOVO: Buscar estoque com herança do mês anterior
-  const { data: stockWithInheritance, refetch: refetchStockInheritance } = trpcAny.fuelBudget?.getCurrentStock.useQuery({ monthYear }) || { data: null };
+  const { data: stockWithInheritance, refetch: refetchStockInheritance } = trpc.fuelBudget.getCurrentStock.useQuery({ monthYear });
 
   // Refetch quando mês/ano mudar
   useEffect(() => {
@@ -100,7 +104,7 @@ export default function EmployeeAbastecimentos() {
 
   const utils = trpc.useUtils();
 
-  const createMutation = trpcAny.fuelRecords?.create.useMutation({
+  const createMutation = trpc.fuelRecords.create.useMutation({
     onSuccess: (data: any) => {
       const gallonsUsed = data.containersCount || 1;
       toast.success(`Abastecimento registrado com ${gallonsUsed} galão(ões)! Total: ${data.totalLiters?.toFixed(2) || 0}L - R$ ${data.totalCost?.toFixed(2) || 0}`);
@@ -116,7 +120,7 @@ export default function EmployeeAbastecimentos() {
     },
   });
 
-  const deleteMutation = trpcAny.fuelRecords?.delete.useMutation({
+  const deleteMutation = trpc.fuelRecords.delete.useMutation({
     onSuccess: () => {
       toast.success('Abastecimento excluído com sucesso!');
       setIsDeleteDialogOpen(false);
@@ -131,7 +135,7 @@ export default function EmployeeAbastecimentos() {
     },
   });
 
-  const generateReportMutation = trpcAny.fuelRecords?.generateReport.useMutation({
+  const generateReportMutation = trpc.fuelRecords.generateReport.useMutation({
     onSuccess: (data: any) => {
       const linkSource = `data:application/pdf;base64,${data.pdf}`;
       const downloadLink = document.createElement('a');
@@ -148,7 +152,7 @@ export default function EmployeeAbastecimentos() {
     },
   });
 
-  const sendEmailMutation = trpcAny.fuelRecords?.sendReportByEmail.useMutation({
+  const sendEmailMutation = trpc.fuelRecords.sendReportByEmail.useMutation({
     onSuccess: (data: any) => {
       toast.success(`Relatório enviado para ${data.email} com sucesso!`);
       setIsEmailDialogOpen(false);
@@ -575,7 +579,22 @@ export default function EmployeeAbastecimentos() {
             )}
           </div>
         </div>
-        {!fuelRecords || fuelRecords.length === 0 ? (
+        {fuelRecordsError ? (
+          <Card>
+            <CardContent className="py-8 flex flex-col items-center gap-3 text-center">
+              <p className="text-sm text-destructive">Não foi possível carregar os registros de abastecimento.</p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Tentar novamente
+              </Button>
+            </CardContent>
+          </Card>
+        ) : fuelRecordsLoading ? (
+          <Card>
+            <CardContent className="py-8 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ) : !fuelRecords || fuelRecords.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
               Nenhum registro de abastecimento encontrado

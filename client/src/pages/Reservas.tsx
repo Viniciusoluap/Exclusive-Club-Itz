@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { WeatherWidget } from "@/components/WeatherWidget";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -69,11 +70,10 @@ export default function Reservas() {
   const utils = trpc.useUtils();
 
   // Buscar quotas do usuário
-  const trpcAny = trpc as any;
-  const { data: myQuotas } = trpcAny.bookings?.myQuotas.useQuery() || { data: [] };
+  const { data: myQuotas, error: myQuotasError, refetch: refetchMyQuotas } = trpc.bookings.myQuotas.useQuery();
 
   // Buscar todas as embarcações
-  const { data: allVessels } = trpc.vessels.list.useQuery();
+  const { data: allVessels, error: allVesselsError, refetch: refetchAllVessels } = trpc.vessels.list.useQuery();
 
   // Filtrar apenas embarcações que o usuário possui quota
   const userVessels = useMemo(() => {
@@ -94,19 +94,19 @@ export default function Reservas() {
     return date.getTime();
   }, [currentMonth]);
 
-  const { data: bookings, refetch } = trpc.bookings.getByDateRange.useQuery({
+  const { data: bookings, error: bookingsError, refetch } = trpc.bookings.getByDateRange.useQuery({
     startDate: startOfMonth,
     endDate: endOfMonth,
   });
 
   // Buscar minhas reservas ativas
-  const { data: myActiveBookings } = trpcAny.bookings?.myBookings.useQuery() || { data: [] };
+  const { data: myActiveBookings, error: myActiveBookingsError, refetch: refetchMyActiveBookings } = trpc.bookings.myBookings.useQuery();
 
   // Fetch maintenances
-  const { data: monthMaintenances } = trpcAny.maintenances?.getActive.useQuery({
+  const { data: monthMaintenances, error: monthMaintenancesError, refetch: refetchMonthMaintenances } = trpc.maintenances.getActive.useQuery({
     startDate: startOfMonth,
     endDate: endOfMonth,
-  }) || { data: [] };
+  });
 
   // Create booking mutation
   const createBooking = trpc.bookings.create.useMutation({
@@ -319,6 +319,27 @@ export default function Reservas() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 space-y-8">
+        {(myQuotasError || allVesselsError || bookingsError || myActiveBookingsError || monthMaintenancesError) && (
+          <Alert variant="destructive">
+            <AlertDescription className="flex items-center justify-between gap-4">
+              <span>Não foi possível carregar todos os dados desta página. Algumas informações podem estar incompletas.</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  refetchMyQuotas();
+                  refetchAllVessels();
+                  refetch();
+                  refetchMyActiveBookings();
+                  refetchMonthMaintenances();
+                }}
+              >
+                Tentar novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Minhas Reservas Ativas */}
         <Card>
           <CardHeader>

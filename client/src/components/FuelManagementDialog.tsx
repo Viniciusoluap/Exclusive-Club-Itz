@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Plus, Trash2, Fuel, TrendingUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -23,28 +24,42 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
   const [purchaseNotes, setPurchaseNotes] = useState("");
   const [selectedGallon, setSelectedGallon] = useState<string>("1");
 
-  const trpcAny = trpc as any;
   const utils = trpc.useUtils();
-  
+
   // Buscar dados do orçamento e compras
-  const { data: budget, refetch: refetchBudget } = trpcAny.fuelBudget?.get.useQuery({ monthYear }) || { data: null };
-  const { data: purchases, refetch: refetchPurchases } = trpcAny.fuelPurchases?.list.useQuery({ monthYear }) || { data: [] };
-  const { data: gallonStock, refetch: refetchGallonStock } = trpcAny.fuelPurchases?.getGallonStock.useQuery() || { data: [] };
-  
+  const { data: budget, refetch: refetchBudget } = trpc.fuelBudget.get.useQuery({ monthYear });
+  const {
+    data: purchases,
+    isLoading: purchasesLoading,
+    error: purchasesError,
+    refetch: refetchPurchases,
+  } = trpc.fuelPurchases.list.useQuery({ monthYear });
+  const {
+    data: gallonStock,
+    isLoading: gallonStockLoading,
+    error: gallonStockError,
+    refetch: refetchGallonStock,
+  } = trpc.fuelPurchases.getGallonStock.useQuery();
+
   // NOVO: Buscar estoque com herança do mês anterior
-  const { data: stockWithInheritance, refetch: refetchStockInheritance } = trpcAny.fuelBudget?.getCurrentStock.useQuery({ monthYear }) || { data: null };
-  
+  const { data: stockWithInheritance, refetch: refetchStockInheritance } = trpc.fuelBudget.getCurrentStock.useQuery({ monthYear });
+
   // NOVO: Buscar saldo com herança do mês anterior
-  const { data: balanceWithInheritance, refetch: refetchBalanceInheritance } = trpcAny.fuelBudget?.getCurrentBalance.useQuery({ monthYear }) || { data: null };
+  const { data: balanceWithInheritance, refetch: refetchBalanceInheritance } = trpc.fuelBudget.getCurrentBalance.useQuery({ monthYear });
 
   // NOVO: Buscar apenas compras do mês (SEM herança) para exibir no card
-  const { data: monthPurchases, refetch: refetchMonthPurchases } = trpcAny.fuelBudget?.getMonthPurchases.useQuery({ monthYear }) || { data: null };
+  const {
+    data: monthPurchases,
+    isLoading: monthPurchasesLoading,
+    error: monthPurchasesError,
+    refetch: refetchMonthPurchases,
+  } = trpc.fuelBudget.getMonthPurchases.useQuery({ monthYear });
 
   // useEffect removido - orçamento agora é calculado automaticamente
 
   // Mutations (setBudgetMutation removido - orçamento agora é calculado automaticamente)
 
-  const createPurchaseMutation = trpcAny.fuelPurchases?.create.useMutation({
+  const createPurchaseMutation = trpc.fuelPurchases.create.useMutation({
     onSuccess: (data: any) => {
       toast.success(`Compra de gasolina registrada no Galão ${data.gallonNumber} com sucesso!`);
       setPurchaseLiters("");
@@ -62,7 +77,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
     },
   });
 
-  const deletePurchaseMutation = trpcAny.fuelPurchases?.delete.useMutation({
+  const deletePurchaseMutation = trpc.fuelPurchases.delete.useMutation({
     onSuccess: () => {
       toast.success('Compra excluída com sucesso!');
       refetchBudget();
@@ -139,6 +154,28 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0">
+              {(gallonStockError || monthPurchasesError) ? (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="flex items-center justify-between gap-4">
+                    <span>Não foi possível carregar o estoque de combustível.</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        refetchGallonStock();
+                        refetchMonthPurchases();
+                      }}
+                    >
+                      Tentar novamente
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : (gallonStockLoading || monthPurchasesLoading) ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Galões 1, 2 e 3 - USANDO APENAS COMPRAS DO MÊS */}
                 {[1, 2, 3].map((gallonNum) => {
@@ -174,6 +211,7 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
                   <p className="text-xs text-muted-foreground">Soma dos 3 galões</p>
                 </div>
               </div>
+              )}
             </CardContent>
           </Card>
 
@@ -273,7 +311,21 @@ export default function FuelManagementDialog({ open, onOpenChange, monthYear }: 
               <CardDescription>Últimas compras de gasolina registradas</CardDescription>
             </CardHeader>
             <CardContent>
-              {!purchases || purchases.length === 0 ? (
+              {purchasesError ? (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="flex items-center justify-between gap-4">
+                    <span>Não foi possível carregar o histórico de compras.</span>
+                    <Button variant="outline" size="sm" onClick={() => refetchPurchases()}>
+                      Tentar novamente
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : purchasesLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : !purchases || purchases.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   Nenhuma compra registrada neste mês
                 </p>
