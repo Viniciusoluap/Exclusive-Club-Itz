@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import axios from 'axios';
+import { assertSafeExternalUrl } from './urlSafety';
 
 export async function generateInspectionsReportPDF(inspections: any[]): Promise<Buffer> {
   const doc = new jsPDF();
@@ -117,6 +118,7 @@ export async function generateInspectionsReportPDF(inspections: any[]): Promise<
           if (photo && photo.photoUrl) {
             try {
               // Download da imagem
+              assertSafeExternalUrl(photo.photoUrl);
               const response = await axios.get(photo.photoUrl, { responseType: 'arraybuffer' });
               const imageBuffer = Buffer.from(response.data);
               const base64Image = imageBuffer.toString('base64');
