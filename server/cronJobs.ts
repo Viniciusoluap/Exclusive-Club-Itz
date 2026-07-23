@@ -13,6 +13,7 @@ import { listAllAsaasCharges } from "./_core/asaasService";
 import { bpoCharges } from "../drizzle/schema";
 import { normalizeBpoStatus, autoClassifyCharge } from "./routers/bpoRouter";
 import { eq, sql, and } from "drizzle-orm";
+import { notifyOwner } from "./_core/notification";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: auto-classificar despesa por palavras-chave
@@ -184,6 +185,13 @@ async function runSyncIncrementalBPO(): Promise<void> {
     console.log(`[CronJob syncIncremental] Concluído: ${updated} atualizadas, ${inserted} inseridas, ${errors} erros`);
   } catch (err) {
     console.error("[CronJob syncIncremental] Erro:", err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    await notifyOwner({
+      title: "Falha no cron syncIncremental BPO",
+      content:
+        `A sincronização automática de cobranças com o Asaas (roda a cada 4h) falhou. ` +
+        `Cobranças recentes podem estar desatualizadas até a próxima execução.\n\nErro: ${errorMessage}`,
+    }).catch((notifyErr) => console.error("[CronJob syncIncremental] Falha ao notificar owner:", notifyErr));
   }
 }
 
@@ -397,6 +405,13 @@ export async function runSyncExpenses(): Promise<void> {
     console.log(`[CronJob syncExpenses] Concluído: ${imported} importadas, ${skipped} já existiam`);
   } catch (err) {
     console.error("[CronJob syncExpenses] Erro:", err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    await notifyOwner({
+      title: "Falha no cron syncExpenses",
+      content:
+        `A importação diária de despesas (transferências, taxas e saques do Asaas, roda às 07:00) falhou. ` +
+        `Despesas recentes podem não ter sido importadas para expense_records.\n\nErro: ${errorMessage}`,
+    }).catch((notifyErr) => console.error("[CronJob syncExpenses] Falha ao notificar owner:", notifyErr));
   }
 }
 
