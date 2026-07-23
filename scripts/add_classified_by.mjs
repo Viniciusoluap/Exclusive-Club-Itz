@@ -1,4 +1,7 @@
 import mysql from 'mysql2/promise';
+import { confirmDestructive } from './_confirmDestructive.mjs';
+
+await confirmDestructive('add_classified_by.mjs (ALTER TABLE bpo_charges)');
 
 const conn = await mysql.createConnection(process.env.DATABASE_URL);
 
