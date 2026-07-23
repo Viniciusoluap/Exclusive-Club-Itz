@@ -4,6 +4,7 @@
  */
 import mysql from 'mysql2/promise';
 import crypto from 'crypto';
+import { confirmDestructive } from './_confirmDestructive.mjs';
 
 const DB_URL = process.env.DATABASE_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -12,6 +13,8 @@ if (!DB_URL || !JWT_SECRET) {
   console.error('DATABASE_URL ou JWT_SECRET não encontrados');
   process.exit(1);
 }
+
+await confirmDestructive('run_reimport.mjs (DELETE FROM bpo_charges + reimport)');
 
 const conn = await mysql.createConnection(DB_URL);
 
