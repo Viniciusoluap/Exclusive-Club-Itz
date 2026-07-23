@@ -1,5 +1,8 @@
 import { drizzle } from "drizzle-orm/mysql2";
-import { vessels } from "./drizzle/schema.ts";
+import { vessels } from "../drizzle/schema.ts";
+import { confirmDestructive } from "./_confirmDestructive.mjs";
+
+await confirmDestructive("seed-vessels.mjs (apaga TODAS as embarcações e reinsere)");
 
 const db = drizzle(process.env.DATABASE_URL);
 

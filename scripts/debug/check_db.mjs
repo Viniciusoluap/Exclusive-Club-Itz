@@ -1,4 +1,4 @@
-import { getDb } from './server/db.js';
+import { getDb } from '../../server/db.js';
 
 const db = await getDb();
 if (!db) { console.log('DB not available'); process.exit(1); }

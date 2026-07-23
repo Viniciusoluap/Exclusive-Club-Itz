@@ -1,6 +1,9 @@
 import { drizzle } from "drizzle-orm/mysql2";
-import { allowedClients, clientQuotas, vessels } from "./drizzle/schema.js";
+import { allowedClients, clientQuotas, vessels } from "../drizzle/schema.js";
 import { eq } from "drizzle-orm";
+import { confirmDestructive } from "./_confirmDestructive.mjs";
+
+await confirmDestructive("seed-clients.mjs (insere/atualiza clientes e cotas)");
 
 const db = drizzle(process.env.DATABASE_URL);
 

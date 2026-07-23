@@ -1,4 +1,4 @@
-import { getSetting } from './server/systemSettings';
+import { getSetting } from '../../server/systemSettings';
 
 async function main() {
   const keyFromDb = await getSetting('asaas_api_key');
