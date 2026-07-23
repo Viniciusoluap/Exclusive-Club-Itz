@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import axios from 'axios';
+import { assertSafeExternalUrl } from './urlSafety';
 
 interface FuelRecordData {
   id: number;
@@ -213,12 +214,14 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
           
           if (record.photoBeforeUrl) {
             console.log(`[PDF] Baixando foto ANTES...`);
+            assertSafeExternalUrl(record.photoBeforeUrl);
             const beforeResponse = await axios.get(record.photoBeforeUrl, { responseType: 'arraybuffer', timeout: 10000 });
             beforeBuffer = Buffer.from(beforeResponse.data);
             console.log(`[PDF] ✅ Foto ANTES baixada: ${beforeBuffer.length} bytes`);
           }
           if (record.photoAfterUrl) {
             console.log(`[PDF] Baixando foto DEPOIS...`);
+            assertSafeExternalUrl(record.photoAfterUrl);
             const afterResponse = await axios.get(record.photoAfterUrl, { responseType: 'arraybuffer', timeout: 10000 });
             afterBuffer = Buffer.from(afterResponse.data);
             console.log(`[PDF] ✅ Foto DEPOIS baixada: ${afterBuffer.length} bytes`);

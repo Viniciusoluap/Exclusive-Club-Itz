@@ -3,6 +3,7 @@ import axios from "axios";
 import path from "path";
 import fs from "fs";
 import { pdf } from "pdf-to-img";
+import { assertSafeExternalUrl } from "./urlSafety";
 
 interface ClientData {
   name: string;
@@ -151,6 +152,7 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
         doc.moveDown(1);
 
         try {
+          assertSafeExternalUrl(client.documentUrl);
           const documentResponse = await axios.get(client.documentUrl, {
             responseType: "arraybuffer",
             timeout: 10000,
@@ -197,6 +199,7 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
         doc.moveDown(1);
 
         try {
+          assertSafeExternalUrl(client.contractUrl);
           const contractResponse = await axios.get(client.contractUrl, {
             responseType: "arraybuffer",
             timeout: 10000,
@@ -243,6 +246,7 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
         doc.moveDown(1);
 
         try {
+          assertSafeExternalUrl(client.contract2Url);
           const contract2Response = await axios.get(client.contract2Url, {
             responseType: "arraybuffer",
             timeout: 10000,
