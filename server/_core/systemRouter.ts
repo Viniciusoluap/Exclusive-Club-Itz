@@ -1,8 +1,17 @@
 import { z } from "zod";
 import { notifyOwner } from "./notification";
 import { adminProcedure, publicProcedure, router } from "./trpc";
+import { collectDiagnostics } from "./diagnostics";
 
 export const systemRouter = router({
+  /**
+   * Diagnóstico de ambiente (admin). Responde qual versão do código está no ar
+   * e quais variáveis de ambiente o processo realmente enxerga.
+   *
+   * Nunca devolve o valor de um segredo — apenas presença e tamanho.
+   */
+  diagnostics: adminProcedure.query(async () => collectDiagnostics()),
+
   health: publicProcedure
     .input(
       z.object({

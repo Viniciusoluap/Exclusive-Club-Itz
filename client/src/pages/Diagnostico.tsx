@@ -1,0 +1,157 @@
+import { trpc } from "@/lib/trpc";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, ArrowLeft, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { useLocation } from "wouter";
+
+function StatusIcon({ ok }: { ok: boolean }) {
+  return ok ? (
+    <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
+  ) : (
+    <XCircle className="h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />
+  );
+}
+
+export default function Diagnostico() {
+  const [, setLocation] = useLocation();
+  const { data, isLoading, isError, error, refetch, isFetching } =
+    trpc.system.diagnostics.useQuery(undefined, { refetchOnWindowFocus: false });
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-4 p-4">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/admin")}>
+          <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" />
+          Voltar
+        </Button>
+        <h1 className="text-xl font-bold">Diagnóstico do Sistema</h1>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        Mostra o que o servidor <strong>realmente</strong> está executando. Nenhum
+        valor de senha ou chave é exibido — apenas se existe e o tamanho.
+      </p>
+
+      {isLoading && (
+        <div className="flex items-center gap-2 p-6 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+          Consultando o servidor…
+        </div>
+      )}
+
+      {isError && (
+        <Card className="border-red-300">
+          <CardHeader>
+            <CardTitle className="text-red-700">Não foi possível consultar</CardTitle>
+            <CardDescription>{error?.message}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => refetch()}>Tentar novamente</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {data && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Versão em execução</CardTitle>
+              <CardDescription>
+                Se o marcador abaixo não for o esperado, o deploy não levou o código
+                novo — e não adianta procurar o defeito no código.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-muted-foreground">Marcador de build:</span>
+                <Badge variant="outline" className="font-mono text-sm">
+                  {data.buildMarker}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Servidor iniciado em: </span>
+                {new Date(data.processStartedAt).toLocaleString("pt-BR", {
+                  timeZone: "America/Sao_Paulo",
+                })}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Hora do servidor: </span>
+                {new Date(data.serverTime).toLocaleString("pt-BR", {
+                  timeZone: "America/Sao_Paulo",
+                })}
+              </div>
+              <div>
+                <span className="text-muted-foreground">NODE_ENV: </span>
+                <span className="font-mono">{data.nodeEnv}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Variáveis de ambiente{" "}
+                {data.missingCount > 0 && (
+                  <Badge variant="destructive" className="ml-1">
+                    {data.missingCount} faltando
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                O que o processo do servidor enxerga neste momento.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {data.envVars.map((v) => (
+                <div key={v.name} className="flex items-center gap-2 text-sm">
+                  <StatusIcon ok={v.present} />
+                  <span className="font-mono">{v.name}</span>
+                  <span className="text-muted-foreground">
+                    {v.present ? `presente (${v.length} caracteres)` : "AUSENTE"}
+                  </span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <StatusIcon ok={data.smtp.ok} />
+                Envio de e-mail (SMTP)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="break-words text-sm text-muted-foreground">
+                {data.smtp.detail}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <StatusIcon ok={data.backup.ok} />
+                Backup — chave de criptografia
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="break-words text-sm text-muted-foreground">
+                {data.backup.reason}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Button onClick={() => refetch()} disabled={isFetching} variant="outline">
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
+            Atualizar
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
