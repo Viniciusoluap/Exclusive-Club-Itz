@@ -25,17 +25,7 @@ import cron from "node-cron";
 import { getDb } from "../db";
 import { sql } from "drizzle-orm";
 import { notifyOwner } from "../_core/notification";
-
-function todayInSaoPaulo(): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}`;
-}
+import { todayInSaoPaulo } from "../_core/dateBR";
 
 export async function runUpdateOverdueStatus(): Promise<{
   inspectionCharges: number;
