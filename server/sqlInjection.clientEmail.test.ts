@@ -17,7 +17,7 @@
 import { describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -93,12 +93,29 @@ describe("SQLi 2ª ordem via client_email — parametrização (DB-02/DB-16)", (
   });
 });
 
-describe("Regressão: server/routers.ts sem interpolação de email em SQL", () => {
-  const routersPath = path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "routers.ts",
-  );
-  const source = readFileSync(routersPath, "utf8");
+describe("Regressão: routers sem interpolação de email em SQL", () => {
+  const serverDir = path.dirname(fileURLToPath(import.meta.url));
+
+  /**
+   * Varre server/routers.ts E todos os routers extraídos em server/routers/.
+   *
+   * A decomposição de routers.ts (Story 40 / SYS-03) move handlers para arquivos
+   * dedicados. Se este guard olhasse só para routers.ts, cada extração encolheria
+   * silenciosamente a cobertura: o código movido deixaria de ser verificado
+   * justamente por ter mudado de arquivo. Varrer o diretório inteiro mantém a
+   * garantia sobre toda a superfície de routers, inclusive os que já haviam sido
+   * extraídos antes desta story (bpoRouter, expensesRouter, etc.).
+   */
+  const routerFiles = [
+    path.join(serverDir, "routers.ts"),
+    ...readdirSync(path.join(serverDir, "routers"))
+      .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
+      .sort()
+      .map((f) => path.join(serverDir, "routers", f)),
+  ];
+  const source = routerFiles
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
 
   const FORBIDDEN: Array<[string, RegExp]> = [
     ["client_email = '${...}'", /client_email\s*=\s*'\$\{/],
