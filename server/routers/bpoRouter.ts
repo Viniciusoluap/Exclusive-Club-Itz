@@ -11,6 +11,7 @@ import { getDb } from "../db";
 import { bpoCharges, allowedClients as acTable, vessels as vesselsTable, clientQuotas } from "../../drizzle/schema";
 import { eq, sql, and, gte, lte, inArray, desc } from "drizzle-orm";
 import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers, createPixCharge, getOrCreateAsaasCustomer, cancelCharge, receiveInCash, getPixQrCode } from "../_core/asaasService";
+import { todayInSaoPaulo } from "../_core/dateBR";
 // ============================================================
 // Helper: normalizar status do Asaas para enum bpo_charges
 // ============================================================
@@ -115,65 +116,23 @@ async function executeSplitPayment(input: {
     }
 
     const charge = rows[0];
-    const chargeValue = parseFloat(String(charge.value));
-    const currentAmountPaid = parseFloat(String(charge.amountPaid || '0'));
-    const newAmountPaid = currentAmountPaid + split.amount;
 
-    let paymentLinks: string[] = [];
-    try { paymentLinks = charge.paymentLinks ? JSON.parse(charge.paymentLinks) : []; } catch { paymentLinks = []; }
-    if (input.asaasChargeId && !paymentLinks.includes(input.asaasChargeId)) {
-      paymentLinks.push(input.asaasChargeId);
-    }
-
-    const isPaid = newAmountPaid >= chargeValue - 0.01;
-    const newStatus = isPaid ? "receivedInCash" : "partiallyPaid";
-    const remaining = Math.max(0, chargeValue - newAmountPaid);
-    const paidDateVal: string | undefined = isPaid ? paymentDate : undefined;
-
-    await db.update(bpoCharges)
-      .set({
-        status: newStatus,
-        amountPaid: newAmountPaid.toFixed(2),
-        paymentLinks: JSON.stringify(paymentLinks),
-        paidDate: paidDateVal,
-        classifiedBy: 'manual',
-      })
-      .where(eq(bpoCharges.id, split.chargeId));
-
-    // Sincronizar status de volta para inspection_charges / fuel_records
-    if (charge.asaasChargeId) {
-      await syncStatusToSources(db, charge.asaasChargeId, newStatus);
-    }
-
-    // Criar/atualizar saldo devedor automático
-    const chargeRef = String(charge.externalReference || '');
-    if (newStatus === 'partiallyPaid' && !chargeRef.startsWith('saldo-')) {
-      await createOrUpdateRemainderCharge(db, {
-        id: split.chargeId,
-        value: chargeValue,
-        amountPaid: newAmountPaid,
-        dueDate: String(charge.dueDate || ''),
-        type: String(charge.type || 'other'),
-        clientId: charge.clientId ?? null,
-        clientName: charge.clientName ?? null,
-        clientEmail: charge.clientEmail ?? null,
-        description: charge.description ?? null,
-        asaasCustomerId: charge.asaasCustomerId ?? null,
-      });
-    } else if (newStatus === 'receivedInCash' && !chargeRef.startsWith('saldo-')) {
-      await createOrUpdateRemainderCharge(db, {
-        id: split.chargeId, value: chargeValue, amountPaid: chargeValue,
-        dueDate: String(charge.dueDate || ''), type: '', clientId: null,
-        clientName: null, clientEmail: null, description: null, asaasCustomerId: null,
-      });
-    }
+    // Split parcial segue a mesma regra da baixa manual: liquida pelo valor
+    // recebido e joga o restante num saldo devedor com vencimento hoje.
+    const { isFullyPaid, settledValue, remaining } = await applyPaymentToCharge(
+      db,
+      charge,
+      split.amount,
+      paymentDate,
+      input.asaasChargeId,
+    );
 
     results.push({
       chargeId: split.chargeId,
-      status: isPaid ? "paid" : "partial",
-      message: isPaid
-        ? `Quitada (R$ ${newAmountPaid.toFixed(2)})`
-        : `Parcial — Saldo: R$ ${remaining.toFixed(2)}`,
+      status: isFullyPaid ? "paid" : "partial",
+      message: isFullyPaid
+        ? `Quitada (R$ ${settledValue.toFixed(2)})`
+        : `Baixa parcial de R$ ${settledValue.toFixed(2)} — saldo devedor de R$ ${remaining.toFixed(2)} gerado`,
     });
   }
 
@@ -250,10 +209,13 @@ async function syncStatusToSources(
 export { syncStatusToSources };
 
 // ============================================================
-// Helper: cria ou atualiza saldo devedor ao registrar pagamento parcial
-// Chamado sempre que uma cobrança fica com status partiallyPaid ou
-// receivedInCash. Cobranças com externalReference 'saldo-X' são ignoradas
-// para evitar recursão infinita.
+// Helper: cria ou atualiza o saldo devedor de uma cobrança liquidada
+// parcialmente.
+//
+// REGRA DE VENCIMENTO: o saldo devedor nasce SEMPRE com vencimento na data de
+// hoje (fuso America/Sao_Paulo), nunca herdando o vencimento da cobrança
+// original. O Asaas não aceita cobrança com data retroativa, então herdar um
+// vencimento passado produziria um saldo que nunca poderia ser cobrado.
 // ============================================================
 async function createOrUpdateRemainderCharge(
   db: any,
@@ -261,7 +223,6 @@ async function createOrUpdateRemainderCharge(
     id: number;
     value: string | number;
     amountPaid: string | number;
-    dueDate: string;
     type: string;
     clientId: number | null;
     clientName: string | null;
@@ -282,9 +243,9 @@ async function createOrUpdateRemainderCharge(
     return;
   }
 
-  const today = new Date().toISOString().substring(0, 10);
-  const dueDate = originalCharge.dueDate || today;
-  const status = dueDate < today ? 'overdue' : 'pending';
+  // Vencimento = hoje. Como hoje nunca é menor que hoje, o saldo nasce
+  // 'pending' — jamais já vencido.
+  const dueDate = todayInSaoPaulo();
   const description = `Saldo devedor — ${originalCharge.description || 'Cobrança parcial'}`;
 
   const existingRaw = await db.execute(
@@ -294,14 +255,109 @@ async function createOrUpdateRemainderCharge(
 
   if (existing) {
     await db.execute(
-      sql`UPDATE bpo_charges SET value = ${remaining.toFixed(2)}, status = ${status}, due_date = ${dueDate}, amount_paid = 0.00 WHERE id = ${existing.id}`
+      sql`UPDATE bpo_charges SET value = ${remaining.toFixed(2)}, status = 'pending', due_date = ${dueDate}, amount_paid = 0.00 WHERE id = ${existing.id}`
     );
   } else {
     await db.execute(
-      sql`INSERT INTO bpo_charges (client_id, client_name, client_email, asaas_customer_id, value, due_date, status, type, classified_by, billing_type, description, external_reference, source) VALUES (${originalCharge.clientId ?? null}, ${originalCharge.clientName}, ${originalCharge.clientEmail}, ${originalCharge.asaasCustomerId}, ${remaining.toFixed(2)}, ${dueDate}, ${status}, ${originalCharge.type || 'other'}, 'manual', 'PIX', ${description}, ${ref}, 'system')`
+      sql`INSERT INTO bpo_charges (client_id, client_name, client_email, asaas_customer_id, value, due_date, status, type, classified_by, billing_type, description, external_reference, source) VALUES (${originalCharge.clientId ?? null}, ${originalCharge.clientName}, ${originalCharge.clientEmail}, ${originalCharge.asaasCustomerId}, ${remaining.toFixed(2)}, ${dueDate}, 'pending', ${originalCharge.type || 'other'}, 'manual', 'PIX', ${description}, ${ref}, 'system')`
     );
   }
 }
+
+// ============================================================
+// Helper: aplica um pagamento (total ou parcial) a uma cobrança do BPO.
+//
+// REGRA DE NEGÓCIO (definida pelo dono do sistema):
+// Pagamento parcial NÃO deixa a cobrança pendurada num estado "partiallyPaid".
+// A cobrança recebe BAIXA pelo valor REALMENTE recebido, com a data REAL do
+// pagamento, e o restante vira um SALDO DEVEDOR separado no mesmo centro de
+// custo (mesmo `type`, mesmo cliente), com vencimento hoje.
+//
+// Por que isso importa: enquanto a cobrança ficava 'partiallyPaid', ela somava
+// o valor ORIGINAL em "Total Cobrado" e ao mesmo tempo o saldo devedor somava
+// o restante — inflando o faturamento — e o valor efetivamente recebido não
+// entrava em "Recebido", porque as queries de totais só olhavam os status
+// 'received'/'confirmed'/'receivedInCash'. Liquidando pelo valor real, as três
+// contas fecham: Total Cobrado = Recebido + Saldo devedor.
+//
+// Os três caminhos que registram pagamento (split de PIX, classificação
+// automática de PIX e baixa manual) passam por aqui, para que não voltem a
+// divergir entre si.
+// ============================================================
+type PayableCharge = {
+  id: number;
+  value: string | number;
+  amountPaid?: string | number | null;
+  type?: string | null;
+  clientId?: number | null;
+  clientName?: string | null;
+  clientEmail?: string | null;
+  description?: string | null;
+  asaasCustomerId?: string | null;
+  asaasChargeId?: string | null;
+  externalReference?: string | null;
+  paymentLinks?: string | null;
+};
+
+async function applyPaymentToCharge(
+  db: any,
+  charge: PayableCharge,
+  paymentAmount: number,
+  paymentDate: string,
+  extraAsaasChargeId?: string,
+): Promise<{ isFullyPaid: boolean; settledValue: number; remaining: number }> {
+  const originalValue = parseFloat(String(charge.value));
+  const previousPaid = parseFloat(String(charge.amountPaid ?? '0'));
+  const newAmountPaid = previousPaid + paymentAmount;
+  const isFullyPaid = newAmountPaid >= originalValue - 0.01; // tolerância de 1 centavo
+  const remaining = Math.max(0, originalValue - newAmountPaid);
+
+  let paymentLinks: string[] = [];
+  try { paymentLinks = charge.paymentLinks ? JSON.parse(charge.paymentLinks) : []; } catch { paymentLinks = []; }
+  if (extraAsaasChargeId && !paymentLinks.includes(extraAsaasChargeId)) {
+    paymentLinks.push(extraAsaasChargeId);
+  }
+
+  // Numa baixa parcial o valor da cobrança passa a ser o que foi REALMENTE
+  // recebido; o restante vive no saldo devedor. O valor original fica
+  // registrado na descrição para auditoria.
+  const settledValue = isFullyPaid ? originalValue : newAmountPaid;
+  const description = isFullyPaid
+    ? (charge.description ?? null)
+    : `${charge.description || 'Cobrança'} [Baixa parcial — cobrança original R$ ${originalValue.toFixed(2)}]`;
+
+  await db.update(bpoCharges)
+    .set({
+      status: 'receivedInCash',
+      value: settledValue.toFixed(2),
+      amountPaid: settledValue.toFixed(2),
+      paidDate: paymentDate,
+      paymentLinks: JSON.stringify(paymentLinks),
+      description,
+      classifiedBy: 'manual',
+    })
+    .where(eq(bpoCharges.id, charge.id));
+
+  if (charge.asaasChargeId) {
+    await syncStatusToSources(db, charge.asaasChargeId, 'receivedInCash');
+  }
+
+  await createOrUpdateRemainderCharge(db, {
+    id: charge.id,
+    value: originalValue,
+    amountPaid: newAmountPaid,
+    type: String(charge.type || 'other'),
+    clientId: charge.clientId ?? null,
+    clientName: charge.clientName ?? null,
+    clientEmail: charge.clientEmail ?? null,
+    description: charge.description ?? null,
+    asaasCustomerId: charge.asaasCustomerId ?? null,
+  });
+
+  return { isFullyPaid, settledValue, remaining };
+}
+
+export { applyPaymentToCharge };
 
 export const bpoRouter = router({
 
@@ -495,11 +551,24 @@ export const bpoRouter = router({
 
       // Os cards mostram TODOS os status do conjunto filtrado
       // (não filtramos por status nos cards — o filtro de status é só para a lista)
+      // NOTA CONTÁBIL (cobranças legadas com status 'partiallyPaid'):
+      // a partir da correção da regra de pagamento parcial, uma baixa parcial
+      // liquida a cobrança pelo valor recebido e joga o restante num saldo
+      // devedor separado — 'partiallyPaid' deixou de ser gerado. Mas as linhas
+      // criadas ANTES disso ainda existem, e tratá-las com `value` inteiro
+      // contaria em dobro: o valor cheio aqui MAIS o saldo devedor que já foi
+      // criado para elas. Por isso, para essas linhas, o que conta é
+      // `amount_paid` (o que de fato entrou) — tanto no total cobrado quanto no
+      // recebido. Assim Total Cobrado = Recebido + Pendente + Vencido fecha,
+      // com dados antigos e novos.
       const [rows] = (await db.execute(sql`
         SELECT
-          COALESCE(SUM(value), 0) as totalExpected,
-          COALESCE(SUM(CASE WHEN status IN ('received','confirmed','receivedInCash') THEN value ELSE 0 END), 0) as totalPaid,
-          COUNT(CASE WHEN status IN ('received','confirmed','receivedInCash') THEN 1 END) as paidCount,
+          COALESCE(SUM(CASE WHEN status = 'partiallyPaid' THEN CAST(amount_paid AS DECIMAL(10,2)) ELSE value END), 0) as totalExpected,
+          COALESCE(SUM(CASE
+            WHEN status IN ('received','confirmed','receivedInCash') THEN value
+            WHEN status = 'partiallyPaid' THEN CAST(amount_paid AS DECIMAL(10,2))
+            ELSE 0 END), 0) as totalPaid,
+          COUNT(CASE WHEN status IN ('received','confirmed','receivedInCash','partiallyPaid') THEN 1 END) as paidCount,
           COALESCE(SUM(CASE WHEN status = 'pending' AND due_date >= CURDATE() THEN value ELSE 0 END), 0) as totalPending,
           COUNT(CASE WHEN status = 'pending' AND due_date >= CURDATE() THEN 1 END) as pendingCount,
           COALESCE(SUM(CASE WHEN status = 'overdue' OR (status = 'pending' AND due_date < CURDATE()) THEN value ELSE 0 END), 0) as totalOverdue,
@@ -1161,34 +1230,16 @@ export const bpoRouter = router({
       const targetValue = parseFloat(String(targetCharge.value));
       const targetCurrentPaid = parseFloat(String(targetCharge.amountPaid || '0'));
       const amountToApply = Math.min(pixValue, targetValue - targetCurrentPaid);
-      const newAmountPaid = targetCurrentPaid + amountToApply;
-      const isFullyPaid = newAmountPaid >= targetValue - 0.01;
-      const paymentDate = sourceCharge.paidDate || new Date().toISOString().split('T')[0];
+      const paymentDate = sourceCharge.paidDate || todayInSaoPaulo();
 
-      await db.update(bpoCharges)
-        .set({
-          status: isFullyPaid ? 'receivedInCash' : 'partiallyPaid',
-          amountPaid: newAmountPaid.toFixed(2),
-          paidDate: isFullyPaid ? paymentDate : null,
-        })
-        .where(eq(bpoCharges.id, targetCharge.id));
-
-      // Criar/atualizar saldo devedor automático
-      const chargeRef = String(targetCharge.externalReference || '');
-      if (!chargeRef.startsWith('saldo-')) {
-        await createOrUpdateRemainderCharge(db, {
-          id: targetCharge.id,
-          value: targetValue,
-          amountPaid: newAmountPaid,
-          dueDate: String(targetCharge.dueDate || ''),
-          type: String(targetCharge.type || input.type || 'other'),
-          clientId: clientId ?? null,
-          clientName: targetCharge.clientName ?? null,
-          clientEmail: targetCharge.clientEmail ?? null,
-          description: targetCharge.description ?? null,
-          asaasCustomerId: targetCharge.asaasCustomerId ?? null,
-        });
-      }
+      // Mesma regra dos demais caminhos: baixa pelo valor recebido, saldo
+      // devedor separado para o restante (ver applyPaymentToCharge).
+      const { isFullyPaid } = await applyPaymentToCharge(
+        db,
+        { ...targetCharge, clientId: clientId ?? targetCharge.clientId, type: targetCharge.type || input.type },
+        amountToApply,
+        paymentDate,
+      );
 
       // 12. CANCELAR a cobrança do PIX (origem) — já foi distribuída
       const currentDesc = sourceCharge.description || '';
@@ -2063,63 +2114,25 @@ export const bpoRouter = router({
       if (rows.length === 0) throw new Error("Cobrança não encontrada");
 
       const charge = rows[0];
-      const chargeValue = parseFloat(String(charge.value));
-      const currentAmountPaid = parseFloat(String(charge.amountPaid || '0'));
-      const newAmountPaid = currentAmountPaid + input.value;
+      const paymentDate = input.paymentDate || todayInSaoPaulo();
 
-      // Atualizar paymentLinks (JSON array de IDs Asaas vinculados)
-      let paymentLinks: string[] = [];
-      try {
-        paymentLinks = charge.paymentLinks ? JSON.parse(charge.paymentLinks) : [];
-      } catch { paymentLinks = []; }
-      if (input.asaasChargeId && !paymentLinks.includes(input.asaasChargeId)) {
-        paymentLinks.push(input.asaasChargeId);
-      }
-
-      const isPaid = newAmountPaid >= chargeValue - 0.01; // tolerância 1 centavo
-      const newStatus = isPaid ? "receivedInCash" : "partiallyPaid";
-      const paymentDate = input.paymentDate || new Date().toISOString().split('T')[0];
-      const remaining = Math.max(0, chargeValue - newAmountPaid);
-
-      await db.update(bpoCharges)
-        .set({
-          status: newStatus,
-          amountPaid: newAmountPaid.toFixed(2),
-          paymentLinks: JSON.stringify(paymentLinks),
-          ...(isPaid ? { paidDate: paymentDate } : {}),
-        })
-        .where(eq(bpoCharges.id, input.chargeId));
-
-      // Sincronizar status para inspection_charges / fuel_records
-      if (charge.asaasChargeId) {
-        await syncStatusToSources(db, charge.asaasChargeId, newStatus);
-      }
-
-      // Criar/atualizar saldo devedor automático
-      const chargeRef = String(charge.externalReference || '');
-      if (!chargeRef.startsWith('saldo-')) {
-        await createOrUpdateRemainderCharge(db, {
-          id: input.chargeId,
-          value: chargeValue,
-          amountPaid: newAmountPaid,
-          dueDate: String(charge.dueDate || ''),
-          type: String(charge.type || 'other'),
-          clientId: charge.clientId ?? null,
-          clientName: charge.clientName ?? null,
-          clientEmail: charge.clientEmail ?? null,
-          description: charge.description ?? null,
-          asaasCustomerId: charge.asaasCustomerId ?? null,
-        });
-      }
+      const originalValue = parseFloat(String(charge.value));
+      const { isFullyPaid, settledValue, remaining } = await applyPaymentToCharge(
+        db,
+        charge,
+        input.value,
+        paymentDate,
+        input.asaasChargeId,
+      );
 
       return {
         success: true,
-        isPaid,
-        newAmountPaid,
+        isPaid: isFullyPaid,
+        newAmountPaid: settledValue,
         remaining,
-        message: isPaid
-          ? `Cobrança quitada! Total recebido: R$ ${newAmountPaid.toFixed(2)}`
-          : `Pagamento parcial registrado. Recebido: R$ ${newAmountPaid.toFixed(2)} de R$ ${chargeValue.toFixed(2)}. Saldo: R$ ${remaining.toFixed(2)}`,
+        message: isFullyPaid
+          ? `Cobrança quitada! Total recebido: R$ ${settledValue.toFixed(2)}`
+          : `Baixa de R$ ${settledValue.toFixed(2)} registrada (cobrança original R$ ${originalValue.toFixed(2)}). Saldo devedor de R$ ${remaining.toFixed(2)} gerado com vencimento hoje.`,
       };
     }),
 
