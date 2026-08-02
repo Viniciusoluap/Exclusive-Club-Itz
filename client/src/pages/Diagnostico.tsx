@@ -21,7 +21,7 @@ export default function Diagnostico() {
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => setLocation("/admin")}>
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/admin/configuracoes")}>
           <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" />
           Voltar
         </Button>
