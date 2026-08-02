@@ -116,6 +116,12 @@ export default function SystemSettings() {
           >
             Backups
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/admin/diagnostico")}
+          >
+            Diagnóstico
+          </Button>
         </div>
 
         {/* Conteúdo */}
