@@ -108,7 +108,13 @@ export function decryptBackupBuffer(container: Buffer, keyMaterial: Buffer): Buf
  * Exporta banco de dados usando Node.js puro (sem mysqldump)
  */
 async function exportDatabase(): Promise<string> {
-  const dbBackupPath = path.join(BACKUP_DIR, 'database.sql');
+  // Nome único por execução: com o caminho fixo 'database.sql', dois backups
+  // simultâneos escreviam no MESMO arquivo e um apagava o do outro no meio do
+  // processo.
+  const dbBackupPath = path.join(
+    BACKUP_DIR,
+    `database-${Date.now()}-${process.pid}.sql`,
+  );
   
   console.log('💾 Exportando banco de dados...');
   
@@ -160,16 +166,28 @@ async function createBackupZip(
   return new Promise((resolve, reject) => {
     const output = fs.createWriteStream(zipPath);
     const archive = archiver('zip', { zlib: { level: 9 } });
+    let settled = false;
+    const fail = (err: Error) => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    };
 
     output.on('close', () => {
+      if (settled) return;
+      settled = true;
       const fileSizeBytes = archive.pointer();
       console.log(`✅ Backup criado: ${fileSizeBytes} bytes`);
       resolve({ zipPath, fileSizeBytes });
     });
 
-    archive.on('error', (err) => {
-      reject(err);
-    });
+    // CAUSA RAIZ dos backups eternamente "Em Execução": o erro do WriteStream
+    // não era tratado. Se a escrita do zip falhasse (diretório inexistente,
+    // sem permissão, disco cheio), esta Promise NUNCA se resolvia — nem
+    // sucesso, nem falha. O registro ficava 'running' para sempre e a tela
+    // exibia um backup que jamais terminaria.
+    output.on('error', fail);
+    archive.on('error', fail);
 
     archive.pipe(output);
 
@@ -266,11 +284,34 @@ function cleanupTempFiles(dbBackupPath: string): void {
 /**
  * Executa o backup completo
  */
+/**
+ * Trava contra execuções simultâneas.
+ *
+ * O histórico mostrava pares de backups iniciados no MESMO segundo — dois
+ * cliques, ou duas requisições concorrentes. Duas execuções ao mesmo tempo
+ * duplicam o dump completo do banco e o download de todos os anexos, competem
+ * por disco e se atropelam nos arquivos temporários. Uma por vez.
+ */
+let backupInProgress = false;
+
+export class BackupAlreadyRunningError extends Error {
+  constructor() {
+    super('Já existe um backup em andamento. Aguarde a conclusão antes de iniciar outro.');
+    this.name = 'BackupAlreadyRunningError';
+  }
+}
+
 export async function runBackup(): Promise<void> {
   const startTime = new Date();
   console.log('🚀 Iniciando backup automático...');
   console.log(`📅 Data: ${startTime.toLocaleString('pt-BR')}`);
   console.log('');
+
+  if (backupInProgress) {
+    console.warn('⚠️  Backup já em andamento — ignorando nova solicitação.');
+    throw new BackupAlreadyRunningError();
+  }
+  backupInProgress = true;
 
   let dbBackupPath = '';
   let backupId: number | null = null;
@@ -391,6 +432,8 @@ export async function runBackup(): Promise<void> {
     }
     
     throw error;
+  } finally {
+    backupInProgress = false;
   }
 }
 
