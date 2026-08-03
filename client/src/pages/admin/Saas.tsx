@@ -491,14 +491,46 @@ export default function Saas() {
     onError: (err) => toast.error(`Erro no sync: ${err.message}`),
   });
 
+  // Sincronização em LOTES. Uma única chamada varrendo todas as cobranças
+  // pendentes estourava o timeout do gateway ("Load failed"): cada cobrança é
+  // uma requisição à API do Asaas. Agora o servidor devolve quantas faltam e a
+  // tela continua chamando até zerar, mostrando o progresso.
   const syncMutation = trpc.bpo.syncIncremental.useMutation({
-    onSuccess: (data) => {
-      toast.success(`Sincronização concluída: ${data.updated} atualizadas`);
-      utils.bpo.getStats.invalidate();
-      utils.bpo.listCharges.invalidate();
-    },
     onError: (err) => toast.error(`Erro na sincronização: ${err.message}`),
   });
+
+  const handleSyncIncremental = async () => {
+    let totalUpdated = 0;
+    let totalErrors = 0;
+    const MAX_LOTES = 40; // trava de segurança contra laço infinito
+
+    try {
+      for (let lote = 0; lote < MAX_LOTES; lote++) {
+        const data = await syncMutation.mutateAsync({ limit: 15 });
+        totalUpdated += data.updated;
+        totalErrors += data.errors;
+
+        if (data.remaining === 0 || data.done) {
+          toast.success(
+            `Sincronização concluída: ${totalUpdated} atualizada(s)` +
+              (totalErrors > 0 ? `, ${totalErrors} com erro` : ''),
+          );
+          break;
+        }
+
+        toast.info(`Sincronizando… ${totalUpdated} atualizada(s), ${data.remaining} restante(s)`);
+
+        if (lote === MAX_LOTES - 1) {
+          toast.warning(
+            `Parou após ${MAX_LOTES} lotes com ${data.remaining} cobrança(s) restante(s). Clique novamente para continuar.`,
+          );
+        }
+      }
+    } finally {
+      utils.bpo.getStats.invalidate();
+      utils.bpo.listCharges.invalidate();
+    }
+  };
 
   const classifyMutation = trpc.bpo.manualClassify.useMutation({
     onSuccess: (data: any) => {
@@ -771,7 +803,7 @@ export default function Saas() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => syncMutation.mutate()}
+              onClick={() => handleSyncIncremental()}
               disabled={syncMutation.isPending}
             >
               {syncMutation.isPending
