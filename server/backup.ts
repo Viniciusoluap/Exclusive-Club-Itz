@@ -10,6 +10,7 @@ import { sendBackupFailureNotification } from './backupNotification';
 import { exportDatabaseToSQL } from './databaseBackup';
 import { eq } from 'drizzle-orm';
 import { storagePut } from './storage';
+import { collectAttachments, downloadAttachments, buildManifest } from './backupFiles';
 
 
 const execAsync = promisify(exec);
@@ -147,7 +148,10 @@ const BACKUP_SECRET_IGNORE = [
  * empacotados (antes, `archive.glob('**\/*', { cwd: process.cwd() })` empacotava
  * o repositório inteiro, incluindo `.env` e `google-drive-token.json`).
  */
-async function createBackupZip(dbBackupPath: string): Promise<{ zipPath: string; fileSizeBytes: number }> {
+async function createBackupZip(
+  dbBackupPath: string,
+  attachments: Awaited<ReturnType<typeof downloadAttachments>> | null,
+): Promise<{ zipPath: string; fileSizeBytes: number }> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const zipPath = path.join(BACKUP_DIR, `exclusive-club-backup-${timestamp}.zip`);
 
@@ -174,6 +178,20 @@ async function createBackupZip(dbBackupPath: string): Promise<{ zipPath: string;
 
     // 2. Uploads de usuário, se existirem localmente. NÃO inclui código-fonte,
     //    `.env`, tokens OAuth nem qualquer credencial (ver BACKUP_SECRET_IGNORE).
+    // 2. Anexos baixados do storage externo (fotos de abastecimento e vistoria,
+    //    documentos e contratos de clientes, comprovantes, documentos de
+    //    embarcações). Sem isso o backup guardaria só URLs — links quebrados
+    //    caso o storage se perca.
+    if (attachments) {
+      for (const file of attachments.files) {
+        archive.append(file.buffer, { name: `uploads/${file.category}/${file.name}` });
+      }
+      // Manifesto: registra explicitamente o que NÃO entrou, para o backup nunca
+      // dar a impressão de estar completo quando não está.
+      archive.append(buildManifest(attachments.report), { name: 'uploads/MANIFESTO.txt' });
+      console.log(`📎 Anexos incluídos: ${attachments.report.downloaded}/${attachments.report.total}`);
+    }
+
     const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
     if (fs.existsSync(uploadsDir) && fs.statSync(uploadsDir).isDirectory()) {
       console.log(`📁 Incluindo uploads de usuário: ${uploadsDir}`);
@@ -277,8 +295,22 @@ export async function runBackup(): Promise<void> {
     // 1. Exporta banco de dados
     dbBackupPath = await exportDatabase();
 
-    // 2. Cria arquivo ZIP (somente dados de negócio)
-    const { zipPath } = await createBackupZip(dbBackupPath);
+    // 2. Baixa os anexos referenciados no banco (fotos, contratos, documentos).
+    //    Falha de um arquivo não derruba o backup: fica registrada no manifesto.
+    let attachments: Awaited<ReturnType<typeof downloadAttachments>> | null = null;
+    if (db) {
+      try {
+        console.log('📎 Coletando anexos referenciados no banco...');
+        const items = await collectAttachments(db);
+        console.log(`📎 ${items.length} anexo(s) encontrado(s). Baixando...`);
+        attachments = await downloadAttachments(items);
+      } catch (attachErr) {
+        console.error('[Backup] Falha ao coletar anexos:', attachErr);
+      }
+    }
+
+    // 3. Cria arquivo ZIP (dados de negócio + anexos)
+    const { zipPath } = await createBackupZip(dbBackupPath, attachments);
 
     // 3. Remove arquivo SQL temporário
     cleanupTempFiles(dbBackupPath);
