@@ -8,8 +8,50 @@ import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 import { eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
+import { toIsoUtc } from '../_core/dateBR';
 
 const execAsync = promisify(exec);
+
+/**
+ * Normaliza as datas de um registro de backup para ISO-8601 UTC explícito.
+ * Sem isso, o front recebe "2026-08-03 01:13:46" (sem fuso) e o navegador
+ * interpreta como horário local, exibindo o backup como se fosse no futuro.
+ */
+function withNormalizedDates<T extends { startedAt?: any; completedAt?: any }>(row: T): T {
+  return {
+    ...row,
+    startedAt: toIsoUtc(row.startedAt),
+    completedAt: toIsoUtc(row.completedAt),
+  };
+}
+
+/** Minutos após os quais um backup "running" é considerado travado. */
+const STALE_RUNNING_MINUTES = 30;
+
+/**
+ * Marca como falha os backups presos em "running".
+ *
+ * `runNow` dispara runBackup() sem aguardar (fire-and-forget) para não estourar
+ * o timeout do gateway. Em hospedagem autoscale, quando a requisição HTTP
+ * termina a instância pode ser suspensa e o trabalho de fundo morre no meio —
+ * deixando a linha em "running" para sempre. A tela então mostrava backups
+ * eternamente "Em Execução" e uma taxa de sucesso enganosa.
+ */
+async function failStaleRunningBackups(db: any): Promise<void> {
+  try {
+    await db.execute(sql`
+      UPDATE backup_history
+      SET status = 'failed',
+          completed_at = NOW(),
+          error_message = COALESCE(error_message, 'Backup interrompido: o processo foi encerrado antes de concluir (execução em segundo plano não sobreviveu ao ciclo de vida da instância).')
+      WHERE status = 'running'
+        AND started_at < DATE_SUB(NOW(), INTERVAL ${STALE_RUNNING_MINUTES} MINUTE)
+    `);
+  } catch (e: any) {
+    console.warn('[backup] Falha ao marcar backups travados:', e?.message);
+  }
+}
 
 export const backupRouter = router({
   /**
@@ -27,13 +69,15 @@ export const backupRouter = router({
 
       const limit = input?.limit || 50;
 
+      await failStaleRunningBackups(db);
+
       const history = await db
         .select()
         .from(backupHistory)
         .orderBy(desc(backupHistory.startedAt))
         .limit(limit);
 
-      return history;
+      return history.map(withNormalizedDates);
     }),
 
   /**
@@ -44,6 +88,8 @@ export const backupRouter = router({
     if (!db) {
       throw new Error('Database not available');
     }
+
+    await failStaleRunningBackups(db);
 
     const allBackups = await db.select().from(backupHistory);
 
@@ -73,7 +119,7 @@ export const backupRouter = router({
       successfulBackups,
       failedBackups,
       runningBackups,
-      lastBackup,
+      lastBackup: lastBackup ? withNormalizedDates(lastBackup) : null,
       totalSizeBytes,
       avgDurationSeconds: Math.round(avgDurationSeconds),
       successRate: totalBackups > 0 ? Math.round((successfulBackups / totalBackups) * 100) : 0,
@@ -95,7 +141,7 @@ export const backupRouter = router({
       .orderBy(desc(backupHistory.startedAt))
       .limit(1);
 
-    return latest.length > 0 ? latest[0] : null;
+    return latest.length > 0 ? withNormalizedDates(latest[0]) : null;
   }),
 
   /**
