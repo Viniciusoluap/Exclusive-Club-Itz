@@ -148,10 +148,28 @@ export const backupRouter = router({
    * Executa backup manualmente (fire-and-forget para evitar timeout de gateway)
    */
   runNow: adminProcedure.mutation(async () => {
-    // Importa a função de backup
+    const db = await getDb();
+    if (db) {
+      // Não deixa empilhar: com anexos, cada execução baixa todos os arquivos
+      // do storage. Duas ao mesmo tempo dobram o custo e se atropelam.
+      await failStaleRunningBackups(db);
+      const runningRaw = (await db.execute(
+        sql`SELECT COUNT(*) AS total FROM backup_history WHERE status = 'running'`
+      )) as any;
+      const runningRow = (Array.isArray(runningRaw[0]) ? runningRaw[0] : runningRaw)[0];
+      if (Number(runningRow?.total ?? 0) > 0) {
+        return {
+          success: false,
+          message: 'Já existe um backup em andamento. Aguarde a conclusão antes de iniciar outro.',
+        };
+      }
+    }
+
     const { runBackup } = await import('../backup');
 
-    // Dispara o backup em background sem aguardar — evita timeout do gateway
+    // Dispara em background para não estourar o timeout do gateway. Falhas são
+    // registradas no histórico pelo próprio runBackup; o que ficar preso é
+    // marcado como falha por failStaleRunningBackups.
     runBackup().catch((error: any) => {
       console.error('[Backup Manual] Erro durante execução em background:', error);
     });
