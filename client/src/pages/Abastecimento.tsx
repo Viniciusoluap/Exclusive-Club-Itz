@@ -197,7 +197,18 @@ export default function Abastecimento() {
 
   const syncAllPendingMutation = trpc.fuelRecords.syncAllPending.useMutation({
     onSuccess: (data: any) => {
-      toast.success(`Sincronização concluída! ${data.successCount} sucesso(s), ${data.failCount} falha(s)`);
+      // Este botão CRIA cobranças no Asaas para abastecimentos que ainda não
+      // têm nenhuma. Quando não há o que criar, "0 sucessos, 0 falhas" parecia
+      // falha silenciosa — a mensagem agora diz o que realmente aconteceu.
+      if (data.successCount === 0 && data.failCount === 0) {
+        toast.info(
+          'Nenhum abastecimento pendente de cobrança. Todos já possuem cobrança no Asaas. ' +
+            'Para atualizar o status de pagamento, use "Sincronizar com Asaas" no BPO Financeiro.',
+          { duration: 8000 },
+        );
+      } else {
+        toast.success(`Sincronização concluída! ${data.successCount} sucesso(s), ${data.failCount} falha(s)`);
+      }
       if (data.errors && data.errors.length > 0) {
         console.error('[Sync Errors]', data.errors);
       }

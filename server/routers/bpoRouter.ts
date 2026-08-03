@@ -760,19 +760,36 @@ export const bpoRouter = router({
   // ============================================================
   // SINCRONIZAÇÃO INCREMENTAL — atualiza cobranças pendentes/vencidas
   // ============================================================
-  syncIncremental: adminProcedure.mutation(async () => {
+  // ============================================================
+  // SINCRONIZAÇÃO INCREMENTAL — em LOTES.
+  //
+  // Antes processava até 200 cobranças numa única requisição, cada uma com uma
+  // chamada à API do Asaas mais 100ms de espera. Com ~200 cobranças isso passa
+  // de um minuto e o gateway derruba a requisição — era a origem do
+  // "Erro na sincronização: Load failed" na tela.
+  //
+  // Agora processa um lote pequeno por chamada e informa quantas ainda faltam,
+  // para a tela repetir até zerar. Cada chamada termina rápido.
+  // ============================================================
+  syncIncremental: adminProcedure
+    .input(z.object({ limit: z.number().min(1).max(50).default(15) }).optional())
+    .mutation(async ({ input }) => {
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const report = { checked: 0, updated: 0, errors: 0 };
+    const batchSize = input?.limit ?? 15;
+    const report = { checked: 0, updated: 0, errors: 0, remaining: 0, done: false };
+
+    const pendingFilter = sql`status IN ('pending','overdue')
+        AND asaas_charge_id IS NOT NULL
+        AND due_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)`;
 
     // Buscar cobranças pendentes/vencidas com asaas_charge_id dos últimos 90 dias
     const [pendingRows] = (await db.execute(sql`
       SELECT asaas_charge_id FROM bpo_charges
-      WHERE status IN ('pending','overdue')
-        AND asaas_charge_id IS NOT NULL
-        AND due_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
-      LIMIT 200
+      WHERE ${pendingFilter}
+      ORDER BY due_date ASC
+      LIMIT ${batchSize}
     `)) as any;
 
     const pending = Array.isArray(pendingRows) ? pendingRows : [];
@@ -802,6 +819,11 @@ export const bpoRouter = router({
             sql`(${bpoCharges.classifiedBy} IS NULL OR ${bpoCharges.classifiedBy} != 'manual')`
           ));
 
+        // Propaga para fuel_records / inspection_charges. Sem isto, a cobrança
+        // era baixada em bpo_charges mas a tela de Abastecimento continuava
+        // exibindo "Vencido" — o pagamento sumia do ponto de vista do usuário.
+        await syncStatusToSources(db, row.asaas_charge_id, newStatus);
+
         report.updated++;
         report.checked++;
 
@@ -822,8 +844,58 @@ export const bpoRouter = router({
         AND (classified_by IS NULL OR classified_by != 'manual')
     `);
 
+    // Quantas ainda restam para a tela saber se precisa chamar de novo.
+    const [remainingRows] = (await db.execute(sql`
+      SELECT COUNT(*) AS total FROM bpo_charges WHERE ${pendingFilter}
+    `)) as any;
+    const remainingRow = Array.isArray(remainingRows) ? remainingRows[0] : remainingRows;
+    report.remaining = Number(remainingRow?.total ?? 0);
+    report.done = pending.length === 0;
+
     return report;
   }),
+
+  // ============================================================
+  // RECONCILIAR UMA COBRANÇA — busca o status atual no Asaas e aplica.
+  // Alívio imediato para o caso de uma cobrança paga no Asaas que não foi
+  // baixada no sistema, sem precisar varrer tudo.
+  // ============================================================
+  reconcileCharge: adminProcedure
+    .input(z.object({ asaasChargeId: z.string().min(1) }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const charge = await getChargeStatus(input.asaasChargeId);
+      if (!charge) {
+        return { success: false, message: 'Cobrança não encontrada no Asaas.' };
+      }
+
+      const newStatus = normalizeBpoStatus(charge.status);
+      const paid = isPaidStatus(newStatus);
+
+      await db
+        .update(bpoCharges)
+        .set({
+          status: newStatus,
+          paidDate: charge.paymentDate || null,
+          amountPaid: paid ? String(charge.value) : "0",
+          syncedAt: sql`NOW()`,
+          source: "asaas_reconcile",
+        })
+        .where(eq(bpoCharges.asaasChargeId, input.asaasChargeId));
+
+      await syncStatusToSources(db, input.asaasChargeId, newStatus);
+
+      return {
+        success: true,
+        status: newStatus,
+        paid,
+        message: paid
+          ? `Cobrança baixada: ${newStatus} (R$ ${charge.value}).`
+          : `Status atualizado para ${newStatus}.`,
+      };
+    }),
 
   // ============================================================
   // ATUALIZAR STATUS VIA WEBHOOK — chamado pelo handler de webhook
