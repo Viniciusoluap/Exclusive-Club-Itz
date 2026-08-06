@@ -46,6 +46,38 @@ export type ArchiveProgress = {
   done: boolean;
 };
 
+/**
+ * Garante que a tabela de controle exista antes de qualquer uso.
+ *
+ * POR QUE: a hospedagem publica o código novo mas NÃO roda as migrações do
+ * banco. A migração `0005_backup_attachments` existe no repositório e é
+ * validada pelo CI, mas nunca chegou ao banco de produção — o resultado foi
+ * "Failed query: SELECT source_url FROM backup_attachments" na primeira vez
+ * que o botão foi usado.
+ *
+ * Este CREATE TABLE IF NOT EXISTS é idempotente e reproduz exatamente o DDL da
+ * migração, então convergem para o mesmo resultado: quem já tem a tabela não é
+ * afetado, quem não tem passa a ter. Ele existe para que a funcionalidade não
+ * dependa de alguém lembrar de aplicar a migração à mão.
+ */
+async function ensureTable(db: any): Promise<void> {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS \`backup_attachments\` (
+      \`id\` int AUTO_INCREMENT NOT NULL,
+      \`source_url\` varchar(500) NOT NULL,
+      \`category\` varchar(50) NOT NULL,
+      \`file_name\` varchar(255) NOT NULL,
+      \`storage_url\` text,
+      \`size_bytes\` int,
+      \`status\` enum('archived','failed') NOT NULL,
+      \`error_message\` text,
+      \`archived_at\` timestamp NOT NULL DEFAULT (now()),
+      CONSTRAINT \`backup_attachments_id\` PRIMARY KEY(\`id\`),
+      CONSTRAINT \`backup_attachments_source_url_unique\` UNIQUE(\`source_url\`)
+    )
+  `);
+}
+
 /** URLs já processadas (arquivadas ou com falha registrada). */
 async function loadProcessedUrls(db: any): Promise<Set<string>> {
   const raw = (await db.execute(
@@ -114,6 +146,7 @@ export async function archiveAttachmentsBatch(
   batchSize = 5,
 ): Promise<ArchiveProgress> {
   const key = getBackupEncryptionKey();
+  await ensureTable(db);
 
   const all = await collectAttachments(db);
   const processed = await loadProcessedUrls(db);
@@ -160,6 +193,7 @@ export async function archiveAttachmentsBatch(
 
 /** Situação atual, sem processar nada — para a tela exibir ao abrir. */
 export async function getArchiveProgress(db: any): Promise<ArchiveProgress> {
+  await ensureTable(db);
   const all = await collectAttachments(db);
   const processed = await loadProcessedUrls(db);
 
