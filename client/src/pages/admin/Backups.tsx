@@ -30,6 +30,43 @@ export default function AdminBackups() {
     },
   });
 
+  // ---- Arquivamento incremental de ANEXOS ----
+  // Fotos e documentos NÃO entram no zip do backup: baixá-los junto fazia o
+  // processo passar de 43s para minutos, e o trabalho em segundo plano não
+  // sobrevive tanto tempo nesta hospedagem — o backup morria no meio. Aqui eles
+  // são arquivados em lotes curtos, e cada arquivo é processado uma única vez.
+  const { data: attachProgress } = trpc.backup.getAttachmentsProgress.useQuery();
+  const archiveMutation = trpc.backup.archiveAttachmentsBatch.useMutation();
+  const [archiving, setArchiving] = useState(false);
+
+  const handleArchiveAttachments = async () => {
+    setArchiving(true);
+    const MAX_LOTES = 200; // trava de segurança
+    try {
+      for (let i = 0; i < MAX_LOTES; i++) {
+        const p = await archiveMutation.mutateAsync({ limit: 5 });
+        if (p.done) {
+          toast.success(
+            `Anexos arquivados: ${p.archived} de ${p.total}` +
+              (p.failed > 0 ? ` — ${p.failed} com falha` : ''),
+          );
+          break;
+        }
+        if (i % 4 === 0) {
+          toast.info(`Arquivando anexos… ${p.archived}/${p.total} (faltam ${p.remaining})`);
+        }
+        if (i === MAX_LOTES - 1) {
+          toast.warning(`Pausado com ${p.remaining} anexo(s) restante(s). Clique novamente para continuar.`);
+        }
+      }
+    } catch (e: any) {
+      toast.error(`Erro ao arquivar anexos: ${e.message}`);
+    } finally {
+      setArchiving(false);
+      utils.backup.getAttachmentsProgress.invalidate();
+    }
+  };
+
   // Polling: refetch a cada 5s enquanto há backup em execução
   const { data: stats, isLoading: statsLoading } = trpc.backup.getStats.useQuery(undefined, {
     refetchInterval: (query) => {
@@ -178,6 +215,26 @@ export default function AdminBackups() {
                 <>
                   <Play className="w-4 h-4 mr-2" />
                   Executar Backup Agora
+                </>
+              )}
+            </Button>
+
+            <Button
+              onClick={handleArchiveAttachments}
+              disabled={archiving}
+              variant="outline"
+              title="Fotos e documentos são arquivados separadamente, em lotes, para não derrubar o backup do banco."
+            >
+              {archiving ? (
+                <>
+                  <Clock className="w-4 h-4 mr-2 animate-spin" />
+                  Arquivando anexos...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Arquivar anexos
+                  {attachProgress ? ` (${attachProgress.archived}/${attachProgress.total})` : ''}
                 </>
               )}
             </Button>

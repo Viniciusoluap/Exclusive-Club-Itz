@@ -577,3 +577,31 @@ export const webhookLogs = mysqlTable("webhook_logs", {
 ]);
 export type WebhookLog = typeof webhookLogs.$inferSelect;
 export type InsertWebhookLog = typeof webhookLogs.$inferInsert;
+
+/**
+ * Controle do arquivamento incremental de anexos no backup.
+ *
+ * Fotos e documentos são ESTÁTICOS: uma foto de abastecimento de julho não muda
+ * mais. Rebaixá-las a cada backup fazia o processo passar de 43 segundos para
+ * vários minutos — e o trabalho em segundo plano não sobrevive tanto tempo
+ * nesta hospedagem, então o backup morria no meio.
+ *
+ * Com esta tabela, cada execução processa apenas os anexos AINDA NÃO
+ * arquivados, em lotes curtos. A primeira rodada cobre o acervo em várias
+ * passagens; depois, cada dia só tem alguns arquivos novos.
+ */
+export const backupAttachments = mysqlTable("backup_attachments", {
+	id: int("id").autoincrement().notNull().primaryKey(),
+	sourceUrl: varchar("source_url", { length: 500 }).notNull(),
+	category: varchar("category", { length: 50 }).notNull(),
+	fileName: varchar("file_name", { length: 255 }).notNull(),
+	storageUrl: text("storage_url"),
+	sizeBytes: int("size_bytes"),
+	status: mysqlEnum("status", ["archived", "failed"]).notNull(),
+	errorMessage: text("error_message"),
+	archivedAt: timestamp("archived_at", { mode: 'string' as const }).defaultNow().notNull(),
+}, (table) => [
+	// Uma URL é arquivada uma única vez — é o que torna o processo incremental.
+	uniqueIndex("backup_attachments_source_url_unique").on(table.sourceUrl),
+]);
+export type BackupAttachment = typeof backupAttachments.$inferSelect;

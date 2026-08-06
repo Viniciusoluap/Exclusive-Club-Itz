@@ -10,7 +10,7 @@ import { sendBackupFailureNotification } from './backupNotification';
 import { exportDatabaseToSQL } from './databaseBackup';
 import { eq } from 'drizzle-orm';
 import { storagePut } from './storage';
-import { collectAttachments, downloadAttachments, buildManifest } from './backupFiles';
+import { downloadAttachments, buildManifest } from './backupFiles';
 
 
 const execAsync = promisify(exec);
@@ -336,22 +336,15 @@ export async function runBackup(): Promise<void> {
     // 1. Exporta banco de dados
     dbBackupPath = await exportDatabase();
 
-    // 2. Baixa os anexos referenciados no banco (fotos, contratos, documentos).
-    //    Falha de um arquivo não derruba o backup: fica registrada no manifesto.
-    let attachments: Awaited<ReturnType<typeof downloadAttachments>> | null = null;
-    if (db) {
-      try {
-        console.log('📎 Coletando anexos referenciados no banco...');
-        const items = await collectAttachments(db);
-        console.log(`📎 ${items.length} anexo(s) encontrado(s). Baixando...`);
-        attachments = await downloadAttachments(items);
-      } catch (attachErr) {
-        console.error('[Backup] Falha ao coletar anexos:', attachErr);
-      }
-    }
-
-    // 3. Cria arquivo ZIP (dados de negócio + anexos)
-    const { zipPath } = await createBackupZip(dbBackupPath, attachments);
+    // 2. Cria arquivo ZIP com o dump do banco.
+    //
+    //    Os ANEXOS não entram aqui de propósito. Baixá-los junto fazia o backup
+    //    passar de 43 segundos para vários minutos, e o trabalho em segundo
+    //    plano não sobrevive tanto tempo nesta hospedagem — o backup morria no
+    //    meio e NADA era salvo, nem o banco. Agora os anexos são arquivados à
+    //    parte, em lotes incrementais (server/backupAttachmentsArchive.ts),
+    //    de modo que o backup do banco volta a ser rápido e confiável.
+    const { zipPath } = await createBackupZip(dbBackupPath, null);
 
     // 3. Remove arquivo SQL temporário
     cleanupTempFiles(dbBackupPath);
