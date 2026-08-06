@@ -185,26 +185,33 @@ export default function AdminBackups() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        {/*
+          No celular o título e os dois botões não cabem lado a lado: a linha
+          ficava mais larga que a tela, empurrando a página inteira para o lado
+          e cortando o conteúdo. Abaixo de `sm` tudo empilha e os botões ocupam
+          a largura toda; a partir de `sm` volta ao layout lado a lado.
+        */}
+        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <Button
               variant="ghost"
               size="sm"
+              className="shrink-0 px-2 sm:px-3"
               onClick={() => setLocation('/admin')}
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
+              <ArrowLeft className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Voltar</span>
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Backups do Sistema</h1>
-              <p className="text-sm text-gray-500">Monitoramento e histórico de backups automáticos</p>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">Backups do Sistema</h1>
+              <p className="text-xs sm:text-sm text-gray-500 truncate">Monitoramento e histórico de backups automáticos</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 sm:shrink-0">
             <Button
               onClick={handleRunBackup}
               disabled={isRunningBackup}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
             >
               {isRunningBackup ? (
                 <>
@@ -223,6 +230,7 @@ export default function AdminBackups() {
               onClick={handleArchiveAttachments}
               disabled={archiving}
               variant="outline"
+              className="w-full sm:w-auto"
               title="Fotos e documentos são arquivados separadamente, em lotes, para não derrubar o backup do banco."
             >
               {archiving ? (
@@ -334,7 +342,7 @@ export default function AdminBackups() {
                 {stats.lastBackup.fileName && (
                   <div>
                     <div className="text-sm text-gray-600 mb-1">Arquivo</div>
-                    <div className="font-medium text-sm">{stats.lastBackup.fileName}</div>
+                    <div className="font-medium text-sm break-all">{stats.lastBackup.fileName}</div>
                     {stats.lastBackup.fileSizeBytes && (
                       <div className="text-xs text-gray-500">{formatBytes(stats.lastBackup.fileSizeBytes)}</div>
                     )}
@@ -357,10 +365,10 @@ export default function AdminBackups() {
               {stats.lastBackup.status === 'failed' && stats.lastBackup.errorMessage && (
                 <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
-                    <div>
+                    <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
                       <div className="font-medium text-red-900 mb-1">Erro</div>
-                      <div className="text-sm text-red-700">{stats.lastBackup.errorMessage}</div>
+                      <div className="text-sm text-red-700 break-words">{stats.lastBackup.errorMessage}</div>
                     </div>
                   </div>
                 </div>
@@ -389,9 +397,9 @@ export default function AdminBackups() {
                     key={backup.id}
                     className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0 w-full">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
                           {getStatusBadge(backup.status)}
                           <span className="text-sm text-gray-600">
                             {new Date(backup.startedAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
@@ -403,9 +411,10 @@ export default function AdminBackups() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                           {backup.fileName && (
-                            <div>
+                            <div className="min-w-0">
                               <span className="text-gray-600">Arquivo:</span>{' '}
-                              <span className="font-medium">{backup.fileName}</span>
+                              {/* Nome sem espaços; sem break-all ele estica a linha além da tela. */}
+                              <span className="font-medium break-all">{backup.fileName}</span>
                             </div>
                           )}
                           {backup.fileSizeBytes && (
@@ -429,7 +438,7 @@ export default function AdminBackups() {
                         )}
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 shrink-0 self-end sm:self-start">
                         {/* Botões para backups com sucesso */}
                         {backup.status === 'success' && (backup.s3Url || backup.localFilePath) && (
                           <>
