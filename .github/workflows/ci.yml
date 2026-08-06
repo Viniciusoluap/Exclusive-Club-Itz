@@ -5,6 +5,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Permite disparar o CI manualmente, em qualquer branch.
+  #
+  # POR QUE: entre 03/08 e 06/08 o GitHub parou de disparar workflows (bloqueio
+  # de orçamento de Actions) e não havia como perceber isso de dentro — um
+  # commit sem execução é indistinguível de um commit ainda na fila. Com
+  # workflow_dispatch dá para provocar uma execução e obter uma resposta
+  # imediata: ou o CI roda, ou o erro do disparo diz exatamente o que impede.
+  workflow_dispatch:
 
 jobs:
   build-test:
