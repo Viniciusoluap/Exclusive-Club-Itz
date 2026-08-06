@@ -181,6 +181,33 @@ export const backupRouter = router({
   }),
 
   /**
+   * Progresso do arquivamento de anexos (sem processar nada).
+   */
+  getAttachmentsProgress: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database not available');
+    const { getArchiveProgress } = await import('../backupAttachmentsArchive');
+    return getArchiveProgress(db);
+  }),
+
+  /**
+   * Arquiva UM LOTE de anexos ainda não salvos.
+   *
+   * Cada chamada é curta de propósito: o trabalho em segundo plano não
+   * sobrevive ao ciclo de vida da instância nesta hospedagem, então a tela
+   * chama repetidamente até `done`, em vez de uma única execução longa que
+   * morreria no meio.
+   */
+  archiveAttachmentsBatch: adminProcedure
+    .input(z.object({ limit: z.number().min(1).max(20).default(5) }).optional())
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      const { archiveAttachmentsBatch } = await import('../backupAttachmentsArchive');
+      return archiveAttachmentsBatch(db, input?.limit ?? 5);
+    }),
+
+  /**
    * Obtém informações de um backup específico para download
    */
   getBackupFile: adminProcedure
