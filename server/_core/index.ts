@@ -341,3 +341,11 @@ import("../jobs/updateOverdueStatus").then(({ scheduleUpdateOverdueStatus, runUp
   // Executar imediatamente na inicialização para corrigir registros históricos
   runUpdateOverdueStatus().catch(err => console.error("[updateOverdueStatus] Erro na execução inicial:", err));
 }).catch(err => console.error("[updateOverdueStatus] Falha ao registrar job:", err));
+
+// Arquivamento de anexos: o servidor drena o acervo sozinho, a cada 10 minutos.
+// Fazer isso pelo botão da tela dependia de uma requisição HTTP que o proxy
+// encerrava no meio (HTTP 503) quando a instância estava ocupada. Aqui não há
+// requisição para estourar nem tela para manter aberta.
+import("../jobs/archiveAttachments").then(({ scheduleArchiveAttachments }) => {
+  scheduleArchiveAttachments();
+}).catch(err => console.error("[archiveAttachments] Falha ao registrar job:", err));
