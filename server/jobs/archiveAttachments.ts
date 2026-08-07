@@ -23,12 +23,13 @@ import { getDb } from "../db";
 import { archiveAttachmentsBatch } from "../backupAttachmentsArchive";
 
 /**
- * Orçamento por execução. Mais folgado que o do botão (12s) porque aqui não há
- * requisição HTTP para estourar — mas ainda curto, para não competir com quem
- * está usando o sistema.
+ * Orçamento por execução. Muito mais folgado que o do botão (12s) porque aqui
+ * não há requisição HTTP para estourar, e a rodada acontece de madrugada, uma
+ * vez por semana — é para dar conta do acervo inteiro de uma vez, não para
+ * andar de pouquinho.
  */
-const TICK_BUDGET_MS = 20000;
-const TICK_MAX_FILES = 40;
+const TICK_BUDGET_MS = 10 * 60 * 1000;
+const TICK_MAX_FILES = 2000;
 
 /** Um backup em andamento já consome a instância. Foi essa disputa que gerou o 503. */
 async function backupEmAndamento(db: any): Promise<boolean> {
@@ -79,12 +80,17 @@ export async function runArchiveAttachmentsTick(): Promise<{
 }
 
 export function scheduleArchiveAttachments(): void {
-  // A cada 10 minutos. O acervo inicial (238 anexos) drena sozinho ao longo de
-  // algumas horas; depois disso cada rodada encontra pouca coisa ou nada, e
-  // termina em milissegundos.
-  cron.schedule("*/10 * * * *", async () => {
+  // Domingo às 04:00 de São Paulo — uma vez por semana, depois do backup
+  // diário do banco (03:00), para as duas coisas não competirem pela
+  // instância. Foi essa disputa que gerou o HTTP 503 quando o arquivamento
+  // rodava junto de um backup.
+  //
+  // Fotos e documentos são estáticos: uma foto de abastecimento de julho não
+  // muda mais. Uma vez por semana é suficiente para recolher o que entrou no
+  // período, e o botão da tela continua livre para quem quiser antecipar.
+  cron.schedule("0 4 * * 0", async () => {
     await runArchiveAttachmentsTick();
-  });
+  }, { timezone: "America/Sao_Paulo" });
 
-  console.log("[archiveAttachments] 📅 Job agendado: a cada 10 minutos");
+  console.log("[archiveAttachments] 📅 Job agendado: domingos às 04:00 America/Sao_Paulo");
 }
