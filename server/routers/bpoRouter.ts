@@ -1,4 +1,13 @@
-// @ts-nocheck -- drizzle-orm 0.44 timestamp conditional types divergem no CI (ubuntu/Node22)
+/**
+ * NÃO reintroduza `@ts-nocheck` aqui.
+ *
+ * Este arquivo carregava `// @ts-nocheck` alegando divergência de tipos do
+ * drizzle no CI. Ao remover, apareceram 7 erros — NENHUM deles era do drizzle.
+ * Dois eram defeitos reais: uma gravação com valor fora do enum (a
+ * reconciliação falharia em banco estrito) e um acesso a colunas que a consulta
+ * não seleciona. Este é o arquivo financeiro do sistema; desligar a verificação
+ * de tipos nele foi como desligar o alarme do cofre.
+ */
 /**
  * BPO Router — Fonte única de verdade do BPO Financeiro
  *
@@ -1241,8 +1250,22 @@ export const bpoRouter = router({
         LIMIT 20
       `)) as any;
 
-      const pendingCharges: Array<{ id: number; value: string; amountPaid: string; dueDate: string; description: string; status: string }> =
-        Array.isArray(pendingRows) ? pendingRows : [];
+      // A anotação precisa refletir o SELECT acima. Ela listava 6 colunas
+      // enquanto a consulta traz 11 — e o código usava as que faltavam,
+      // acessando propriedades que o TypeScript julgava inexistentes.
+      const pendingCharges: Array<{
+        id: number;
+        value: string;
+        amountPaid: string;
+        dueDate: string;
+        description: string;
+        status: string;
+        externalReference: string | null;
+        clientName: string | null;
+        clientEmail: string | null;
+        asaasCustomerId: string | null;
+        type: string | null;
+      }> = Array.isArray(pendingRows) ? pendingRows : [];
 
       // 6. Se não há cobranças pendentes, apenas classificar
       if (pendingCharges.length === 0) {
@@ -1308,7 +1331,10 @@ export const bpoRouter = router({
       // devedor separado para o restante (ver applyPaymentToCharge).
       const { isFullyPaid } = await applyPaymentToCharge(
         db,
-        { ...targetCharge, clientId: clientId ?? targetCharge.clientId, type: targetCharge.type || input.type },
+        // `clientId` é garantido: a consulta acima filtra por ele. O código
+        // tinha um fallback para `targetCharge.clientId`, coluna que o SELECT
+        // nem traz — leria `undefined` e criaria saldo devedor sem cliente.
+        { ...targetCharge, clientId, type: targetCharge.type || input.type },
         amountToApply,
         paymentDate,
       );
@@ -1675,7 +1701,7 @@ export const bpoRouter = router({
         .where(and(
           eq(bpoCharges.classifiedBy, "unclassified"),
           gte(bpoCharges.dueDate, "2025-01-01"),
-          inArray(bpoCharges.status, receivedStatuses as unknown as string[])
+          inArray(bpoCharges.status, [...receivedStatuses])
         ))
         .orderBy(bpoCharges.dueDate)
         .limit(input.limit)
@@ -1686,7 +1712,7 @@ export const bpoRouter = router({
         .where(and(
           eq(bpoCharges.classifiedBy, "unclassified"),
           gte(bpoCharges.dueDate, "2025-01-01"),
-          inArray(bpoCharges.status, receivedStatuses as unknown as string[])
+          inArray(bpoCharges.status, [...receivedStatuses])
         ));
 
       // Buscar todos os clientes para sugestão automática
@@ -2082,7 +2108,7 @@ export const bpoRouter = router({
           if (Array.isArray(pl)) existingLinks.push(...pl);
         } catch {}
       }
-      const allLinks = [...new Set([...existingLinks, ...mergedPaymentLinks])];
+      const allLinks = Array.from(new Set([...existingLinks, ...mergedPaymentLinks]));
 
       // Atualiza a cobrança mantida para receivedInCash com os dados de pagamento mesclados
       await db.update(bpoCharges).set({
@@ -2722,7 +2748,8 @@ export const bpoRouter = router({
           id: p.id,
           value: p.value,
           amountPaid: p.amountPaid ?? '0',
-          dueDate: p.dueDate ? String(p.dueDate).substring(0, 10) : '',
+          // dueDate não é passado de propósito: a função sempre usa a data de
+          // hoje, porque o Asaas recusa cobrança com vencimento retroativo.
           type: p.type || 'other',
           clientId: p.clientId ?? null,
           clientName: p.clientName ?? null,

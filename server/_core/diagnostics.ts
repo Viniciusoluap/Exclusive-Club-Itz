@@ -112,6 +112,12 @@ export async function collectDiagnostics() {
     envVars,
     backup,
     smtp,
+    // Estado das migrações do banco na última subida do servidor.
+    //
+    // POR QUE APARECE AQUI: durante toda esta auditoria, "a migração chegou no
+    // banco?" foi uma pergunta sem resposta — e cada vez que ela ficou sem
+    // resposta, custou uma rodada de investigação. Agora a tela responde.
+    migracoes: (globalThis as any).__ultimaMigracao ?? null,
     missingCount: envVars.filter((v) => !v.present).length,
   };
 }
