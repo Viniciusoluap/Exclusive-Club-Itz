@@ -7,7 +7,13 @@ import archiver from 'archiver';
 import { getDb } from './db';
 import { backupHistory } from '../drizzle/schema';
 import { sendBackupFailureNotification } from './backupNotification';
-import { exportDatabaseToSQL } from './databaseBackup';
+import { exportDatabaseToSQL, type ProgressoExportacao } from './databaseBackup';
+import {
+  FASES,
+  ensureProgressColumns,
+  percentualDaExportacao,
+  setProgress,
+} from './backupProgress';
 import { eq } from 'drizzle-orm';
 import { storagePut } from './storage';
 import { downloadAttachments, buildManifest } from './backupFiles';
@@ -107,7 +113,7 @@ export function decryptBackupBuffer(container: Buffer, keyMaterial: Buffer): Buf
 /**
  * Exporta banco de dados usando Node.js puro (sem mysqldump)
  */
-async function exportDatabase(): Promise<string> {
+async function exportDatabase(onProgress?: ProgressoExportacao): Promise<string> {
   // Nome único por execução: com o caminho fixo 'database.sql', dois backups
   // simultâneos escreviam no MESMO arquivo e um apagava o do outro no meio do
   // processo.
@@ -119,7 +125,7 @@ async function exportDatabase(): Promise<string> {
   console.log('💾 Exportando banco de dados...');
   
   try {
-    await exportDatabaseToSQL(dbBackupPath);
+    await exportDatabaseToSQL(dbBackupPath, onProgress);
     return dbBackupPath;
   } catch (error) {
     console.error('❌ Erro ao exportar banco de dados:', error);
@@ -325,16 +331,34 @@ export async function runBackup(): Promise<void> {
 
     // Registra início do backup no banco
     if (db) {
+      // As colunas de progresso são garantidas antes do INSERT porque a
+      // hospedagem não roda migrações — ver backupProgress.ts. Falhar aqui não
+      // pode impedir o backup: o progresso é acessório, o backup não.
+      await ensureProgressColumns(db).catch((e) =>
+        console.warn('[backup] Colunas de progresso indisponíveis:', e),
+      );
+
       const result = await db.insert(backupHistory).values({
         startedAt: startTime.toISOString(),
         status: 'running',
       });
       backupId = result[0].insertId;
       console.log(`💾 Backup registrado no banco (ID: ${backupId})`);
+      await setProgress(db, backupId, FASES.INICIO.percent, FASES.INICIO.step);
     }
 
     // 1. Exporta banco de dados
-    dbBackupPath = await exportDatabase();
+    await setProgress(db, backupId, FASES.EXPORT_INICIO.percent, FASES.EXPORT_INICIO.step);
+    dbBackupPath = await exportDatabase((feitas, total, tabela) => {
+      // Sem await: a gravação do progresso não pode atrasar a exportação, e
+      // uma falha nela já é tratada dentro de setProgress.
+      void setProgress(
+        db,
+        backupId,
+        percentualDaExportacao(feitas, total),
+        `Exportando ${feitas}/${total} — ${tabela}`,
+      );
+    });
 
     // 2. Cria arquivo ZIP com o dump do banco.
     //
@@ -344,12 +368,14 @@ export async function runBackup(): Promise<void> {
     //    meio e NADA era salvo, nem o banco. Agora os anexos são arquivados à
     //    parte, em lotes incrementais (server/backupAttachmentsArchive.ts),
     //    de modo que o backup do banco volta a ser rápido e confiável.
+    await setProgress(db, backupId, FASES.ZIP.percent, FASES.ZIP.step);
     const { zipPath } = await createBackupZip(dbBackupPath, null);
 
     // 3. Remove arquivo SQL temporário
     cleanupTempFiles(dbBackupPath);
 
     // 4. Criptografa o artefato (AES-256-GCM) ANTES do upload ao storage externo.
+    await setProgress(db, backupId, FASES.CRIPTOGRAFIA.percent, FASES.CRIPTOGRAFIA.step);
     console.log('🔐 Criptografando artefato de backup...');
     const plainZipBuffer = fs.readFileSync(zipPath);
     const encryptedBuffer = encryptBackupBuffer(plainZipBuffer, encryptionKey);
@@ -357,6 +383,7 @@ export async function runBackup(): Promise<void> {
     const fileSizeBytes = encryptedBuffer.length;
 
     // 5. Upload do artefato criptografado para o storage (proxy Forge/S3).
+    await setProgress(db, backupId, FASES.UPLOAD.percent, FASES.UPLOAD.step);
     console.log('☁️  Fazendo upload do backup criptografado...');
     const s3Key = `backups/${fileName}`;
     const { url: s3Url } = await storagePut(s3Key, encryptedBuffer, 'application/octet-stream');
@@ -369,6 +396,7 @@ export async function runBackup(): Promise<void> {
     }
 
     // 7. Limpa backups antigos
+    await setProgress(db, backupId, FASES.LIMPEZA.percent, FASES.LIMPEZA.step);
     await cleanupOldBackups();
 
     // Calcula duração
