@@ -29,7 +29,22 @@ import { getBackupEncryptionKey, encryptBackupBuffer } from "./backup";
 import { storagePut } from "./storage";
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
-const DOWNLOAD_TIMEOUT_MS = 20000;
+
+/**
+ * Teto de tempo de UMA requisição de arquivamento.
+ *
+ * POR QUE ISSO EXISTE: o lote era de 5 arquivos, número fixo. Cinco fotos
+ * pequenas terminam em segundos; cinco fotos grandes levam minutos — e aí o
+ * proxy da hospedagem encerra a requisição e devolve uma página de erro HTML,
+ * que o navegador não consegue interpretar. Contar arquivos não controla tempo:
+ * o que importa não é quantos arquivos são, é quanto tempo levam.
+ *
+ * Com um orçamento de tempo o lote se adapta sozinho — muitos arquivos quando
+ * são leves, poucos quando são pesados — e nunca ultrapassa a janela da
+ * requisição, seja qual for o acervo.
+ */
+const BUDGET_MS = 12000;
+const DOWNLOAD_TIMEOUT_MS = 10000;
 
 export type ArchiveProgress = {
   /** Anexos referenciados no banco. */
@@ -135,26 +150,34 @@ async function archiveOne(item: Attachment, key: Buffer): Promise<{ storageUrl: 
 }
 
 /**
- * Processa UM LOTE de anexos ainda não arquivados.
+ * Processa anexos ainda não arquivados até esgotar o orçamento de tempo.
  *
- * Retorna o progresso para a tela decidir se chama de novo. Cada chamada é
- * curta o bastante para caber no ciclo de vida de uma requisição — que é
- * exatamente o que faltava para o backup completo nunca terminar.
+ * Retorna o progresso para a tela decidir se chama de novo. Cada chamada cabe
+ * no ciclo de vida de uma requisição por construção — é o relógio que fecha o
+ * lote, não uma contagem de arquivos chutada.
  */
 export async function archiveAttachmentsBatch(
   db: any,
-  batchSize = 5,
+  batchSize = 25,
+  budgetMs = BUDGET_MS,
 ): Promise<ArchiveProgress> {
+  const startedAt = Date.now();
   const key = getBackupEncryptionKey();
   await ensureTable(db);
 
   const all = await collectAttachments(db);
   const processed = await loadProcessedUrls(db);
   const pending = all.filter((a) => !processed.has(a.url));
-  const batch = pending.slice(0, batchSize);
 
   let processedNow = 0;
-  for (const item of batch) {
+  for (const item of pending) {
+    // `batchSize` vira só uma trava superior; quem manda é o relógio. O teste
+    // de tempo vem DEPOIS do primeiro arquivo para garantir que toda chamada
+    // avance pelo menos um item — senão um orçamento apertado devolveria
+    // sempre zero e o laço do frontend nunca terminaria.
+    if (processedNow >= batchSize) break;
+    if (processedNow > 0 && Date.now() - startedAt >= budgetMs) break;
+
     try {
       const result = await archiveOne(item, key);
       await recordResult(db, item, { status: "archived", ...result });
