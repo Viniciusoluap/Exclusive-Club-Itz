@@ -430,13 +430,21 @@ export async function runBackup(): Promise<void> {
   }
 }
 
-// Permite executar diretamente via CLI
-// Em ES modules, verificamos se o script está sendo executado diretamente
-if (import.meta.url === `file://${process.argv[1]}`) {
-  runBackup()
-    .then(() => process.exit(0))
-    .catch((error) => {
-      console.error(error);
-      process.exit(1);
-    });
-}
+/*
+ * NÃO coloque execução automática neste arquivo.
+ *
+ * Aqui existia um bloco `if (import.meta.url === ...) runBackup()`, para
+ * permitir rodar o backup pela linha de comando. Em desenvolvimento funciona.
+ * Em produção o servidor é empacotado pelo esbuild num único `dist/index.js`,
+ * e dentro do pacote `import.meta.url` passa a ser a URL do PRÓPRIO pacote —
+ * que é exatamente o que está em `process.argv[1]` quando se roda
+ * `node dist/index.js`. A condição virava verdadeira SEMPRE.
+ *
+ * Resultado: todo start do servidor disparava um backup completo sem ninguém
+ * pedir. Numa hospedagem que recicla a instância com frequência, isso gerou
+ * 313 backups em uma noite.
+ *
+ * A entrada por linha de comando agora vive em `backup-cli.ts`, que importa
+ * este módulo e chama a função explicitamente. Assim este arquivo não tem
+ * nenhum efeito colateral ao ser importado.
+ */

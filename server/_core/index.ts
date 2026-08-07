@@ -342,10 +342,17 @@ import("../jobs/updateOverdueStatus").then(({ scheduleUpdateOverdueStatus, runUp
   runUpdateOverdueStatus().catch(err => console.error("[updateOverdueStatus] Erro na execução inicial:", err));
 }).catch(err => console.error("[updateOverdueStatus] Falha ao registrar job:", err));
 
-// Arquivamento de anexos: o servidor drena o acervo sozinho, a cada 10 minutos.
-// Fazer isso pelo botão da tela dependia de uma requisição HTTP que o proxy
-// encerrava no meio (HTTP 503) quando a instância estava ocupada. Aqui não há
-// requisição para estourar nem tela para manter aberta.
+// Backup do BANCO: automático uma vez por dia, às 03:00 (São Paulo).
+// O botão da tela continua livre para quantos backups manuais se quiser.
+import("../jobs/scheduledBackup").then(({ scheduleDailyBackup }) => {
+  scheduleDailyBackup();
+}).catch(err => console.error("[backupDiario] Falha ao registrar job:", err));
+
+// Backup dos ANEXOS (fotos e documentos): automático uma vez por semana,
+// domingo às 04:00 — depois do backup do banco, para não competirem pela
+// instância. Fazer isso pelo botão da tela dependia de uma requisição HTTP que
+// o proxy encerrava no meio (HTTP 503); aqui não há requisição para estourar
+// nem tela para manter aberta. O botão continua livre para antecipar.
 import("../jobs/archiveAttachments").then(({ scheduleArchiveAttachments }) => {
   scheduleArchiveAttachments();
 }).catch(err => console.error("[archiveAttachments] Falha ao registrar job:", err));

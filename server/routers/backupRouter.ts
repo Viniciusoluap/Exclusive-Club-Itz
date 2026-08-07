@@ -210,6 +210,50 @@ export const backupRouter = router({
       return archiveAttachmentsBatch(db, input?.limit ?? 25);
     }),
 
+  /** Quantos backups redundantes existem (sem remover nada). */
+  getCleanupPreview: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database not available');
+    const { previewCleanup } = await import('../backupCleanup');
+    return previewCleanup(db);
+  }),
+
+  /**
+   * Remove os backups redundantes: mantém o mais recente de cada dia e apaga
+   * as repetições do mesmo dia, além de registros de falha antigos. Nasceu da
+   * enxurrada gerada pelo backup que disparava a cada start do servidor.
+   */
+  cleanupRedundant: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database not available');
+    const { runCleanup } = await import('../backupCleanup');
+    return runCleanup(db);
+  }),
+
+  /**
+   * Apaga TODO o histórico e inicia um backup limpo em seguida.
+   *
+   * O backup novo não é um extra: entre o DELETE e ele, o sistema fica sem
+   * nenhum ponto de restauração. Disparar aqui fecha essa janela sem depender
+   * de alguém lembrar de clicar.
+   */
+  cleanupAll: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database not available');
+
+    const { runFullCleanup } = await import('../backupCleanup');
+    const resultado = await runFullCleanup(db);
+
+    // Fire-and-forget, como em `runNow`: o backup leva ~30s e a resposta HTTP
+    // não pode esperar por ele. O progresso aparece no próprio histórico.
+    const { runBackup } = await import('../backup');
+    runBackup().catch((error: any) => {
+      console.error('[cleanupAll] Backup inicial falhou:', error?.message ?? error);
+    });
+
+    return resultado;
+  }),
+
   /**
    * Obtém informações de um backup específico para download
    */

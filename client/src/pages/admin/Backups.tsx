@@ -30,6 +30,64 @@ export default function AdminBackups() {
     },
   });
 
+  // ---- Limpeza dos backups redundantes ----
+  // Um defeito disparava um backup a cada start do servidor, e a hospedagem
+  // recicla a instância com frequência: 313 backups numa noite. A regra mantém
+  // o mais recente de cada dia, então nenhum dia fica descoberto.
+  const { data: cleanupPreview } = trpc.backup.getCleanupPreview.useQuery();
+  const cleanupMutation = trpc.backup.cleanupRedundant.useMutation({
+    onSuccess: ({ removidos }) => {
+      toast.success(`${removidos} backup(s) redundante(s) removido(s).`);
+      utils.backup.getStats.invalidate();
+      utils.backup.getHistory.invalidate();
+      utils.backup.getCleanupPreview.invalidate();
+    },
+    onError: (error) => toast.error(`Erro ao limpar: ${error.message}`),
+  });
+
+  const handleCleanup = async () => {
+    if (!cleanupPreview || cleanupPreview.total === 0) return;
+    const ok = await confirm({
+      title: 'Remover backups redundantes?',
+      description:
+        `Serão removidos ${cleanupPreview.total} registro(s): ${cleanupPreview.duplicados} ` +
+        `repetição(ões) do mesmo dia e ${cleanupPreview.falhasAntigas} falha(s) antiga(s). ` +
+        `Restarão ${cleanupPreview.restantes}, mantendo o backup mais recente de cada dia. ` +
+        `Os arquivos já enviados ao armazenamento externo não são apagados — apenas o registro sai da lista.`,
+      variant: 'destructive',
+      confirmText: 'Remover',
+    });
+    if (ok) cleanupMutation.mutate();
+  };
+
+  // Zerar o histórico. Separado da limpeza acima porque não preserva nada —
+  // e porque, entre apagar tudo e o próximo backup, não existe ponto de
+  // restauração. Por isso o servidor inicia um backup novo logo em seguida.
+  const cleanupAllMutation = trpc.backup.cleanupAll.useMutation({
+    onSuccess: ({ removidos }) => {
+      toast.success(`${removidos} backup(s) removido(s). Um backup novo já foi iniciado.`);
+      utils.backup.getStats.invalidate();
+      utils.backup.getHistory.invalidate();
+      utils.backup.getCleanupPreview.invalidate();
+    },
+    onError: (error) => toast.error(`Erro ao limpar histórico: ${error.message}`),
+  });
+
+  const handleCleanupAll = async () => {
+    const total = stats?.totalBackups ?? 0;
+    const ok = await confirm({
+      title: 'Apagar todo o histórico de backups?',
+      description:
+        `Todos os ${total} registros serão removidos e um backup novo será iniciado em seguida, ` +
+        `para o sistema não ficar sem nenhum ponto de restauração. ` +
+        `Os arquivos já enviados ao armazenamento externo não são apagados — apenas saem da lista. ` +
+        `Esta ação não pode ser desfeita.`,
+      variant: 'destructive',
+      confirmText: 'Apagar tudo e recomeçar',
+    });
+    if (ok) cleanupAllMutation.mutate();
+  };
+
   // ---- Arquivamento incremental de ANEXOS ----
   // Fotos e documentos NÃO entram no zip do backup: baixá-los junto fazia o
   // processo passar de 43s para minutos, e o trabalho em segundo plano não
@@ -286,6 +344,20 @@ export default function AdminBackups() {
                 </>
               )}
             </Button>
+
+            {/* Só aparece quando há o que limpar — sem redundância, sem botão. */}
+            {cleanupPreview && cleanupPreview.total > 0 && (
+              <Button
+                onClick={handleCleanup}
+                disabled={cleanupMutation.isPending}
+                variant="outline"
+                className="w-full sm:w-auto text-red-600 hover:text-red-700"
+                title="Mantém o backup mais recente de cada dia e remove as repetições."
+              >
+                <Trash2 className="w-4 h-4 mr-2 shrink-0" />
+                Limpar redundantes ({cleanupPreview.total})
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -420,8 +492,25 @@ export default function AdminBackups() {
         {/* Histórico */}
         <Card>
           <CardHeader>
-            <CardTitle>Histórico de Backups</CardTitle>
-            <CardDescription>Últimos 20 backups executados</CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="min-w-0">
+                <CardTitle>Histórico de Backups</CardTitle>
+                <CardDescription>Últimos 20 backups executados</CardDescription>
+              </div>
+              {(stats?.totalBackups ?? 0) > 0 && (
+                <Button
+                  onClick={handleCleanupAll}
+                  disabled={cleanupAllMutation.isPending}
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto shrink-0 text-red-600 hover:text-red-700"
+                  title="Apaga todo o histórico e inicia um backup novo em seguida."
+                >
+                  <Trash2 className="w-4 h-4 mr-2 shrink-0" />
+                  {cleanupAllMutation.isPending ? 'Limpando…' : 'Apagar tudo e recomeçar'}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {historyLoading ? (
