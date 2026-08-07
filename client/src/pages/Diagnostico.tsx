@@ -143,6 +143,55 @@ export default function Diagnostico() {
             </CardContent>
           </Card>
 
+          {/*
+            Estado das migrações.
+
+            Durante toda a auditoria, "a migração chegou no banco?" foi uma
+            pergunta sem resposta — e cada vez que ficou sem resposta, custou
+            uma rodada de investigação. Agora a tela responde.
+          */}
+          {data.migracoes && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <StatusIcon ok={!data.migracoes.erro} />
+                  Migrações do banco
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p className="text-muted-foreground">
+                  {data.migracoes.situacao === 'baseline-adotado'
+                    ? 'Banco existente adotado: as migrações atuais foram marcadas como aplicadas, sem executar DDL sobre os dados.'
+                    : data.migracoes.situacao === 'banco-novo'
+                      ? 'Banco novo: todas as migrações foram aplicadas.'
+                      : data.migracoes.situacao === 'ja-controlado'
+                        ? 'Banco sob controle de migrações.'
+                        : 'Não foi possível verificar as migrações.'}
+                </p>
+
+                {data.migracoes.aplicadas?.length > 0 && (
+                  <p className="break-words">
+                    <span className="text-muted-foreground">Aplicadas agora: </span>
+                    <code className="text-xs">{data.migracoes.aplicadas.join(', ')}</code>
+                  </p>
+                )}
+
+                {data.migracoes.marcadasSemExecutar?.length > 0 && (
+                  <p className="break-words">
+                    <span className="text-muted-foreground">
+                      Marcadas sem executar ({data.migracoes.marcadasSemExecutar.length}):{' '}
+                    </span>
+                    <code className="text-xs">{data.migracoes.marcadasSemExecutar.join(', ')}</code>
+                  </p>
+                )}
+
+                {data.migracoes.erro && (
+                  <p className="break-words text-red-600">{data.migracoes.erro}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Button onClick={() => refetch()} disabled={isFetching} variant="outline">
             <RefreshCw
               className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`}

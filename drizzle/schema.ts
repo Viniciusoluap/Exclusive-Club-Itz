@@ -512,8 +512,11 @@ export const bpoCharges = mysqlTable("bpo_charges", {
 
   // Controle de sincronização
   syncedAt: timestamp("synced_at", { mode: 'string' as const }),
+  // "asaas_reconcile": gravado pela reconciliação individual de cobrança.
+  // O valor era escrito pelo código sem existir no enum — em banco estrito a
+  // reconciliação falhava. O `@ts-nocheck` do bpoRouter escondia o erro.
   source: mysqlEnum("source", [
-    "asaas_import", "asaas_webhook", "manual", "system"
+    "asaas_import", "asaas_webhook", "manual", "system", "asaas_reconcile"
   ]).default("system"),
 
   createdAt: timestamp("created_at", { mode: 'string' as const }).defaultNow().notNull(),
