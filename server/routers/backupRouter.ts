@@ -224,6 +224,74 @@ export const backupRouter = router({
     return listArchivedAttachments(db);
   }),
 
+  /**
+   * Abre um backup de verdade e confere o conteúdo contra o banco vivo.
+   *
+   * POR QUE EXISTE: todo o resto prova que o backup é GERADO corretamente.
+   * Nada provava que ele CONTÉM o que deveria. Um backup que ninguém nunca
+   * abriu é uma hipótese, e a diferença entre hipótese e garantia só aparece
+   * no pior momento possível.
+   *
+   * Não restaura, não altera, não escreve nada — só lê e compara.
+   */
+  verifyBackup: adminProcedure
+    .input(z.object({ backupId: z.number().optional() }).optional())
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+
+      // Sem id explícito, confere o backup bem-sucedido mais recente.
+      const alvo = input?.backupId
+        ? await db.select().from(backupHistory).where(eq(backupHistory.id, input.backupId)).limit(1)
+        : await db
+            .select()
+            .from(backupHistory)
+            .where(eq(backupHistory.status, 'success'))
+            .orderBy(desc(backupHistory.startedAt))
+            .limit(1);
+
+      if (alvo.length === 0) throw new Error('Nenhum backup bem-sucedido para conferir.');
+      const backup = alvo[0];
+      if (!backup.fileName) throw new Error('Este backup não tem arquivo associado.');
+
+      const [{ storageGet }, { decryptBackupBuffer, getBackupEncryptionKey, isEncryptedBackup }, verify, axios] =
+        await Promise.all([
+          import('../storage'),
+          import('../backup'),
+          import('../backupVerify'),
+          import('axios'),
+        ]);
+
+      const { url } = await storageGet(`backups/${backup.fileName}`);
+      if (!url) throw new Error('Arquivo do backup não encontrado no armazenamento.');
+
+      const resposta = await axios.default.get(url, { responseType: 'arraybuffer', timeout: 60000 });
+      const bruto = Buffer.from(resposta.data);
+
+      let zip = bruto;
+      if (isEncryptedBackup(bruto)) {
+        try {
+          zip = decryptBackupBuffer(bruto, getBackupEncryptionKey());
+        } catch {
+          throw new Error(
+            'Não foi possível descriptografar este backup. Isso indica que a BACKUP_ENCRYPTION_KEY ' +
+              'atual é diferente da que gerou o arquivo.',
+          );
+        }
+      }
+
+      const dump = verify.extrairSqlDoZip(zip);
+      const noBanco = await verify.contarLinhasNoBanco(db);
+      const relatorio = verify.compararComBanco(noBanco, dump);
+
+      return {
+        ...relatorio,
+        backupId: backup.id,
+        backupEm: toIsoUtc(backup.startedAt),
+        arquivo: backup.fileName,
+      };
+    }),
+
   /** Quantos backups redundantes existem (sem remover nada). */
   getCleanupPreview: adminProcedure.query(async () => {
     const db = await getDb();

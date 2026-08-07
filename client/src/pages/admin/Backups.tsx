@@ -68,6 +68,15 @@ export default function AdminBackups() {
     }
   };
 
+  // ---- Conferência do conteúdo do backup ----
+  // Todo o resto prova que o backup é GERADO. Isto prova que ele CONTÉM o que
+  // deveria: abre o arquivo de verdade e compara com o banco vivo, tabela por
+  // tabela. Não restaura e não altera nada.
+  const verifyMutation = trpc.backup.verifyBackup.useMutation({
+    onError: (error) => toast.error(`Erro ao conferir: ${error.message}`),
+  });
+  const relatorio = verifyMutation.data;
+
   // ---- Limpeza dos backups redundantes ----
   // Um defeito disparava um backup a cada start do servidor, e a hospedagem
   // recicla a instância com frequência: 313 backups numa noite. A regra mantém
@@ -576,6 +585,129 @@ export default function AdminBackups() {
             </CardContent>
           </Card>
         )}
+
+        {/*
+          Conferência do conteúdo.
+
+          Um backup que ninguém nunca abriu é uma hipótese. Este card abre o
+          arquivo e compara com o banco — é o que transforma "acho que está
+          tudo lá" em um número conferido.
+        */}
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="min-w-0">
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 shrink-0" />
+                  Conferência do backup
+                </CardTitle>
+                <CardDescription>
+                  Abre o último backup e compara com o banco atual. Não restaura nem altera nada.
+                </CardDescription>
+              </div>
+              <Button
+                onClick={() => verifyMutation.mutate({})}
+                disabled={verifyMutation.isPending}
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto shrink-0"
+              >
+                {verifyMutation.isPending ? (
+                  <>
+                    <Clock className="w-4 h-4 mr-2 animate-spin shrink-0" />
+                    Conferindo…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2 shrink-0" />
+                    Conferir agora
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+
+          {relatorio && (
+            <CardContent>
+              <div
+                className={`rounded-lg border p-4 mb-4 ${
+                  relatorio.integro ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  {relatorio.integro ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <div className={`font-medium mb-1 ${relatorio.integro ? 'text-green-900' : 'text-red-900'}`}>
+                      {relatorio.integro
+                        ? 'Todas as tabelas do banco estão no backup.'
+                        : `${relatorio.problemas.length} tabela(s) com problema.`}
+                    </div>
+                    <div className={`text-sm ${relatorio.integro ? 'text-green-800' : 'text-red-800'}`}>
+                      {relatorio.tabelasNoBackup} tabelas e{' '}
+                      {relatorio.registrosNoBackup.toLocaleString('pt-BR')} registros no backup;{' '}
+                      {relatorio.tabelasNoBanco} tabelas e{' '}
+                      {relatorio.registrosNoBanco.toLocaleString('pt-BR')} no banco agora.
+                    </div>
+                    {/* O backup é uma foto de um instante — dizer isso evita que
+                        uma diferença normal seja lida como perda de dado. */}
+                    {relatorio.integro && relatorio.registrosNoBanco > relatorio.registrosNoBackup && (
+                      <div className="text-xs text-green-700 mt-1">
+                        A diferença são registros criados depois do backup.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {relatorio.problemas.length > 0 && (
+                <div className="mb-4 space-y-1">
+                  {relatorio.problemas.map((p) => (
+                    <div key={p.tabela} className="text-sm text-red-700 break-all">
+                      <strong>{p.tabela}</strong>:{' '}
+                      {p.ausente
+                        ? 'não existe no backup'
+                        : `${p.noBanco.toLocaleString('pt-BR')} registros no banco, nenhum no backup`}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <details>
+                <summary className="text-sm text-gray-600 cursor-pointer">
+                  Ver todas as {relatorio.detalhes.length} tabelas
+                </summary>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="text-sm w-full min-w-[320px]">
+                    <thead>
+                      <tr className="text-left text-gray-500">
+                        <th className="py-1 pr-4 font-medium">Tabela</th>
+                        <th className="py-1 pr-4 font-medium text-right">No banco</th>
+                        <th className="py-1 font-medium text-right">No backup</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {relatorio.detalhes.map((d) => (
+                        <tr key={d.tabela} className={d.ausente || d.vaziaNoBackup ? 'text-red-700' : ''}>
+                          <td className="py-1 pr-4 break-all">{d.tabela}</td>
+                          <td className="py-1 pr-4 text-right tabular-nums">
+                            {d.noBanco.toLocaleString('pt-BR')}
+                          </td>
+                          <td className="py-1 text-right tabular-nums">
+                            {d.ausente ? '—' : d.noBackup.toLocaleString('pt-BR')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            </CardContent>
+          )}
+        </Card>
 
         {/* Último Backup */}
         {stats?.lastBackup && (
