@@ -30,6 +30,44 @@ export default function AdminBackups() {
     },
   });
 
+  // Índice dos anexos: baixado sob demanda, não junto com a tela.
+  // São 238 linhas que só interessam na hora de conferir ou recuperar.
+  const utilsIndice = trpc.useUtils();
+  const [baixandoIndice, setBaixandoIndice] = useState(false);
+
+  const handleBaixarIndice = async () => {
+    setBaixandoIndice(true);
+    try {
+      const linhas = await utilsIndice.backup.listArchivedAttachments.fetch();
+      if (linhas.length === 0) {
+        toast.info('Nenhum anexo arquivado ainda.');
+        return;
+      }
+
+      const escapar = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const cabecalho = ['categoria', 'arquivo', 'origem', 'armazenamento', 'bytes', 'situacao', 'erro', 'arquivadoEm'];
+      const csv = [
+        cabecalho.join(','),
+        ...linhas.map((l) => cabecalho.map((c) => escapar((l as any)[c])).join(',')),
+      ].join('\n');
+
+      // BOM: sem ele o Excel abre os acentos errados.
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `indice-anexos-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success(`Índice de ${linhas.length} anexo(s) baixado.`);
+    } catch (e: any) {
+      toast.error(`Erro ao baixar índice: ${e.message}`);
+    } finally {
+      setBaixandoIndice(false);
+    }
+  };
+
   // ---- Limpeza dos backups redundantes ----
   // Um defeito disparava um backup a cada start do servidor, e a hospedagem
   // recicla a instância com frequência: 313 backups numa noite. A regra mantém
@@ -426,6 +464,62 @@ export default function AdminBackups() {
             </CardContent>
           </Card>
         </div>
+
+        {/*
+          Anexos arquivados.
+
+          POR QUE ESTE CARD EXISTE: o zip do backup tem ~320 KB, o que parece
+          pouco demais para quem espera encontrar as fotos e documentos ali
+          dentro. Eles ficam FORA do zip de propósito — juntá-los fazia o
+          backup inteiro morrer no meio do caminho e nada era salvo, nem o
+          banco. Sem este card, "os anexos estão salvos" era uma afirmação sem
+          nenhuma prova visível.
+        */}
+        {attachProgress && attachProgress.total > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <HardDrive className="w-5 h-5 shrink-0" />
+                Anexos (fotos e documentos)
+              </CardTitle>
+              <CardDescription>
+                Arquivados separadamente do banco, criptografados. Não estão dentro do zip do backup.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <div className="text-sm text-gray-600 mb-1">Arquivados</div>
+                  <div className="text-2xl font-bold">
+                    {attachProgress.archived} <span className="text-base font-normal text-gray-500">de {attachProgress.total}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600 mb-1">Volume</div>
+                  <div className="text-2xl font-bold">{formatBytes(attachProgress.archivedBytes)}</div>
+                </div>
+                {attachProgress.failed > 0 && (
+                  <div>
+                    <div className="text-sm text-gray-600 mb-1">Com falha</div>
+                    <div className="text-2xl font-bold text-red-600">{attachProgress.failed}</div>
+                  </div>
+                )}
+              </div>
+
+              <Button
+                onClick={handleBaixarIndice}
+                disabled={baixandoIndice}
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto"
+                title="Planilha com origem, destino e tamanho de cada anexo — o mapa para recuperá-los."
+              >
+                <Download className="w-4 h-4 mr-2 shrink-0" />
+                {baixandoIndice ? 'Gerando…' : 'Baixar índice dos anexos'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Último Backup */}
         {stats?.lastBackup && (

@@ -59,6 +59,16 @@ export type ArchiveProgress = {
   processedNow: number;
   /** Não há mais nada a fazer. */
   done: boolean;
+  /**
+   * Soma dos bytes já arquivados.
+   *
+   * POR QUE IMPORTA: o zip do backup do banco tem ~320 KB, o que parece pouco
+   * demais para quem espera encontrar as fotos ali dentro. Os anexos ficam
+   * FORA do zip, por decisão de projeto — juntá-los fazia o backup inteiro
+   * morrer no meio. Mostrar o volume arquivado é o que torna essa separação
+   * verificável em vez de uma afirmação sem prova.
+   */
+  archivedBytes: number;
 };
 
 /**
@@ -130,6 +140,30 @@ async function recordResult(
   }
 }
 
+/** Contagem por situação e volume total já arquivado. */
+async function resumoArquivado(db: any): Promise<{ archived: number; failed: number; bytes: number }> {
+  const raw = (await db.execute(sql`
+    SELECT status,
+           COUNT(*) AS total,
+           COALESCE(SUM(size_bytes), 0) AS bytes
+    FROM backup_attachments
+    GROUP BY status
+  `)) as any;
+  const rows = Array.isArray(raw[0]) ? raw[0] : raw;
+
+  let archived = 0;
+  let failed = 0;
+  let bytes = 0;
+  for (const r of Array.isArray(rows) ? rows : []) {
+    if (r?.status === "archived") {
+      archived = Number(r.total ?? 0);
+      bytes = Number(r.bytes ?? 0);
+    }
+    if (r?.status === "failed") failed = Number(r.total ?? 0);
+  }
+  return { archived, failed, bytes };
+}
+
 /** Baixa, criptografa e envia um anexo para o storage de backup. */
 async function archiveOne(item: Attachment, key: Buffer): Promise<{ storageUrl: string; sizeBytes: number }> {
   assertSafeExternalUrl(item.url);
@@ -191,20 +225,12 @@ export async function archiveAttachmentsBatch(
     processedNow++;
   }
 
-  const statusRaw = (await db.execute(sql`
-    SELECT status, COUNT(*) AS total FROM backup_attachments GROUP BY status
-  `)) as any;
-  const statusRows = Array.isArray(statusRaw[0]) ? statusRaw[0] : statusRaw;
-  let archived = 0;
-  let failed = 0;
-  for (const r of Array.isArray(statusRows) ? statusRows : []) {
-    if (r?.status === "archived") archived = Number(r.total ?? 0);
-    if (r?.status === "failed") failed = Number(r.total ?? 0);
-  }
+  const { archived, failed, bytes } = await resumoArquivado(db);
 
   const remaining = Math.max(0, pending.length - processedNow);
 
   return {
+    archivedBytes: bytes,
     total: all.length,
     archived,
     failed,
@@ -220,17 +246,60 @@ export async function getArchiveProgress(db: any): Promise<ArchiveProgress> {
   const all = await collectAttachments(db);
   const processed = await loadProcessedUrls(db);
 
-  const statusRaw = (await db.execute(sql`
-    SELECT status, COUNT(*) AS total FROM backup_attachments GROUP BY status
-  `)) as any;
-  const statusRows = Array.isArray(statusRaw[0]) ? statusRaw[0] : statusRaw;
-  let archived = 0;
-  let failed = 0;
-  for (const r of Array.isArray(statusRows) ? statusRows : []) {
-    if (r?.status === "archived") archived = Number(r.total ?? 0);
-    if (r?.status === "failed") failed = Number(r.total ?? 0);
-  }
+  const { archived, failed, bytes } = await resumoArquivado(db);
 
   const remaining = all.filter((a) => !processed.has(a.url)).length;
-  return { total: all.length, archived, failed, remaining, processedNow: 0, done: remaining === 0 };
+  return {
+    total: all.length,
+    archived,
+    failed,
+    remaining,
+    processedNow: 0,
+    done: remaining === 0,
+    archivedBytes: bytes,
+  };
+}
+
+/**
+ * Índice completo dos anexos arquivados.
+ *
+ * POR QUE EXISTE: os 238 arquivos estão no armazenamento, criptografados, e não
+ * apareciam em lugar nenhum da interface. "Está tudo salvo" sem nada que
+ * comprove é exatamente o tipo de garantia que não serve para backup. Este
+ * índice é o mapa de recuperação: para cada anexo, de onde veio, onde está e
+ * quanto ocupa.
+ *
+ * A tabela `backup_attachments` faz parte do dump do banco (o export percorre
+ * `SHOW TABLES`), então este mapa também está dentro do zip do backup — quem
+ * restaurar o banco recupera junto a referência de todos os anexos.
+ */
+export async function listArchivedAttachments(db: any): Promise<
+  Array<{
+    categoria: string;
+    arquivo: string;
+    origem: string;
+    armazenamento: string | null;
+    bytes: number | null;
+    situacao: string;
+    erro: string | null;
+    arquivadoEm: string | null;
+  }>
+> {
+  const raw = (await db.execute(sql`
+    SELECT category, file_name, source_url, storage_url, size_bytes, status, error_message, archived_at
+    FROM backup_attachments
+    ORDER BY category, file_name
+  `)) as any;
+  const rows = Array.isArray(raw[0]) ? raw[0] : raw;
+
+  return (Array.isArray(rows) ? rows : []).map((r: any) => ({
+    categoria: String(r.category ?? ""),
+    arquivo: String(r.file_name ?? ""),
+    origem: String(r.source_url ?? ""),
+    armazenamento: r.storage_url ? String(r.storage_url) : null,
+    bytes: r.size_bytes == null ? null : Number(r.size_bytes),
+    situacao: String(r.status ?? ""),
+    erro: r.error_message ? String(r.error_message) : null,
+    arquivadoEm: r.archived_at ? String(r.archived_at) : null,
+  }));
 }
