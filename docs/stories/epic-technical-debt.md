@@ -128,3 +128,78 @@ Ordenado pela sequência de execução recomendada. Prioridade: **#0** = bloquea
 ---
 
 *Fim do Epic (Fase 10 do Brownfield Discovery). Stories PROPOSTAS em status Draft — aguardando autorização de orçamento/ritmo do responsável pelo projeto. Nenhum status de ciclo de vida alterado; @po/@dev não acionados; nenhum commit/PR/push realizado.*
+
+---
+
+# Estado da execução — 07/08/2026
+
+Registro do que foi de fato executado, para quem retomar não precisar reconstruir
+o contexto lendo 60 PRs. **Este bloco descreve execução, não planejamento** — a
+matriz acima permanece como foi proposta na Fase 10.
+
+## Trabalho concluído e mergeado
+
+| Frente | PRs | Estado |
+|---|---|---|
+| Fase 0 (CI, SQLi, backup sem segredos, chave Asaas, auditoria de webhook) | #38 e correlatos | ✅ |
+| Fase 1 (baseline de migrations, transações, idempotência, índices, scoping) | vários | ✅ |
+| Fase 2 (estados de query, confirmação acessível, acessibilidade, guarda de rota) | vários | ✅ |
+| Story 40 — decompor `routers.ts` (5.662 → 118 linhas) | 5 fatias | ✅ |
+| Pagamento parcial: baixa pelo valor real + saldo devedor | — | ✅ |
+| **Backup: reconstrução completa** | #84–#92 | ✅ |
+| **Migrações automáticas com adoção de baseline** | #93 | ✅ |
+| **`@ts-nocheck` removido do `bpoRouter.ts`** | #93 | ✅ |
+| **Migração das cobranças `partiallyPaid` legadas** | #94 | ✅ |
+| **Varredura de valores enum em todo o servidor** | #95 | ✅ |
+
+## Defeitos reais encontrados no caminho (não estavam na matriz)
+
+Vale mais que a lista de stories: são coisas que a auditoria original não viu.
+
+1. **Backup disparava a cada start do servidor.** Um `if (import.meta.url === ...)`
+   para execução por linha de comando virava sempre verdadeiro depois do
+   empacotamento pelo esbuild. Gerou 313 backups numa noite. (#89)
+2. **`source: "asaas_reconcile"` gravava valor fora do enum.** A reconciliação de
+   cobrança falharia em banco estrito. Escondido pelo `@ts-nocheck`. (#93)
+3. **Migrações nunca chegavam ao banco de produção.** A hospedagem publica o
+   código mas não roda migrações — duas funcionalidades quebraram por isso antes
+   de a causa ser identificada. (#93)
+4. **Download de backup entregava arquivo criptografado cru**, que não abria em
+   programa nenhum. (#91)
+5. **Conexão do backup exigia SSL incondicionalmente**, quebrando em qualquer
+   servidor sem TLS. (#90)
+6. **Regex de `DATABASE_URL` rejeitava senha vazia**, com mensagem que apontava
+   para o lugar errado. (#90)
+
+## Pendente — precisa de verificação visual do responsável
+
+Não executado de propósito: o critério de aceite é visual e não havia como
+conferir.
+
+- **Story 30** — consolidar geração de PDF. São 2 bibliotecas (pdfkit, jsPDF) em
+  5 lugares, não 5 bibliotecas. Reescrever às cegas um artefato que vai para
+  cliente é risco sem contrapartida.
+- **Stories 27, 28, 24** — dependem de conferência de tela.
+
+## Pendente — precisa de decisão de risco do responsável
+
+Mexem em schema/dados de tabelas grandes:
+
+- Stories 33–36 (representação monetária, campos desnormalizados,
+  `employees.vessel_ids`, CHECK constraints)
+- Stories 38–39 (tipos temporais, refatorar `fuel_records`)
+
+Com o migrador automático (#93) essas mudanças passaram a ser viáveis: a
+migração chega ao banco sozinha. O que falta é a decisão sobre a janela.
+
+## Restrições permanentes
+
+- **`BACKUP_ENCRYPTION_KEY` não pode mudar.** Se mudar ou se perder, todos os
+  backups existentes ficam ilegíveis. Não há recuperação.
+- **`calculateMonthFinalBalance` (`db.ts`) não pode ser alterada** — determinação
+  do responsável pelo projeto.
+- **Senha SMTP não deve ser rotacionada** — determinação do responsável.
+- **Deploy é manual**, pelo painel do Manus (sincronizar + publicar). A tela
+  `/admin/diagnostico` mostra o `BUILD_MARKER` para confirmar o que subiu.
+- **CI não dispara por push nem por pull request** nesta conta; é preciso usar
+  `workflow_dispatch`. Nada entra em `main` sem uma execução manual verde.
