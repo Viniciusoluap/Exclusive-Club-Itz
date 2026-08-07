@@ -293,7 +293,7 @@ async function createOrUpdateRemainderCharge(
 // automática de PIX e baixa manual) passam por aqui, para que não voltem a
 // divergir entre si.
 // ============================================================
-type PayableCharge = {
+export type PayableCharge = {
   id: number;
   value: string | number;
   amountPaid?: string | number | null;
@@ -2613,6 +2613,30 @@ export const bpoRouter = router({
   // e cria os registros faltantes. Resolve cobranças criadas antes
   // do fix de upsert ou cujo webhook do Asaas nunca disparou.
   // ============================================================
+  /**
+   * Prévia da migração das cobranças legadas em `partiallyPaid`.
+   *
+   * Não altera nada. Existe porque isto mexe em dinheiro: ver linha a linha o
+   * que vai mudar antes de mudar não é luxo, é o mínimo.
+   */
+  previewPartialMigration: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database not available');
+    const { previewPartialMigration } = await import('../migratePartialCharges');
+    return previewPartialMigration(db);
+  }),
+
+  /**
+   * Migra as cobranças legadas: baixa pelo valor recebido e saldo devedor com
+   * a diferença. Reusa a mesma regra dos pagamentos novos.
+   */
+  runPartialMigration: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database not available');
+    const { runPartialMigration } = await import('../migratePartialCharges');
+    return runPartialMigration(db);
+  }),
+
   repairInspectionSync: adminProcedure.mutation(async () => {
     const db = await getDb();
     if (!db) throw new Error("DB unavailable");

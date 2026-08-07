@@ -478,6 +478,45 @@ export default function Saas() {
     onError: (err) => toast.error(`Erro na importação: ${err.message}`),
   });
 
+  // Migração das cobranças legadas em `partiallyPaid`.
+  //
+  // Esse estado não deveria existir: a regra é dar baixa pelo valor recebido e
+  // gerar saldo devedor com a diferença. Enquanto a cobrança fica parcial, ela
+  // soma o valor ORIGINAL em "Total Cobrado" E o saldo devedor soma o restante
+  // — o mesmo dinheiro contado duas vezes. O botão só aparece quando há o que
+  // migrar, e sempre pede confirmação mostrando os valores.
+  const { data: previaParcial } = trpc.bpo.previewPartialMigration.useQuery();
+  const migrarParciaisMutation = trpc.bpo.runPartialMigration.useMutation({
+    onSuccess: ({ migradas, falhas }) => {
+      if (falhas.length > 0) {
+        toast.warning(`${migradas} cobrança(s) migrada(s), ${falhas.length} com falha. As que falharam continuam como estavam.`);
+      } else {
+        toast.success(`${migradas} cobrança(s) migrada(s): baixa pelo valor recebido e saldo devedor gerado.`);
+      }
+      utils.bpo.getStats.invalidate();
+      utils.bpo.listCharges.invalidate();
+      utils.bpo.previewPartialMigration.invalidate();
+    },
+    onError: (err) => toast.error(`Erro na migração: ${err.message}`),
+  });
+
+  const handleMigrarParciais = async () => {
+    if (!previaParcial || previaParcial.total === 0) return;
+    const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const ok = await confirm({
+      title: 'Migrar cobranças com pagamento parcial?',
+      description:
+        `${previaParcial.total} cobrança(s) serão liquidadas pelo valor realmente recebido ` +
+        `(${brl(previaParcial.somaRecebida)}), e será gerado saldo devedor de ` +
+        `${brl(previaParcial.somaSaldoDevedor)} no mesmo centro de custo. ` +
+        `Hoje elas somam ${brl(previaParcial.somaOriginal)} em Total Cobrado E o saldo devedor à parte — ` +
+        `o mesmo dinheiro contado duas vezes. Os saldos devedores nascem com vencimento hoje, ` +
+        `porque o Asaas recusa cobrança retroativa.`,
+      confirmText: 'Migrar',
+    });
+    if (ok) migrarParciaisMutation.mutate();
+  };
+
   const repairSyncMutation = trpc.bpo.repairInspectionSync.useMutation({
     onSuccess: (data) => {
       if (data.synced === 0) {
@@ -823,6 +862,21 @@ export default function Saas() {
                 : <RefreshCw className="h-4 w-4 mr-2" />}
               Corrigir Danos/BPO
             </Button>
+            {previaParcial && previaParcial.total > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleMigrarParciais}
+                disabled={migrarParciaisMutation.isPending}
+                className="text-amber-700 hover:text-amber-800"
+                title="Liquida pelo valor recebido e gera saldo devedor com a diferença"
+              >
+                {migrarParciaisMutation.isPending
+                  ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  : <AlertTriangle className="h-4 w-4 mr-2" />}
+                Migrar parciais ({previaParcial.total})
+              </Button>
+            )}
           </div>
           {/* Cards de totais — apenas na aba Cobranças */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
