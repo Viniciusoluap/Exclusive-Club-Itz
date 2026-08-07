@@ -203,17 +203,23 @@ export default function AdminBackups() {
     }
   };
 
-  // Polling: refetch a cada 5s enquanto há backup em execução
+  // Polling enquanto há backup em execução.
+  //
+  // 2s (era 5s) porque agora existe uma barra de progresso para acompanhar: a
+  // cada 5 segundos a barra dava saltos e parecia travada entre uma atualização
+  // e outra. Um backup dura ~25s, então o custo de consultar de 2 em 2 segundos
+  // é de pouco mais de dez consultas — e só enquanto algo está rodando.
+  const POLL_MS = 2000;
   const { data: stats, isLoading: statsLoading } = trpc.backup.getStats.useQuery(undefined, {
     refetchInterval: (query) => {
       const d = query.state.data as any;
-      return d?.runningBackups > 0 ? 5000 : false;
+      return d?.runningBackups > 0 ? POLL_MS : false;
     },
   });
   const { data: history, isLoading: historyLoading } = trpc.backup.getHistory.useQuery({ limit: 20 }, {
     refetchInterval: (query) => {
       const d = query.state.data as any;
-      return Array.isArray(d) && d.some((b: any) => b.status === 'running') ? 5000 : false;
+      return Array.isArray(d) && d.some((b: any) => b.status === 'running') ? POLL_MS : false;
     },
   });
 
@@ -302,6 +308,56 @@ export default function AdminBackups() {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return minutes > 0 ? `${minutes}m ${secs}s` : `${secs}s`;
+  };
+
+  /**
+   * Barra de progresso do backup em andamento.
+   *
+   * POR QUE SUBSTITUI O "Em Execução": aquele rótulo não distinguia
+   * "trabalhando normalmente" de "travado" — e travar já aconteceu aqui mais de
+   * uma vez. Um número que avança é a diferença entre acompanhar e torcer.
+   *
+   * O percentual vem do servidor e reflete etapas concluídas, não tempo
+   * decorrido. Uma barra cronometrada continuaria subindo com o processo morto,
+   * que é justamente o que ela deveria denunciar.
+   */
+  const ProgressoBackup = ({ backup }: { backup: any }) => {
+    const percent = typeof backup.progressPercent === 'number' ? backup.progressPercent : null;
+    const step = backup.progressStep as string | null;
+
+    return (
+      <div className="w-full">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <span className="text-sm font-medium text-teal-700 flex items-center gap-1.5 min-w-0">
+            <Clock className="w-3.5 h-3.5 animate-spin shrink-0" />
+            <span className="truncate">{step ?? 'Em execução'}</span>
+          </span>
+          {percent !== null && (
+            <span className="text-sm font-bold text-teal-700 tabular-nums shrink-0">{percent}%</span>
+          )}
+        </div>
+
+        <div
+          className="h-2 w-full rounded-full bg-gray-200 overflow-hidden"
+          role="progressbar"
+          aria-valuenow={percent ?? undefined}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={step ?? 'Backup em execução'}
+        >
+          <div
+            className={
+              percent === null
+                ? // Sem percentual (backup começado antes desta versão): faixa
+                  // animada, para não fingir um número que não existe.
+                  'h-full w-1/3 bg-teal-500 animate-pulse'
+                : 'h-full bg-teal-500 transition-all duration-500'
+            }
+            style={percent === null ? undefined : { width: `${Math.min(100, Math.max(0, percent))}%` }}
+          />
+        </div>
+      </div>
+    );
   };
 
   const getStatusBadge = (status: string) => {
@@ -532,9 +588,13 @@ export default function AdminBackups() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
+                <div className={stats.lastBackup.status === 'running' ? 'sm:col-span-2 lg:col-span-4' : ''}>
                   <div className="text-sm text-gray-600 mb-1">Status</div>
-                  {getStatusBadge(stats.lastBackup.status)}
+                  {stats.lastBackup.status === 'running' ? (
+                    <ProgressoBackup backup={stats.lastBackup} />
+                  ) : (
+                    getStatusBadge(stats.lastBackup.status)
+                  )}
                 </div>
                 <div>
                   <div className="text-sm text-gray-600 mb-1">Data/Hora</div>
@@ -622,8 +682,13 @@ export default function AdminBackups() {
                   >
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
                       <div className="flex-1 min-w-0 w-full">
+                        {backup.status === 'running' && (
+                          <div className="mb-3">
+                            <ProgressoBackup backup={backup} />
+                          </div>
+                        )}
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
-                          {getStatusBadge(backup.status)}
+                          {backup.status !== 'running' && getStatusBadge(backup.status)}
                           <span className="text-sm text-gray-600">
                             {new Date(backup.startedAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                           </span>
