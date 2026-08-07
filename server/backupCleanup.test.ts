@@ -14,7 +14,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { previewCleanup, runCleanup } from "./backupCleanup";
+import { previewCleanup, runCleanup, runFullCleanup } from "./backupCleanup";
 
 const db = await getDb();
 
@@ -120,6 +120,28 @@ describe.skipIf(!db)("limpeza de backups redundantes", () => {
 
   it("com a lista vazia, não faz nada", async () => {
     const r = await runCleanup(db);
+    expect(r.removidos).toBe(0);
+  });
+});
+
+describe.skipIf(!db)("apagar todo o histórico", () => {
+  it("remove tudo, sem preservar o mais recente", async () => {
+    // Diferente de runCleanup: aqui nada sobrevive. É o "começar do zero".
+    await semear([
+      { id: 3, status: "success", startedAt: "2026-08-07 14:00:00" },
+      { id: 2, status: "success", startedAt: "2026-08-06 14:00:00" },
+      { id: 1, status: "failed", startedAt: "2026-06-14 18:00:00" },
+    ]);
+
+    const r = await runFullCleanup(db);
+
+    expect(r.removidos).toBe(3);
+    expect(await idsRestantes()).toEqual([]);
+  });
+
+  it("com o histórico já vazio, não quebra", async () => {
+    await db!.execute(sql`DELETE FROM backup_history`);
+    const r = await runFullCleanup(db);
     expect(r.removidos).toBe(0);
   });
 });

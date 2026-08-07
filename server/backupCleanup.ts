@@ -104,6 +104,37 @@ export async function previewCleanup(db: any): Promise<CleanupPreview> {
   };
 }
 
+/**
+ * Apaga TODO o histórico de backups.
+ *
+ * Diferente de `runCleanup`, que preserva um backup por dia, esta função não
+ * preserva nada — é o "começar do zero", pedido explicitamente depois que a
+ * enxurrada de 313 backups tornou o histórico inútil como registro.
+ *
+ * Quem chama é responsável por gerar um backup novo em seguida: entre o
+ * DELETE e o próximo backup, não existe nenhum ponto de restauração.
+ */
+export async function runFullCleanup(db: any): Promise<{ removidos: number }> {
+  const raw = (await db.execute(
+    sql`SELECT id, local_file_path FROM backup_history`,
+  )) as any;
+  const rows: any[] = Array.isArray(raw[0]) ? raw[0] : raw;
+  const lista = Array.isArray(rows) ? rows : [];
+
+  for (const r of lista) {
+    const caminho = r?.local_file_path;
+    if (!caminho) continue;
+    try {
+      if (fs.existsSync(caminho)) fs.unlinkSync(caminho);
+    } catch (error) {
+      console.warn(`[backupCleanup] Não removeu ${caminho}:`, error);
+    }
+  }
+
+  await db.execute(sql`DELETE FROM backup_history`);
+  return { removidos: lista.length };
+}
+
 export async function runCleanup(db: any): Promise<{ removidos: number }> {
   const { duplicados, falhasAntigas } = await idsParaRemover(db);
   const ids = [...duplicados, ...falhasAntigas];
