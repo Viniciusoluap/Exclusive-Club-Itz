@@ -38,31 +38,65 @@ export default function AdminBackups() {
   const { data: attachProgress } = trpc.backup.getAttachmentsProgress.useQuery();
   const archiveMutation = trpc.backup.archiveAttachmentsBatch.useMutation();
   const [archiving, setArchiving] = useState(false);
+  // Progresso ao vivo no próprio botão. Antes o andamento só aparecia em toasts
+  // a cada 4 lotes, então a tela ficava muda por longos períodos e não dava
+  // para saber se ainda estava trabalhando ou se tinha travado.
+  const [archiveStatus, setArchiveStatus] = useState<string | null>(null);
 
   const handleArchiveAttachments = async () => {
     setArchiving(true);
-    const MAX_LOTES = 200; // trava de segurança
+    setArchiveStatus(null);
+    const MAX_LOTES = 400; // trava de segurança contra laço infinito
+
+    // Uma falha de rede num lote não perde o que já foi feito: cada anexo
+    // arquivado está gravado no banco. Então vale tentar de novo antes de
+    // desistir — e, ao desistir, deixar claro que o progresso está guardado.
+    let falhasSeguidas = 0;
+
     try {
       for (let i = 0; i < MAX_LOTES; i++) {
-        const p = await archiveMutation.mutateAsync({ limit: 5 });
+        let p: Awaited<ReturnType<typeof archiveMutation.mutateAsync>>;
+        try {
+          p = await archiveMutation.mutateAsync();
+          falhasSeguidas = 0;
+        } catch (e: any) {
+          falhasSeguidas++;
+          if (falhasSeguidas >= 3) {
+            toast.error(
+              `Interrompido: ${e.message} — o que já foi arquivado está salvo. Clique novamente para continuar de onde parou.`,
+            );
+            return;
+          }
+          setArchiveStatus(`Falha no lote, tentando de novo (${falhasSeguidas}/3)…`);
+          continue;
+        }
+
+        setArchiveStatus(
+          p.done
+            ? null
+            : `Arquivando… ${p.archived} de ${p.total}` +
+                (p.failed > 0 ? ` — ${p.failed} com falha` : ''),
+        );
+
         if (p.done) {
           toast.success(
             `Anexos arquivados: ${p.archived} de ${p.total}` +
               (p.failed > 0 ? ` — ${p.failed} com falha` : ''),
           );
-          break;
+          return;
         }
-        if (i % 4 === 0) {
-          toast.info(`Arquivando anexos… ${p.archived}/${p.total} (faltam ${p.remaining})`);
-        }
-        if (i === MAX_LOTES - 1) {
-          toast.warning(`Pausado com ${p.remaining} anexo(s) restante(s). Clique novamente para continuar.`);
+
+        // Nenhum item processado e ainda há pendentes: repetir só gastaria
+        // requisição à toa. Melhor parar dizendo isso do que girar em falso.
+        if (p.processedNow === 0) {
+          toast.warning(`Nenhum anexo pôde ser processado. Restam ${p.remaining}.`);
+          return;
         }
       }
-    } catch (e: any) {
-      toast.error(`Erro ao arquivar anexos: ${e.message}`);
+      toast.warning('Pausado por segurança. Clique novamente para continuar.');
     } finally {
       setArchiving(false);
+      setArchiveStatus(null);
       utils.backup.getAttachmentsProgress.invalidate();
     }
   };
@@ -235,8 +269,8 @@ export default function AdminBackups() {
             >
               {archiving ? (
                 <>
-                  <Clock className="w-4 h-4 mr-2 animate-spin" />
-                  Arquivando anexos...
+                  <Clock className="w-4 h-4 mr-2 animate-spin shrink-0" />
+                  {archiveStatus ?? 'Arquivando anexos...'}
                 </>
               ) : (
                 <>

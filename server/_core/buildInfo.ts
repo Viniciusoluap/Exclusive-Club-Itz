@@ -13,7 +13,7 @@
  */
 
 /** Identificador da versão do código. Atualize ao publicar algo que precise ser verificado. */
-export const BUILD_MARKER = "2026-08-06.2-tabela-anexos-e-mobile";
+export const BUILD_MARKER = "2026-08-07.1-lote-por-tempo-e-erro-legivel";
 
 /** Momento em que o processo do servidor subiu (ISO). Revela reinícios/redeploys. */
 export const PROCESS_STARTED_AT = new Date().toISOString();
