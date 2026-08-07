@@ -12,8 +12,13 @@ export async function exportDatabaseToSQL(dbBackupPath: string): Promise<void> {
     throw new Error('DATABASE_URL não configurada');
   }
 
-  // Parse da URL de conexão
-  const urlMatch = databaseUrl.match(/mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/);
+  // Parse da URL de conexão.
+  //
+  // A senha usa `[^@]*` e não `[^@]+`: senha vazia (`mysql://root:@host/db`) é
+  // uma URL válida e acontece em ambientes locais e de teste. Com `+`, o
+  // backup morria com "Formato de DATABASE_URL inválido" — mensagem que
+  // aponta para o lugar errado, porque a URL está correta.
+  const urlMatch = databaseUrl.match(/mysql:\/\/([^:]+):([^@]*)@([^:]+):(\d+)\/(.+)/);
   
   if (!urlMatch) {
     throw new Error('Formato de DATABASE_URL inválido');

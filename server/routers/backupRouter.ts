@@ -210,6 +210,20 @@ export const backupRouter = router({
       return archiveAttachmentsBatch(db, input?.limit ?? 25);
     }),
 
+  /**
+   * Índice dos anexos arquivados — o mapa de recuperação.
+   *
+   * O zip do backup tem ~320 KB porque contém só o banco; os anexos ficam
+   * fora dele, por decisão de projeto. Sem uma lista, "os anexos estão
+   * salvos" era uma afirmação sem prova.
+   */
+  listArchivedAttachments: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database not available');
+    const { listArchivedAttachments } = await import('../backupAttachmentsArchive');
+    return listArchivedAttachments(db);
+  }),
+
   /** Quantos backups redundantes existem (sem remover nada). */
   getCleanupPreview: adminProcedure.query(async () => {
     const db = await getDb();
