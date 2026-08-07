@@ -2,6 +2,40 @@ import mysql from 'mysql2/promise';
 import fs from 'fs';
 
 /**
+ * Abre a conexão do backup, com SSL quando o servidor aceita.
+ *
+ * POR QUE NÃO É UM `createConnection` DIRETO: o backup exigia SSL de forma
+ * incondicional (`ssl: { rejectUnauthorized: false }`). O TiDB Cloud de
+ * produção aceita SSL, então lá funcionava — mas contra qualquer servidor sem
+ * SSL o backup morria com "Server does not support secure connection", que não
+ * diz nada sobre backup e manda procurar no lugar errado. Foi assim que o CI
+ * quebrou: o TiDB efêmero dele não fala SSL.
+ *
+ * Tenta com SSL primeiro (produção depende disso e não pode mudar de
+ * comportamento) e só cai para conexão simples quando o servidor recusa o
+ * handshake. Qualquer outro erro sobe — credencial errada ou host inacessível
+ * não podem ser confundidos com "servidor sem SSL".
+ */
+export async function connectForBackup(config: {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}): Promise<mysql.Connection> {
+  try {
+    return await mysql.createConnection({
+      ...config,
+      ssl: { rejectUnauthorized: false },
+    });
+  } catch (error: any) {
+    if (error?.code !== 'HANDSHAKE_NO_SSL_SUPPORT') throw error;
+    console.warn('[backup] Servidor sem SSL — conectando sem criptografia de transporte.');
+    return mysql.createConnection(config);
+  }
+}
+
+/**
  * Exporta banco de dados MySQL/TiDB para arquivo SQL usando Node.js puro
  * Não depende de mysqldump ou ferramentas externas
  */
@@ -29,16 +63,12 @@ export async function exportDatabaseToSQL(dbBackupPath: string): Promise<void> {
 
   console.log(`📊 Conectando ao banco: ${dbName}@${host}:${port}`);
 
-  // Cria conexão
-  const connection = await mysql.createConnection({
+  const connection = await connectForBackup({
     host,
     port: parseInt(port),
     user,
     password,
     database: dbName,
-    ssl: {
-      rejectUnauthorized: false // TiDB Cloud requer SSL
-    }
   });
 
   try {
