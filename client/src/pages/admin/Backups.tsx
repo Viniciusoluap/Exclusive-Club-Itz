@@ -61,13 +61,19 @@ export default function AdminBackups() {
           falhasSeguidas = 0;
         } catch (e: any) {
           falhasSeguidas++;
-          if (falhasSeguidas >= 3) {
+          if (falhasSeguidas >= 4) {
             toast.error(
-              `Interrompido: ${e.message} — o que já foi arquivado está salvo. Clique novamente para continuar de onde parou.`,
+              `Interrompido: ${e.message} — o que já foi arquivado está salvo, e o servidor continua arquivando sozinho em segundo plano. Não é preciso fazer nada.`,
             );
             return;
           }
-          setArchiveStatus(`Falha no lote, tentando de novo (${falhasSeguidas}/3)…`);
+          // HTTP 503 quer dizer "estou ocupado, tente mais tarde". A tentativa
+          // anterior repetia na mesma hora, 3 vezes em cerca de um segundo —
+          // ou seja, insistia exatamente quando a instância tinha menos
+          // capacidade para responder. Espera crescente dá tempo de ela voltar.
+          const esperaMs = 2000 * 2 ** (falhasSeguidas - 1); // 2s, 4s, 8s
+          setArchiveStatus(`Servidor ocupado. Nova tentativa em ${esperaMs / 1000}s…`);
+          await new Promise((r) => setTimeout(r, esperaMs));
           continue;
         }
 
