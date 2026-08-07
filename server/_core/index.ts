@@ -330,6 +330,34 @@ async function startServer() {
 
 startServer().catch(console.error);
 
+// Migrações do banco na subida do servidor.
+//
+// A hospedagem publica o código mas não roda migrações — isso já custou dois
+// defeitos nesta auditoria, cada um contornado com um DDL avulso dentro do
+// código de negócio. Ver server/_core/autoMigrate.ts para o porquê da adoção
+// de baseline, que é o que torna isto seguro num banco que já tem dados.
+import("../_core/autoMigrate").then(async ({ aplicarMigracoesPendentes }) => {
+  const { getDb } = await import("../db");
+  const db = await getDb();
+  const path = await import("path");
+  const resultado = await aplicarMigracoesPendentes(db, path.resolve(process.cwd(), "drizzle"));
+
+  (globalThis as any).__ultimaMigracao = resultado;
+
+  if (resultado.marcadasSemExecutar.length > 0) {
+    console.log(
+      `[autoMigrate] Banco existente adotado: ${resultado.marcadasSemExecutar.length} migração(ões) ` +
+        `marcada(s) como aplicada(s) sem executar DDL.`,
+    );
+  }
+  if (resultado.aplicadas.length > 0) {
+    console.log(`[autoMigrate] Aplicadas: ${resultado.aplicadas.join(", ")}`);
+  }
+  if (resultado.erro) {
+    console.error(`[autoMigrate] Pendência: ${resultado.erro}`);
+  }
+}).catch(err => console.error("[autoMigrate] Falha ao registrar:", err));
+
 // Registrar cron jobs (sincronização BPO às 03:00, reconciliação às 04:00, mensalidades às 00:30)
 import("../cronJobs").then(({ registerCronJobs }) => {
   registerCronJobs();

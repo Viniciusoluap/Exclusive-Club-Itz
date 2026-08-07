@@ -1,0 +1,1 @@
+ALTER TABLE `bpo_charges` MODIFY COLUMN `source` enum('asaas_import','asaas_webhook','manual','system','asaas_reconcile') DEFAULT 'system';
