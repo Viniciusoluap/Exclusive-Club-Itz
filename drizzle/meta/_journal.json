@@ -43,6 +43,13 @@
       "when": 1786041055864,
       "tag": "0005_backup_attachments",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1786114676202,
+      "tag": "0006_backup_progress",
+      "breakpoints": true
     }
   ]
 }

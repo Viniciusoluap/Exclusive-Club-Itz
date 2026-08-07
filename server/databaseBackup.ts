@@ -36,10 +36,22 @@ export async function connectForBackup(config: {
 }
 
 /**
+ * Chamado a cada tabela concluída, para a tela mostrar progresso real.
+ *
+ * É por tabela CONCLUÍDA, e não por tempo decorrido, de propósito: uma barra
+ * cronometrada continua andando quando o processo travou, que é exatamente a
+ * situação que ela deveria denunciar.
+ */
+export type ProgressoExportacao = (feitas: number, total: number, tabela: string) => void;
+
+/**
  * Exporta banco de dados MySQL/TiDB para arquivo SQL usando Node.js puro
  * Não depende de mysqldump ou ferramentas externas
  */
-export async function exportDatabaseToSQL(dbBackupPath: string): Promise<void> {
+export async function exportDatabaseToSQL(
+  dbBackupPath: string,
+  onProgress?: ProgressoExportacao,
+): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
   
   if (!databaseUrl) {
@@ -88,6 +100,7 @@ export async function exportDatabaseToSQL(dbBackupPath: string): Promise<void> {
     
     console.log(`📋 Exportando ${tables.length} tabelas...`);
 
+    let feitas = 0;
     for (const tableRow of tables) {
       const tableName = Object.values(tableRow)[0] as string;
       console.log(`  → ${tableName}`);
@@ -133,6 +146,11 @@ export async function exportDatabaseToSQL(dbBackupPath: string): Promise<void> {
         
         sqlStatements.push('');
       }
+
+      // Avisa DEPOIS de gravar a tabela: o progresso reflete trabalho
+      // concluído, nunca trabalho iniciado.
+      feitas++;
+      onProgress?.(feitas, tables.length, tableName);
     }
 
     // Footer

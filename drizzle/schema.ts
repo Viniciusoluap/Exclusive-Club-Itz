@@ -356,6 +356,11 @@ export const backupHistory = mysqlTable("backup_history", {
 	driveFileUrl: text("drive_file_url"),
 	localFilePath: text("local_file_path"),
 	s3Url: text("s3_url"), // URL do backup no S3
+	// Progresso do backup em andamento. Percentual de trabalho concluído (não
+	// de tempo decorrido) e a etapa atual, para a tela mostrar uma barra em vez
+	// de um "Em Execução" que não distingue trabalhando de travado.
+	progressPercent: int("progress_percent"),
+	progressStep: varchar("progress_step", { length: 120 }),
 });
 
 // subscriptions e subscription_charges removidas — substituídas por bpo_charges
