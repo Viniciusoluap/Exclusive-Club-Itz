@@ -87,6 +87,20 @@ export function encryptBackupBuffer(plaintext: Buffer, keyMaterial: Buffer): Buf
 }
 
 /**
+ * O buffer é um container criptografado por {@link encryptBackupBuffer}?
+ *
+ * Serve para distinguir os artefatos atuais (criptografados) dos backups
+ * antigos, gravados em claro antes da criptografia existir. Sem essa
+ * distinção, o download tentaria descriptografar um zip comum e falharia.
+ */
+export function isEncryptedBackup(container: Buffer): boolean {
+  return (
+    container.length >= BACKUP_ENC_MAGIC.length &&
+    container.subarray(0, BACKUP_ENC_MAGIC.length).equals(BACKUP_ENC_MAGIC)
+  );
+}
+
+/**
  * Descriptografa um container gerado por {@link encryptBackupBuffer}.
  * Usado por rotinas de restore/validação. Lança se o auth tag não conferir
  * (proteção de integridade/adulteração do GCM).
