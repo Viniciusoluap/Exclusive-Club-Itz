@@ -210,6 +210,26 @@ export const backupRouter = router({
       return archiveAttachmentsBatch(db, input?.limit ?? 25);
     }),
 
+  /** Quantos backups redundantes existem (sem remover nada). */
+  getCleanupPreview: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database not available');
+    const { previewCleanup } = await import('../backupCleanup');
+    return previewCleanup(db);
+  }),
+
+  /**
+   * Remove os backups redundantes: mantém o mais recente de cada dia e apaga
+   * as repetições do mesmo dia, além de registros de falha antigos. Nasceu da
+   * enxurrada gerada pelo backup que disparava a cada start do servidor.
+   */
+  cleanupRedundant: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database not available');
+    const { runCleanup } = await import('../backupCleanup');
+    return runCleanup(db);
+  }),
+
   /**
    * Obtém informações de um backup específico para download
    */

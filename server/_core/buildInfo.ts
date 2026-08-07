@@ -13,7 +13,7 @@
  */
 
 /** Identificador da versão do código. Atualize ao publicar algo que precise ser verificado. */
-export const BUILD_MARKER = "2026-08-07.2-anexos-drenam-sozinhos";
+export const BUILD_MARKER = "2026-08-07.3-backup-diario-anexos-semanal";
 
 /** Momento em que o processo do servidor subiu (ISO). Revela reinícios/redeploys. */
 export const PROCESS_STARTED_AT = new Date().toISOString();

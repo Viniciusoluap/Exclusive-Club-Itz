@@ -30,6 +30,36 @@ export default function AdminBackups() {
     },
   });
 
+  // ---- Limpeza dos backups redundantes ----
+  // Um defeito disparava um backup a cada start do servidor, e a hospedagem
+  // recicla a instância com frequência: 313 backups numa noite. A regra mantém
+  // o mais recente de cada dia, então nenhum dia fica descoberto.
+  const { data: cleanupPreview } = trpc.backup.getCleanupPreview.useQuery();
+  const cleanupMutation = trpc.backup.cleanupRedundant.useMutation({
+    onSuccess: ({ removidos }) => {
+      toast.success(`${removidos} backup(s) redundante(s) removido(s).`);
+      utils.backup.getStats.invalidate();
+      utils.backup.getHistory.invalidate();
+      utils.backup.getCleanupPreview.invalidate();
+    },
+    onError: (error) => toast.error(`Erro ao limpar: ${error.message}`),
+  });
+
+  const handleCleanup = async () => {
+    if (!cleanupPreview || cleanupPreview.total === 0) return;
+    const ok = await confirm({
+      title: 'Remover backups redundantes?',
+      description:
+        `Serão removidos ${cleanupPreview.total} registro(s): ${cleanupPreview.duplicados} ` +
+        `repetição(ões) do mesmo dia e ${cleanupPreview.falhasAntigas} falha(s) antiga(s). ` +
+        `Restarão ${cleanupPreview.restantes}, mantendo o backup mais recente de cada dia. ` +
+        `Os arquivos já enviados ao armazenamento externo não são apagados — apenas o registro sai da lista.`,
+      variant: 'destructive',
+      confirmText: 'Remover',
+    });
+    if (ok) cleanupMutation.mutate();
+  };
+
   // ---- Arquivamento incremental de ANEXOS ----
   // Fotos e documentos NÃO entram no zip do backup: baixá-los junto fazia o
   // processo passar de 43s para minutos, e o trabalho em segundo plano não
@@ -286,6 +316,20 @@ export default function AdminBackups() {
                 </>
               )}
             </Button>
+
+            {/* Só aparece quando há o que limpar — sem redundância, sem botão. */}
+            {cleanupPreview && cleanupPreview.total > 0 && (
+              <Button
+                onClick={handleCleanup}
+                disabled={cleanupMutation.isPending}
+                variant="outline"
+                className="w-full sm:w-auto text-red-600 hover:text-red-700"
+                title="Mantém o backup mais recente de cada dia e remove as repetições."
+              >
+                <Trash2 className="w-4 h-4 mr-2 shrink-0" />
+                Limpar redundantes ({cleanupPreview.total})
+              </Button>
+            )}
           </div>
         </div>
       </div>
