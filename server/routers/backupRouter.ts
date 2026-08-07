@@ -199,12 +199,15 @@ export const backupRouter = router({
    * morreria no meio.
    */
   archiveAttachmentsBatch: adminProcedure
-    .input(z.object({ limit: z.number().min(1).max(20).default(5) }).optional())
+    // `limit` é só uma trava superior — o que fecha o lote é o orçamento de
+    // tempo do próprio arquivamento, para a requisição nunca durar mais do que
+    // o proxy tolera (ver BUDGET_MS em backupAttachmentsArchive.ts).
+    .input(z.object({ limit: z.number().min(1).max(100).default(25) }).optional())
     .mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error('Database not available');
       const { archiveAttachmentsBatch } = await import('../backupAttachmentsArchive');
-      return archiveAttachmentsBatch(db, input?.limit ?? 5);
+      return archiveAttachmentsBatch(db, input?.limit ?? 25);
     }),
 
   /**
