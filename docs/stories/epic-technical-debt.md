@@ -171,6 +171,13 @@ Vale mais que a lista de stories: são coisas que a auditoria original não viu.
 6. **Regex de `DATABASE_URL` rejeitava senha vazia**, com mensagem que apontava
    para o lugar errado. (#90)
 
+## O que falta e depende do responsável
+
+Tudo o que só o responsável pelo projeto pode executar está detalhado, em
+linguagem não técnica e passo a passo, em
+[`docs/guides/GUIA-FINALIZACAO-AUDITORIA.md`](../guides/GUIA-FINALIZACAO-AUDITORIA.md).
+As duas seções abaixo são o resumo técnico do mesmo conteúdo.
+
 ## Pendente — precisa de verificação visual do responsável
 
 Não executado de propósito: o critério de aceite é visual e não havia como
