@@ -102,14 +102,22 @@ export default function Diagnostico() {
                 O que o processo do servidor enxerga neste momento.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               {data.envVars.map((v) => (
-                <div key={v.name} className="flex items-center gap-2 text-sm">
-                  <StatusIcon ok={v.present} />
-                  <span className="font-mono">{v.name}</span>
-                  <span className="text-muted-foreground">
-                    {v.present ? `presente (${v.length} caracteres)` : "AUSENTE"}
-                  </span>
+                <div key={v.name} className="text-sm">
+                  <div className="flex items-center gap-2">
+                    {/* Uma opcional ausente não é falha: o sistema tem outro
+                        caminho para ela. Pintar de vermelho mandava procurar
+                        problema onde não havia. */}
+                    <StatusIcon ok={v.present || !v.critica} />
+                    <span className="font-mono break-all">{v.name}</span>
+                    <span className="text-muted-foreground">
+                      {v.present ? `presente (${v.length} caracteres)` : "ausente"}
+                    </span>
+                  </div>
+                  {!v.present && (
+                    <p className="ml-6 text-xs text-muted-foreground">{v.nota}</p>
+                  )}
                 </div>
               ))}
             </CardContent>
