@@ -208,5 +208,10 @@ migração chega ao banco sozinha. O que falta é a decisão sobre a janela.
 - **Senha SMTP não deve ser rotacionada** — determinação do responsável.
 - **Deploy é manual**, pelo painel do Manus (sincronizar + publicar). A tela
   `/admin/diagnostico` mostra o `BUILD_MARKER` para confirmar o que subiu.
-- **CI não dispara por push nem por pull request** nesta conta; é preciso usar
-  `workflow_dispatch`. Nada entra em `main` sem uma execução manual verde.
+- **O CI voltou a disparar por `pull_request` sozinho** (verificado em 08/08 no
+  PR #97). Entre 03/08 e 06/08 ele ficou mudo por bloqueio de orçamento de
+  Actions, e nesse período só o `workflow_dispatch` funcionava — daí o gatilho
+  manual continuar no `ci.yml`. Ele segue valendo como recurso: um commit sem
+  execução é indistinguível de um commit ainda na fila, e o disparo manual
+  desfaz essa ambiguidade em segundos. Regra que não muda: **nada entra em
+  `main` sem execução verde.**
