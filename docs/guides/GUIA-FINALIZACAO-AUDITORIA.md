@@ -321,11 +321,14 @@ descobre quando um cliente reclamar. Esse é o pior tipo de defeito: silencioso.
 
 | # | Documento | Como gerar |
 |---|---|---|
-| 1 | **Relatório do cliente** | Menu de clientes → escolha um cliente → gerar relatório em PDF |
-| 2 | **Ficha de abastecimento** | Menu de Abastecimento → escolha um registro → gerar PDF |
-| 3 | **Relatório de vistorias** | Menu de Vistorias → gerar relatório em PDF |
+| 1 | **Relatório do cliente** | Tela **Admin** (`/admin`) → escolha um cliente → gerar relatório |
+| 2 | **Relatório de abastecimento** | Tela **Abastecimento** → marque um ou mais registros → botão **"Relatório PDF"** |
+| 3 | **Relatório de vistorias** | Tela **Vistorias** → marque uma ou mais vistorias → gerar relatório |
 | 4 | **PDF de cobranças (BPO)** | `/admin/saas` → aba Cobranças → botão **"Gerar PDF"** |
-| 5 | **Contrato e/ou notificação** | Onde você emite contrato ou notificação para cliente |
+| 5 | **Contrato e/ou notificação** | Onde você emite contrato ou notificação para o cliente |
+
+> Os itens 1, 2 e 5 são desenhados por um programa (PDFKit); os itens 3 e 4, por
+> outro (jsPDF). É essa divisão que faz os documentos terem caras diferentes.
 
 **Como me mandar:** o arquivo PDF mesmo, não print. Se algum tiver dado de
 cliente real que você prefira não compartilhar, gere para um cliente de teste ou
