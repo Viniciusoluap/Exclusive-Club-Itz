@@ -159,12 +159,24 @@ export function contarLinhasNoDump(dump: string): Map<string, number> {
   return contagem;
 }
 
-/** Tabelas cuja estrutura está no dump (mesmo sem nenhuma linha). */
+/**
+ * Objetos cuja estrutura está no dump — tabelas E views.
+ *
+ * A busca por views não pode ser `CREATE VIEW` literal: o MySQL devolve a
+ * definição como `CREATE ALGORITHM=... SQL SECURITY DEFINER VIEW \`nome\``, com
+ * cláusulas no meio. Procurar só `CREATE VIEW` não acharia nenhuma view real, e
+ * toda view seria acusada de ausente — alarme falso em cima de um backup bom.
+ */
 export function tabelasNoDump(dump: string): Set<string> {
   const encontradas = new Set<string>();
-  const re = /CREATE TABLE `([^`]+)`/g;
+
+  const tabela = /CREATE TABLE `([^`]+)`/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(dump)) !== null) encontradas.add(m[1]);
+  while ((m = tabela.exec(dump)) !== null) encontradas.add(m[1]);
+
+  const view = /CREATE\b[^;`]*?\bVIEW `([^`]+)`/g;
+  while ((m = view.exec(dump)) !== null) encontradas.add(m[1]);
+
   return encontradas;
 }
 
@@ -178,6 +190,21 @@ export type LinhaDoRelatorio = {
   ausente: boolean;
   /** Tinha dados no banco e veio vazia no backup. */
   vaziaNoBackup: boolean;
+  /** View: guarda a consulta, não os dados. Comparar linhas não faz sentido. */
+  ehView: boolean;
+  /**
+   * Linhas que já existiam quando o backup começou, quando dá para saber.
+   * `null` significa que a tabela não tem coluna de data para responder isso.
+   */
+  existiaNoInstante: number | null;
+};
+
+/** Estado de um objeto do banco no momento da conferência. */
+export type EstadoDoObjeto = {
+  linhas: number;
+  ehView: boolean;
+  /** Linhas criadas até o instante do backup (null = indeterminável). */
+  linhasNoInstante: number | null;
 };
 
 export type RelatorioVerificacao = {
@@ -191,38 +218,123 @@ export type RelatorioVerificacao = {
   integro: boolean;
 };
 
-/** Contagem real de cada tabela do banco vivo. */
-export async function contarLinhasNoBanco(db: any): Promise<Map<string, number>> {
-  const raw = (await db.execute(sql`SHOW TABLES`)) as any;
-  const rows = Array.isArray(raw[0]) ? raw[0] : raw;
-  const nomes = (Array.isArray(rows) ? rows : []).map((r: any) => String(Object.values(r)[0]));
+/** Normaliza o retorno do driver, que varia entre `[linhas]` e `linhas`. */
+function linhasDe(resultado: any): any[] {
+  const r = Array.isArray(resultado?.[0]) ? resultado[0] : resultado;
+  return Array.isArray(r) ? r : [];
+}
 
-  const contagem = new Map<string, number>();
-  for (const nome of nomes) {
-    const r = (await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM \`${nome}\``))) as any;
-    const linhas = Array.isArray(r[0]) ? r[0] : r;
-    contagem.set(nome, Number(linhas?.[0]?.total ?? 0));
+/**
+ * Colunas de data que respondem "esta linha já existia quando o backup rodou?".
+ * Ordem = preferência.
+ */
+const COLUNAS_DE_CRIACAO = ["created_at", "archived_at", "started_at"] as const;
+
+/** Converte um instante para o formato que o MySQL compara em UTC. */
+function instanteSql(quando: Date): string {
+  return quando.toISOString().slice(0, 19).replace("T", " ");
+}
+
+/**
+ * Estado de cada objeto do banco vivo.
+ *
+ * O `backupEm` é o que separa defeito de sequência normal dos fatos. Um backup
+ * é a foto de um instante: linhas criadas DEPOIS dele existem no banco e não no
+ * arquivo, e isso está certo. Sem esse recorte, arquivar anexos depois do
+ * backup — que é o fluxo normal, toda semana — fazia a conferência acusar
+ * "243 registros no banco, nenhum no backup" como se fosse perda de dados.
+ */
+export async function contarLinhasNoBanco(
+  db: any,
+  backupEm?: Date | string | null,
+): Promise<Map<string, EstadoDoObjeto>> {
+  const tipos = linhasDe(
+    await db.execute(
+      sql`SELECT TABLE_NAME AS nome, TABLE_TYPE AS tipo
+          FROM information_schema.TABLES
+          WHERE TABLE_SCHEMA = DATABASE()`,
+    ),
+  );
+
+  const colunas = linhasDe(
+    await db.execute(
+      sql`SELECT TABLE_NAME AS tabela, COLUMN_NAME AS coluna
+          FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()`,
+    ),
+  );
+
+  const colunasPorTabela = new Map<string, Set<string>>();
+  for (const c of colunas) {
+    const t = String(c.tabela ?? c.TABLE_NAME);
+    if (!colunasPorTabela.has(t)) colunasPorTabela.set(t, new Set());
+    colunasPorTabela.get(t)!.add(String(c.coluna ?? c.COLUMN_NAME));
   }
-  return contagem;
+
+  const instante = backupEm ? new Date(backupEm) : null;
+  const instanteValido = instante && !Number.isNaN(instante.getTime()) ? instante : null;
+
+  const estado = new Map<string, EstadoDoObjeto>();
+
+  for (const t of tipos) {
+    const nome = String(t.nome ?? t.TABLE_NAME);
+    const ehView = String(t.tipo ?? t.TABLE_TYPE ?? "BASE TABLE")
+      .toUpperCase()
+      .includes("VIEW");
+
+    const total = linhasDe(await db.execute(sql.raw(`SELECT COUNT(*) AS total FROM \`${nome}\``)));
+    const linhas = Number(total?.[0]?.total ?? 0);
+
+    let linhasNoInstante: number | null = null;
+    if (instanteValido && !ehView) {
+      const disponiveis = colunasPorTabela.get(nome);
+      const coluna = COLUNAS_DE_CRIACAO.find((c) => disponiveis?.has(c));
+      if (coluna) {
+        const antigas = linhasDe(
+          await db.execute(
+            sql.raw(
+              `SELECT COUNT(*) AS total FROM \`${nome}\` ` +
+                `WHERE \`${coluna}\` <= '${instanteSql(instanteValido)}'`,
+            ),
+          ),
+        );
+        linhasNoInstante = Number(antigas?.[0]?.total ?? 0);
+      }
+    }
+
+    estado.set(nome, { linhas, ehView, linhasNoInstante });
+  }
+
+  return estado;
 }
 
 export function compararComBanco(
-  noBanco: Map<string, number>,
+  noBanco: Map<string, EstadoDoObjeto>,
   dump: string,
 ): RelatorioVerificacao {
   const estruturaBackup = tabelasNoDump(dump);
   const linhasBackup = contarLinhasNoDump(dump);
 
   const detalhes: LinhaDoRelatorio[] = [];
-  for (const [tabela, qtdBanco] of Array.from(noBanco.entries()).sort()) {
+  for (const [tabela, estado] of Array.from(noBanco.entries()).sort()) {
     const qtdBackup = linhasBackup.get(tabela) ?? 0;
     const ausente = !estruturaBackup.has(tabela);
+
+    // Quantas linhas o backup DEVERIA ter. Quando a tabela tem data de
+    // criação, é o que existia no instante do backup; sem essa coluna, não há
+    // como distinguir, e o total atual é a melhor aproximação.
+    const esperado = estado.linhasNoInstante ?? estado.linhas;
+
     detalhes.push({
       tabela,
-      noBanco: qtdBanco,
+      noBanco: estado.linhas,
       noBackup: qtdBackup,
       ausente,
-      vaziaNoBackup: !ausente && qtdBanco > 0 && qtdBackup === 0,
+      // View não guarda dado próprio: o dump traz só a definição, de propósito.
+      // Cobrar linhas dela seria acusar de defeito o comportamento correto.
+      vaziaNoBackup: !ausente && !estado.ehView && esperado > 0 && qtdBackup === 0,
+      ehView: estado.ehView,
+      existiaNoInstante: estado.linhasNoInstante,
     });
   }
 
@@ -231,7 +343,7 @@ export function compararComBanco(
   return {
     tabelasNoBanco: noBanco.size,
     tabelasNoBackup: estruturaBackup.size,
-    registrosNoBanco: Array.from(noBanco.values()).reduce((a, b) => a + b, 0),
+    registrosNoBanco: Array.from(noBanco.values()).reduce((a, e) => a + e.linhas, 0),
     registrosNoBackup: Array.from(linhasBackup.values()).reduce((a, b) => a + b, 0),
     problemas,
     detalhes,

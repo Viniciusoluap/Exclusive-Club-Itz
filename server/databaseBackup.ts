@@ -44,6 +44,45 @@ export async function connectForBackup(config: {
  */
 export type ProgressoExportacao = (feitas: number, total: number, tabela: string) => void;
 
+/** Um objeto do banco: tabela de dados ou view. */
+type ObjetoDoBanco = { nome: string; ehView: boolean };
+
+/**
+ * Lista tabelas e views, separando uma coisa da outra.
+ *
+ * POR QUE `SHOW FULL TABLES` E NÃO `SHOW TABLES`: o `SHOW TABLES` devolve views
+ * misturadas com tabelas, sem dizer qual é qual. O código antigo tratava tudo
+ * como tabela, chamava `SHOW CREATE TABLE` numa view e recebia `undefined` —
+ * que ia parar dentro do arquivo de backup como a palavra literal `undefined;`.
+ *
+ * O resultado era um backup que parecia bem-sucedido e não restaurava: a linha
+ * `undefined;` é erro de sintaxe, e o `INSERT` seguinte apontava para uma tabela
+ * que não existia. Encontrado em produção pela conferência de backup, no banco
+ * real, numa view legada (`financial_charges`) que nenhum código usa mais.
+ */
+async function listarObjetos(connection: mysql.Connection): Promise<ObjetoDoBanco[]> {
+  const [linhas] = await connection.query<any[]>('SHOW FULL TABLES');
+  return linhas.map((linha: any) => {
+    const valores = Object.values(linha);
+    return {
+      nome: String(valores[0]),
+      // 'BASE TABLE' | 'VIEW' | 'SYSTEM VIEW'
+      ehView: String(valores[1] ?? 'BASE TABLE').toUpperCase().includes('VIEW'),
+    };
+  });
+}
+
+/**
+ * Remove a cláusula `DEFINER=usuario@host` do `CREATE VIEW`.
+ *
+ * O definer aponta para um usuário do servidor de origem. Restaurar num
+ * servidor novo — que é justamente o cenário de desastre — falha com "user does
+ * not exist". Sem a cláusula, o MySQL adota quem está restaurando.
+ */
+export function semDefiner(ddl: string): string {
+  return ddl.replace(/\sDEFINER\s*=\s*(`[^`]*`|'[^']*'|\S+)@(`[^`]*`|'[^']*'|\S+)/i, '');
+}
+
 /**
  * Exporta banco de dados MySQL/TiDB para arquivo SQL usando Node.js puro
  * Não depende de mysqldump ou ferramentas externas
@@ -95,19 +134,30 @@ export async function exportDatabaseToSQL(
     sqlStatements.push('SET FOREIGN_KEY_CHECKS = 0;');
     sqlStatements.push('');
 
-    // Lista todas as tabelas
-    const [tables] = await connection.query<any[]>('SHOW TABLES');
-    
-    console.log(`📋 Exportando ${tables.length} tabelas...`);
+    // Tabelas e views são coisas diferentes e precisam de tratamento diferente.
+    const objetos = await listarObjetos(connection);
+    const tabelas = objetos.filter((o) => !o.ehView);
+    const views = objetos.filter((o) => o.ehView);
+    const total = objetos.length;
+
+    console.log(`📋 Exportando ${tabelas.length} tabelas e ${views.length} views...`);
 
     let feitas = 0;
-    for (const tableRow of tables) {
-      const tableName = Object.values(tableRow)[0] as string;
+    for (const { nome: tableName } of tabelas) {
       console.log(`  → ${tableName}`);
 
       // Obtém estrutura da tabela
       const [createTableResult] = await connection.query<any[]>(`SHOW CREATE TABLE \`${tableName}\``);
-      const createTableSQL = createTableResult[0]['Create Table'];
+      const createTableSQL = createTableResult[0]?.['Create Table'];
+
+      // Nunca escrever no arquivo algo que não seja DDL. Um backup que falha
+      // alto é recuperável; um que grava lixo e diz "sucesso" não é.
+      if (typeof createTableSQL !== 'string' || !createTableSQL.trim()) {
+        throw new Error(
+          `Não foi possível obter a estrutura da tabela \`${tableName}\`. ` +
+            'O backup foi interrompido para não gerar um arquivo inválido.',
+        );
+      }
 
       sqlStatements.push(`-- Table: ${tableName}`);
       sqlStatements.push(`DROP TABLE IF EXISTS \`${tableName}\`;`);
@@ -150,7 +200,35 @@ export async function exportDatabaseToSQL(
       // Avisa DEPOIS de gravar a tabela: o progresso reflete trabalho
       // concluído, nunca trabalho iniciado.
       feitas++;
-      onProgress?.(feitas, tables.length, tableName);
+      onProgress?.(feitas, total, tableName);
+    }
+
+    // As views vêm DEPOIS de todas as tabelas: uma view é uma consulta salva, e
+    // criá-la antes das tabelas que ela lê falha na restauração.
+    //
+    // View não tem dado próprio — o dado mora nas tabelas de origem. Exportar
+    // as linhas de uma view duplicaria o que já está no arquivo e, na
+    // restauração, tentaria inserir num objeto que não aceita INSERT.
+    for (const { nome: viewName } of views) {
+      console.log(`  → (view) ${viewName}`);
+
+      const [criacao] = await connection.query<any[]>(`SHOW CREATE VIEW \`${viewName}\``);
+      const createViewSQL = criacao[0]?.['Create View'];
+
+      if (typeof createViewSQL !== 'string' || !createViewSQL.trim()) {
+        throw new Error(
+          `Não foi possível obter a definição da view \`${viewName}\`. ` +
+            'O backup foi interrompido para não gerar um arquivo inválido.',
+        );
+      }
+
+      sqlStatements.push(`-- View: ${viewName}`);
+      sqlStatements.push(`DROP VIEW IF EXISTS \`${viewName}\`;`);
+      sqlStatements.push(semDefiner(createViewSQL) + ';');
+      sqlStatements.push('');
+
+      feitas++;
+      onProgress?.(feitas, total, viewName);
     }
 
     // Footer
