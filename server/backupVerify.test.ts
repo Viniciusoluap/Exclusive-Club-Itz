@@ -139,6 +139,22 @@ INSERT INTO \`clients\` (\`id\`, \`nome\`) VALUES
   });
 });
 
+/** Estado do banco no formato que a comparação espera. */
+function tabelas(
+  contagens: Record<string, number>,
+  extras: Record<string, { ehView?: boolean; linhasNoInstante?: number | null }> = {},
+) {
+  const m = new Map<string, { linhas: number; ehView: boolean; linhasNoInstante: number | null }>();
+  for (const [nome, linhas] of Object.entries(contagens)) {
+    m.set(nome, {
+      linhas,
+      ehView: extras[nome]?.ehView ?? false,
+      linhasNoInstante: extras[nome]?.linhasNoInstante ?? null,
+    });
+  }
+  return m;
+}
+
 describe("comparação com o banco vivo", () => {
   const dumpCompleto = `
 CREATE TABLE \`users\` (id int);
@@ -152,7 +168,7 @@ CREATE TABLE \`logs\` (id int);
 `;
 
   it("considera íntegro quando todas as tabelas estão no backup", () => {
-    const banco = new Map([["users", 2], ["vessels", 1], ["logs", 0]]);
+    const banco = tabelas({ users: 2, vessels: 1, logs: 0 });
     const r = compararComBanco(banco, dumpCompleto);
 
     expect(r.integro).toBe(true);
@@ -164,14 +180,14 @@ CREATE TABLE \`logs\` (id int);
   it("continua íntegro se o banco tem MAIS linhas que o backup", () => {
     // O backup é uma foto de um instante: dado criado depois dele não está lá,
     // e isso não é defeito. Um alarme aqui dispararia em todo backup.
-    const banco = new Map([["users", 57], ["vessels", 1], ["logs", 0]]);
+    const banco = tabelas({ users: 57, vessels: 1, logs: 0 });
     const r = compararComBanco(banco, dumpCompleto);
 
     expect(r.integro).toBe(true);
   });
 
   it("acusa tabela AUSENTE do backup", () => {
-    const banco = new Map([["users", 2], ["vessels", 1], ["logs", 0], ["bpo_charges", 400]]);
+    const banco = tabelas({ users: 2, vessels: 1, logs: 0, bpo_charges: 400 });
     const r = compararComBanco(banco, dumpCompleto);
 
     expect(r.integro).toBe(false);
@@ -183,7 +199,7 @@ CREATE TABLE \`logs\` (id int);
     // Estrutura presente, conteúdo não: o caso mais traiçoeiro, porque o
     // backup parece completo até a hora de precisar dele.
     const dumpSemDados = "CREATE TABLE `users` (id int);\n";
-    const banco = new Map([["users", 500]]);
+    const banco = tabelas({ users: 500 });
     const r = compararComBanco(banco, dumpSemDados);
 
     expect(r.integro).toBe(false);
@@ -192,10 +208,64 @@ CREATE TABLE \`logs\` (id int);
   });
 
   it("tabela vazia dos dois lados não é problema", () => {
-    const banco = new Map([["logs", 0]]);
+    const banco = tabelas({ logs: 0 });
     const r = compararComBanco(banco, "CREATE TABLE `logs` (id int);\n");
 
     expect(r.integro).toBe(true);
+  });
+
+  it("não acusa linhas que nasceram DEPOIS do backup", () => {
+    // O caso real: o backup rodou às 10:01 com a tabela vazia, os 243 anexos
+    // foram arquivados às 10:10, e a conferência das 10:17 dizia "243 no banco,
+    // nenhum no backup". Perda de dado nenhuma — só a ordem dos fatos.
+    const banco = tabelas(
+      { backup_attachments: 243 },
+      { backup_attachments: { linhasNoInstante: 0 } },
+    );
+    const r = compararComBanco(banco, "CREATE TABLE `backup_attachments` (id int);\n");
+
+    expect(r.integro).toBe(true);
+    expect(r.problemas).toEqual([]);
+  });
+
+  it("continua acusando quando o dado JÁ EXISTIA no instante do backup", () => {
+    // A contrapartida do teste acima: se a linha existia quando o backup rodou
+    // e mesmo assim não está no arquivo, isso é perda de dado de verdade.
+    const banco = tabelas({ bpo_charges: 3163 }, { bpo_charges: { linhasNoInstante: 3163 } });
+    const r = compararComBanco(banco, "CREATE TABLE `bpo_charges` (id int);\n");
+
+    expect(r.integro).toBe(false);
+    expect(r.problemas[0].vaziaNoBackup).toBe(true);
+  });
+
+  it("reconhece uma VIEW no backup e não cobra linhas dela", () => {
+    // A definição real que o MySQL devolve tem cláusulas entre CREATE e VIEW.
+    // Procurar "CREATE VIEW" literal não acharia nenhuma view de verdade, e
+    // toda view seria acusada de ausente — que foi o que aconteceu.
+    const dump =
+      "CREATE TABLE `bpo_charges` (id int);\n" +
+      "INSERT INTO `bpo_charges` (`id`) VALUES\n(1);\n" +
+      "DROP VIEW IF EXISTS `financial_charges`;\n" +
+      "CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `financial_charges` AS select 1;\n";
+
+    const banco = tabelas(
+      { bpo_charges: 1, financial_charges: 207 },
+      { financial_charges: { ehView: true } },
+    );
+    const r = compararComBanco(banco, dump);
+
+    expect(r.integro).toBe(true);
+    expect(r.detalhes.find((d) => d.tabela === "financial_charges")?.ausente).toBe(false);
+  });
+
+  it("acusa uma VIEW que ficou de fora do backup", () => {
+    // Ignorar a contagem de linhas de uma view não pode virar ignorar a view.
+    // Sem a definição, a restauração perde o objeto.
+    const banco = tabelas({ financial_charges: 207 }, { financial_charges: { ehView: true } });
+    const r = compararComBanco(banco, "CREATE TABLE `bpo_charges` (id int);\n");
+
+    expect(r.integro).toBe(false);
+    expect(r.problemas[0].ausente).toBe(true);
   });
 });
 
