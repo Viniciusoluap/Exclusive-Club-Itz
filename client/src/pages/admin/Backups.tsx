@@ -12,6 +12,18 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { useState } from "react";
 
+/**
+ * Nome do arquivo como ele CHEGA para quem baixa.
+ *
+ * No armazenamento o artefato termina em `.zip.enc`, porque lá ele está mesmo
+ * criptografado. Mas o servidor descriptografa antes de entregar, e o download
+ * sai `.zip`. Mostrar `.zip.enc` na tela fazia a tela contradizer o download —
+ * a pessoa lia que ia receber um `.enc` e não tinha como saber que não ia.
+ */
+function nomeDoDownload(fileName: string): string {
+  return fileName.replace(/\.enc$/i, '');
+}
+
 export default function AdminBackups() {
   const { user, loading } = useAuth();
   const confirm = useConfirm();
@@ -692,12 +704,17 @@ export default function AdminBackups() {
                     <tbody>
                       {relatorio.detalhes.map((d) => (
                         <tr key={d.tabela} className={d.ausente || d.vaziaNoBackup ? 'text-red-700' : ''}>
-                          <td className="py-1 pr-4 break-all">{d.tabela}</td>
+                          <td className="py-1 pr-4 break-all">
+                            {d.tabela}
+                            {d.ehView && <span className="ml-1 text-xs text-gray-500">(view)</span>}
+                          </td>
                           <td className="py-1 pr-4 text-right tabular-nums">
                             {d.noBanco.toLocaleString('pt-BR')}
                           </td>
                           <td className="py-1 text-right tabular-nums">
-                            {d.ausente ? '—' : d.noBackup.toLocaleString('pt-BR')}
+                            {/* View guarda a consulta, não os dados: contar linhas dela
+                                aqui faria um backup correto parecer incompleto. */}
+                            {d.ausente ? '—' : d.ehView ? 'consulta' : d.noBackup.toLocaleString('pt-BR')}
                           </td>
                         </tr>
                       ))}
@@ -740,10 +757,15 @@ export default function AdminBackups() {
                 {stats.lastBackup.fileName && (
                   <div>
                     <div className="text-sm text-gray-600 mb-1">Arquivo</div>
-                    <div className="font-medium text-sm break-all">{stats.lastBackup.fileName}</div>
+                    <div className="font-medium text-sm break-all">
+                      {nomeDoDownload(stats.lastBackup.fileName)}
+                    </div>
                     {stats.lastBackup.fileSizeBytes && (
                       <div className="text-xs text-gray-500">{formatBytes(stats.lastBackup.fileSizeBytes)}</div>
                     )}
+                    <div className="text-xs text-gray-500">
+                      Guardado criptografado; o download sai como .zip comum.
+                    </div>
                   </div>
                 )}
                 {stats.lastBackup.status === 'success' && stats.lastBackup.localFilePath && (
@@ -834,7 +856,7 @@ export default function AdminBackups() {
                             <div className="min-w-0">
                               <span className="text-gray-600">Arquivo:</span>{' '}
                               {/* Nome sem espaços; sem break-all ele estica a linha além da tela. */}
-                              <span className="font-medium break-all">{backup.fileName}</span>
+                              <span className="font-medium break-all">{nomeDoDownload(backup.fileName)}</span>
                             </div>
                           )}
                           {backup.fileSizeBytes && (

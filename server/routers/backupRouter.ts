@@ -281,7 +281,10 @@ export const backupRouter = router({
       }
 
       const dump = verify.extrairSqlDoZip(zip);
-      const noBanco = await verify.contarLinhasNoBanco(db);
+      // O instante do backup é o que separa "o backup perdeu dado" de "esse
+      // dado nasceu depois do backup" — sem ele, arquivar anexos após o backup
+      // (o fluxo normal) era reportado como perda.
+      const noBanco = await verify.contarLinhasNoBanco(db, toIsoUtc(backup.startedAt));
       const relatorio = verify.compararComBanco(noBanco, dump);
 
       return {
