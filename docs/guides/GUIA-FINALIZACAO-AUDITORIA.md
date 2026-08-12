@@ -84,7 +84,7 @@ procurar defeito em lugar nenhum.
 5. No campo **"Marcador de build"**, você deve ver exatamente:
 
 ```
-2026-08-07.10-diagnostico-sem-alarme-falso
+2026-08-12.1-backup-restauravel
 ```
 
 ### O que fazer conforme o que aparecer
@@ -197,6 +197,21 @@ dois juntos. É como guardar a chave do cofre dentro do cofre.
 
 Três coisas que só rodam no sistema real, com os seus dados. Faça **nesta
 ordem** — o motivo da ordem está explicado em cada uma.
+
+> ### ⚠️ Antes do 5.1: rode um backup novo
+>
+> **Todo backup gerado antes de 12/08/2026 não restaura.** O banco tem uma view
+> legada (`financial_charges`) que o exportador tratava como se fosse tabela; o
+> resultado era a palavra `undefined` escrita dentro do arquivo, no lugar da
+> estrutura dela. O backup terminava marcado como "Sucesso", com tamanho e data
+> — mas `undefined;` é erro de sintaxe, e a restauração abortava naquela linha,
+> sem trazer nada do que vinha depois.
+>
+> Corrigido em 12/08/2026 (marcador `2026-08-12.1-backup-restauravel`), com
+> teste que restaura um banco de verdade a cada execução do CI.
+>
+> **O que fazer:** depois de publicar, clique em **"Executar Backup Agora"** e
+> só então siga para o 5.1. O primeiro backup válido do sistema é esse.
 
 ### 5.1 — Botão "Conferir agora" (o mais importante)
 
@@ -498,10 +513,11 @@ de mandar.
 
 ```
 [ ] 1. Sincronizei e publiquei no Manus
-[ ] 2. Marcador de build = 2026-08-07.10-diagnostico-sem-alarme-falso
+[ ] 2. Marcador de build = 2026-08-12.1-backup-restauravel
 [ ] 3. Cartão "Migrações do banco" diz "Banco existente adotado" ou
        "Banco sob controle de migrações"
 [ ] 4. BACKUP_ENCRYPTION_KEY copiada e guardada em 2 lugares fora do Manus
+[ ] 5.0 Rodei um backup NOVO (os anteriores a 12/08 não restauram)
 [ ] 5.1 "Conferir agora" deu faixa VERDE
 [ ] 5.2 "Arquivar anexos" com os dois números iguais (ex.: 238/238)
 [ ] 5.3 "Migrar parciais" conferido na prévia e confirmado
