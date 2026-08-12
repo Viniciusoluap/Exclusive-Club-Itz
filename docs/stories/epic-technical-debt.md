@@ -170,6 +170,20 @@ Vale mais que a lista de stories: são coisas que a auditoria original não viu.
    servidor sem TLS. (#90)
 6. **Regex de `DATABASE_URL` rejeitava senha vazia**, com mensagem que apontava
    para o lugar errado. (#90)
+7. **Nenhum backup restaurava.** O banco tem uma view legada
+   (`financial_charges`) que nenhum código usa. O exportador listava objetos com
+   `SHOW TABLES` — que devolve views misturadas com tabelas — e pedia a
+   estrutura dela como se fosse tabela; numa view isso devolve `undefined`, e a
+   palavra ia para dentro do arquivo como se fosse SQL. O backup era marcado
+   como sucesso, mas `undefined;` é erro de sintaxe: a restauração abortava ali
+   (ERROR 1064) e nada depois daquela linha entrava. Meses de backups inúteis,
+   sem nenhum sinal. Encontrado pela conferência de backup na primeira execução
+   com dados reais — o defeito mais grave da auditoria. (#98)
+
+**Sobre o #7:** é o argumento mais forte a favor de verificar artefato em vez de
+confiar em status. Todo indicador dizia que o backup estava bom: status
+`success`, tamanho plausível, duração plausível, arquivo no armazenamento. A
+única coisa que revelou o problema foi abrir o arquivo e comparar com o banco.
 
 ## O que falta e depende do responsável
 
