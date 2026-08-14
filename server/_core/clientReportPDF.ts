@@ -1,9 +1,6 @@
 import PDFDocument from "pdfkit";
-import axios from "axios";
-import path from "path";
-import fs from "fs";
 import { pdf } from "pdf-to-img";
-import { assertSafeExternalUrl } from "./urlSafety";
+import { CORES, caminhoDoLogo, baixarImagemExterna } from "./pdfBase";
 
 interface ClientData {
   name: string;
@@ -37,11 +34,11 @@ async function incorporateAllPdfPages(
     }
     
     if (pages.length === 0) {
-      doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+      doc.fontSize(11).font("Helvetica").fillColor(CORES.cinzaClaro).text(
         "PDF sem páginas.",
         { align: "center" }
       );
-      doc.fillColor("#000000");
+      doc.fillColor(CORES.preto);
       return;
     }
     
@@ -52,8 +49,8 @@ async function incorporateAllPdfPages(
         doc.addPage();
         // Adicionar título apenas na primeira página
         if (i === 1) {
-          doc.fillColor("#0891b2").fontSize(18).font("Helvetica-Bold").text(title + " (continuação)", { align: "center" });
-          doc.fillColor("#000000");
+          doc.fillColor(CORES.marca).fontSize(18).font("Helvetica-Bold").text(title + " (continuação)", { align: "center" });
+          doc.fillColor(CORES.preto);
           doc.moveDown(1);
         }
       }
@@ -70,11 +67,11 @@ async function incorporateAllPdfPages(
     }
   } catch (pdfError) {
     console.error(`[PDF] Erro ao converter ${title}:`, pdfError);
-    doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+    doc.fontSize(11).font("Helvetica").fillColor(CORES.cinzaClaro).text(
       "Erro ao processar PDF.",
       { align: "center" }
     );
-    doc.fillColor("#000000");
+    doc.fillColor(CORES.preto);
   }
 }
 
@@ -101,8 +98,8 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
       // ========== PÁGINA 1: CABEÇALHO COM LOGO + DADOS BÁSICOS ==========
       
       // Logo da Exclusive Club (centralizada)
-      const logoPath = path.join(process.cwd(), "client/public/logo-exclusive-round.png");
-      if (fs.existsSync(logoPath)) {
+      const logoPath = caminhoDoLogo();
+      if (logoPath) {
         const logoSize = 80;
         const logoX = (doc.page.width - logoSize) / 2;
         doc.image(logoPath, logoX, 50, { width: logoSize, height: logoSize });
@@ -111,13 +108,13 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
       }
 
       // Título com cor da marca
-      doc.fillColor("#0891b2").fontSize(22).font("Helvetica-Bold").text("Ficha do Cliente", { align: "center" });
-      doc.fillColor("#000000"); // Voltar para preto
+      doc.fillColor(CORES.marca).fontSize(22).font("Helvetica-Bold").text("Ficha do Cliente", { align: "center" });
+      doc.fillColor(CORES.preto); // Voltar para preto
       doc.moveDown(1.5);
 
       // Dados básicos
-      doc.fillColor("#0891b2").fontSize(12).font("Helvetica-Bold").text("Dados Pessoais", { underline: true });
-      doc.fillColor("#000000");
+      doc.fillColor(CORES.marca).fontSize(12).font("Helvetica-Bold").text("Dados Pessoais", { underline: true });
+      doc.fillColor(CORES.preto);
       doc.moveDown(0.5);
       
       doc.fontSize(11).font("Helvetica");
@@ -129,8 +126,8 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
       doc.moveDown(1);
 
       // Cotas
-      doc.fillColor("#0891b2").fontSize(12).font("Helvetica-Bold").text("Cotas Contratadas", { underline: true });
-      doc.fillColor("#000000");
+      doc.fillColor(CORES.marca).fontSize(12).font("Helvetica-Bold").text("Cotas Contratadas", { underline: true });
+      doc.fillColor(CORES.preto);
       doc.moveDown(0.5);
       
       doc.fontSize(11).font("Helvetica");
@@ -147,19 +144,14 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
       // ========== DOCUMENTO PESSOAL (TODAS AS PÁGINAS) ==========
       if (client.documentUrl) {
         doc.addPage();
-        doc.fillColor("#0891b2").fontSize(18).font("Helvetica-Bold").text("Documento Pessoal", { align: "center" });
-        doc.fillColor("#000000");
+        doc.fillColor(CORES.marca).fontSize(18).font("Helvetica-Bold").text("Documento Pessoal", { align: "center" });
+        doc.fillColor(CORES.preto);
         doc.moveDown(1);
 
         try {
-          assertSafeExternalUrl(client.documentUrl);
-          const documentResponse = await axios.get(client.documentUrl, {
-            responseType: "arraybuffer",
-            timeout: 10000,
-          });
-
-          const documentBuffer = Buffer.from(documentResponse.data);
-          const contentType = String(documentResponse.headers["content-type"] || "");
+          const documentBaixado = await baixarImagemExterna(client.documentUrl);
+          const documentBuffer = documentBaixado.bytes;
+          const contentType = documentBaixado.contentType;
 
           if (contentType.includes("image")) {
             // Incorporar imagem do documento com dimensões otimizadas para A4
@@ -176,11 +168,11 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
             // Converter TODAS as páginas do PDF para imagens e incorporar
             await incorporateAllPdfPages(doc, documentBuffer, "Documento Pessoal");
           } else {
-            doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+            doc.fontSize(11).font("Helvetica").fillColor(CORES.cinzaClaro).text(
               "Formato de documento não suportado para visualização.",
               { align: "center" }
             );
-            doc.fillColor("#000000");
+            doc.fillColor(CORES.preto);
           }
         } catch (error) {
           console.error("[PDF] Erro ao incorporar documento pessoal:", error);
@@ -194,19 +186,14 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
       // ========== CONTRATO PRINCIPAL (TODAS AS PÁGINAS) ==========
       if (client.contractUrl) {
         doc.addPage();
-        doc.fillColor("#0891b2").fontSize(18).font("Helvetica-Bold").text("Contrato do Cliente", { align: "center" });
-        doc.fillColor("#000000");
+        doc.fillColor(CORES.marca).fontSize(18).font("Helvetica-Bold").text("Contrato do Cliente", { align: "center" });
+        doc.fillColor(CORES.preto);
         doc.moveDown(1);
 
         try {
-          assertSafeExternalUrl(client.contractUrl);
-          const contractResponse = await axios.get(client.contractUrl, {
-            responseType: "arraybuffer",
-            timeout: 10000,
-          });
-
-          const contractBuffer = Buffer.from(contractResponse.data);
-          const contentType = String(contractResponse.headers["content-type"] || "");
+          const contractBaixado = await baixarImagemExterna(client.contractUrl);
+          const contractBuffer = contractBaixado.bytes;
+          const contentType = contractBaixado.contentType;
 
           if (contentType.includes("image")) {
             // Incorporar imagem do contrato com dimensões otimizadas para A4
@@ -223,11 +210,11 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
             // Converter TODAS as páginas do PDF para imagens e incorporar
             await incorporateAllPdfPages(doc, contractBuffer, "Contrato do Cliente");
           } else {
-            doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+            doc.fontSize(11).font("Helvetica").fillColor(CORES.cinzaClaro).text(
               "Formato de contrato não suportado para visualização.",
               { align: "center" }
             );
-            doc.fillColor("#000000");
+            doc.fillColor(CORES.preto);
           }
         } catch (error) {
           console.error("[PDF] Erro ao incorporar contrato:", error);
@@ -241,19 +228,14 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
       // ========== CONTRATO 2 (TODAS AS PÁGINAS) ==========
       if (client.contract2Url) {
         doc.addPage();
-        doc.fillColor("#0891b2").fontSize(18).font("Helvetica-Bold").text("Contrato 2 do Cliente", { align: "center" });
-        doc.fillColor("#000000");
+        doc.fillColor(CORES.marca).fontSize(18).font("Helvetica-Bold").text("Contrato 2 do Cliente", { align: "center" });
+        doc.fillColor(CORES.preto);
         doc.moveDown(1);
 
         try {
-          assertSafeExternalUrl(client.contract2Url);
-          const contract2Response = await axios.get(client.contract2Url, {
-            responseType: "arraybuffer",
-            timeout: 10000,
-          });
-
-          const contract2Buffer = Buffer.from(contract2Response.data);
-          const contentType = String(contract2Response.headers["content-type"] || "");
+          const contract2Baixado = await baixarImagemExterna(client.contract2Url);
+          const contract2Buffer = contract2Baixado.bytes;
+          const contentType = contract2Baixado.contentType;
 
           if (contentType.includes("image")) {
             // Incorporar imagem do contrato 2 com dimensões otimizadas para A4
@@ -270,11 +252,11 @@ export async function generateClientReport(client: ClientData): Promise<Buffer> 
             // Converter TODAS as páginas do PDF para imagens e incorporar
             await incorporateAllPdfPages(doc, contract2Buffer, "Contrato 2 do Cliente");
           } else {
-            doc.fontSize(11).font("Helvetica").fillColor("#666666").text(
+            doc.fontSize(11).font("Helvetica").fillColor(CORES.cinzaClaro).text(
               "Formato de contrato não suportado para visualização.",
               { align: "center" }
             );
-            doc.fillColor("#000000");
+            doc.fillColor(CORES.preto);
           }
         } catch (error) {
           console.error("[PDF] Erro ao incorporar contrato 2:", error);
