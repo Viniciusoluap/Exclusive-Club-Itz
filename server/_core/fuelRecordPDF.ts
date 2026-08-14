@@ -1,6 +1,5 @@
 import PDFDocument from 'pdfkit';
-import axios from 'axios';
-import { assertSafeExternalUrl } from './urlSafety';
+import { CORES, baixarImagemExterna } from './pdfBase';
 
 interface FuelRecordData {
   id: number;
@@ -39,15 +38,15 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
     doc.on('error', reject);
 
     // Cabeçalho
-    doc.fontSize(24).fillColor('#0891b2').text('EXCLUSIVE CLUB', { align: 'center' });
+    doc.fontSize(24).fillColor(CORES.marca).text('EXCLUSIVE CLUB', { align: 'center' });
     doc.moveDown(0.3);
-    doc.fontSize(18).fillColor('#1f2937').text('Relatório de Abastecimentos', { align: 'center' });
+    doc.fontSize(18).fillColor(CORES.tintaEscura).text('Relatório de Abastecimentos', { align: 'center' });
     doc.moveDown(0.2);
-    doc.fontSize(10).fillColor('#6b7280').text('Sistema de Compartilhamento de Embarcações', { align: 'center' });
+    doc.fontSize(10).fillColor(CORES.cinza).text('Sistema de Compartilhamento de Embarcações', { align: 'center' });
     doc.moveDown(1.5);
 
     // Linha separadora
-    doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#0891b2').lineWidth(2).stroke();
+    doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor(CORES.marca).lineWidth(2).stroke();
     doc.moveDown(1);
 
     // Cards de resumo
@@ -62,22 +61,22 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
 
     // Card 1: Total de Registros
     doc.rect(startX, startY, cardWidth, cardHeight).fillAndStroke('#0891b2', '#0891b2');
-    doc.fillColor('#ffffff').fontSize(9).text('TOTAL DE REGISTROS', startX + 10, startY + 10, { width: cardWidth - 20, align: 'center' });
+    doc.fillColor(CORES.branco).fontSize(9).text('TOTAL DE REGISTROS', startX + 10, startY + 10, { width: cardWidth - 20, align: 'center' });
     doc.fontSize(20).text(records.length.toString(), startX + 10, startY + 28, { width: cardWidth - 20, align: 'center' });
 
     // Card 2: Total de Litros
     doc.rect(startX + cardWidth + 10, startY, cardWidth, cardHeight).fillAndStroke('#0891b2', '#0891b2');
-    doc.fillColor('#ffffff').fontSize(9).text('TOTAL DE LITROS', startX + cardWidth + 20, startY + 10, { width: cardWidth - 20, align: 'center' });
+    doc.fillColor(CORES.branco).fontSize(9).text('TOTAL DE LITROS', startX + cardWidth + 20, startY + 10, { width: cardWidth - 20, align: 'center' });
     doc.fontSize(20).text(`${totalLiters.toFixed(2)}L`, startX + cardWidth + 20, startY + 28, { width: cardWidth - 20, align: 'center' });
 
     // Card 3: Total de Taxas
     doc.rect(startX + (cardWidth + 10) * 2, startY, cardWidth, cardHeight).fillAndStroke('#0891b2', '#0891b2');
-    doc.fillColor('#ffffff').fontSize(9).text('TOTAL DE TAXAS', startX + (cardWidth + 10) * 2 + 10, startY + 10, { width: cardWidth - 20, align: 'center' });
+    doc.fillColor(CORES.branco).fontSize(9).text('TOTAL DE TAXAS', startX + (cardWidth + 10) * 2 + 10, startY + 10, { width: cardWidth - 20, align: 'center' });
     doc.fontSize(20).text(`R$ ${totalFees.toFixed(2)}`, startX + (cardWidth + 10) * 2 + 10, startY + 28, { width: cardWidth - 20, align: 'center' });
 
     // Card 4: Valor Total
     doc.rect(startX + (cardWidth + 10) * 3, startY, cardWidth, cardHeight).fillAndStroke('#0891b2', '#0891b2');
-    doc.fillColor('#ffffff').fontSize(9).text('VALOR TOTAL', startX + (cardWidth + 10) * 3 + 10, startY + 10, { width: cardWidth - 20, align: 'center' });
+    doc.fillColor(CORES.branco).fontSize(9).text('VALOR TOTAL', startX + (cardWidth + 10) * 3 + 10, startY + 10, { width: cardWidth - 20, align: 'center' });
     doc.fontSize(20).text(`R$ ${totalAmount.toFixed(2)}`, startX + (cardWidth + 10) * 3 + 10, startY + 28, { width: cardWidth - 20, align: 'center' });
 
     doc.y = startY + cardHeight + 20;
@@ -93,7 +92,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
     doc.fillColor('#f3f4f6').rect(40, tableTop, doc.page.width - 80, 25).fill();
     
     headers.forEach((header, i) => {
-      doc.fillColor('#374151').fontSize(9).text(header, xPos + 5, tableTop + 8, { 
+      doc.fillColor(CORES.rotulo).fontSize(9).text(header, xPos + 5, tableTop + 8, { 
         width: colWidths[i] - 10, 
         align: i === 0 || i === 4 || i >= 5 ? 'center' : 'left' 
       });
@@ -135,7 +134,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
       ];
 
       rowData.forEach((data, i) => {
-        doc.fillColor('#1f2937').fontSize(8).text(data.text, xPos + 5, rowY + 5, { 
+        doc.fillColor(CORES.tintaEscura).fontSize(8).text(data.text, xPos + 5, rowY + 5, { 
           width: colWidths[i] - 10, 
           align: data.align as any
         });
@@ -143,7 +142,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
       });
 
       // Linha separadora
-      doc.moveTo(40, rowY + 20).lineTo(doc.page.width - 40, rowY + 20).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+      doc.moveTo(40, rowY + 20).lineTo(doc.page.width - 40, rowY + 20).strokeColor(CORES.linha).lineWidth(0.5).stroke();
       doc.y = rowY + 22;
 
       // Observações (se houver)
@@ -187,9 +186,9 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
       
       console.log(`[PDF] Encontrados ${recordsWithPhotos.length} registros com fotos`);
       doc.addPage({ size: 'A4', layout: 'portrait', margin: 40 });
-      doc.fontSize(16).fillColor('#0891b2').text('Comprovação por Fotos da Balança', { align: 'center' });
+      doc.fontSize(16).fillColor(CORES.marca).text('Comprovação por Fotos da Balança', { align: 'center' });
       doc.moveDown(0.5);
-      doc.fontSize(10).fillColor('#6b7280').text('Fotos das pesagens realizadas', { align: 'center' });
+      doc.fontSize(10).fillColor(CORES.cinza).text('Fotos das pesagens realizadas', { align: 'center' });
       doc.moveDown(1);
 
       // Configurações de layout
@@ -214,16 +213,12 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
           
           if (record.photoBeforeUrl) {
             console.log(`[PDF] Baixando foto ANTES...`);
-            assertSafeExternalUrl(record.photoBeforeUrl);
-            const beforeResponse = await axios.get(record.photoBeforeUrl, { responseType: 'arraybuffer', timeout: 10000 });
-            beforeBuffer = Buffer.from(beforeResponse.data);
+            beforeBuffer = (await baixarImagemExterna(record.photoBeforeUrl)).bytes;
             console.log(`[PDF] ✅ Foto ANTES baixada: ${beforeBuffer.length} bytes`);
           }
           if (record.photoAfterUrl) {
             console.log(`[PDF] Baixando foto DEPOIS...`);
-            assertSafeExternalUrl(record.photoAfterUrl);
-            const afterResponse = await axios.get(record.photoAfterUrl, { responseType: 'arraybuffer', timeout: 10000 });
-            afterBuffer = Buffer.from(afterResponse.data);
+            afterBuffer = (await baixarImagemExterna(record.photoAfterUrl)).bytes;
             console.log(`[PDF] ✅ Foto DEPOIS baixada: ${afterBuffer.length} bytes`);
           }
         } catch (error) {
@@ -243,7 +238,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
 
         // Título do registro (sempre no topo da seção)
         const titleY = doc.y;
-        doc.fillColor('#0891b2').fontSize(9).text(
+        doc.fillColor(CORES.marca).fontSize(9).text(
           `Registro #${record.id} - ${record.vesselName.normalize('NFC')} - ${new Date(record.date).toLocaleDateString('pt-BR')}`,
           40, titleY,
           { width: pageWidth, align: 'left' }
@@ -264,7 +259,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
           }
 
           // Label da foto
-          doc.fillColor('#374151').fontSize(8).text('Foto ANTES (peso cheio)', currentX, doc.y, { width: photoWidth, align: 'center' });
+          doc.fillColor(CORES.rotulo).fontSize(8).text('Foto ANTES (peso cheio)', currentX, doc.y, { width: photoWidth, align: 'center' });
           const labelHeight = 15;
           
           // Imagem
@@ -283,7 +278,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
           // Verificar se cabe na mesma linha ou precisa de nova linha
           if (currentX > 40 + photoWidth) {
             // Mesma linha (lado a lado)
-            doc.fillColor('#374151').fontSize(8).text('Foto DEPOIS (peso após)', currentX, rowY, { width: photoWidth, align: 'center' });
+            doc.fillColor(CORES.rotulo).fontSize(8).text('Foto DEPOIS (peso após)', currentX, rowY, { width: photoWidth, align: 'center' });
             const labelHeight = 15;
             doc.image(afterBuffer, currentX, rowY + labelHeight, { 
               width: photoWidth, 
@@ -299,7 +294,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
               doc.y = 40;
               photosOnCurrentPage = 0;
             }
-            doc.fillColor('#374151').fontSize(8).text('Foto DEPOIS (peso após)', 40, doc.y, { width: photoWidth, align: 'center' });
+            doc.fillColor(CORES.rotulo).fontSize(8).text('Foto DEPOIS (peso após)', 40, doc.y, { width: photoWidth, align: 'center' });
             const labelHeight = 15;
             doc.image(afterBuffer, 40, doc.y + labelHeight, { 
               width: photoWidth, 
@@ -316,7 +311,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
 
         // Linha separadora entre registros
         if (index < recordsWithPhotos.length - 1) {
-          doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor('#e5e7eb').lineWidth(1).stroke();
+          doc.moveTo(40, doc.y).lineTo(doc.page.width - 40, doc.y).strokeColor(CORES.linha).lineWidth(1).stroke();
           doc.moveDown(0.5);
         }
       }
@@ -329,11 +324,11 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
       // Rodapé
     doc.moveDown(2);
     const footerY = doc.y;
-    doc.moveTo(40, footerY).lineTo(doc.page.width - 40, footerY).strokeColor('#e5e7eb').lineWidth(1).stroke();
+    doc.moveTo(40, footerY).lineTo(doc.page.width - 40, footerY).strokeColor(CORES.linha).lineWidth(1).stroke();
     doc.moveDown(0.5);
     
     const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-      doc.fillColor('#6b7280').fontSize(8).text(`Relatório gerado automaticamente em ${now}`, { align: 'center' });
+      doc.fillColor(CORES.cinza).fontSize(8).text(`Relatório gerado automaticamente em ${now}`, { align: 'center' });
       doc.fontSize(8).text(`© ${new Date().getFullYear()} Exclusive Club - Todos os direitos reservados`, { align: 'center' });
 
       doc.end();
