@@ -13,7 +13,7 @@
  */
 
 /** Identificador da versão do código. Atualize ao publicar algo que precise ser verificado. */
-export const BUILD_MARKER = "2026-08-13.1-migracoes-com-historico-orfao";
+export const BUILD_MARKER = "2026-08-14.1-conferencia-de-estrutura";
 
 /** Momento em que o processo do servidor subiu (ISO). Revela reinícios/redeploys. */
 export const PROCESS_STARTED_AT = new Date().toISOString();
