@@ -229,3 +229,65 @@ migração chega ao banco sozinha. O que falta é a decisão sobre a janela.
   execução é indistinguível de um commit ainda na fila, e o disparo manual
   desfaz essa ambiguidade em segundos. Regra que não muda: **nada entra em
   `main` sem execução verde.**
+
+---
+
+# Encerramento do lado técnico — 14/08/2026
+
+O que segue não é resumo de intenção: é o estado **verificado em produção**, com
+a tela do sistema como evidência. Marcador em execução:
+`2026-08-14.1-conferencia-de-estrutura`.
+
+## As quatro conferências, todas verdes
+
+| Conferência | Onde | Resultado |
+|---|---|---|
+| Backup restaura e contém tudo | Backups → Conferência | 31 tabelas, 8.202 registros; diferença = criados após o backup |
+| Anexos arquivados | Backups → Anexos | 243 de 243, 304,65 MB |
+| Migrações chegam ao banco | Diagnóstico → Migrações | "Banco sob controle de migrações" |
+| Banco tem o que o código espera | Diagnóstico → Estrutura | 23 tabelas, nenhuma coluna faltando |
+
+## Os três defeitos graves encontrados nesta rodada final
+
+Nenhum dos três estava na matriz original. Os três só apareceram porque a
+auditoria passou a **abrir o artefato** em vez de confiar no status.
+
+1. **Nenhum backup restaurava (#98).** Uma view legada era exportada como se
+   fosse tabela, e a palavra `undefined` ia para dentro do arquivo. Status
+   "Sucesso", tamanho plausível, duração plausível — e `ERROR 1064` na hora de
+   restaurar. Meses de backups inúteis, sem nenhum sinal.
+2. **Nenhuma migração chegava ao banco (#100).** A regra de adoção de baseline
+   exigia histórico vazio; produção tinha 13 registros órfãos do conjunto de
+   migrações substituído na Story 6. O migrador falhava em toda subida, em
+   silêncio, desde 07/08. Sem dano — o baseline não tem DDL destrutivo.
+3. **A hospedagem gerava e aplicava DDL próprio (#101).** O script `db:push` era
+   `drizzle-kit generate && drizzle-kit migrate`. O `generate` inventa migração
+   a partir de um diff, e a hospedagem aplicou ao banco de produção uma
+   `0008_equal_pete_wisdom` que nunca existiu no repositório. DDL gerado assim
+   pode conter `DROP COLUMN`. Fechado: publicar não gera mais migração.
+
+## A lição que atravessa os três
+
+Em todos, **os indicadores diziam que estava tudo bem**. O que revelou cada
+defeito foi comparar o artefato com a realidade: o arquivo de backup contra o
+banco, o journal contra a tabela de controle, o `schema.ts` contra o
+`information_schema`.
+
+As quatro conferências acima ficam no sistema. Rodá-las periodicamente é o que
+distingue "tenho backup" de "acho que tenho backup" — e vale para as três.
+
+## Resíduo conhecido, sem ação pendente
+
+O banco tem 31 tabelas e o código declara 23. As 8 restantes são de versões
+antigas do sistema (a view `financial_charges` entre elas). Nenhuma é usada por
+código algum, todas entram no backup corretamente, e o card "Estrutura do banco"
+as lista como informação. Remover exige decisão do responsável; manter não custa
+nada.
+
+## O que resta da auditoria
+
+Nada de técnico. O que falta depende de decisão ou de conferência visual do
+responsável, e está detalhado em
+[`docs/guides/GUIA-FINALIZACAO-AUDITORIA.md`](../guides/GUIA-FINALIZACAO-AUDITORIA.md):
+stories 30, 27, 28 e 24 (visual/ambiente) e stories 33–36 e 38–39 (decisão de
+janela de risco).
