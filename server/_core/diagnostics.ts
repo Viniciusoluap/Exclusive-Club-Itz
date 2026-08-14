@@ -126,6 +126,23 @@ export async function collectDiagnostics() {
   const backup = checkBackupKey();
   const smtp = await checkSmtp();
 
+  // Conferência de schema: o banco tem tudo que o código espera?
+  //
+  // POR QUE: a hospedagem aplicou ao banco uma migração gerada por ela mesma
+  // (`0008_equal_pete_wisdom`), que não existe no repositório e ninguém leu.
+  // DDL gerado por diferença pode conter DROP COLUMN, e não havia como
+  // responder "perdi alguma coluna?" sem acesso direto ao banco.
+  const schemaDb = await (async () => {
+    try {
+      const { getDb } = await import("../db");
+      return await getDb();
+    } catch {
+      return null;
+    }
+  })();
+  const { conferirSchema } = await import("./schemaDrift");
+  const schemaBanco = await conferirSchema(schemaDb);
+
   return {
     buildMarker: BUILD_MARKER,
     processStartedAt: PROCESS_STARTED_AT,
@@ -140,6 +157,7 @@ export async function collectDiagnostics() {
     // banco?" foi uma pergunta sem resposta — e cada vez que ela ficou sem
     // resposta, custou uma rodada de investigação. Agora a tela responde.
     migracoes: (globalThis as any).__ultimaMigracao ?? null,
+    schemaBanco,
     // Só o que de fato impede o sistema de funcionar. Contar as opcionais
     // aqui era o que produzia o "2 faltando" enganoso.
     missingCount: envVars.filter((v) => !v.present && v.critica).length,
