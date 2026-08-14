@@ -34,8 +34,37 @@ export type ResultadoMigracao = {
   situacao: "banco-novo" | "baseline-adotado" | "ja-controlado" | "indisponivel";
   aplicadas: string[];
   marcadasSemExecutar: string[];
+  /** Instruções puladas porque o objeto já existia. Visibilidade, não silêncio. */
+  jaSatisfeitas: string[];
   erro?: string;
 };
+
+/**
+ * Códigos de erro que significam "o que esta instrução queria criar já existe".
+ *
+ * Nesses casos o objetivo da instrução já está cumprido, e insistir só aborta a
+ * migração inteira. Note o que NÃO está aqui: 1062 (ER_DUP_ENTRY), que é o erro
+ * de criar um índice UNIQUE sobre dados duplicados. Esse é problema de verdade —
+ * dado real em conflito — e precisa continuar estourando.
+ */
+const JA_EXISTE = new Set([
+  1050, // ER_TABLE_EXISTS_ERROR
+  1060, // ER_DUP_FIELDNAME
+  1061, // ER_DUP_KEYNAME
+  1091, // ER_CANT_DROP_FIELD_OR_KEY
+  1826, // ER_FK_DUP_NAME
+]);
+
+/** O drizzle embrulha o erro do driver; o `errno` pode estar alguns níveis abaixo. */
+export function jaSatisfeita(error: unknown): boolean {
+  let atual: any = error;
+  for (let i = 0; atual && i < 5; i++) {
+    const codigo = Number(atual.errno);
+    if (Number.isFinite(codigo) && JA_EXISTE.has(codigo)) return true;
+    atual = atual.cause;
+  }
+  return false;
+}
 
 /** Lê o journal do drizzle na ordem em que as migrações devem ser aplicadas. */
 export function lerJournal(pastaDrizzle: string): Array<{ tag: string; arquivo: string }> {
@@ -106,47 +135,66 @@ export async function aplicarMigracoesPendentes(
   db: any,
   pastaDrizzle: string,
 ): Promise<ResultadoMigracao> {
-  if (!db) return { situacao: "indisponivel", aplicadas: [], marcadasSemExecutar: [] };
+  if (!db) return { situacao: "indisponivel", aplicadas: [], marcadasSemExecutar: [], jaSatisfeitas: [] };
 
   const aplicadas: string[] = [];
   const marcadasSemExecutar: string[] = [];
+  const jaSatisfeitas: string[] = [];
 
   try {
     const migracoes = lerJournal(pastaDrizzle);
     if (migracoes.length === 0) {
-      return { situacao: "ja-controlado", aplicadas, marcadasSemExecutar };
+      return { situacao: "ja-controlado", aplicadas, marcadasSemExecutar, jaSatisfeitas };
     }
-
-    const controleExistiaAntes = await (async () => {
-      const raw = (await db.execute(sql`
-        SELECT COUNT(*) AS total FROM information_schema.TABLES
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '__drizzle_migrations'
-      `)) as any;
-      const rows = Array.isArray(raw[0]) ? raw[0] : raw;
-      return Number(rows?.[0]?.total ?? 0) > 0;
-    })();
 
     await garantirTabelaDeControle(db);
     const jaAplicadas = await hashesAplicados(db);
     const temTabelas = await bancoJaTemTabelas(db);
 
-    // Banco existente, sem histórico de migrações: adoção de baseline.
-    // Marca tudo que existe hoje como aplicado, SEM executar nada.
-    const adotarBaseline = jaAplicadas.size === 0 && temTabelas && !controleExistiaAntes;
+    const conteudos = migracoes.map((m) => fs.readFileSync(m.arquivo, "utf8"));
+    const hashes = conteudos.map(hashDaMigracao);
 
-    for (const m of migracoes) {
-      const conteudo = fs.readFileSync(m.arquivo, "utf8");
-      const hash = hashDaMigracao(conteudo);
+    // Adoção de baseline: o banco já tem as tabelas da aplicação e NENHUMA das
+    // migrações atuais consta como aplicada.
+    //
+    // A primeira versão exigia histórico vazio (`jaAplicadas.size === 0`), e
+    // isso estava errado. O banco de produção tem 13 registros de controle —
+    // hashes do conjunto ANTIGO de migrações, que a Story 6 substituiu por este
+    // baseline. São órfãos: não correspondem a arquivo nenhum. Com eles ali, a
+    // adoção nunca acontecia, o migrador tentava criar tabelas existentes e a
+    // migração falhava em toda subida do servidor, desde 07/08.
+    //
+    // O que importa não é se existe histórico, e sim se ALGUMA das migrações
+    // de hoje já rodou. Se nenhuma rodou e as tabelas estão lá, o schema veio
+    // por outro caminho e o baseline apenas descreve o que já existe.
+    const nenhumaAtualAplicada = hashes.every((h) => !jaAplicadas.has(h));
+    const adotarBaseline = temTabelas && nenhumaAtualAplicada;
+
+    for (let i = 0; i < migracoes.length; i++) {
+      const m = migracoes[i];
+      const hash = hashes[i];
       if (jaAplicadas.has(hash)) continue;
 
-      if (adotarBaseline) {
+      // Só o BASELINE é adotado sem executar — ele descreve o schema que já
+      // está lá. As migrações incrementais seguem rodando: marcar todas como
+      // aplicadas deixaria o banco sem índices, sem constraints e sem valores
+      // de enum que ninguém sabe se chegaram a ser criados.
+      if (adotarBaseline && i === 0) {
         await registrar(db, hash);
         marcadasSemExecutar.push(m.tag);
         continue;
       }
 
-      for (const instrucao of separarInstrucoes(conteudo)) {
-        await db.execute(sql.raw(instrucao));
+      for (const instrucao of separarInstrucoes(conteudos[i])) {
+        try {
+          await db.execute(sql.raw(instrucao));
+        } catch (error) {
+          // Instrução cujo objeto já existe é trabalho já feito, não falha.
+          // Vários desses objetos foram criados à mão durante a auditoria,
+          // justamente porque as migrações não chegavam ao banco.
+          if (!jaSatisfeita(error)) throw error;
+          jaSatisfeitas.push(`${m.tag}: ${instrucao.slice(0, 60).replace(/\s+/g, " ")}…`);
+        }
       }
       await registrar(db, hash);
       aplicadas.push(m.tag);
@@ -158,12 +206,12 @@ export async function aplicarMigracoesPendentes(
         ? "ja-controlado"
         : "banco-novo";
 
-    return { situacao, aplicadas, marcadasSemExecutar };
+    return { situacao, aplicadas, marcadasSemExecutar, jaSatisfeitas };
   } catch (error) {
     // Um servidor que não sobe é pior que uma migração pendente. O erro é
     // registrado e aparece no diagnóstico; o servidor continua de pé.
     const erro = error instanceof Error ? error.message : String(error);
     console.error("[autoMigrate] Falha ao aplicar migrações:", erro);
-    return { situacao: "indisponivel", aplicadas, marcadasSemExecutar, erro };
+    return { situacao: "indisponivel", aplicadas, marcadasSemExecutar, jaSatisfeitas, erro };
   }
 }
