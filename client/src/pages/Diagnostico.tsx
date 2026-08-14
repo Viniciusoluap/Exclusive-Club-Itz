@@ -273,6 +273,47 @@ export default function Diagnostico() {
             </Card>
           )}
 
+          {/*
+            Valores fora de faixa (Story 36). Esta fatia só MEDE.
+
+            Criar restrição no banco sobre dado que já a viola falha na subida
+            do servidor. E o TiDB aceita CHECK sem necessariamente aplicá-lo —
+            uma trava que não trava é pior que trava nenhuma. Primeiro o número
+            na tela; depois, com ele, a decisão de travar.
+          */}
+          {data.valores && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <StatusIcon ok={data.valores.integro} />
+                  Valores fora de faixa
+                </CardTitle>
+                <CardDescription>
+                  Confere {data.valores.regrasConferidas} regras de valor (dinheiro e
+                  quantidade não podem ser negativos). Só conta, não altera nada.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {data.valores.erro ? (
+                  <p className="break-words text-red-600">{data.valores.erro}</p>
+                ) : data.valores.integro ? (
+                  <p className="text-muted-foreground">
+                    Nenhum valor fora de faixa.
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {data.valores.violacoes.map((v) => (
+                      <p key={`${v.tabela}.${v.coluna}`} className="break-words text-red-700">
+                        <strong>{v.descricao}</strong> ({v.tabela}.{v.coluna}):{' '}
+                        {v.linhasForaDaFaixa.toLocaleString('pt-BR')} registro(s) — {v.regra}.
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Button onClick={() => refetch()} disabled={isFetching} variant="outline">
             <RefreshCw
               className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`}

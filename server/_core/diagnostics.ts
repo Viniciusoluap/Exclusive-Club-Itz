@@ -143,6 +143,12 @@ export async function collectDiagnostics() {
   const { conferirSchema } = await import("./schemaDrift");
   const schemaBanco = await conferirSchema(schemaDb);
 
+  // Conferência de valores fora de faixa (Story 36). Só conta, não trava.
+  // Medir antes de travar: criar restrição sobre dado que já a viola falha na
+  // subida do servidor.
+  const { conferirValores } = await import("./regrasDeValor");
+  const valores = await conferirValores(schemaDb);
+
   return {
     buildMarker: BUILD_MARKER,
     processStartedAt: PROCESS_STARTED_AT,
@@ -158,6 +164,7 @@ export async function collectDiagnostics() {
     // resposta, custou uma rodada de investigação. Agora a tela responde.
     migracoes: (globalThis as any).__ultimaMigracao ?? null,
     schemaBanco,
+    valores,
     // Só o que de fato impede o sistema de funcionar. Contar as opcionais
     // aqui era o que produzia o "2 faltando" enganoso.
     missingCount: envVars.filter((v) => !v.present && v.critica).length,
