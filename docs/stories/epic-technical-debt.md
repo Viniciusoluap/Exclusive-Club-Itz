@@ -291,3 +291,62 @@ responsável, e está detalhado em
 [`docs/guides/GUIA-FINALIZACAO-AUDITORIA.md`](../guides/GUIA-FINALIZACAO-AUDITORIA.md):
 stories 30, 27, 28 e 24 (visual/ambiente) e stories 33–36 e 38–39 (decisão de
 janela de risco).
+
+---
+
+# Story 30 — resultado e onde ela parou (14/08/2026)
+
+## O que o responsável pediu
+
+Unificação **interna**: os documentos precisam sair exatamente como saem hoje —
+mesmo texto, mesma pontuação, mesmo layout, mesmos lugares. O cliente não pode
+perceber diferença. Muda só a organização do código.
+
+## O que foi entregue
+
+**Trava byte a byte (#104).** Cinco documentos são gerados de amostras fixas e
+comparados byte a byte com referências guardadas no repositório. Só
+`/CreationDate` e `/ID` são neutralizados — verificado que são as únicas partes
+que variam entre duas gerações idênticas. A trava foi testada contra si mesma:
+tirar um acento faz o CI barrar apontando o byte.
+
+**Base comum dos três documentos em PDFKit (#105).** Paleta de cores, caminho do
+logo e download de imagem externa saíram de três cópias para um módulo. Zero
+mudança no resultado.
+
+**O que a trava impediu.** Ao montar a paleta, assumi que existia um azul só. O
+contrato e a notificação usam `#0a3d6b` (marinho); os relatórios usam `#0891b2`
+(turquesa). Sem a trava, todo documento assinado enviado a cliente teria mudado
+de cor em silêncio. É a justificativa inteira de ter construído a trava antes.
+
+## O que NÃO foi feito, e por quê
+
+**Uma biblioteca só é incompatível com o requisito.** Os dois documentos em
+jsPDF (vistorias e cobranças) montam tabelas com `jspdf-autotable`, que calcula
+larguras, espaçamento e quebra de página sozinho. Reproduzir isso em PDFKit
+significa refazer esse cálculo à mão — o resultado seria parecido, nunca
+idêntico. "Parecido" viola o requisito.
+
+**Base comum entre os dois jsPDF não se justifica.** Eles não compartilham nada:
+cobranças tem faixa azul, logo, marca d'água e gráficos de barras; vistorias tem
+um título de 18pt e nada mais. Só coincidem na biblioteca. Extrair base aqui ou
+não renderia nada, ou exigiria aproximar um do outro — proibido.
+
+**O PDF de cobranças permanece dentro de `Saas.tsx`.** Extraí-lo exigiria mexer
+numa página de 3.200 linhas onde a geração está entrelaçada com o estado da
+tela. E, diferente de todo o resto desta auditoria, não haveria prova
+automática de antes/depois: esse código não roda fora do navegador, então a
+trava não o alcança. Mexer num documento que vai para cliente sem rede de
+proteção é o oposto do que esta auditoria vem fazendo.
+
+**Consequência aceita:** o sistema segue com duas bibliotecas de PDF. O problema
+real — "uma correção de layout precisa ser feita em cinco lugares" — foi
+resolvido onde ele de fato existia: nos três documentos que compartilhavam
+código de verdade.
+
+## Pendência registrada, não corrigida
+
+`fuelRecordPDF.ts` formata a data com `toLocaleDateString('pt-BR')` sem fixar o
+fuso. A data impressa depende do fuso do servidor: um abastecimento de madrugada
+pode sair com o dia errado. **Corrigir muda o documento**, o que exige aprovação
+explícita do responsável. Fica aqui para decisão.
