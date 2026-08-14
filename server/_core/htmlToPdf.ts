@@ -6,6 +6,7 @@
  * Usa PDFKit diretamente, sem dependência de Chrome, Chromium ou Python.
  */
 import PDFDocument from "pdfkit";
+import { CORES } from "./pdfBase";
 
 // ============================================================
 // Tipos internos
@@ -86,9 +87,9 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
     doc.on("error", reject);
 
     const pageW = doc.page.width - 100; // usable width (margins 50 each side)
-    const BLUE = "#0a3d6b";
+    const BLUE = CORES.marinho;
     const RED = "#dc2626";
-    const GRAY = "#666666";
+    const GRAY = CORES.cinzaClaro;
     const LIGHT_GRAY = "#f8f9fa";
 
     for (const section of sections) {
@@ -111,7 +112,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
         }
 
         case "title": {
-          doc.fillColor("#1a1a1a").fontSize(13).font("Helvetica-Bold").text(section.content || "", 50, doc.y, { align: "center", width: pageW });
+          doc.fillColor(CORES.tinta).fontSize(13).font("Helvetica-Bold").text(section.content || "", 50, doc.y, { align: "center", width: pageW });
           doc.moveDown(0.4);
           break;
         }
@@ -138,7 +139,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
         }
 
         case "paragraph": {
-          doc.fillColor("#1a1a1a").fontSize(10).font("Helvetica").text(section.content || "", 50, doc.y, { align: "justify", lineGap: 2, width: pageW });
+          doc.fillColor(CORES.tinta).fontSize(10).font("Helvetica").text(section.content || "", 50, doc.y, { align: "justify", lineGap: 2, width: pageW });
           doc.moveDown(0.6);
           break;
         }
@@ -156,7 +157,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
           let fieldY = startY + boxPad;
           for (const field of section.fields) {
             doc.fillColor(GRAY).fontSize(8.5).font("Helvetica").text(field.label + ":", 60, fieldY, { continued: true });
-            doc.fillColor("#1a1a1a").fontSize(9.5).font("Helvetica-Bold").text("  " + field.value, { lineBreak: false });
+            doc.fillColor(CORES.tinta).fontSize(9.5).font("Helvetica-Bold").text("  " + field.value, { lineBreak: false });
             fieldY += lineH;
           }
           doc.y = startY + boxH + 8;
@@ -178,7 +179,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
 
           for (let i = 0; i < headers.length; i++) {
             doc.rect(x, startY, colWidths[i], headerH).fillColor(BLUE).fill();
-            doc.fillColor("#ffffff").fontSize(8.5).font("Helvetica-Bold").text(headers[i], x + 4, startY + 5, {
+            doc.fillColor(CORES.branco).fontSize(8.5).font("Helvetica-Bold").text(headers[i], x + 4, startY + 5, {
               width: colWidths[i] - 8,
               lineBreak: false,
             });
@@ -197,7 +198,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
               const bgColor = isTotal ? RED : r % 2 === 0 ? "#ffffff" : "#f9fafb";
               const textColor = isTotal ? "#ffffff" : "#1a1a1a";
               doc.rect(x, rowY, colWidths[i], rowH).fillColor(bgColor).fill();
-              doc.rect(x, rowY, colWidths[i], rowH).strokeColor("#e5e7eb").lineWidth(0.3).stroke();
+              doc.rect(x, rowY, colWidths[i], rowH).strokeColor(CORES.linha).lineWidth(0.3).stroke();
               doc.fillColor(textColor).fontSize(8.5).font(isTotal ? "Helvetica-Bold" : "Helvetica").text(
                 row[i] || "",
                 x + 4,
@@ -261,7 +262,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
           doc.moveDown(2);
 
           if (section.content) {
-            doc.fillColor("#1a1a1a").fontSize(10).font("Helvetica")
+            doc.fillColor(CORES.tinta).fontSize(10).font("Helvetica")
               .text(section.content, 50, doc.y, { align: "center", width: pageW });
             doc.y += 20;
           }
@@ -283,7 +284,7 @@ function renderPdf(sections: PdfSection[]): Promise<Buffer> {
 
               doc.moveTo(sx + 10, lineY).lineTo(sx + sigW - 10, lineY)
                 .strokeColor("#333333").lineWidth(0.5).stroke();
-              doc.fillColor("#1a1a1a").fontSize(9.5).font("Helvetica-Bold")
+              doc.fillColor(CORES.tinta).fontSize(9.5).font("Helvetica-Bold")
                 .text(signers[idx].name, sx + 10, lineY + 4, { width: sigW - 20, align: "center", lineBreak: false });
               doc.fillColor(GRAY).fontSize(8.5).font("Helvetica")
                 .text(signers[idx].role, sx + 10, lineY + 17, { width: sigW - 20, align: "center", lineBreak: false });
