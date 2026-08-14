@@ -215,6 +215,64 @@ export default function Diagnostico() {
             </Card>
           )}
 
+          {/*
+            Conferência de schema: o banco tem tudo que o código espera?
+
+            A hospedagem aplicou ao banco uma migração gerada por ela mesma, que
+            não existe no repositório e ninguém revisou. DDL gerado por
+            diferença pode apagar coluna — este card responde se apagou.
+          */}
+          {data.schemaBanco && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <StatusIcon ok={data.schemaBanco.integro} />
+                  Estrutura do banco
+                </CardTitle>
+                <CardDescription>
+                  Compara as {data.schemaBanco.tabelasConferidas} tabelas que o sistema
+                  espera com as que o banco realmente tem. Só lê, não altera nada.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {data.schemaBanco.erro ? (
+                  <p className="break-words text-red-600">{data.schemaBanco.erro}</p>
+                ) : data.schemaBanco.integro ? (
+                  <p className="text-muted-foreground">
+                    Nenhuma coluna faltando. Nada foi perdido.
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {data.schemaBanco.problemas.map((p) => (
+                      <p key={p.tabela} className="break-words text-red-700">
+                        <strong>{p.tabela}</strong>:{' '}
+                        {p.ausente
+                          ? 'tabela não existe no banco'
+                          : `falta ${p.colunasFaltando.join(', ')}`}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                {data.schemaBanco.extras?.length > 0 && (
+                  <details>
+                    <summary className="cursor-pointer text-muted-foreground">
+                      {/* Coluna a mais é resíduo de versão antiga: não quebra nada. */}
+                      Colunas antigas que o sistema não usa ({data.schemaBanco.extras.length} tabelas)
+                    </summary>
+                    <div className="mt-2 space-y-1">
+                      {data.schemaBanco.extras.map((e) => (
+                        <p key={e.tabela} className="break-words text-xs text-muted-foreground">
+                          <strong>{e.tabela}</strong>: {e.colunasExtras.join(', ')}
+                        </p>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Button onClick={() => refetch()} disabled={isFetching} variant="outline">
             <RefreshCw
               className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
