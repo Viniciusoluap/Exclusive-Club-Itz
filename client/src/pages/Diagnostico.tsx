@@ -193,6 +193,21 @@ export default function Diagnostico() {
                   </p>
                 )}
 
+                {data.migracoes.jaSatisfeitas?.length > 0 && (
+                  <div className="break-words">
+                    <span className="text-muted-foreground">
+                      Já existiam, não refeitas ({data.migracoes.jaSatisfeitas.length}):
+                    </span>
+                    <ul className="ml-4 list-disc">
+                      {data.migracoes.jaSatisfeitas.map((s: string) => (
+                        <li key={s} className="text-xs">
+                          <code>{s}</code>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 {data.migracoes.erro && (
                   <p className="break-words text-red-600">{data.migracoes.erro}</p>
                 )}
