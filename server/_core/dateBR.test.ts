@@ -73,12 +73,15 @@ describe("toMysqlDatetime", () => {
    * como `createContext()` engole qualquer erro de `authenticateRequest()`
    * como "sessão inválida", todo login virava silenciosamente "deslogado". O
    * TiDB de produção tolera o formato malformado, por isso o bug nunca
-   * apareceu lá.
+   * apareceu lá — e é exatamente por isso que o CI (que roda TiDB efêmero, de
+   * propósito, para ser fiel à produção) não pode ser usado para provar que o
+   * ISO cru É rejeitado: ali ele não é. Essa prova só vale contra MySQL de
+   * verdade; contra TiDB ela é pulada.
    *
-   * Os testes abaixo rodam contra um MySQL de verdade, não uma imitação: é
-   * exatamente o tipo de rejeição que um mock aprovaria e o banco recusa.
+   * Os testes abaixo rodam contra um banco de verdade, não uma imitação: é
+   * exatamente o tipo de rejeição que um mock aprovaria e o MySQL recusa.
    */
-  describe.skipIf(!temBanco)("contra um MySQL real em modo estrito", () => {
+  describe.skipIf(!temBanco)("contra um banco real", () => {
     async function bancoTemporario() {
       const nome = "dateBR_toMysqlDatetime_test";
       const admin = createPool(URL_BASE);
@@ -100,9 +103,15 @@ describe("toMysqlDatetime", () => {
       };
     }
 
-    it("um ISO string cru (o bug) é rejeitado — prova que o bug é real", async () => {
+    async function ehTiDB(pool: ReturnType<typeof createPool>): Promise<boolean> {
+      const [linhas]: any = await pool.query("SELECT VERSION() AS versao");
+      return /tidb/i.test(String(linhas[0]?.versao ?? ""));
+    }
+
+    it("num MySQL estrito, um ISO string cru (o bug) é rejeitado — prova que o bug é real", async () => {
       const { pool, encerrar } = await bancoTemporario();
       try {
+        if (await ehTiDB(pool)) return; // divergência documentada e esperada — ver comentário acima
         await expect(
           pool.query("INSERT INTO t (momento) VALUES (?)", [new Date().toISOString()]),
         ).rejects.toThrow(/Incorrect datetime|Truncated/i);
