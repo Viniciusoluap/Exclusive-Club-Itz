@@ -350,3 +350,134 @@ código de verdade.
 fuso. A data impressa depende do fuso do servidor: um abastecimento de madrugada
 pode sair com o dia errado. **Corrigir muda o documento**, o que exige aprovação
 explícita do responsável. Fica aqui para decisão.
+
+---
+
+# Story 24 — o que mudou e onde ela está (15/08/2026)
+
+## O bloqueio anterior estava errado
+
+Esta story constava como bloqueada por falta de ambiente de teste: um robô que
+percorre os fluxos criaria reservas e cobranças de verdade se rodasse contra
+produção. A conclusão de que faltava ambiente era minha, e era **falsa**.
+
+Verificado na prática: o sistema **sobe do zero contra um banco descartável**,
+aplica as migrações sozinho (autoMigrate) e responde HTTP 200. Não é preciso
+ambiente hospedado, nem custo mensal, nem contato nenhum com produção — o
+ambiente é criado e jogado fora a cada execução.
+
+O segundo obstáculo esperado também caiu: a sessão é um cookie assinado com o
+`JWT_SECRET`, que nos testes é definido pelo próprio teste. O robô consegue
+entrar sem depender de login externo.
+
+## O que está pronto
+
+- ambiente descartável (cria e apaga o banco a cada execução);
+- servidor subindo com segredos de mentira, isolado de tudo;
+- semente mínima (admin, cliente, funcionário, uma embarcação);
+- assinatura de sessão para entrar como qualquer papel;
+- Playwright configurado, reaproveitando o Chromium já instalado.
+
+Provado por teste: o sistema sobe e responde · as tabelas nascem sozinhas na
+subida · a área de administrador está protegida para quem não tem sessão.
+
+## O que NÃO está pronto
+
+Duas verificações estão marcadas como **pendentes** (`test.fixme`), não
+removidas: ao abrir página protegida com o cookie posto, o cliente redireciona
+para o portal de login — `auth.me` devolveu vazio.
+
+Não isolei se o cookie não chega, se a assinatura é recusada ou se o usuário não
+é encontrado. O MySQL do ambiente de desenvolvimento cai a cada poucos minutos e
+derrubou a investigação três vezes.
+
+**Próximo passo, uma requisição:** com banco estável, chamar `/api/trpc/auth.me`
+com o cookie via curl. Responde o usuário → o problema é do cliente. Responde
+vazio → é do servidor.
+
+## Por que ainda não entra no CI
+
+Enquanto a fundação não fecha, ligar no CI só produziria vermelho sem
+informação. Roda por `npm run e2e`. Assim que as duas pendências fecharem, entra
+no CI e os quatro fluxos (reserva, vistoria com foto, abastecimento e PIX) são
+construídos em cima dela — os três primeiros sem precisar de credencial nenhuma;
+o do PIX com a chave de sandbox do Asaas, que o responsável confirmou existir.
+
+---
+
+# Story 24 — fechamento das duas pendências + bug real de login (15/08/2026)
+
+## A causa raiz: não era do cookie, nem do usuário — era o formato da data
+
+Com o MySQL local finalmente estável, o passo seguinte confirmou a suspeita:
+chamar `/api/trpc/auth.me` diretamente por `curl`, fora do Playwright, com um
+usuário inserido manualmente e uma sessão assinada à mão. A resposta veio
+vazia — mas o log do servidor mostrou o motivo, e não é o que a pendência
+anterior suspeitava:
+
+```
+[Database] Failed to upsert user: ... Incorrect datetime value:
+'2026-08-15T18:19:22.159Z' for column 'lastSignedIn' ... ER_TRUNCATED_WRONG_VALUE
+```
+
+`authenticateRequest()` (server/_core/sdk.ts) grava `lastSignedIn` a cada login
+com `new Date().toISOString()`. A coluna é `timestamp(mode:'string')` — o driver
+não converte nada, o valor cru vai para o banco. Um MySQL em modo estrito
+(`STRICT_TRANS_TABLES`, padrão desde a 5.7) **recusa** esse formato porque tem
+`T`, `Z` e milissegundos; espera `YYYY-MM-DD HH:MM:SS`.
+
+O erro nunca apareceu em produção porque o TiDB Cloud tolera o formato
+malformado — o `.github/workflows/ci.yml` já documentava essa divergência
+TiDB-vs-MySQL para outro caso (errno 1075), o que explica por que o CI (que
+roda TiDB) também nunca acusou nada.
+
+O que tornou isso invisível: `createContext()` (server/_core/context.ts) envolve
+`authenticateRequest()` inteiro num try/catch que converte QUALQUER erro em
+`user: null`, com o comentário "autenticação é opcional para procedures
+públicas". O erro de SQL nunca chega a log de auth nem ao cliente — ele só
+parece "sessão inválida". Todo login contra um banco estrito ficaria
+silenciosamente "deslogado", sem nenhuma pista.
+
+## A correção
+
+Nova função `toMysqlDatetime()` em `server/_core/dateBR.ts`, mesmo idioma já
+usado em `backupVerify.ts`/`databaseBackup.ts`
+(`.toISOString().slice(0,19).replace('T',' ')`). Auditados todos os usos de
+`new Date().toISOString()` em `server/` que alimentavam coluna `timestamp`
+diretamente — 5 pontos reais, todos corrigidos:
+
+- `server/_core/sdk.ts` (`authenticateRequest`) — a causa raiz, todo login;
+- `server/db.ts` (`upsertUser`, dois fallbacks internos);
+- `server/_core/oauth.ts` (callback OAuth);
+- `server/systemSettings.ts` (`setSetting`).
+
+Um sexto ponto do mesmo tipo apareceu ao aplicar as migrações que faltavam no
+banco de teste local (drift pré-existente, não causado por esta mudança):
+`server/routers/backupRouter.test.ts` inseria `startedAt`/`completedAt` com o
+mesmo `new Date().toISOString()` cru — mascarado até então por outro erro
+(coluna ausente). Corrigido com o mesmo `toMysqlDatetime()`.
+
+Testado contra MySQL real, com sabotagem: um teste prova que o ISO cru É
+rejeitado (prova que o bug existe), outro prova que `toMysqlDatetime()` é
+aceito (prova que a correção resolve) — `server/_core/dateBR.test.ts`.
+
+## As duas pendências fecharam
+
+- **login do robô como administrador**: passou a funcionar assim que o login
+  parou de falhar silenciosamente;
+- **embarcação semeada aparece para o cliente**: passou a falhar por um motivo
+  diferente e novo — a tela `/reservas` só mostra embarcação com cota
+  (`client_quotas`), e a semente mínima não criava nenhuma. Adicionada uma cota
+  `full` no `semear()` (`e2e/apoio/semente.ts`). Depois disso, o teste passou a
+  encontrar o nome da embarcação duas vezes na tela (cartão de uso de cotas +
+  calendário) — ajustado para `.first()`, já que o teste só precisa provar que
+  ela aparece, não quantas vezes.
+
+Os 5 testes de `e2e/fundacao.spec.ts` estão verdes. Nenhum `test.fixme` resta
+no arquivo.
+
+## Ainda fora do CI
+
+A decisão de ligar o `npm run e2e` no CI continua em aberto — não foi pedida
+nesta rodada. A fundação agora está inteiramente provada; falta só a decisão de
+quando entra.

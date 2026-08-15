@@ -35,6 +35,25 @@ export function toIsoUtc(value: string | Date | null | undefined): string | null
   return Number.isNaN(parsed.getTime()) ? raw : parsed.toISOString();
 }
 
+/**
+ * Converte um instante para o formato que colunas `timestamp(mode: 'string')`
+ * aceitam: "YYYY-MM-DD HH:MM:SS", sem "T", sem "Z", sem milissegundos.
+ *
+ * `new Date().toISOString()` produz "2026-08-15T18:19:22.159Z" — formato que o
+ * MySQL em modo estrito (`STRICT_TRANS_TABLES`, padrão desde 5.7) rejeita para
+ * colunas TIMESTAMP com `ER_TRUNCATED_WRONG_VALUE`. O TiDB de produção tolera
+ * o formato malformado (por isso o bug nunca apareceu lá), mas qualquer MySQL
+ * padrão rejeita — foi o que tornava todo login silenciosamente "inválido"
+ * contra um banco estrito: o erro de SQL era engolido por `createContext` como
+ * "sessão não encontrada".
+ *
+ * Sempre usar esta função (em vez de `new Date().toISOString()` cru) para
+ * qualquer valor escrito diretamente em uma coluna `timestamp`.
+ */
+export function toMysqlDatetime(value: Date = new Date()): string {
+  return value.toISOString().slice(0, 19).replace("T", " ");
+}
+
 /** Data de hoje em America/Sao_Paulo, no formato YYYY-MM-DD. */
 export function todayInSaoPaulo(): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
