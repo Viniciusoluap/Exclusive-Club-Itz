@@ -13,7 +13,7 @@
  */
 
 /** Identificador da versão do código. Atualize ao publicar algo que precise ser verificado. */
-export const BUILD_MARKER = "2026-08-14.4-base-comum-dos-pdfs";
+export const BUILD_MARKER = "2026-08-15.1-data-do-abastecimento";
 
 /** Momento em que o processo do servidor subiu (ISO). Revela reinícios/redeploys. */
 export const PROCESS_STARTED_AT = new Date().toISOString();

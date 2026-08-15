@@ -1,6 +1,29 @@
 import PDFDocument from 'pdfkit';
 import { CORES, baixarImagemExterna } from './pdfBase';
 
+/**
+ * Data do registro no fuso de Brasília.
+ *
+ * DEFEITO QUE ISTO CORRIGE: o cabeçalho de cada registro na seção de fotos
+ * formatava a data sem dizer o fuso, então ela saía no fuso da MÁQUINA onde o
+ * servidor roda. Um abastecimento registrado às 23h de Brasília é 02h do dia
+ * seguinte em UTC — e a hospedagem imprimia o dia seguinte. O clube vê uma data,
+ * o documento mostra outra.
+ *
+ * A tabela principal deste mesmo relatório SEMPRE teve o fuso explícito. Era só
+ * o cabeçalho da seção de fotos que divergia, o que tornava o defeito ainda mais
+ * confuso: o mesmo PDF mostrava as duas datas.
+ *
+ * Mudança de documento autorizada pelo responsável pelo projeto em 14/08/2026.
+ *
+ * Está numa função separada porque essa linha só é executada para registros COM
+ * FOTO, e a trava de regressão dos PDFs não cobre esse caminho — baixar foto
+ * exigiria rede no teste. Assim a regra fica coberta de forma direta.
+ */
+export function dataDoRegistro(data: Date | string): string {
+  return new Date(data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+}
+
 interface FuelRecordData {
   id: number;
   vesselName: string;
@@ -239,7 +262,7 @@ export async function generateFuelRecordsPDF(records: FuelRecordData[]): Promise
         // Título do registro (sempre no topo da seção)
         const titleY = doc.y;
         doc.fillColor(CORES.marca).fontSize(9).text(
-          `Registro #${record.id} - ${record.vesselName.normalize('NFC')} - ${new Date(record.date).toLocaleDateString('pt-BR')}`,
+          `Registro #${record.id} - ${record.vesselName.normalize('NFC')} - ${dataDoRegistro(record.date)}`,
           40, titleY,
           { width: pageWidth, align: 'left' }
         );
