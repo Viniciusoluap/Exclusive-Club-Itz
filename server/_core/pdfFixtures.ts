@@ -65,6 +65,32 @@ export const ABASTECIMENTOS_EXEMPLO = [
     photoBeforeUrl: null,
     photoAfterUrl: null,
   },
+  {
+    // REGISTRO DE MADRUGADA, DE PROPÓSITO.
+    //
+    // 02:00 UTC é 23:00 do dia ANTERIOR em Brasília. É a única faixa de horário
+    // em que o fuso muda a data impressa — e sem um registro assim a amostra
+    // aprovava a data errada sem perceber, porque todos os outros horários dão
+    // o mesmo dia nos dois fusos.
+    id: 103,
+    vesselName: "Lancha Ventura 275",
+    clientName: "Ana Carolina de Souza Gonçalves",
+    employeeName: "José Ribamar",
+    date: "2026-03-17T02:00:00.000Z", // 16/03 às 23h em Brasília
+    liters: 2000,
+    pricePerLiter: 700,
+    subtotal: 1400000,
+    serviceFee: 0,
+    totalAmount: 1400000,
+    notes: undefined,
+    litersInitial: null,
+    weightFull: null,
+    weightAfter: null,
+    weightConsumed: null,
+    litersCalculated: null,
+    photoBeforeUrl: null,
+    photoAfterUrl: null,
+  },
 ];
 
 export const VISTORIAS_EXEMPLO = [
