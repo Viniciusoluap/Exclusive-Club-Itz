@@ -6,6 +6,7 @@ import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
+import { toMysqlDatetime } from "./dateBR";
 import { ENV } from "./env";
 import type {
   ExchangeTokenRequest,
@@ -252,7 +253,7 @@ class SDKServer {
     }
 
     const sessionUserId = session.openId;
-    const signedInAt = new Date().toISOString();
+    const signedInAt = toMysqlDatetime();
     let user = await db.getUserByOpenId(sessionUserId);
 
     // If user not in DB, sync from OAuth server automatically

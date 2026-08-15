@@ -51,17 +51,28 @@ export async function semear(): Promise<{ embarcacaoId: number }> {
 
     // O cliente também precisa existir na lista de clientes autorizados: é ela
     // que o portal usa para saber de quem é cada cobrança e cada reserva.
-    await pool.query(
+    const [clienteResultado]: any = await pool.query(
       "INSERT INTO `allowed_clients` (`email`, `name`, `is_active`) VALUES (?, ?, 1)",
       [CLIENTE.email, CLIENTE.nome],
     );
+    const clienteId = Number(clienteResultado.insertId);
 
     const [resultado]: any = await pool.query(
       "INSERT INTO `vessels` (`name`, `type`, `capacity`, `is_active`) VALUES (?, ?, ?, 1)",
       [EMBARCACAO.nome, EMBARCACAO.tipo, 10],
     );
+    const embarcacaoId = Number(resultado.insertId);
 
-    return { embarcacaoId: Number(resultado.insertId) };
+    // Sem cota, a tela de reservas não mostra embarcação nenhuma para o
+    // cliente (trpc.bookings.myQuotas filtra trpc.vessels.list por isto) —
+    // foi o que fez o primeiro rascunho deste teste falhar mesmo com a
+    // sessão já aceita.
+    await pool.query(
+      "INSERT INTO `client_quotas` (`client_id`, `vessel_id`, `quota_type`, `quota_number`, `is_active`) VALUES (?, ?, 'full', 1, 1)",
+      [clienteId, embarcacaoId],
+    );
+
+    return { embarcacaoId };
   } finally {
     await pool.end();
   }

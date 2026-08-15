@@ -3,6 +3,7 @@ import { appRouter } from "../routers";
 import type { TrpcContext } from "../_core/context";
 import { getDb } from "../db";
 import { backupHistory } from "../../drizzle/schema";
+import { toMysqlDatetime } from "../_core/dateBR";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -135,24 +136,24 @@ describe("backupRouter", () => {
       if (db) {
         await db.insert(backupHistory).values([
           {
-            startedAt: new Date().toISOString(),
-            completedAt: new Date().toISOString(),
+            startedAt: toMysqlDatetime(),
+            completedAt: toMysqlDatetime(),
             status: 'success',
             fileName: 'test-backup-1.zip',
             fileSizeBytes: 1024000,
             durationSeconds: 60,
           },
           {
-            startedAt: new Date().toISOString(),
-            completedAt: new Date().toISOString(),
+            startedAt: toMysqlDatetime(),
+            completedAt: toMysqlDatetime(),
             status: 'success',
             fileName: 'test-backup-2.zip',
             fileSizeBytes: 1024000,
             durationSeconds: 65,
           },
           {
-            startedAt: new Date().toISOString(),
-            completedAt: new Date().toISOString(),
+            startedAt: toMysqlDatetime(),
+            completedAt: toMysqlDatetime(),
             status: 'failed',
             errorMessage: 'Test error',
             durationSeconds: 30,

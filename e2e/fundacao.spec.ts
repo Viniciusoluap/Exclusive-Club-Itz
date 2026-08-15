@@ -46,27 +46,16 @@ test.describe("fundação", () => {
   });
 
   /**
-   * PENDENTE — a sessão forjada ainda não é aceita pelo cliente.
-   *
-   * O que já está provado: o servidor sobe, cria as tabelas e responde; a
-   * semente entra no banco; e a área de administrador está protegida (o teste
-   * "sem sessão" passa).
-   *
-   * O que falta: ao abrir uma página protegida com o cookie posto, o cliente
-   * redireciona para o portal de login — ou seja, `auth.me` devolveu vazio.
-   * Não consegui isolar se o cookie não chega, se a assinatura é recusada, ou
-   * se o usuário não é encontrado: o MySQL deste ambiente de desenvolvimento
-   * cai a cada poucos minutos e derruba a investigação no meio.
-   *
-   * ESTÁ MARCADO COMO PENDENTE, NÃO REMOVIDO, DE PROPÓSITO. Apagar esconderia
-   * a lacuna; deixar falhando tornaria o CI ruído. Assim a lacuna fica visível
-   * e nomeada até ser fechada.
-   *
-   * PRÓXIMO PASSO: com um banco estável, chamar `/api/trpc/auth.me` com o
-   * cookie via curl. Se responder o usuário, o problema é do cliente; se
-   * responder vazio, é do servidor. Uma requisição resolve a dúvida.
+   * A sessão forjada não era aceita: `authenticateRequest()` grava
+   * `lastSignedIn` com `new Date().toISOString()` cru a cada login, e essa
+   * string ("2026-08-15T18:19:22.159Z") é rejeitada por um MySQL em modo
+   * estrito (ER_TRUNCATED_WRONG_VALUE). `createContext()` engole qualquer
+   * erro de `authenticateRequest()` como "sessão inválida", então a falha de
+   * SQL virava, silenciosamente, "usuário não logado". Corrigido em
+   * `toMysqlDatetime()` (server/_core/dateBR.ts), aplicado nos 5 pontos que
+   * gravavam datetime cru: sdk.ts, db.ts (x2), oauth.ts, systemSettings.ts.
    */
-  test.fixme("a semente entra e o robô consegue entrar como administrador", async ({
+  test("a semente entra e o robô consegue entrar como administrador", async ({
     context,
     page,
     baseURL,
@@ -92,11 +81,13 @@ test.describe("fundação", () => {
     await expect(page.getByText("Diagnóstico do Sistema")).toBeHidden({ timeout: 15_000 });
   });
 
-  // Pendente pelo mesmo motivo do teste acima: depende de sessão aceita.
-  test.fixme("a embarcação semeada aparece para o cliente", async ({ context, page, baseURL }) => {
+  test("a embarcação semeada aparece para o cliente", async ({ context, page, baseURL }) => {
     await entrarComo(context, CLIENTE, baseURL!);
     await page.goto("/reservas");
 
-    await expect(page.getByText(EMBARCACAO.nome)).toBeVisible({ timeout: 20_000 });
+    // A tela repete o nome da embarcação em mais de um bloco (uso de quotas e
+    // calendário) — `.first()` basta para provar que ela aparece, sem
+    // depender de quantas vezes.
+    await expect(page.getByText(EMBARCACAO.nome).first()).toBeVisible({ timeout: 20_000 });
   });
 });

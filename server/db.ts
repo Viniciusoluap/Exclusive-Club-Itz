@@ -5,6 +5,7 @@ import { InsertUser, users, allowedClients, InsertAllowedClient, vessels, Insert
 import * as schema from "../drizzle/schema";
 import * as relations from "../drizzle/relations";
 import { ENV } from './_core/env';
+import { toMysqlDatetime } from './_core/dateBR';
 
 const fullSchema = { ...schema, ...relations };
 
@@ -88,11 +89,11 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     }
 
     if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date().toISOString();
+      values.lastSignedIn = toMysqlDatetime();
     }
 
     if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date().toISOString();
+      updateSet.lastSignedIn = toMysqlDatetime();
     }
 
     await db.insert(users).values(values).onDuplicateKeyUpdate({

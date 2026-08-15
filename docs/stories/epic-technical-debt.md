@@ -402,3 +402,82 @@ informação. Roda por `npm run e2e`. Assim que as duas pendências fecharem, en
 no CI e os quatro fluxos (reserva, vistoria com foto, abastecimento e PIX) são
 construídos em cima dela — os três primeiros sem precisar de credencial nenhuma;
 o do PIX com a chave de sandbox do Asaas, que o responsável confirmou existir.
+
+---
+
+# Story 24 — fechamento das duas pendências + bug real de login (15/08/2026)
+
+## A causa raiz: não era do cookie, nem do usuário — era o formato da data
+
+Com o MySQL local finalmente estável, o passo seguinte confirmou a suspeita:
+chamar `/api/trpc/auth.me` diretamente por `curl`, fora do Playwright, com um
+usuário inserido manualmente e uma sessão assinada à mão. A resposta veio
+vazia — mas o log do servidor mostrou o motivo, e não é o que a pendência
+anterior suspeitava:
+
+```
+[Database] Failed to upsert user: ... Incorrect datetime value:
+'2026-08-15T18:19:22.159Z' for column 'lastSignedIn' ... ER_TRUNCATED_WRONG_VALUE
+```
+
+`authenticateRequest()` (server/_core/sdk.ts) grava `lastSignedIn` a cada login
+com `new Date().toISOString()`. A coluna é `timestamp(mode:'string')` — o driver
+não converte nada, o valor cru vai para o banco. Um MySQL em modo estrito
+(`STRICT_TRANS_TABLES`, padrão desde a 5.7) **recusa** esse formato porque tem
+`T`, `Z` e milissegundos; espera `YYYY-MM-DD HH:MM:SS`.
+
+O erro nunca apareceu em produção porque o TiDB Cloud tolera o formato
+malformado — o `.github/workflows/ci.yml` já documentava essa divergência
+TiDB-vs-MySQL para outro caso (errno 1075), o que explica por que o CI (que
+roda TiDB) também nunca acusou nada.
+
+O que tornou isso invisível: `createContext()` (server/_core/context.ts) envolve
+`authenticateRequest()` inteiro num try/catch que converte QUALQUER erro em
+`user: null`, com o comentário "autenticação é opcional para procedures
+públicas". O erro de SQL nunca chega a log de auth nem ao cliente — ele só
+parece "sessão inválida". Todo login contra um banco estrito ficaria
+silenciosamente "deslogado", sem nenhuma pista.
+
+## A correção
+
+Nova função `toMysqlDatetime()` em `server/_core/dateBR.ts`, mesmo idioma já
+usado em `backupVerify.ts`/`databaseBackup.ts`
+(`.toISOString().slice(0,19).replace('T',' ')`). Auditados todos os usos de
+`new Date().toISOString()` em `server/` que alimentavam coluna `timestamp`
+diretamente — 5 pontos reais, todos corrigidos:
+
+- `server/_core/sdk.ts` (`authenticateRequest`) — a causa raiz, todo login;
+- `server/db.ts` (`upsertUser`, dois fallbacks internos);
+- `server/_core/oauth.ts` (callback OAuth);
+- `server/systemSettings.ts` (`setSetting`).
+
+Um sexto ponto do mesmo tipo apareceu ao aplicar as migrações que faltavam no
+banco de teste local (drift pré-existente, não causado por esta mudança):
+`server/routers/backupRouter.test.ts` inseria `startedAt`/`completedAt` com o
+mesmo `new Date().toISOString()` cru — mascarado até então por outro erro
+(coluna ausente). Corrigido com o mesmo `toMysqlDatetime()`.
+
+Testado contra MySQL real, com sabotagem: um teste prova que o ISO cru É
+rejeitado (prova que o bug existe), outro prova que `toMysqlDatetime()` é
+aceito (prova que a correção resolve) — `server/_core/dateBR.test.ts`.
+
+## As duas pendências fecharam
+
+- **login do robô como administrador**: passou a funcionar assim que o login
+  parou de falhar silenciosamente;
+- **embarcação semeada aparece para o cliente**: passou a falhar por um motivo
+  diferente e novo — a tela `/reservas` só mostra embarcação com cota
+  (`client_quotas`), e a semente mínima não criava nenhuma. Adicionada uma cota
+  `full` no `semear()` (`e2e/apoio/semente.ts`). Depois disso, o teste passou a
+  encontrar o nome da embarcação duas vezes na tela (cartão de uso de cotas +
+  calendário) — ajustado para `.first()`, já que o teste só precisa provar que
+  ela aparece, não quantas vezes.
+
+Os 5 testes de `e2e/fundacao.spec.ts` estão verdes. Nenhum `test.fixme` resta
+no arquivo.
+
+## Ainda fora do CI
+
+A decisão de ligar o `npm run e2e` no CI continua em aberto — não foi pedida
+nesta rodada. A fundação agora está inteiramente provada; falta só a decisão de
+quando entra.

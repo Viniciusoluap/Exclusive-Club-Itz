@@ -7,6 +7,12 @@ dist/
 build/
 *.dist
 
+# Playwright — resultados mudam a cada execução, não são código
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # Environment variables
 .env
 .env.local
