@@ -350,3 +350,55 @@ código de verdade.
 fuso. A data impressa depende do fuso do servidor: um abastecimento de madrugada
 pode sair com o dia errado. **Corrigir muda o documento**, o que exige aprovação
 explícita do responsável. Fica aqui para decisão.
+
+---
+
+# Story 24 — o que mudou e onde ela está (15/08/2026)
+
+## O bloqueio anterior estava errado
+
+Esta story constava como bloqueada por falta de ambiente de teste: um robô que
+percorre os fluxos criaria reservas e cobranças de verdade se rodasse contra
+produção. A conclusão de que faltava ambiente era minha, e era **falsa**.
+
+Verificado na prática: o sistema **sobe do zero contra um banco descartável**,
+aplica as migrações sozinho (autoMigrate) e responde HTTP 200. Não é preciso
+ambiente hospedado, nem custo mensal, nem contato nenhum com produção — o
+ambiente é criado e jogado fora a cada execução.
+
+O segundo obstáculo esperado também caiu: a sessão é um cookie assinado com o
+`JWT_SECRET`, que nos testes é definido pelo próprio teste. O robô consegue
+entrar sem depender de login externo.
+
+## O que está pronto
+
+- ambiente descartável (cria e apaga o banco a cada execução);
+- servidor subindo com segredos de mentira, isolado de tudo;
+- semente mínima (admin, cliente, funcionário, uma embarcação);
+- assinatura de sessão para entrar como qualquer papel;
+- Playwright configurado, reaproveitando o Chromium já instalado.
+
+Provado por teste: o sistema sobe e responde · as tabelas nascem sozinhas na
+subida · a área de administrador está protegida para quem não tem sessão.
+
+## O que NÃO está pronto
+
+Duas verificações estão marcadas como **pendentes** (`test.fixme`), não
+removidas: ao abrir página protegida com o cookie posto, o cliente redireciona
+para o portal de login — `auth.me` devolveu vazio.
+
+Não isolei se o cookie não chega, se a assinatura é recusada ou se o usuário não
+é encontrado. O MySQL do ambiente de desenvolvimento cai a cada poucos minutos e
+derrubou a investigação três vezes.
+
+**Próximo passo, uma requisição:** com banco estável, chamar `/api/trpc/auth.me`
+com o cookie via curl. Responde o usuário → o problema é do cliente. Responde
+vazio → é do servidor.
+
+## Por que ainda não entra no CI
+
+Enquanto a fundação não fecha, ligar no CI só produziria vermelho sem
+informação. Roda por `npm run e2e`. Assim que as duas pendências fecharem, entra
+no CI e os quatro fluxos (reserva, vistoria com foto, abastecimento e PIX) são
+construídos em cima dela — os três primeiros sem precisar de credencial nenhuma;
+o do PIX com a chave de sandbox do Asaas, que o responsável confirmou existir.

@@ -17,7 +17,8 @@
     "backup": "tsx server/backup-cli.ts",
     "setup-drive": "tsx server/setup-google-drive.ts",
     "backup-scheduler": "tsx server/schedule-backup.ts",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
@@ -100,6 +101,7 @@
     "vite-plugin-manus-runtime": "^0.0.57"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4.1.3",
     "@types/express": "4.17.21",
     "@types/node": "^24.7.0",
