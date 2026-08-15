@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { systemSettings, type InsertSystemSetting } from "../drizzle/schema";
 import { getDb } from "./db";
+import { toMysqlDatetime } from "./_core/dateBR";
 import * as crypto from "crypto";
 
 /**
@@ -137,7 +138,7 @@ export async function setSetting(
           value: encryptedValue,
           description: description || null,
           updatedBy: updatedBy || null,
-          updatedAt: new Date().toISOString(),
+          updatedAt: toMysqlDatetime(),
         },
       });
   } catch (error) {
