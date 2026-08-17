@@ -84,7 +84,7 @@ procurar defeito em lugar nenhum.
 5. No campo **"Marcador de build"**, você deve ver exatamente:
 
 ```
-2026-08-17.1-faixa-de-valor-na-entrada
+2026-08-17.2-conferencia-de-contas
 ```
 
 ### O que fazer conforme o que aparecer
@@ -513,7 +513,7 @@ de mandar.
 
 ```
 [ ] 1. Sincronizei e publiquei no Manus
-[ ] 2. Marcador de build = 2026-08-17.1-faixa-de-valor-na-entrada
+[ ] 2. Marcador de build = 2026-08-17.2-conferencia-de-contas
 [ ] 3. Cartão "Migrações do banco" diz "Banco existente adotado" ou
        "Banco sob controle de migrações"
 [ ] 4. BACKUP_ENCRYPTION_KEY copiada e guardada em 2 lugares fora do Manus
