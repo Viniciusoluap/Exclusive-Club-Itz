@@ -329,13 +329,21 @@ export const bookingsRouter = router({
         notes: input.notes,
       });
       
-      // Send confirmation email to client
-      await notifyClientBookingConfirmation({
+      // E-mail de confirmação para o cliente — SEM segurar a resposta.
+      //
+      // A reserva já está gravada neste ponto. Esperar o SMTP para só então
+      // responder fazia o pior dos mundos: a reserva existia, mas a tela
+      // ficava rodando até o e-mail resolver — e o sócio, sem retorno, ou
+      // desistia ou tentava de novo. O envio continua acontecendo e a falha
+      // continua sendo registrada; o que deixa de acontecer é a espera.
+      void notifyClientBookingConfirmation({
         clientName: ctx.user.name,
         clientEmail: ctx.user.email,
         vesselName: vessel.name,
         bookingDate: new Date(input.bookingDate),
         notes: input.notes,
+      }).catch((error) => {
+        console.error("[Reservas] Falha ao enviar e-mail de confirmação:", error);
       });
 
       return { success: true };
