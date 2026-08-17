@@ -314,6 +314,56 @@ export default function Diagnostico() {
             </Card>
           )}
 
+          {/*
+            Conferência de contas (Story 33). Em vez de converter a
+            representação de dinheiro — que mexeria em dado real de cobrança
+            sem necessidade comprovada —, recalcula o total do abastecimento a
+            partir das partes e compara com o gravado. Se algum dia acender
+            vermelho, aí sim existe motivo (e caso concreto) para migrar.
+          */}
+          {data.contas && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <StatusIcon ok={data.contas.integro} />
+                  Conferência de contas
+                </CardTitle>
+                <CardDescription>
+                  Recalcula o total de {data.contas.registrosConferidos.toLocaleString('pt-BR')}{' '}
+                  abastecimento(s) a partir de litros × preço e compara com o valor gravado.
+                  Só lê, não altera nada.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {data.contas.erro ? (
+                  <p className="break-words text-red-600">{data.contas.erro}</p>
+                ) : data.contas.integro ? (
+                  <p className="text-muted-foreground">
+                    Todo total gravado bate com as partes.
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {data.contas.divergentes.map((d) => (
+                      <p key={d.id} className="break-words text-red-700">
+                        <strong>Abastecimento #{d.id}</strong>: gravado{' '}
+                        {(d.totalGravado / 100).toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                        , recalculado{' '}
+                        {(d.totalRecalculado / 100).toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                        .
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <Button onClick={() => refetch()} disabled={isFetching} variant="outline">
             <RefreshCw
               className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`}

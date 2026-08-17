@@ -149,6 +149,13 @@ export async function collectDiagnostics() {
   const { conferirValores } = await import("./regrasDeValor");
   const valores = await conferirValores(schemaDb);
 
+  // Conferência de contas (Story 33). Recalcula o total do abastecimento a
+  // partir das partes e compara com o gravado — em vez de converter a
+  // representação de dinheiro, que mexeria em dado real sem necessidade
+  // comprovada. Só leitura.
+  const { conferirContas } = await import("./conferenciaDeContas");
+  const contas = await conferirContas(schemaDb);
+
   return {
     buildMarker: BUILD_MARKER,
     processStartedAt: PROCESS_STARTED_AT,
@@ -165,6 +172,7 @@ export async function collectDiagnostics() {
     migracoes: (globalThis as any).__ultimaMigracao ?? null,
     schemaBanco,
     valores,
+    contas,
     // Só o que de fato impede o sistema de funcionar. Contar as opcionais
     // aqui era o que produzia o "2 faltando" enganoso.
     missingCount: envVars.filter((v) => !v.present && v.critica).length,
