@@ -84,7 +84,7 @@ procurar defeito em lugar nenhum.
 5. No campo **"Marcador de build"**, você deve ver exatamente:
 
 ```
-2026-08-12.1-backup-restauravel
+2026-08-15.3-fluxos-ponta-a-ponta
 ```
 
 ### O que fazer conforme o que aparecer
@@ -513,7 +513,7 @@ de mandar.
 
 ```
 [ ] 1. Sincronizei e publiquei no Manus
-[ ] 2. Marcador de build = 2026-08-12.1-backup-restauravel
+[ ] 2. Marcador de build = 2026-08-15.3-fluxos-ponta-a-ponta
 [ ] 3. Cartão "Migrações do banco" diz "Banco existente adotado" ou
        "Banco sob controle de migrações"
 [ ] 4. BACKUP_ENCRYPTION_KEY copiada e guardada em 2 lugares fora do Manus

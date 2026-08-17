@@ -1,5 +1,18 @@
 import { useId } from "react";
 
+/**
+ * O azul-marinho da marca.
+ *
+ * Fica exportado porque não é "uma cor da interface", é a identidade: o mesmo
+ * tom do logotipo é usado ao escrever "Exclusive Club" ao lado dele. Estava
+ * repetido à mão em `Admin.tsx`, o que significa que um ajuste de marca
+ * mudaria o desenho e deixaria o texto para trás.
+ *
+ * NÃO vira token de tema de propósito: cor de marca não acompanha troca de
+ * tema — é ela que precisa continuar igual quando o resto muda.
+ */
+export const AZUL_MARCA = "#1B3A5C";
+
 interface ExclusiveClubLogoProps {
   size?: number;
   className?: string;
@@ -9,7 +22,7 @@ export function ExclusiveClubLogo({ size = 64, className }: ExclusiveClubLogoPro
   const uid = useId().replace(/:/g, "");
   const arcId = `ec-arc-${uid}`;
 
-  const NAVY = "#1B3A5C";
+  const NAVY = AZUL_MARCA;
   const STROKE = { fill: "none", stroke: NAVY, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
   return (
