@@ -481,3 +481,116 @@ no arquivo.
 A decisão de ligar o `npm run e2e` no CI continua em aberto — não foi pedida
 nesta rodada. A fundação agora está inteiramente provada; falta só a decisão de
 quando entra.
+
+---
+
+# Story 24 fechada + um defeito real que ela encontrou (15/08/2026)
+
+Com autorização para conduzir sozinho tudo que fosse automatizável, os três
+fluxos que faltavam foram construídos sobre a fundação já provada.
+
+## Os fluxos agora cobertos
+
+`e2e/fluxos.spec.ts` — cinco verificações, todas pela TELA, todas conferindo o
+resultado no BANCO (não no aviso verde; aviso verde já mentiu nesta auditoria):
+
+| Fluxo | O que prova |
+|---|---|
+| Reserva | o sócio reserva e a linha chega ao banco, com embarcação e status certos |
+| Reserva (contraprova) | segunda-feira não abre diálogo nenhum — o clube não abre |
+| Vistoria | o administrador registra e a vistoria entra |
+| Vistoria com foto | upload que falha **bloqueia** a submissão e NADA é gravado |
+| Abastecimento | litros e preço entram como inteiros em centésimos (2550 / 650) |
+
+Somados aos 5 da fundação, são **10 verificações de ponta a ponta**.
+
+## O defeito real que o teste encontrou
+
+O teste de reserva travou na primeira execução: o botão confirmava, a reserva
+entrava no banco, e a tela ficava rodando. A causa não era o teste.
+
+`bookings.create` **aguardava o envio do e-mail de confirmação** antes de
+responder. E o transporte SMTP não tinha limite de espera nenhum, então valia o
+padrão do nodemailer: **~2 minutos**. Com o Titan lento ou fora do ar, toda
+reserva ficaria com a tela travada por minutos — com a reserva já gravada. O
+sócio, sem retorno, ou desistiria ou tentaria de novo.
+
+É o mesmo padrão que atravessa esta auditoria inteira: **a operação deu certo e
+o usuário não tem como saber.**
+
+Duas correções:
+
+1. `emailService.ts` — teto explícito de 10s (`connectionTimeout`,
+   `greetingTimeout`, `socketTimeout`). Vale para todo e-mail do sistema, não
+   só o da reserva.
+2. `bookingsRouter.ts` — a resposta não espera mais o e-mail. O envio continua
+   acontecendo e a falha continua sendo registrada; o que deixa de acontecer é
+   a espera.
+
+Nenhum teste unitário pegaria isso: o defeito só existe no caminho completo,
+com o servidor de verdade respondendo a um navegador de verdade. É a
+justificativa inteira de a Story 24 existir.
+
+## Agora entra no CI
+
+`ci.yml` ganhou o job **"Fluxos de ponta a ponta"**, separado do job de
+unidade para que o vermelho já diga em qual camada está o problema. Sobe TiDB
+efêmero (mesma razão do job principal: produção é TiDB), instala o Chromium,
+monta o bundle **com as `VITE_*` preenchidas** (sem elas o HTML sai com
+`%VITE_APP_TITLE%` literal e a rota quebra) e roda os 10 testes. Quando falha,
+guarda o rastro do Playwright como artefato por 7 dias.
+
+O fluxo de PIX segue **fora** — é o único que precisaria da credencial de
+sandbox do Asaas.
+
+---
+
+# Story 27 — escopo reavaliado, e ele quase não existe mais (15/08/2026)
+
+Esta story estava parada esperando prints. Ela não precisava: dava para medir.
+
+Varredura de cores literais em `client/src` (fora dos primitivos `ui/`):
+
+| Onde | Ocorrências | Veredito |
+|---|---|---|
+| `ReportsTab.tsx` | 18 | **legítimo** — cores de gráfico (recharts não lê variável CSS) |
+| `ExclusiveClubLogo.tsx` | 3 | **legítimo** — é o desenho da marca |
+| `WhatsAppButton.tsx` | 2 | **legítimo** — verde oficial do WhatsApp |
+| `Admin.tsx` | 1 | **real** — o azul da marca repetido à mão |
+| `ManusDialog` | — | **não existe mais** (removido na limpeza de código morto) |
+
+O exemplo que dava nome à story (`ManusDialog`) já tinha sido removido. Das 24
+ocorrências restantes, 23 são cores que **não devem** acompanhar troca de tema:
+gráfico, logotipo e marca de terceiro.
+
+Sobrou uma de verdade: `Admin.tsx` escrevia `#1B3A5C` à mão — o mesmo tom que
+`ExclusiveClubLogo.tsx` já definia — para pintar o texto "Exclusive Club" ao
+lado do logo. Um ajuste de marca mudaria o desenho e deixaria o texto para
+trás. Corrigido: a cor virou `AZUL_MARCA`, exportada de onde o logo a define.
+
+**Conclusão:** a story pode ser encerrada. Não há dívida de token de cor a
+pagar — havia uma duplicação de uma linha, agora paga.
+
+---
+
+# Story 28 — a metade perigosa já estava fechada (15/08/2026)
+
+A story tinha duas metades, e elas valem coisas muito diferentes.
+
+**A metade que importa** — "um espaço em branco não distingue *não tem nada* de
+*deu erro ao carregar*" — **já foi resolvida pela Story 19 (UX-02)**, que
+estabeleceu o padrão de estados de query: consulta que falha renderiza estado
+de erro com "tentar novamente", não lista vazia. O risco real (o sócio olhar
+uma tela vazia e concluir que não há cobrança quando na verdade a consulta
+quebrou) está coberto.
+
+**A metade cosmética** — unificar ~52 mensagens de vazio ad-hoc num componente
+comum — é aparência de dezenas de telas ao mesmo tempo. Fazer isso sem ver as
+telas é exatamente o que esta auditoria evitou a story inteira: trocar um
+problema conhecido por um desconhecido, em silêncio. **Fica pendente de
+conferência visual, e só isso.**
+
+Registrado no caminho: `client/src/components/ui/empty.tsx` existe e **não é
+usado em lugar nenhum** — primitivo instalado e nunca conectado. Se a metade
+cosmética for tocada um dia, ele é o ponto de partida pronto. Não removido
+porque é a base natural desse trabalho.

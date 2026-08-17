@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { ExclusiveClubLogo } from "@/components/ExclusiveClubLogo";
+import { ExclusiveClubLogo, AZUL_MARCA } from "@/components/ExclusiveClubLogo";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -645,7 +645,7 @@ export default function Admin() {
             <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <ExclusiveClubLogo size={54} className="drop-shadow-sm" />
               <div className="flex flex-col leading-tight">
-                <span className="text-base font-bold tracking-tight" style={{ color: "#1B3A5C" }}>Exclusive Club</span>
+                <span className="text-base font-bold tracking-tight" style={{ color: AZUL_MARCA }}>Exclusive Club</span>
                 <span className="text-[10px] font-semibold tracking-[0.14em] uppercase text-muted-foreground">Painel Administrativo</span>
               </div>
             </Link>

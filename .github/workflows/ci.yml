@@ -197,3 +197,97 @@ jobs:
               issue_number: context.payload.pull_request.number,
               body
             });
+
+  # ───────────────────────── Fluxos de ponta a ponta ─────────────────────────
+  #
+  # Story 24 / SYS-07. Sobe o sistema inteiro contra um banco descartável e
+  # percorre pela TELA os caminhos que o clube não pode perder: reservar,
+  # vistoriar (inclusive a recusa quando a foto falha) e abastecer.
+  #
+  # POR QUE EM JOB SEPARADO: são minutos a mais e falham por motivos diferentes
+  # dos testes de unidade. Separado, o vermelho já diz em qual camada está o
+  # problema, sem precisar abrir o log.
+  #
+  # NADA aqui toca produção nem a conta Asaas: banco criado e descartado na
+  # execução, segredos de mentira, e o fluxo de PIX deliberadamente fora (é o
+  # único que precisaria de credencial de sandbox).
+  e2e:
+    name: Fluxos de ponta a ponta
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      DATABASE_URL: mysql://root:@127.0.0.1:3306/test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Mesmo TiDB efêmero do job acima, e pela mesma razão: produção é TiDB
+      # Cloud, não MySQL. O detalhe do clustered index está explicado lá.
+      - name: Start ephemeral TiDB
+        run: |
+          docker run -d --name tidb --network host \
+            pingcap/tidb:latest \
+            --store=unistore --path="" -P 3306 --host=0.0.0.0 \
+            --log-slow-query="" 2>&1 | tee /tmp/tidb-start.log
+
+          for i in $(seq 1 60); do
+            if mysql -h 127.0.0.1 -P 3306 -uroot -e "SELECT 1;" >/dev/null 2>&1; then
+              echo "TiDB is up after ${i}0s"
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "::error::TiDB did not become ready in time"
+              docker logs tidb || true
+              exit 1
+            fi
+            sleep 10
+          done
+
+          mysql -h 127.0.0.1 -P 3306 -uroot -e "SET GLOBAL tidb_enable_clustered_index = 'OFF';"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium for Playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      # As VITE_* precisam existir NA HORA DO BUILD: elas são substituídas no
+      # bundle, não lidas em execução. Sem elas o HTML publicado sai com
+      # "%VITE_APP_TITLE%" literal e a rota quebra ao decodificar — foi
+      # exatamente o que aconteceu na primeira montagem deste ambiente.
+      # São valores de teste, não credenciais.
+      - name: Build (produção, com as VITE_* preenchidas)
+        env:
+          VITE_APP_ID: app-de-teste-e2e
+          VITE_APP_TITLE: Exclusive Club
+          VITE_ANALYTICS_ENDPOINT: ""
+          VITE_ANALYTICS_WEBSITE_ID: ""
+          VITE_APP_LOGO: ""
+          VITE_OAUTH_PORTAL_URL: http://127.0.0.1:9/oauth
+        run: pnpm run build
+
+      - name: Rodar os fluxos
+        run: pnpm run e2e
+
+      # O rastro do Playwright é o que permite entender uma falha de CI sem ter
+      # a máquina na mão: traz screenshot, DOM e rede do momento exato.
+      - name: Guardar o relatório quando falhar
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

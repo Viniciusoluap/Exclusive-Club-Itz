@@ -13,6 +13,22 @@ if (!process.env.SMTP_PASS) {
   console.warn('[Email Service] ⚠️ SMTP_PASS não configurada — envio de email falhará até definir a variável de ambiente');
 }
 
+/**
+ * Teto de espera do SMTP, em milissegundos.
+ *
+ * POR QUE ISTO EXISTE: sem limite explícito, o nodemailer espera o padrão dele
+ * (~2 minutos) para desistir de um servidor que não responde. Como vários
+ * fluxos aguardam o envio antes de responder ao usuário, um Titan lento ou
+ * fora do ar transformava uma operação de 1 segundo numa tela travada por
+ * minutos — com a operação já gravada no banco. Foi assim que o teste de
+ * ponta a ponta da reserva travou: o clique confirmava, o registro entrava, e
+ * o botão ficava rodando esperando um SMTP inalcançável.
+ *
+ * 10 segundos é folgado para um servidor saudável e curto o bastante para não
+ * prender ninguém.
+ */
+const ESPERA_SMTP_MS = 10_000;
+
 // Criar transportador SMTP
 const transporter = nodemailer.createTransport({
   host: 'smtp.titan.email',
@@ -22,6 +38,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER || 'atendimento@exclusiveclubitz.com',
     pass: process.env.SMTP_PASS || '',
   },
+  connectionTimeout: ESPERA_SMTP_MS,
+  greetingTimeout: ESPERA_SMTP_MS,
+  socketTimeout: ESPERA_SMTP_MS,
   tls: {
     // Não falhar em certificados inválidos (comum em hospedagens compartilhadas)
     rejectUnauthorized: false,
