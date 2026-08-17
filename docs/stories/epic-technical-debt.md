@@ -642,3 +642,77 @@ Não corrige dado existente (não há o que corrigir: zero violações) e não
 impede escrita feita direto no banco por fora da aplicação. Para essa segunda
 lacuna, o caminho seria `CHECK` no banco — o que exige antes **provar** que o
 TiDB de produção realmente recusa, e isso só se mede com acesso ao banco.
+
+---
+
+# Story 33 — conferir em vez de converter (17/08/2026)
+
+## A pergunta que decidiu
+
+Perguntei ao responsável: *"você já viu, na prática, erro de centavo em
+relatório?"* Resposta: **"nunca vi na prática."**
+
+Isso não prova que não existe — erro de centavo é justamente o que não se nota.
+Mas muda a conta da decisão:
+
+| | Migrar | Não fazer nada |
+|---|---|---|
+| Custo | alto | zero |
+| Risco | real e imediato (mexe em dado de dinheiro) | zero |
+| Benefício | **desconhecido** | — |
+
+Gastar risco certo por benefício incerto é mau negócio. **A migração da Story
+33 foi descartada.**
+
+## A terceira opção
+
+"Migrar às cegas" ou "não fazer nada" era uma escolha falsa. Existe o caminho
+que já salvou o backup nesta auditoria: **medir em vez de supor**.
+
+`server/_core/conferenciaDeContas.ts` recalcula o total de cada abastecimento a
+partir das partes (litros × preço) e compara com o total gravado. Aparece na
+tela de diagnóstico junto das outras conferências. **Só leitura — não altera
+nada, não tem janela, não tem risco.**
+
+- Ficar verde para sempre → a migração nunca foi necessária, e há prova.
+- Acender vermelho um dia → há **evidência e caso concreto** para migrar, aí
+  com motivo.
+
+## Por que justamente o abastecimento
+
+É o único lugar onde uma conta composta é feita em centavos inteiros. As outras
+tabelas de dinheiro guardam valor numa representação só, sem conta entre elas —
+não há o que reconciliar. Se uma conversão de unidade se perder, é aqui que
+aparece, e aparece **grande**: erro de fator 100, não de centavo.
+
+## A folga é deliberada
+
+A conferência tolera até R$ 1.000 de diferença, porque a taxa fixa de serviço
+entra no total e não vem das partes. Folga apertada transformaria uma mudança
+de taxa em alarme falso — e **alarme falso acaba ignorado**, que é o pior
+destino de um alarme. O alvo é erro de unidade, que estoura qualquer folga
+razoável.
+
+## Provado por sabotagem
+
+5 testes contra MySQL real: total correto não acusa; total 100× menor acusa;
+100× maior acusa; **e a contraprova** — variação de taxa dentro da folga NÃO
+acusa (sem ela, uma conferência que acusasse tudo passaria despercebida até a
+tela virar ruído permanente).
+
+Removi a divisão por 100 da fórmula e rodei: **4 dos 5 falharam**. Restaurado.
+
+---
+
+# Stories 34, 35, 38 e 39 — arquivadas (17/08/2026)
+
+| Story | Motivo |
+|---|---|
+| **38** — tipos temporais | As 3 colunas em `bigint` guardam milissegundos, que é um instante **inequívoco** — discutivelmente mais correto que `timestamp` sem fuso. O erro real de data era de **formatação**, já corrigido (PR #107) e coberto por teste. É consistência, não correção. |
+| **34** — campos desnormalizados | Renomear embarcação não atualiza o histórico. Incômodo, não erro. |
+| **35** — `employees.vessel_ids` | Lista dentro de um texto. Incômodo, não erro. |
+| **39** — `fuel_records` com 33 colunas | Nada quebra. Difícil de manter. |
+
+Somadas, são ~80h de organização que ninguém além de quem mexe no código
+percebe. Arquivadas por decisão de custo-benefício, não por impossibilidade.
+Se alguma vier a doer de verdade, o caminho continua aberto.
