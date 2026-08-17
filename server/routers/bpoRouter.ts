@@ -21,6 +21,7 @@ import { bpoCharges, allowedClients as acTable, vessels as vesselsTable, clientQ
 import { eq, sql, and, gte, lte, inArray, desc } from "drizzle-orm";
 import { listAllAsaasCharges, getChargeStatus, listAllAsaasCustomers, createPixCharge, getOrCreateAsaasCustomer, cancelCharge, receiveInCash, getPixQrCode } from "../_core/asaasService";
 import { todayInSaoPaulo } from "../_core/dateBR";
+import { naoNegativo, positivo } from "../_core/valoresDeEntrada";
 // ============================================================
 // Helper: normalizar status do Asaas para enum bpo_charges
 // ============================================================
@@ -915,7 +916,8 @@ export const bpoRouter = router({
         asaasChargeId: z.string(),
         status: z.string(),
         paymentDate: z.string().optional(),
-        value: z.number().optional(),
+        // Vem do webhook do Asaas — dado externo, então é conferido aqui.
+        value: naoNegativo("Valor da cobrança").optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -2143,7 +2145,7 @@ export const bpoRouter = router({
     .input(z.object({
       chargeId: z.number(),
       paymentDate: z.string().optional(), // YYYY-MM-DD, padrão = hoje
-      value: z.number().optional(),       // Se omitido, usa valor total da cobrança
+      value: positivo("Valor recebido").optional(), // Se omitido, usa valor total da cobrança
       notifyCustomer: z.boolean().optional().default(false),
     }))
     .mutation(async ({ input }) => {
@@ -2199,7 +2201,10 @@ export const bpoRouter = router({
   registerPartialPayment: adminProcedure
     .input(z.object({
       chargeId: z.number(),
-      value: z.number(),              // Valor recebido neste pagamento
+      // O mais sensível dos quatro: este valor é ACUMULADO em `amount_paid`.
+      // Um negativo aqui subtrai do que já foi pago e o saldo devedor passa a
+      // mentir, sem nenhum erro na tela.
+      value: positivo("Valor recebido"), // Valor recebido neste pagamento
       asaasChargeId: z.string().optional(), // ID do PIX no Asaas (opcional)
       paymentDate: z.string().optional(),   // YYYY-MM-DD
     }))
@@ -2241,13 +2246,13 @@ export const bpoRouter = router({
   // @ts-ignore -- CI phantom type error: drizzle/tRPC generic inference
   splitPayment: adminProcedure
     .input(z.object({
-      pixValue: z.number(),
+      pixValue: positivo("Valor do PIX"),
       sourceChargeId: z.number().optional(),
       asaasChargeId: z.string().optional(),
       paymentDate: z.string().optional(),
       splits: z.array(z.object({
         chargeId: z.number(),
-        amount: z.number(),
+        amount: positivo("Valor do rateio"),
       })),
     }))
     .mutation(({ input }) => executeSplitPayment(input)),

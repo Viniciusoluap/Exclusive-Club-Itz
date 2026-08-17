@@ -594,3 +594,51 @@ Registrado no caminho: `client/src/components/ui/empty.tsx` existe e **não é
 usado em lugar nenhum** — primitivo instalado e nunca conectado. Se a metade
 cosmética for tocada um dia, ele é o ponto de partida pronto. Não removido
 porque é a base natural desse trabalho.
+
+---
+
+# Story 36 — 2ª fatia: a porta fechou (17/08/2026)
+
+A 1ª fatia mediu e deu **zero linhas fora de faixa**. Medir não impede a
+próxima. Esta fatia fecha a entrada.
+
+## Onde a trava foi posta, e por que não no banco
+
+Não em `CHECK` no banco: produção é TiDB, que aceita `CHECK` mas só o aplica
+com `tidb_enable_check_constraint` ligado. **Uma trava que existe e não trava é
+pior que trava nenhuma** — dá garantia falsa. A própria story previa a saída:
+*"onde indisponível, validação aplicacional equivalente"*.
+
+Fica na entrada da API (`server/_core/valoresDeEntrada.ts`), que cobre todas as
+escritas — os scripts avulsos contra produção já tinham ganhado porteira na
+Story 37.
+
+**Nenhuma alteração de schema. Nenhuma janela de manutenção. Nenhum dado tocado.**
+
+## Os quatro pontos que estavam abertos
+
+Quase tudo já tinha `.positive()`. Faltavam quatro, todos em `bpoRouter`:
+
+| Ponto | Risco que existia |
+|---|---|
+| `registerPartialPayment` | **o mais grave** — o valor é ACUMULADO em `amount_paid`; um negativo subtrai do que já foi pago e o saldo devedor passa a mentir, sem erro na tela |
+| `markAsPaid` | baixa com valor negativo |
+| `updateFromWebhook` | valor vindo do Asaas (dado externo) sem conferência |
+| `splitPayment` | PIX e parcelas do rateio sem conferência |
+
+## Provado, não afirmado
+
+`server/routers/valoresDeEntrada.test.ts` — 10 testes, incluindo:
+
+- **a contraprova**: valor positivo **passa** pela validação e falha adiante por
+  outro motivo. Sem ela, um guarda que recusasse tudo passaria despercebido até
+  o clube não conseguir mais dar baixa em pagamento nenhum;
+- **verificação por sabotagem**: com o guarda removido, os dois testes certos
+  falham — e só eles. Confirmado na prática antes de fechar.
+
+## O que isto NÃO faz
+
+Não corrige dado existente (não há o que corrigir: zero violações) e não
+impede escrita feita direto no banco por fora da aplicação. Para essa segunda
+lacuna, o caminho seria `CHECK` no banco — o que exige antes **provar** que o
+TiDB de produção realmente recusa, e isso só se mede com acesso ao banco.
