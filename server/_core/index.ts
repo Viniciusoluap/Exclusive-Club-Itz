@@ -10,6 +10,8 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
+import { getExclusiveDoloresSnapshot } from "../dolores/read-model";
+import { getTecnoSpeedStatus } from "../dolores/tecnospeed";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -64,6 +66,37 @@ async function startServer() {
       return false;
     }
   }
+
+  function authorizeDoloresRequest(req: express.Request) {
+    const expected = process.env.DOLORES_READ_TOKEN;
+    if (!expected) return process.env.NODE_ENV !== "production";
+    return req.header("x-dolores-token") === expected;
+  }
+
+  // Endpoints somente leitura da Dolores 9A. Não fazem parte do BPO/financeiro.
+  app.get('/api/dolores/health', (req, res) => {
+    if (!authorizeDoloresRequest(req)) return res.status(401).json({ error: 'Não autorizado' });
+    return res.json({
+      center: 'Centro de Operações da Dolores 9A',
+      sourceSystem: 'exclusive_club',
+      companyCode: 'EXC',
+      canonicalDatabase: 'MySQL independente',
+      mode: 'read_only',
+      bpoWriteBack: false,
+      financialWriteBack: false,
+      asaasWriteBack: false,
+      providers: { tecnospeed: getTecnoSpeedStatus() },
+    });
+  });
+
+  app.get('/api/dolores/snapshot', async (req, res) => {
+    if (!authorizeDoloresRequest(req)) return res.status(401).json({ error: 'Não autorizado' });
+    try {
+      return res.json(await getExclusiveDoloresSnapshot());
+    } catch {
+      return res.status(503).json({ error: 'Snapshot temporariamente indisponível' });
+    }
+  });
 
   // Upload receipt endpoint
   app.post('/api/upload-receipt', async (req, res) => {
