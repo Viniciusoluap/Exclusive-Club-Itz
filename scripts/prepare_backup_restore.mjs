@@ -3,9 +3,9 @@
  * Prepara uma cópia de restauração do dump financeiro mais recente.
  *
  * Este script NÃO conecta a banco e NÃO importa nada. Ele valida a estrutura,
- * remove a view legada `financial_charges` e normaliza o único desvio de nomes
- * encontrado no snapshot de agosto: `users` veio em camelCase, enquanto a main
- * atual usa snake_case.
+ * remove a view legada `financial_charges` e preserva os nomes físicos de colunas
+ * do baseline Drizzle atual. O baseline da main usa camelCase em `users`, portanto
+ * a cópia de restauração não deve renomear essas colunas.
  *
  * Uso:
  *   node scripts/prepare_backup_restore.mjs \
@@ -26,7 +26,9 @@ const output = argument("--output");
 const reportPath = argument("--report", "recovery/backup-restore-report.json");
 
 if (!input || !output) {
-  throw new Error("Uso: --input database.sql --output restore.sql [--report report.json]");
+  throw new Error(
+    "Uso: --input database.sql --output restore.sql [--report report.json]"
+  );
 }
 
 const source = await fs.readFile(input, "utf8");
@@ -42,16 +44,25 @@ const requiredTables = [
   "webhook_logs",
 ];
 const tableNames = new Set(
-  [...source.matchAll(/^-- Table: `?([^`\n]+?)`?\s*$/gm)].map(match => match[1].trim()),
+  [...source.matchAll(/^-- Table: `?([^`\n]+?)`?\s*$/gm)].map(match =>
+    match[1].trim()
+  )
 );
 const missingRequired = requiredTables.filter(table => !tableNames.has(table));
 if (missingRequired.length > 0) {
-  throw new Error(`Dump incompatível: tabelas obrigatórias ausentes: ${missingRequired.join(", ")}`);
+  throw new Error(
+    `Dump incompatível: tabelas obrigatórias ausentes: ${missingRequired.join(", ")}`
+  );
 }
 if (!source.includes("-- Backup completed successfully")) {
-  throw new Error("Dump sem marcador de conclusão; cópia possivelmente truncada.");
+  throw new Error(
+    "Dump sem marcador de conclusão; cópia possivelmente truncada."
+  );
 }
-if (!source.includes("SET FOREIGN_KEY_CHECKS = 0;") || !source.includes("SET FOREIGN_KEY_CHECKS = 1;")) {
+if (
+  !source.includes("SET FOREIGN_KEY_CHECKS = 0;") ||
+  !source.includes("SET FOREIGN_KEY_CHECKS = 1;")
+) {
   throw new Error("Dump sem marcadores completos de FOREIGN_KEY_CHECKS.");
 }
 
@@ -64,28 +75,17 @@ if (viewStart >= 0 && restoreEnd > viewStart) {
   removedLegacyView = true;
 }
 
-const userColumnRenames = [
-  ["openId", "open_id"],
-  ["loginMethod", "login_method"],
-  ["createdAt", "created_at"],
-  ["updatedAt", "updated_at"],
-  ["lastSignedIn", "last_signed_in"],
-];
+// O baseline Drizzle atual preserva estes nomes físicos camelCase em `users`.
+// Não há normalização de colunas: a cópia deve permanecer compatível com
+// drizzle/0000_initial_baseline.sql e com drizzle/schema.ts.
 const normalizedUserColumns = [];
-for (const [from, to] of userColumnRenames) {
-  const marker = new RegExp("`" + from + "`", "g");
-  if (marker.test(sanitized)) {
-    sanitized = sanitized.replace(marker, "`" + to + "`");
-    normalizedUserColumns.push(`${from} -> ${to}`);
-  }
-}
 
 const header = [
   "-- Exclusive Club — restauração preparada automaticamente",
   `-- Fonte: ${path.basename(input)}`,
   "-- ATENÇÃO: importar SOMENTE em uma base NOVA/VAZIA; nunca em produção existente.",
   "-- Após o import, executar o autoMigrate atual e depois o dry-run Asaas.",
-  "-- O snapshot de agosto foi normalizado apenas em uma cópia: users camelCase -> snake_case.",
+  "-- Os nomes físicos do snapshot foram preservados para compatibilidade com o baseline atual.",
   "",
 ].join("\n");
 sanitized = header + sanitized;
@@ -103,7 +103,9 @@ const report = {
   missingRequiredTables: missingRequired,
   removedLegacyView,
   normalizedUserColumns,
-  hasOpenFinanceTables: [...tableNames].some(table => table.startsWith("open_finance_")),
+  hasOpenFinanceTables: [...tableNames].some(table =>
+    table.startsWith("open_finance_")
+  ),
   tableCountExpectedAfterMigrations: tableNames.size + 5,
   mode: "prepare-only",
   databaseImportPerformed: false,
