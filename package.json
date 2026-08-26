@@ -18,7 +18,9 @@
     "setup-drive": "tsx server/setup-google-drive.ts",
     "backup-scheduler": "tsx server/schedule-backup.ts",
     "db:generate": "drizzle-kit generate",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "asaas:rebuild": "node scripts/asaas_rebuild.mjs",
+    "openfinance:test": "vitest run server/openFinance.test.ts --pool=threads --maxWorkers=1 --minWorkers=1"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
@@ -87,6 +89,7 @@
     "react-day-picker": "^9.11.1",
     "react-dom": "^19.1.1",
     "react-hook-form": "^7.64.0",
+    "react-pluggy-connect": "2.12.0",
     "react-resizable-panels": "^3.0.6",
     "recharts": "^2.15.4",
     "sonner": "^2.0.7",

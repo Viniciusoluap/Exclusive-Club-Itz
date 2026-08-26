@@ -39,6 +39,7 @@ const PagamentoDanos = lazy(() => import("./pages/PagamentoDanos"));
 const Mensalidades = lazy(() => import("./pages/Mensalidades"));
 const AdminBackups = lazy(() => import("./pages/admin/Backups"));
 const AdminSaas = lazy(() => import("./pages/admin/Saas"));
+const OpenFinance = lazy(() => import("./pages/admin/OpenFinance"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function Router() {
@@ -64,6 +65,7 @@ function Router() {
         <Route path={"/admin/pagamentos"} component={() => <Redirect to="/admin/saas" />} />
         <Route path={"/admin/backups"} component={() => <ProtectedRoute component={AdminBackups} allowedRoles={["admin"]} />} />
         <Route path={"/admin/saas"} component={() => <ProtectedRoute component={AdminSaas} allowedRoles={["admin"]} />} />
+        <Route path={"/admin/open-finance"} component={() => <ProtectedRoute component={OpenFinance} allowedRoles={["admin"]} />} />
         <Route path={"/employee/reservas"} component={() => <ProtectedRoute component={EmployeeReservas} allowedRoles={["employee", "admin"]} />} />
         <Route path={"/employee/manutencoes"} component={() => <ProtectedRoute component={EmployeeManutencoes} allowedRoles={["employee", "admin"]} />} />
         <Route path={"/employee/abastecimentos"} component={() => <ProtectedRoute component={EmployeeAbastecimentos} allowedRoles={["employee", "admin"]} />} />
