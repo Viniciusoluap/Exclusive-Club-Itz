@@ -8,7 +8,6 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -30,9 +29,17 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
-async function startServer() {
-  const app = express();
-  const server = createServer(app);
+export const app = express();
+
+/**
+ * Registra middlewares e rotas na aplicação Express sem iniciar uma porta.
+ * Isso permite executar a mesma aplicação em servidor tradicional e em função
+ * serverless, evitando que a Vercel publique o bundle do servidor como estático.
+ */
+export async function initializeApp(
+  server: Server = createServer(app),
+  serveFrontend = process.env.VERCEL !== "1"
+) {
 
   // Security headers
   app.use(helmet({ contentSecurityPolicy: false }));
@@ -337,18 +344,25 @@ async function startServer() {
       createContext,
     })
   );
-  // development mode uses Vite, production mode uses static files
-  if (process.env.NODE_ENV === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+  if (serveFrontend) {
+    const { serveStatic, setupVite } = await import("./vite");
+    // development mode uses Vite, production mode uses static files
+    if (process.env.NODE_ENV === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
   }
+}
 
+async function startServer() {
+  const server = createServer(app);
+  await initializeApp(server, true);
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+    console.log(`Port ${preferredPort} is busy, using port ${port}`);
   }
 
   server.listen(port, () => {
@@ -356,7 +370,9 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+if (process.env.VERCEL !== "1") {
+  startServer().catch(console.error);
+}
 
 // Migrações do banco na subida do servidor.
 //
@@ -386,12 +402,13 @@ import("../_core/autoMigrate").then(async ({ aplicarMigracoesPendentes }) => {
   }
 }).catch(err => console.error("[autoMigrate] Falha ao registrar:", err));
 
-// Registrar cron jobs (sincronização BPO às 03:00, reconciliação às 04:00, mensalidades às 00:30)
-import("../cronJobs").then(({ registerCronJobs }) => {
+if (process.env.VERCEL !== "1") {
+  // Registrar cron jobs (sincronização BPO às 03:00, reconciliação às 04:00, mensalidades às 00:30)
+  import("../cronJobs").then(({ registerCronJobs }) => {
   registerCronJobs();
-}).catch(err => console.error("[CronJobs] Falha ao registrar:", err));
+  }).catch(err => console.error("[CronJobs] Falha ao registrar:", err));
 
-// Job diário: atualizar cobranças vencidas para status 'overdue' às 00:05
+  // Job diário: atualizar cobranças vencidas para status 'overdue' às 00:05
 import("../jobs/updateOverdueStatus").then(({ scheduleUpdateOverdueStatus, runUpdateOverdueStatus }) => {
   scheduleUpdateOverdueStatus();
   // Executar imediatamente na inicialização para corrigir registros históricos
@@ -411,4 +428,5 @@ import("../jobs/scheduledBackup").then(({ scheduleDailyBackup }) => {
 // nem tela para manter aberta. O botão continua livre para antecipar.
 import("../jobs/archiveAttachments").then(({ scheduleArchiveAttachments }) => {
   scheduleArchiveAttachments();
-}).catch(err => console.error("[archiveAttachments] Falha ao registrar job:", err));
+  }).catch(err => console.error("[archiveAttachments] Falha ao registrar job:", err));
+}
