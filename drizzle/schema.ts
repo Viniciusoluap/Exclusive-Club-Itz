@@ -613,3 +613,191 @@ export const backupAttachments = mysqlTable("backup_attachments", {
 	uniqueIndex("backup_attachments_source_url_unique").on(table.sourceUrl),
 ]);
 export type BackupAttachment = typeof backupAttachments.$inferSelect;
+// OPEN FINANCE — conexões e dados bancários agregados
+// Provider-first (Pluggy), com campos provider-agnostic para futura
+// substituição por Belvo/Celcoin sem reescrever o domínio financeiro.
+// ============================================================
+export const openFinanceConnections = mysqlTable(
+  "open_finance_connections",
+  {
+    id: int().autoincrement().notNull().primaryKey(),
+    userId: int("user_id").notNull(),
+    provider: mysqlEnum("provider", ["pluggy", "belvo", "celcoin"])
+      .default("pluggy")
+      .notNull(),
+    providerItemId: varchar("provider_item_id", { length: 128 }).notNull(),
+    clientUserId: varchar("client_user_id", { length: 128 }).notNull(),
+    institutionName: varchar("institution_name", { length: 255 }),
+    status: mysqlEnum("status", [
+      "pending",
+      "connected",
+      "syncing",
+      "error",
+      "disconnected",
+      "consent_expired",
+    ])
+      .default("pending")
+      .notNull(),
+    errorCode: varchar("error_code", { length: 100 }),
+    errorMessage: text("error_message"),
+    lastSyncedAt: timestamp("last_synced_at", { mode: "string" as const }),
+    createdAt: timestamp("created_at", { mode: "string" as const })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" as const })
+      .defaultNow()
+      .onUpdateNow()
+      .notNull(),
+  },
+  table => [
+    uniqueIndex("of_connections_provider_item_uq").on(
+      table.provider,
+      table.providerItemId
+    ),
+    index("of_connections_user_id_idx").on(table.userId),
+    index("of_connections_status_idx").on(table.status),
+  ]
+);
+
+export const openFinanceAccounts = mysqlTable(
+  "open_finance_accounts",
+  {
+    id: int().autoincrement().notNull().primaryKey(),
+    connectionId: int("connection_id").notNull(),
+    providerAccountId: varchar("provider_account_id", {
+      length: 128,
+    }).notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    type: varchar("type", { length: 50 }),
+    subtype: varchar("subtype", { length: 80 }),
+    numberMasked: varchar("number_masked", { length: 80 }),
+    currencyCode: varchar("currency_code", { length: 10 })
+      .default("BRL")
+      .notNull(),
+    balance: decimal("balance", { precision: 18, scale: 2 })
+      .default("0")
+      .notNull(),
+    availableBalance: decimal("available_balance", { precision: 18, scale: 2 }),
+    lastUpdatedAt: timestamp("last_updated_at", { mode: "string" as const }),
+    createdAt: timestamp("created_at", { mode: "string" as const })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" as const })
+      .defaultNow()
+      .onUpdateNow()
+      .notNull(),
+  },
+  table => [
+    uniqueIndex("of_accounts_provider_account_uq").on(table.providerAccountId),
+    index("of_accounts_connection_id_idx").on(table.connectionId),
+  ]
+);
+
+export const openFinanceTransactions = mysqlTable(
+  "open_finance_transactions",
+  {
+    id: int().autoincrement().notNull().primaryKey(),
+    accountId: int("account_id").notNull(),
+    connectionId: int("connection_id").notNull(),
+    providerTransactionId: varchar("provider_transaction_id", {
+      length: 128,
+    }).notNull(),
+    transactionDate: varchar("transaction_date", { length: 32 }).notNull(),
+    description: text("description").notNull(),
+    amount: decimal("amount", { precision: 18, scale: 2 }).notNull(),
+    currencyCode: varchar("currency_code", { length: 10 })
+      .default("BRL")
+      .notNull(),
+    direction: mysqlEnum("direction", ["credit", "debit", "unknown"])
+      .default("unknown")
+      .notNull(),
+    merchantName: varchar("merchant_name", { length: 255 }),
+    category: varchar("category", { length: 120 }),
+    status: varchar("status", { length: 50 }),
+    createdAt: timestamp("created_at", { mode: "string" as const })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" as const })
+      .defaultNow()
+      .onUpdateNow()
+      .notNull(),
+  },
+  table => [
+    uniqueIndex("of_transactions_provider_transaction_uq").on(
+      table.providerTransactionId
+    ),
+    index("of_transactions_account_date_idx").on(
+      table.accountId,
+      table.transactionDate
+    ),
+    index("of_transactions_connection_date_idx").on(
+      table.connectionId,
+      table.transactionDate
+    ),
+  ]
+);
+
+export const openFinanceWebhookEvents = mysqlTable(
+  "open_finance_webhook_events",
+  {
+    id: int().autoincrement().notNull().primaryKey(),
+    providerEventId: varchar("provider_event_id", { length: 128 }).notNull(),
+    event: varchar("event", { length: 100 }).notNull(),
+    itemId: varchar("item_id", { length: 128 }),
+    clientUserId: varchar("client_user_id", { length: 128 }),
+    processed: tinyint("processed").default(0).notNull(),
+    errorMessage: text("error_message"),
+    receivedAt: timestamp("received_at", { mode: "string" as const })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    processedAt: timestamp("processed_at", { mode: "string" as const }),
+  },
+  table => [
+    uniqueIndex("of_webhook_events_provider_event_uq").on(
+      table.providerEventId
+    ),
+    index("of_webhook_events_item_idx").on(table.itemId),
+    index("of_webhook_events_received_idx").on(table.receivedAt),
+  ]
+);
+
+export const openFinanceSyncRuns = mysqlTable(
+  "open_finance_sync_runs",
+  {
+    id: int().autoincrement().notNull().primaryKey(),
+    connectionId: int("connection_id").notNull(),
+    trigger: mysqlEnum("trigger", ["manual", "webhook", "scheduled"])
+      .default("manual")
+      .notNull(),
+    status: mysqlEnum("status", ["running", "success", "failed"])
+      .default("running")
+      .notNull(),
+    accountsImported: int("accounts_imported").default(0).notNull(),
+    transactionsImported: int("transactions_imported").default(0).notNull(),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at", { mode: "string" as const })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    completedAt: timestamp("completed_at", { mode: "string" as const }),
+  },
+  table => [
+    index("of_sync_runs_connection_idx").on(table.connectionId),
+    index("of_sync_runs_started_idx").on(table.startedAt),
+  ]
+);
+
+export type OpenFinanceConnection = typeof openFinanceConnections.$inferSelect;
+export type InsertOpenFinanceConnection =
+  typeof openFinanceConnections.$inferInsert;
+export type OpenFinanceAccount = typeof openFinanceAccounts.$inferSelect;
+export type InsertOpenFinanceAccount = typeof openFinanceAccounts.$inferInsert;
+export type OpenFinanceTransaction =
+  typeof openFinanceTransactions.$inferSelect;
+export type InsertOpenFinanceTransaction =
+  typeof openFinanceTransactions.$inferInsert;
+export type OpenFinanceWebhookEvent =
+  typeof openFinanceWebhookEvents.$inferSelect;
+export type InsertOpenFinanceWebhookEvent =
+  typeof openFinanceWebhookEvents.$inferInsert;
+export type OpenFinanceSyncRun = typeof openFinanceSyncRuns.$inferSelect;
+export type InsertOpenFinanceSyncRun = typeof openFinanceSyncRuns.$inferInsert;

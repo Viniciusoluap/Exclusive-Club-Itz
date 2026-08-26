@@ -131,3 +131,17 @@ Implicação: o adaptador deve persistir `providerAccountId`, `providerTransacti
 Fonte: https://docs.pluggy.ai/docs/pluggy-connect-introduction
 
 A Pluggy descreve o Connect como um widget drop-in que trata validação de credenciais, MFA, erros e casos específicos das instituições. O widget funciona em navegadores e aplicações web, o que permite integrar a experiência ao painel administrativo do Exclusive Clube sem criar uma tela própria de login bancário.
+
+## Pluggy — webhooks e widget: regras de produção
+
+Fonte: https://docs.pluggy.ai/docs/webhooks
+
+Os eventos trazem `event`, `eventId`, `clientUserId`, `triggeredBy` e o identificador da entidade. A Pluggy informa que o endpoint deve responder 2XX em menos de 5 segundos e que o processamento deve ocorrer depois da resposta; podem existir até nove tentativas de entrega. Para eventos de Item, a aplicação deve buscar `GET /items/{id}` e usar o estado mais recente. O endpoint de webhook pode receber headers customizados configurados via API, permitindo proteger a URL com segredo próprio.
+
+O widget é inicializado no frontend com um Connect Token obtido por endpoint backend; o quickstart oficial possui exemplos React e não recomenda colocar `CLIENT_ID`/`CLIENT_SECRET` no frontend. Nesta primeira entrega, o sistema será provider-first (Pluggy) e provider-agnostic na camada de domínio, deixando Belvo/Celcoin como adapters futuros.
+
+## Pluggy — autenticação e Item
+
+Fontes: https://docs.pluggy.ai/reference/auth-create e https://docs.pluggy.ai/reference/items-retrieve
+
+O endpoint `POST /auth` recebe JSON com `clientId` e `clientSecret`, retornando `apiKey`; a API usa `X-API-KEY` nas chamadas seguintes. O Item recuperado possui `status`, `executionStatus`, `connector.name`, `clientUserId`, `lastUpdatedAt` e `consentExpiresAt`. A implementação usa o estado do Item para atualizar o vínculo local, enquanto o adapter deve ser refinado para considerar tanto status quanto executionStatus em futuras validações de produção.

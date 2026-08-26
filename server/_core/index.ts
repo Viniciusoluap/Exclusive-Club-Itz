@@ -47,6 +47,7 @@ async function startServer() {
   app.use('/api/upload-client-document', uploadLimiter);
   app.use('/api/upload-inspection-photo', uploadLimiter);
   app.use('/api/webhooks/asaas', webhookLimiter);
+  app.use('/api/webhooks/pluggy', webhookLimiter);
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
@@ -294,6 +295,33 @@ async function startServer() {
       default:
         res.status(500).json({ error: 'Erro ao processar webhook' });
         return;
+    }
+  });
+
+  // ─── Webhook Pluggy/Open Finance ───
+  // A Pluggy exige resposta 2XX em menos de 5 segundos. Primeiro registramos
+  // o eventId de forma idempotente, respondemos, e só depois processamos a
+  // sincronização da conexão. O segredo é configurado como header customizado
+  // no webhook da Pluggy e nunca fica exposto no frontend.
+  app.post('/api/webhooks/pluggy', async (req, res) => {
+    const headerSecret = (req.headers['x-pluggy-webhook-secret'] as string) || '';
+    const { validatePluggyWebhookSecret, registerPluggyWebhookEvent, processPluggyWebhookEvent } = await import('../openFinance');
+    if (!validatePluggyWebhookSecret(headerSecret)) {
+      res.status(401).json({ error: 'Webhook não autorizado' });
+      return;
+    }
+
+    try {
+      const registration = await registerPluggyWebhookEvent(req.body);
+      res.status(200).json({ received: true, duplicate: registration.duplicate });
+      if (!registration.duplicate) {
+        void processPluggyWebhookEvent(registration.eventId, req.body).catch((error) => {
+          console.error('[Pluggy webhook] Falha no processamento assíncrono:', error);
+        });
+      }
+    } catch (error: any) {
+      const status = error?.code === 'INVALID_WEBHOOK' ? 400 : 500;
+      res.status(status).json({ error: status === 400 ? 'Payload inválido' : 'Erro ao registrar webhook' });
     }
   });
 

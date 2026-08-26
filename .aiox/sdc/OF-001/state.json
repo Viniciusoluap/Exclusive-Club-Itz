@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "kind": "full-sdc",
+  "storyId": "OF-001",
+  "storyPath": "docs/stories/STORY-OF-001-open-finance-recovery.md",
+  "mode": "yolo",
+  "status": "running",
+  "currentPhase": "review",
+  "phases": {
+    "validate": {
+      "status": "passed",
+      "at": "2026-08-26T04:37:59.741Z",
+      "notes": "pre-existing Ready"
+    },
+    "develop": {
+      "status": "passed",
+      "at": "2026-08-26T05:02:00.000Z",
+      "notes": "Fundação Open Finance, adapter Pluggy, Connect Widget, webhook, migração 0008, tela admin e reconstruidor Asaas dry-run implementados na branch manus/open-finance-foundation."
+    },
+    "review": {
+      "status": "running",
+      "at": "2026-08-26T05:02:00.000Z",
+      "notes": "Revisão em andamento; esbuild integrado e 4 testes unitários passaram. Typecheck/build completos requerem CI ou ambiente com memória suficiente."
+    },
+    "apply_qa_fixes": {
+      "status": "pending",
+      "at": null,
+      "notes": null
+    },
+    "close": {
+      "status": "pending",
+      "at": null,
+      "notes": null
+    }
+  },
+  "qgIterations": 0,
+  "maxQgIterations": 3,
+  "createdAt": "2026-08-26T04:37:59.741Z",
+  "updatedAt": "2026-08-26T05:02:00.000Z"
+}

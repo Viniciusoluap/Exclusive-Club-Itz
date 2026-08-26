@@ -9,4 +9,9 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   asaasApiKey: process.env.ASAAS_API_KEY ?? "",
   asaasWebhookToken: process.env.ASAAS_WEBHOOK_TOKEN ?? "",
+  pluggyClientId: process.env.PLUGGY_CLIENT_ID ?? "",
+  pluggyClientSecret: process.env.PLUGGY_CLIENT_SECRET ?? "",
+  pluggyApiUrl: process.env.PLUGGY_API_URL ?? "https://api.pluggy.ai",
+  pluggyWebhookSecret: process.env.PLUGGY_WEBHOOK_SECRET ?? "",
+  publicAppUrl: process.env.PUBLIC_APP_URL ?? "",
 };
