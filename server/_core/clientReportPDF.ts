@@ -1,5 +1,4 @@
 import PDFDocument from "pdfkit";
-import { pdf } from "pdf-to-img";
 import { CORES, caminhoDoLogo, baixarImagemExterna } from "./pdfBase";
 
 interface ClientData {
@@ -25,6 +24,7 @@ async function incorporateAllPdfPages(
   title: string
 ): Promise<void> {
   try {
+    const { pdf } = await import("pdf-to-img");
     const pdfDocument = await pdf(pdfBuffer, { scale: 2.0 });
     const pages: Buffer[] = [];
     
