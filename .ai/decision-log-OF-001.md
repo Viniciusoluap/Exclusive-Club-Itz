@@ -29,3 +29,11 @@ A validação com contas reais depende de `PLUGGY_CLIENT_ID`, `PLUGGY_CLIENT_SEC
 ## Próxima decisão operacional
 
 Depois de provisionar a base nova e configurar as credenciais seguras, executar primeiro os dry-runs e smoke tests. A publicação final só deve acontecer depois de comparar o total de cobranças Asaas, os clientes sem vínculo e os eventos de webhook em staging.
+
+## Validação remota concluída
+
+O workflow [CI remoto 32933356910](https://github.com/Viniciusoluap/Exclusive-Club-Itz/actions/runs/32933356910) foi aprovado em 26/08/2026. O job principal passou pela migração no TiDB efêmero, typecheck, 120 arquivos de teste com 748 testes e build de produção. O job E2E também passou depois que a branch passou a aplicar o schema na instância efêmera própria antes dos fluxos.
+
+A primeira execução havia revelado dois problemas operacionais: a nova migração precisava de `--> statement-breakpoint` entre os DDLs para o replay do Drizzle, e o job E2E não aplicava o schema no próprio banco. Ambos foram corrigidos em commit separado, sem tocar a `main`.
+
+A pendência restante é externa ao código: credenciais Pluggy/Asaas em ambiente seguro, contratação/configuração do provedor, URL HTTPS pública para webhook e publicação assistida. A branch está publicada em PR draft para revisão e não houve alteração de produção.
