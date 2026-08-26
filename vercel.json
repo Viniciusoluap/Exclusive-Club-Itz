@@ -4,10 +4,17 @@
   "buildCommand": "pnpm run build:vercel",
   "outputDirectory": "dist/public",
   "framework": "vite",
-  "rewrites": [
+  "routes": [
     {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
+      "src": "/api(?:/.*)?",
+      "dest": "/api/index.ts"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/.*",
+      "dest": "/index.html"
     }
   ]
 }
