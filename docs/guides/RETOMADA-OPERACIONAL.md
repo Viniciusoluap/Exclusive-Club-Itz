@@ -2,13 +2,14 @@
 
 **Data:** 26/08/2026
 **Repositório:** `Viniciusoluap/Exclusive-Club-Itz`
-**Branch:** `manus/open-finance-foundation`
-**Pull request:** [#112 — feat: retomada segura e fundação Open Finance](https://github.com/Viniciusoluap/Exclusive-Club-Itz/pull/112)
-**CI:** [run 32933356910 — aprovado](https://github.com/Viniciusoluap/Exclusive-Club-Itz/actions/runs/32933356910)
+**Branch:** `main`
+**Commit atual:** `4429fe9` — atualização do plano de fases e proteção de artefatos
+**Projeto Vercel:** `exclusive-club-itz` — Production READY
+**CI de referência:** [run 32933910728 — aprovado](https://github.com/Viniciusoluap/Exclusive-Club-Itz/actions/runs/32933910728)
 
 ## Conclusão executiva
 
-O sistema não deve voltar ao ar por meio de restauração bruta do ZIP de fevereiro. A estratégia aprovada e implementada na branch é mais segura: manter a `main` atual, provisionar uma base nova, aplicar o schema atual, importar clientes e cobranças do Asaas por paginação e upsert idempotente, e usar o backup de 25/02/2026 apenas para recuperação histórica seletiva.
+O sistema não deve voltar ao ar por meio de restauração bruta de qualquer ZIP. A estratégia aprovada é manter a `main` atual, provisionar uma base nova, aplicar o schema atual, importar a cópia preparada do backup de agosto em staging, reconciliar clientes e cobranças com o Asaas por paginação e upsert idempotente, e usar o backup de fevereiro apenas como referência histórica secundária.
 
 A fundação Open Finance foi implementada com Pluggy como primeiro adapter. O fluxo já tem Connect Widget, Connect Token gerado no backend, conexões por usuário, contas, transações, webhook idempotente, sincronização por cursor e tela administrativa. A escolha não promete “qualquer banco” de forma absoluta: cobertura depende da instituição, do produto, do perfil CPF/CNPJ, do consentimento e do contrato do provedor.
 
@@ -31,15 +32,15 @@ A fundação Open Finance foi implementada com Pluggy como primeiro adapter. O f
 
 ## Por que o backup não deve ser restaurado diretamente
 
-O ZIP `exclusive-club-backup-2026-02-25T00-03-58-718Z.zip` é íntegro e útil, mas representa um retrato antigo. O dump possui o modelo anterior de cobranças, enquanto a `main` atual consolidou o BPO em `bpo_charges` e recebeu mudanças posteriores de segurança, backup, migração e testes. Restaurar o ZIP inteiro poderia reverter código, schema, classificações e funcionalidades que já foram incorporadas.
+O ZIP de agosto é íntegro e compatível após a preparação validada em staging. Ele preserva as tabelas atuais, as colunas extras de `bpo_charges` e os dados operacionais mais recentes. O ZIP de fevereiro continua íntegro, mas representa um retrato antigo e não deve ser a fonte primária. Restaurar qualquer ZIP inteiro diretamente sobre a produção poderia reverter código, schema, classificações e funcionalidades incorporadas na `main`.
 
-O backup deve permanecer preservado como evidência histórica e ser usado em staging. O ETL seletivo precisa importar somente registros inexistentes na base nova, com mapeamento explícito, relatório de conflito e reconciliação por email/ID. A regra é **nunca executar `DROP`, `TRUNCATE` ou overwrite integral** como parte dessa retomada.
+O backup de agosto deve permanecer preservado no Drive e ser usado primeiro em staging. A importação operacional deve ocorrer em uma base nova, com mapeamento explícito, relatório de conflitos e reconciliação por IDs externos. A regra é **nunca executar `DROP`, `TRUNCATE` ou overwrite integral** em produção como parte dessa retomada.
 
 ## Ordem operacional recomendada
 
-### 1. Publicar a branch somente após revisão do PR
+### 1. Publicação e runtime
 
-O PR #112 está em modo draft, com `main` intacta e todas as verificações do GitHub aprovadas. A publicação do PR como pronto para revisão e o merge são decisões reversíveis no fluxo do GitHub, mas o merge só deve ocorrer depois da conferência visual da tela administrativa e da confirmação de que a hospedagem escolhida suporta as variáveis necessárias.
+A `main` já está publicada na Vercel. A raiz e o tRPC foram validados em Production, o Express serverless está ativo e o projeto possui os aliases `exclusiveclubitz.com` e `www.exclusiveclubitz.com`. Os três segredos criptográficos de aplicação foram cadastrados diretamente na Vercel sem exposição de valores. O domínio próprio ainda depende da zona DNS HostGator.
 
 ### 2. Provisionar a base nova
 
