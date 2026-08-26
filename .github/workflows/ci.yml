@@ -259,6 +259,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # O job E2E usa uma instância TiDB própria; sem replay do schema, os
+      # fluxos de manutenção e inspeção falham com ER_NO_SUCH_TABLE antes de
+      # testar a aplicação. O job principal já faz esta etapa acima.
+      - name: Apply schema to E2E database
+        run: pnpm run db:migrate:ci
+
       - name: Install Chromium for Playwright
         run: pnpm exec playwright install --with-deps chromium
 

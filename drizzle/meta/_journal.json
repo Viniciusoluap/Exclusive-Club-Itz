@@ -57,6 +57,13 @@
       "when": 1786124320396,
       "tag": "0007_source_asaas_reconcile",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1787704800000,
+      "tag": "0008_open_finance",
+      "breakpoints": true
     }
   ]
 }

@@ -14,6 +14,7 @@ import { maintenancesRouter } from "./routers/maintenancesRouter";
 import { dueDateRequestsRouter } from "./routers/dueDateRequestsRouter";
 import { clientPaymentsRouter } from "./routers/clientPaymentsRouter";
 import { systemSettingsRouter } from "./routers/systemSettingsRouter";
+import { openFinanceRouter } from "./routers/openFinanceRouter";
 import { allowedClientsRouter } from "./routers/allowedClientsRouter";
 import { vesselsRouter } from "./routers/vesselsRouter";
 import { reviewsRouter } from "./routers/reviewsRouter";
@@ -113,5 +114,6 @@ export const appRouter = router({
   dueDateRequests: dueDateRequestsRouter,
   clientPayments: clientPaymentsRouter,
   systemSettings: systemSettingsRouter,
+  openFinance: openFinanceRouter,
 });
 export type AppRouter = typeof appRouter;

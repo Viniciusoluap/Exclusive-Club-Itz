@@ -1,0 +1,8 @@
+{
+  "storyId": "OF-001",
+  "storyPath": "docs/stories/STORY-OF-001-open-finance-recovery.md",
+  "status": "running",
+  "nextPhase": "develop",
+  "skill": "develop-story",
+  "skillPath": ".aiox-core/development/skills/develop-story/SKILL.md"
+}

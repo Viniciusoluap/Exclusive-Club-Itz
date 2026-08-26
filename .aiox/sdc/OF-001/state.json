@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "kind": "full-sdc",
+  "storyId": "OF-001",
+  "storyPath": "docs/stories/STORY-OF-001-open-finance-recovery.md",
+  "mode": "yolo",
+  "status": "running",
+  "currentPhase": "close",
+  "phases": {
+    "validate": {
+      "status": "passed",
+      "at": "2026-08-26T04:37:59.741Z",
+      "notes": "pre-existing Ready"
+    },
+    "develop": {
+      "status": "passed",
+      "at": "2026-08-26T05:02:00.000Z",
+      "notes": "Fundação Open Finance, adapter Pluggy, Connect Widget, webhook, migração 0008, tela admin e reconstruidor Asaas dry-run implementados na branch manus/open-finance-foundation."
+    },
+    "review": {
+      "status": "passed",
+      "at": "2026-08-26T05:17:51.000Z",
+      "notes": "CI remoto 32933356910 aprovado: schema TiDB, typecheck, 120 arquivos/748 testes, build de produção e E2E."
+    },
+    "apply_qa_fixes": {
+      "status": "passed",
+      "at": "2026-08-26T05:15:00.000Z",
+      "notes": "Migração 0008 separada por statement-breakpoint e job E2E corrigido para aplicar schema antes dos fluxos."
+    },
+    "close": {
+      "status": "running",
+      "at": "2026-08-26T05:18:00.000Z",
+      "notes": "Código pronto na branch e PR draft; encerramento operacional aguarda configuração Pluggy/Asaas e publicação assistida."
+    }
+  },
+  "qgIterations": 1,
+  "maxQgIterations": 3,
+  "createdAt": "2026-08-26T04:37:59.741Z",
+  "updatedAt": "2026-08-26T05:18:00.000Z"
+}

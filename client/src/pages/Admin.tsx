@@ -25,7 +25,7 @@ import { ExclusiveClubLogo, AZUL_MARCA } from "@/components/ExclusiveClubLogo";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useConfirm } from "@/hooks/useConfirm";
-import { BarChart3, Bell, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, FileText, Fuel, HardDrive, Loader2, Menu, Pencil, Plus, Search, Send, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
+import { BarChart3, Bell, Calendar, Check, ClipboardCheck, CreditCard, DollarSign, FileText, Fuel, HardDrive, Landmark, Loader2, Menu, Pencil, Plus, Search, Send, Settings, Ship, Trash2, TrendingUp, UserCog, UserPlus, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -659,6 +659,12 @@ export default function Admin() {
                   Minhas Reservas
                 </Button>
               </Link>
+              <Link href="/admin/open-finance">
+                <Button variant="outline" size="sm">
+                  <Landmark className="mr-2 h-4 w-4" />
+                  Open Finance
+                </Button>
+              </Link>
               <Link href="/">
                 <Button variant="outline" size="sm">
                   Voltar ao Site
@@ -694,6 +700,12 @@ export default function Admin() {
               <Button variant="ghost" className="w-full justify-start">
                 <Calendar className="h-4 w-4 mr-2" />
                 Minhas Reservas
+              </Button>
+            </Link>
+            <Link href="/admin/open-finance" onClick={() => setMobileMenuOpen(false)}>
+              <Button variant="ghost" className="w-full justify-start">
+                <Landmark className="h-4 w-4 mr-2" />
+                Open Finance
               </Button>
             </Link>
             <Link href="/" onClick={() => setMobileMenuOpen(false)}>

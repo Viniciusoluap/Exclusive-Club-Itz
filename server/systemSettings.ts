@@ -106,6 +106,27 @@ export async function getSetting(key: string): Promise<string | null> {
 }
 
 /**
+ * Check whether a setting exists without returning or decrypting its value.
+ * This is the only read path that the admin UI should use for secrets.
+ */
+export async function hasSetting(key: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  try {
+    const result = await db
+      .select({ key: systemSettings.key })
+      .from(systemSettings)
+      .where(eq(systemSettings.key, key))
+      .limit(1);
+    return result.length > 0;
+  } catch (error) {
+    console.error(`[SystemSettings] Failed to check setting "${key}":`, error);
+    return false;
+  }
+}
+
+/**
  * Set a setting value (encrypted)
  */
 export async function setSetting(
@@ -153,7 +174,9 @@ export async function setSetting(
 export async function deleteSetting(key: string): Promise<void> {
   const db = await getDb();
   if (!db) {
-    console.warn("[SystemSettings] Cannot delete setting: database not available");
+    console.warn(
+      "[SystemSettings] Cannot delete setting: database not available"
+    );
     return;
   }
 
@@ -178,7 +201,9 @@ export async function listSettings(): Promise<
 > {
   const db = await getDb();
   if (!db) {
-    console.warn("[SystemSettings] Cannot list settings: database not available");
+    console.warn(
+      "[SystemSettings] Cannot list settings: database not available"
+    );
     return [];
   }
 

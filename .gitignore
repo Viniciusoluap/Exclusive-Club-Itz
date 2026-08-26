@@ -138,3 +138,12 @@ logs/
 .aiox-core/local/
 .claude/settings.local.json
 .aiox/install-log.txt
+
+# Recovery artifacts — keep reports/docs, never commit raw financial data or generated bundles
+recovery/*.zip
+recovery/database.sql
+recovery/backup_snapshot/
+recovery/*bundle.js
+recovery/backend-integrated.js
+recovery/schema-openfinance-append.txt
+tsconfig.openfinance-check.json
