@@ -1,0 +1,82 @@
+{
+  "state": {
+    "version": 1,
+    "kind": "full-sdc",
+    "storyId": "OF-001",
+    "storyPath": "docs/stories/STORY-OF-001-open-finance-recovery.md",
+    "mode": "yolo",
+    "status": "running",
+    "currentPhase": "develop",
+    "phases": {
+      "validate": {
+        "status": "passed",
+        "at": "2026-08-26T04:37:59.741Z",
+        "notes": "pre-existing Ready"
+      },
+      "develop": {
+        "status": "pending",
+        "at": null,
+        "notes": null
+      },
+      "review": {
+        "status": "pending",
+        "at": null,
+        "notes": null
+      },
+      "apply_qa_fixes": {
+        "status": "pending",
+        "at": null,
+        "notes": null
+      },
+      "close": {
+        "status": "pending",
+        "at": null,
+        "notes": null
+      }
+    },
+    "qgIterations": 0,
+    "maxQgIterations": 3,
+    "createdAt": "2026-08-26T04:37:59.741Z",
+    "updatedAt": "2026-08-26T04:37:59.742Z"
+  },
+  "meta": {
+    "path": "/home/ubuntu/exclusive-club-audit/docs/stories/STORY-OF-001-open-finance-recovery.md",
+    "relPath": "docs/stories/STORY-OF-001-open-finance-recovery.md",
+    "storyId": "OF-001",
+    "statusRaw": "Ready",
+    "status": "Ready",
+    "fileList": [
+      "docs/stories/STORY-OF-001-open-finance-recovery.md",
+      "drizzle/schema.ts",
+      "server/db.ts",
+      "server/routers.ts",
+      "server/_core/index.ts",
+      "server/_core/env.ts",
+      "client/src/App.tsx",
+      "client/src/pages/admin/OpenFinance.tsx",
+      "server/openFinance.ts",
+      "server/routers/openFinanceRouter.ts",
+      "server/openFinance.test.ts",
+      "docs/guides/OPEN_FINANCE_SETUP.md",
+      "recovery/openfinance-research.md"
+    ],
+    "dependsOn": [
+      "Epic-technical-debt"
+    ],
+    "qaVerdict": null,
+    "qaReviewer": null,
+    "qaReviewedRevision": null,
+    "qaWaiver": {
+      "active": false,
+      "reason": "",
+      "approver": "",
+      "valid": false
+    },
+    "qaWaiverValid": false,
+    "qaEvidenceComplete": false,
+    "tasks": {
+      "total": 11,
+      "done": 0
+    }
+  }
+}
