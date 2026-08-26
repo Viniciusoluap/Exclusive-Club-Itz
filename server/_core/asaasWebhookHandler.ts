@@ -10,6 +10,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { normalizeBpoStatus, syncStatusToSources } from "../routers/bpoRouter";
 import { getDb } from "../db";
+import { getSetting } from "../systemSettings";
 import { sql } from "drizzle-orm";
 
 export interface AsaasWebhookResult {
@@ -41,7 +42,10 @@ export async function processAsaasWebhookEvent(
   receivedToken: string
 ): Promise<AsaasWebhookResult> {
   try {
-    const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN || '';
+    const webhookToken =
+      process.env.ASAAS_WEBHOOK_TOKEN ||
+      (await getSetting("asaas_webhook_token")) ||
+      "";
     console.log('[Webhook Asaas] Evento recebido:', payload?.event, '| ID:', payload?.payment?.id);
     if (!webhookToken) {
       console.error('[Webhook Asaas] ASAAS_WEBHOOK_TOKEN não configurado — rejeitando evento por segurança');

@@ -10,13 +10,20 @@ import * as systemSettings from "../systemSettings";
 
 // System Settings (Admin only) - Workaround for Manus env injection bug
 export const systemSettingsRouter = router({
+  // Compatibilidade: nunca retorna o valor descriptografado ao frontend.
   get: adminProcedure
-    .input(z.object({ key: z.string() }))
-    .query(async ({ input }) => {
-      const value = await systemSettings.getSetting(input.key);
-      return { value };
-    }),
-  
+    .input(z.object({ key: z.string().min(1).max(100) }))
+    .query(async ({ input }) => ({
+      value: null,
+      configured: await systemSettings.hasSetting(input.key),
+    })),
+
+  getStatus: adminProcedure
+    .input(z.object({ key: z.string().min(1).max(100) }))
+    .query(async ({ input }) => ({
+      configured: await systemSettings.hasSetting(input.key),
+    })),
+
   set: adminProcedure
     .input(z.object({
       key: z.string(),
@@ -43,6 +50,11 @@ export const systemSettingsRouter = router({
       await systemSettings.deleteSetting(input.key);
       return { success: true };
     }),
+
+  testPluggyConnection: adminProcedure.mutation(async () => {
+    const { testPluggyConnection } = await import("../openFinance");
+    return await testPluggyConnection();
+  }),
 
   testConnection: adminProcedure
     .mutation(async () => {

@@ -305,8 +305,8 @@ async function startServer() {
   // no webhook da Pluggy e nunca fica exposto no frontend.
   app.post('/api/webhooks/pluggy', async (req, res) => {
     const headerSecret = (req.headers['x-pluggy-webhook-secret'] as string) || '';
-    const { validatePluggyWebhookSecret, registerPluggyWebhookEvent, processPluggyWebhookEvent } = await import('../openFinance');
-    if (!validatePluggyWebhookSecret(headerSecret)) {
+    const { validateConfiguredPluggyWebhookSecret, registerPluggyWebhookEvent, processPluggyWebhookEvent } = await import('../openFinance');
+    if (!await validateConfiguredPluggyWebhookSecret(headerSecret)) {
       res.status(401).json({ error: 'Webhook não autorizado' });
       return;
     }

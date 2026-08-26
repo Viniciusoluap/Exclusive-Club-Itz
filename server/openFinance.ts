@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { desc, eq, sql } from "drizzle-orm";
 import * as schema from "../drizzle/schema";
 import { getDb } from "./db";
+import { getSetting } from "./systemSettings";
 import { ENV } from "./_core/env";
 
 const {
@@ -14,6 +15,30 @@ const {
 
 const DEFAULT_API_URL = "https://api.pluggy.ai";
 const MAX_TRANSACTION_PAGES = 1000;
+
+type PluggyConfig = {
+  clientId: string;
+  clientSecret: string;
+  webhookSecret: string;
+  publicAppUrl: string;
+};
+
+async function resolvePluggyConfig(): Promise<PluggyConfig> {
+  const [clientId, clientSecret, webhookSecret, publicAppUrl] =
+    await Promise.all([
+      getSetting("pluggy_client_id"),
+      getSetting("pluggy_client_secret"),
+      getSetting("pluggy_webhook_secret"),
+      getSetting("public_app_url"),
+    ]);
+
+  return {
+    clientId: ENV.pluggyClientId || clientId || "",
+    clientSecret: ENV.pluggyClientSecret || clientSecret || "",
+    webhookSecret: ENV.pluggyWebhookSecret || webhookSecret || "",
+    publicAppUrl: ENV.publicAppUrl || publicAppUrl || "",
+  };
+}
 const CONNECTED_ITEM_STATUSES = new Set([
   "UPDATED",
   "LOGIN_SUCCESS",
@@ -213,14 +238,23 @@ export function webhookEventId(payload: PluggyWebhookPayload): string | null {
     .digest("hex");
 }
 
-function ensureConfigured(): void {
-  if (!ENV.pluggyClientId || !ENV.pluggyClientSecret) {
+async function ensureConfigured(): Promise<PluggyConfig> {
+  const config = await resolvePluggyConfig();
+  if (!config.clientId || !config.clientSecret) {
     throw new OpenFinanceError(
-      "Pluggy ainda não está configurado. Defina PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET no servidor.",
+      "Pluggy ainda não está configurado. Cadastre o Client ID e o Client Secret em Configurações > Open Finance.",
       "NOT_CONFIGURED",
       503
     );
   }
+  return config;
+}
+
+export async function validateConfiguredPluggyWebhookSecret(
+  receivedSecret: string | undefined
+): Promise<boolean> {
+  const config = await resolvePluggyConfig();
+  return validatePluggyWebhookSecret(receivedSecret, config.webhookSecret);
 }
 
 async function parseResponse(response: Response): Promise<any> {
@@ -254,12 +288,12 @@ async function providerRequest(
 }
 
 export async function createPluggyApiKey(): Promise<string> {
-  ensureConfigured();
+  const config = await ensureConfigured();
   const body = await providerRequest("/auth", {
     method: "POST",
     body: JSON.stringify({
-      clientId: ENV.pluggyClientId,
-      clientSecret: ENV.pluggyClientSecret,
+      clientId: config.clientId,
+      clientSecret: config.clientSecret,
     }),
   });
   if (!body?.apiKey)
@@ -282,10 +316,11 @@ export async function createPluggyConnectToken(
   userId: number,
   itemId?: string
 ) {
+  const config = await resolvePluggyConfig();
   return withApiKey(async apiKey => {
     const publicWebhookUrl =
-      ENV.publicAppUrl && ENV.publicAppUrl.startsWith("https://")
-        ? `${ENV.publicAppUrl.replace(/\/$/, "")}/api/webhooks/pluggy`
+      config.publicAppUrl && config.publicAppUrl.startsWith("https://")
+        ? `${config.publicAppUrl.replace(/\/$/, "")}/api/webhooks/pluggy`
         : undefined;
     const options: Record<string, unknown> = {
       clientUserId: `exclusive-user-${userId}`,
@@ -359,6 +394,27 @@ function nextCursor(next: string | null | undefined): string | undefined {
     return new URL(next, apiUrl()).searchParams.get("after") || undefined;
   } catch {
     return undefined;
+  }
+}
+
+export async function testPluggyConnection() {
+  try {
+    await withApiKey(async apiKey => {
+      await providerRequest("/connectors?countries=BR", {}, apiKey);
+    });
+    return {
+      success: true,
+      message:
+        "API Pluggy conectada. Credenciais válidas para consultar conectores brasileiros.",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível validar a API Pluggy.",
+    };
   }
 }
 
@@ -492,7 +548,7 @@ export async function syncOpenFinanceConnection(
   connectionId: number,
   trigger: "manual" | "webhook" | "scheduled" = "manual"
 ): Promise<SyncResult> {
-  ensureConfigured();
+  await ensureConfigured();
   const db = await getDb();
   if (!db)
     throw new OpenFinanceError(
