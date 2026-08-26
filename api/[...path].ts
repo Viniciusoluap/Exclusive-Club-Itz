@@ -1,4 +1,4 @@
-import { app, initializeApp } from "../server/_core/index";
+import { app, initializeApp } from "./_server.js";
 
 let ready: Promise<void> | undefined;
 
