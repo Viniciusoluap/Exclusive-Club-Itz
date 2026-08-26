@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import { createServer } from "http";
+import { createServer, type Server } from "http";
 import net from "net";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
