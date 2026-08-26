@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS `open_finance_connections` (
   UNIQUE KEY `of_connections_provider_item_uq` (`provider`, `provider_item_id`),
   KEY `of_connections_user_id_idx` (`user_id`),
   KEY `of_connections_status_idx` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS `open_finance_accounts` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS `open_finance_accounts` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `of_accounts_provider_account_uq` (`provider_account_id`),
   KEY `of_accounts_connection_id_idx` (`connection_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS `open_finance_transactions` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS `open_finance_transactions` (
   UNIQUE KEY `of_transactions_provider_transaction_uq` (`provider_transaction_id`),
   KEY `of_transactions_account_date_idx` (`account_id`, `transaction_date`),
   KEY `of_transactions_connection_date_idx` (`connection_id`, `transaction_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS `open_finance_webhook_events` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS `open_finance_webhook_events` (
   UNIQUE KEY `of_webhook_events_provider_event_uq` (`provider_event_id`),
   KEY `of_webhook_events_item_idx` (`item_id`),
   KEY `of_webhook_events_received_idx` (`received_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS `open_finance_sync_runs` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -89,4 +89,4 @@ CREATE TABLE IF NOT EXISTS `open_finance_sync_runs` (
   PRIMARY KEY (`id`),
   KEY `of_sync_runs_connection_idx` (`connection_id`),
   KEY `of_sync_runs_started_idx` (`started_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;--> statement-breakpoint
