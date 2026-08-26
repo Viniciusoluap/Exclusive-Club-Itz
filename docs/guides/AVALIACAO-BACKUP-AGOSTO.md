@@ -117,3 +117,7 @@ A próxima operação segura, já ensaiada localmente, é provisionar a base iso
 [3]: https://vercel.com/docs/project-configuration/vercel-json "Configuração de rotas Vercel"
 [4]: https://vercel.com/kb/guide/why-is-my-deployed-project-giving-404 "Guia Vercel sobre respostas 404"
 [5]: https://docs.asaas.com/reference/list-payments "Referência oficial Asaas — listagem de cobranças"
+
+## Validação local adicional — 26/08/2026
+
+A cópia preparada foi importada em `exclusive_recovery_aug26`, uma base MariaDB local e isolada, sem tocar em produção. Após a autoMigração, o banco ficou com 35 tabelas e 22 registros de controle de migrações. As contagens críticas permaneceram: 37 usuários, 42 clientes autorizados, 23 clientes Asaas, 3.163 cobranças e 2.962 despesas. As cinco tabelas `open_finance_*` foram criadas vazias, como esperado, e a view legada `financial_charges` não existe. Essa validação confirma a compatibilidade estrutural do backup de agosto com a `main` após o tratamento previsto; ainda falta uma base MySQL/TiDB remota para a restauração operacional e a reconciliação real com o Asaas.
