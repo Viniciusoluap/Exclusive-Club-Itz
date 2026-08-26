@@ -4,37 +4,37 @@
   "storyId": "OF-001",
   "storyPath": "docs/stories/STORY-OF-001-open-finance-recovery.md",
   "mode": "yolo",
-  "status": "running",
+  "status": "completed",
   "currentPhase": "close",
   "phases": {
     "validate": {
       "status": "passed",
       "at": "2026-08-26T04:37:59.741Z",
-      "notes": "pre-existing Ready"
+      "notes": "Pre-existing Ready; repository and recovery context audited."
     },
     "develop": {
       "status": "passed",
       "at": "2026-08-26T05:02:00.000Z",
-      "notes": "Fundação Open Finance, adapter Pluggy, Connect Widget, webhook, migração 0008, tela admin e reconstruidor Asaas dry-run implementados na branch manus/open-finance-foundation."
+      "notes": "Fundação Open Finance, adapter Pluggy, Connect Widget, webhook, migração 0008, tela admin e reconstruidor Asaas dry-run implementados."
     },
     "review": {
       "status": "passed",
       "at": "2026-08-26T05:17:51.000Z",
-      "notes": "CI remoto 32933356910 aprovado: schema TiDB, typecheck, 120 arquivos/748 testes, build de produção e E2E."
+      "notes": "CI remoto aprovado: schema TiDB, typecheck, suíte de testes, build de produção e E2E."
     },
     "apply_qa_fixes": {
       "status": "passed",
       "at": "2026-08-26T05:15:00.000Z",
-      "notes": "Migração 0008 separada por statement-breakpoint e job E2E corrigido para aplicar schema antes dos fluxos."
+      "notes": "Migração 0008, workflow E2E e compatibilidade de runtime corrigidos e validados."
     },
     "close": {
-      "status": "running",
-      "at": "2026-08-26T05:18:00.000Z",
-      "notes": "Código pronto na branch e PR draft; encerramento operacional aguarda configuração Pluggy/Asaas e publicação assistida."
+      "status": "passed",
+      "at": "2026-08-26T21:32:26.000Z",
+      "notes": "Escopo técnico encerrado. PR #118 mergeado na main; hosts OAuth corrigidos para manus.im e api.manus.im; 7 testes locais, typecheck, build Vite, bundle serverless e smoke test público aprovados. Ativação real de Asaas, Pluggy, banco remoto, DNS HostGator e login completo permanecem no backlog operacional por dependerem de credenciais ou autoridade externa."
     }
   },
-  "qgIterations": 1,
+  "qgIterations": 2,
   "maxQgIterations": 3,
   "createdAt": "2026-08-26T04:37:59.741Z",
-  "updatedAt": "2026-08-26T05:18:00.000Z"
+  "updatedAt": "2026-08-26T21:32:26.000Z"
 }
