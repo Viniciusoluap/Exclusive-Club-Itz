@@ -25,9 +25,9 @@ A fundação Open Finance foi implementada com Pluggy como primeiro adapter. O f
 | Reconstrução Asaas    | Concluído | `scripts/asaas_rebuild.mjs`, dry-run padrão                        |
 | Documentação e AIOX   | Concluído | Story OF-001, decision log e estado AIOX                           |
 | CI remoto             | Aprovado  | schema TiDB, typecheck, 748 testes, build e E2E                    |
-| Deploy de produção    | Pendente  | Não existe workflow de deploy versionado nem plataforma confirmada |
+| Deploy de produção    | Concluído | Vercel Production READY; Home e tRPC validados                    |
 | Conexão bancária real | Pendente  | Depende de credenciais Pluggy e consentimento bancário             |
-| Carga Asaas real      | Pendente  | Depende de `ASAAS_API_KEY` e `DATABASE_URL` seguros                |
+| Carga Asaas real      | Pendente  | Depende de nova chave Asaas e `DATABASE_URL` seguros              |
 
 ## Por que o backup não deve ser restaurado diretamente
 
@@ -104,11 +104,25 @@ O Banco Central descreve o Open Finance como compartilhamento padronizado median
 | Deploy sem ambiente conhecido             |  Alto | Confirmar hospedagem e variáveis antes do merge                    |
 | Teste local sem banco                     | Médio | CI remoto passou com TiDB; staging deve repetir carga e smoke test |
 
+## Atualização por fases — 26/08/2026
+
+| Fase | Estado atual | Evidência e próximo marco |
+| --- | --- | --- |
+| 1. Diagnóstico, código e publicação inicial | Concluída | `main` preservada, CI aprovado e Vercel Production READY |
+| 2. Credenciais e serviços | Parcialmente concluída | `PUBLIC_APP_URL`, `JWT_SECRET`, `SETTINGS_ENCRYPTION_KEY` e `BACKUP_ENCRYPTION_KEY` salvos na Vercel; a chave Asaas exibida no chat não foi usada e deve ser revogada |
+| 3. DNS HostGator | Via automatizável esgotada | HostGator administra a zona, mas não há API autorizada nem sessão persistente; aliases já estão cadastrados na Vercel |
+| 4. Backup de agosto | Concluída em staging | `restore.sql` importado localmente sem view legada e sem perda das colunas extras |
+| 5. Migrações e integridade | Concluída em staging | 35 tabelas, 22 controles de migração, contagens críticas preservadas e Open Finance criado vazio |
+| 6. Reconciliação Asaas | Bloqueada por credencial segura | `pnpm asaas:rebuild` passou sem chave; falta inserir uma nova chave diretamente na Vercel ou no site |
+| 7. Open Finance | Código pronto, sandbox pendente | Adapter Pluggy, widget, webhook e testes prontos; faltam credencial Pluggy e consentimento bancário |
+| 8. Produção e domínio próprio | Parcialmente concluída | `exclusive-club-itz.vercel.app` validado; os domínios próprios continuam em manutenção até a zona HostGator apontar para a Vercel |
+| 9. Continuidade operacional | Em preparação | Documentação, rollback e relatórios de backup versionados |
+
 ## O que falta para os 100%
 
-A implementação de código e validação automatizada está concluída. O restante é operacional e externo ao repositório: escolher ou confirmar a hospedagem, cadastrar as variáveis secretas, provisionar a base nova, executar o dry-run do Asaas, revisar os totais, configurar o webhook Pluggy e concluir o primeiro consentimento bancário. Não é seguro automatizar essas ações sem acesso autenticado aos ambientes e sem validar os valores de produção.
+A implementação de código, a validação automatizada, a recuperação local do backup de agosto e a publicação Vercel estão concluídas. O restante é operacional: inserir uma nova chave Asaas — a chave exibida no chat deve ser revogada —, obter/configurar `DATABASE_URL`, executar o dry-run real, inserir credenciais Pluggy, configurar o webhook, conectar uma conta em sandbox e aplicar os dois registros DNS da Vercel na zona HostGator. A Vercel não fornece API para editar a zona HostGator, e a HostGator não apresentou uma API autorizada nesta sessão; por isso essa última alteração permanece a única dependência externa não automatizável identificada.
 
-Quando o usuário retornar, o fluxo mínimo será abrir o PR #112, configurar as variáveis na hospedagem escolhida e assumir o controle apenas no widget bancário. Nenhuma chave deve ser enviada no chat.
+Nenhuma chave deve ser enviada no chat. Os valores devem ser inseridos diretamente na Vercel ou na aba segura do sistema. A troca para produção financeira somente ocorrerá após o relatório de divergências Asaas, a validação do banco de recuperação e um rollback testado.
 
 ## Referências
 

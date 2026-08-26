@@ -122,6 +122,25 @@ temp-backup/
 exclusive-club-backup-*.zip
 database-*.sql
 
+# Recovery artifacts (NUNCA commitar dumps, bases locais ou logs financeiros)
+recovery/new_backup/
+recovery/old_backup_*
+recovery/staging-drizzle/
+recovery/*.sql
+recovery/*.json
+recovery/*.log
+recovery/*-findings.md
+recovery/BACKUP-*.md
+recovery/DOCUMENTATION.md
+recovery/NOVAS_FUNCIONALIDADES.md
+recovery/WEBHOOK_ASAAS_CONFIG.md
+recovery/*-session-findings*.md
+recovery/analyze_dump*.py
+recovery/compare_backup_columns.py
+recovery/todo.md
+recovery/pr-*-body.md
+scripts/apply_recovery_auto_migrate.ts
+
 # Environment & Secrets (AIOX)
 .env.*.local
 *.key
