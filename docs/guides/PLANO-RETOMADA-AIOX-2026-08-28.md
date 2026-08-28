@@ -35,6 +35,15 @@ A memória enviada descrevia um estado de dois dias atrás. Ao conferir o GitHub
 
 11. **Revalidação confirmada pelo responsável (28/08/2026):** cadastro de conta de teste com e-mail aleatório, seguido de um segundo acesso independente (fora do painel Admin), manteve a sessão persistida — Dashboard acessível, usuário autenticado exibido corretamente (print enviado pelo responsável a partir do ambiente publicado em `excludash-dxyaeiar.manus.space`). Isso confirma que a correção do item 10 (combinada ao `SameSite=Lax` do item 8) resolveu de fato o bug de sessão relatado no item 7 — login OAuth completo e sessão persistente em `/reservas`/Dashboard, sem enfraquecer a validação de state/nonce em nenhum momento. **Fase 2 desbloqueada por decisão do responsável.** Segue-se o plano do item 9 (Fase 2 até Fase 5, depois Fase 7, diretamente pelo Manus quando a parte for de configuração de plataforma), respeitando os gates internos de cada fase (GATE MANUS #2 antes de trocar `DATABASE_URL`, #3 antes de `--apply` no Asaas, #4 antes do consentimento Pluggy real) — essa aprovação de fase não dispensa esses pontos de parada.
 
+12. **Bloqueador de infraestrutura na execução da Fase 2 (28/08/2026) — collation MySQL 8/TiDB ausente no staging local do Manus:** ao aplicar as migrations atuais numa base de ensaio local (ferramenta de staging do próprio Manus), a aplicação parou após 3 migrations porque uma migration seguinte exige a collation `utf8mb4_0900_ai_ci` — nativa do MySQL 8.0+/TiDB, que não existe no MariaDB usado por essa base local. **Não é bug de código nem de migration:** o schema está escrito corretamente para o motor real de produção (TiDB Cloud), o mesmo validado pelo CI oficial via Docker (`pingcap/tidb:latest --store=unistore`). Flexibilizar a migration para caber no MariaDB seria retrocesso (Artigo IV — No Invention) e quebraria a compatibilidade real com produção só para acomodar uma ferramenta de ensaio que usa outro motor — o Manus recusou corretamente essa saída e pediu instrução em vez de contornar sozinho. A base parcial criada nesse MariaDB **não deve ser reaproveitada** (nenhum backup foi restaurado nela, nenhuma alteração em `DATABASE_URL`/base ativa/Vercel/DNS/Asaas/Pluggy).
+
+    Provisionar banco é responsabilidade do Manus/responsável (seção 1) — Claude não tem acesso a infraestrutura de nuvem nem ao ambiente do Manus para fazer isso diretamente. Três opções técnicas, em ordem de preferência:
+    - **(a) Preferencial — TiDB via Docker no próprio ambiente Manus**, exatamente como o CI oficial já valida com sucesso todas as migrations: `docker run -d --name tidb-staging -p 4000:4000 pingcap/tidb:latest --store=unistore`. Só funciona se o ambiente Manus permitir rodar containers Docker.
+    - **(b) Alternativa — segundo cluster TiDB Cloud Serverless**, isolado do banco de produção, criado pelo responsável no console TiDB Cloud (mesmo provedor já usado para GATE MANUS #1, tem tier serverless gratuito).
+    - **(c) Alternativa — MySQL 8.0 via Docker** (`utf8mb4_0900_ai_ci` é a collation padrão nativa do MySQL 8, então funciona sem ajuste): `docker run -d --name mysql8-staging -p 3306:3306 -e MYSQL_ROOT_PASSWORD=staging -e MYSQL_DATABASE=exclusive_club mysql:8.0`.
+
+    A Fase 2 permanece bloqueada até existir um staging MySQL 8/TiDB compatível — nenhuma das opções acima foi executada por Claude, é decisão e ação do Manus/responsável qual seguir.
+
 Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS foi tocado nesta sessão — o levantamento acima foi só leitura via API do GitHub, e o disparo de CI usou apenas os secrets que o próprio GitHub Actions já injeta (nenhum valor visto ou manuseado por Claude).
 
 ## 1. Divisão de responsabilidade
@@ -73,7 +82,7 @@ Cada fase do lado Claude roda autonomamente, usando os agentes AIOX apropriados 
 
 ### Fase 2 — Migração e restauração em staging (Claude autônomo, sem dados reais até seu aval)
 
-> **Desbloqueada (28/08/2026, item 11 da seção 0):** a revalidação real do login confirmou que a sessão persiste (print do responsável a partir do ambiente publicado), e o responsável autorizou expressamente prosseguir. Seguem valendo as regras de segurança: nunca importar o ZIP bruto, nunca sobrescrever a base ativa, sem overwrite de produção — só troca reversível de `DATABASE_URL` após o GATE MANUS #2 abaixo.
+> **Desbloqueada em decisão (28/08/2026, item 11 da seção 0), mas execução parada por infraestrutura (item 12 da seção 0):** a revalidação do login autorizou prosseguir, e o script de restauração já foi corrigido (sanitiza `system_settings`/`webhook_logs`/`users.password_hash` — ver histórico de commits). O que falta agora é só um staging MySQL 8/TiDB compatível (o MariaDB local do Manus não tem a collation `utf8mb4_0900_ai_ci`) — ver as 3 opções no item 12. Seguem valendo as regras de segurança: nunca importar o ZIP bruto, nunca sobrescrever a base ativa, sem overwrite de produção — só troca reversível de `DATABASE_URL` após o GATE MANUS #2 abaixo.
 
 - `@data-engineer`: aplicar as migrations atuais na base nova e importar a cópia preparada do backup de agosto via `scripts/prepare_backup_restore.mjs` (nunca o ZIP bruto, nunca sobre base com dados).
 - `@qa`: validar contagens contra o relatório de agosto (30 tabelas — 42 clientes autorizados, 3.163 cobranças, 2.962 despesas, 625 cotas, etc.).
@@ -124,6 +133,7 @@ Claude opera de forma autônoma em todas as fases marcadas sem `GATE MANUS`. Cas
 - Falha de CI que não se resolve em 1–2 tentativas de correção direta (evita loop de tentativa às cegas).
 - Qualquer decisão de modelagem/dados que precise de julgamento de negócio (ex.: promover cliente Asaas a `allowed_clients`).
 - Qualquer teste de sessão/autenticação que continue falhando após uma correção de código (ver itens 8, 10 e 11 da seção 0) — não declarar "login aprovado" sem revalidação real.
+- Qualquer bloqueio de infraestrutura que exija provisionar/trocar ambiente (ex.: item 12 — staging incompatível) — Claude orienta tecnicamente, mas não provisiona infraestrutura de nuvem nem executa dentro do ambiente Manus.
 
 ## 4. Prompt de continuidade
 
