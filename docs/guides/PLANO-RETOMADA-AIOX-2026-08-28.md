@@ -15,8 +15,9 @@ A memória enviada descrevia um estado de dois dias atrás. Ao conferir o GitHub
 2. **A `main` está verde.** Run `33018892983` (commit `fd4b0c7c89aa51cfbb5274ac30d056f44a1116f1`) passou em todos os gates: schema TiDB efêmero, typecheck, testes, build e E2E.
 3. **O repositório-espelho já existe.** `Exclusive-Club-Itz-Manus` é idêntico a `Exclusive-Club-Itz` (mesmos SHAs de commit, mesmas branches). O passo "criar um repositório novo idêntico ao original", caso venha a ser necessário recriar do zero, já está satisfeito — o que falta é decidir qual dos dois fica como definitivo (ver Fase 6).
 4. **Única pendência de código aberta:** PR #121 em `Exclusive-Club-Itz` (`chore(deps): bump nanoid from 5.1.11 to 5.1.16`, dependabot), com CI **falhando** (run `33061847498`). Precisa de triagem antes de qualquer merge futuro na `main`.
+5. **Achado novo, descoberto ao abrir esta PR:** o CI nunca havia rodado em `Exclusive-Club-Itz-Manus` (0 execuções registradas antes desta sessão, mesmo com pushes anteriores para `main`). Ao disparar manualmente (`workflow_dispatch`) para diagnosticar, ele falhou em 3 testes (`server/asaas.auth.test.ts`, `server/asaas.integration.test.ts` — [run 33187301697](https://github.com/Viniciusoluap/Exclusive-Club-Itz-Manus/actions/runs/33187301697)) porque os secrets `ASAAS_API_KEY`/`ASAAS_WEBHOOK_TOKEN` nunca foram cadastrados neste repositório — diferente de `Exclusive-Club-Itz`, onde já existem e a `main` passa integralmente. Não é bug de código nem flake; é paridade de configuração faltando. Reforça a recomendação da Fase 0 de manter `Exclusive-Club-Itz` como principal até `Itz-Manus` ter os mesmos secrets. Detalhe registrado em [comentário na PR #1](https://github.com/Viniciusoluap/Exclusive-Club-Itz-Manus/pull/1#issuecomment-5454728565).
 
-Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS foi tocado nesta sessão — o levantamento acima foi só leitura via API do GitHub.
+Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS foi tocado nesta sessão — o levantamento acima foi só leitura via API do GitHub, e o disparo de CI usou apenas os secrets que o próprio GitHub Actions já injeta (nenhum valor visto ou manuseado por Claude).
 
 ## 1. Divisão de responsabilidade
 
@@ -37,7 +38,8 @@ Cada fase do lado Claude roda autonomamente, usando os agentes AIOX apropriados 
 
 ### Fase 0 — Saneamento do repositório (Claude, autônomo, agora)
 - `@devops`: triagem do PR #121 (nanoid bump) — investigar a falha de CI, corrigir ou fechar.
-- `@architect`: registrar qual repositório é a fonte de verdade durante a migração. Recomendação: manter `Exclusive-Club-Itz` como principal (é o vinculado ao projeto Vercel `exclusive-club-itz`); tratar `Exclusive-Club-Itz-Manus` como cópia congelada de rollback até a Fase 6.
+- `@architect`: registrar qual repositório é a fonte de verdade durante a migração. Recomendação: manter `Exclusive-Club-Itz` como principal (é o vinculado ao projeto Vercel `exclusive-club-itz`, e é o único com os secrets Asaas de CI já configurados); tratar `Exclusive-Club-Itz-Manus` como cópia congelada de rollback até a Fase 6.
+- **Ação sua (GitHub, não é Manus):** se decidir manter `Exclusive-Club-Itz-Manus` como candidato ativo (em vez de só rollback congelado), cadastre `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` como Actions secrets nele (Settings → Secrets and variables → Actions), com os mesmos valores de sandbox já usados em `Exclusive-Club-Itz`. Claude não pode fazer isso — não deve ver o valor da chave.
 - **Saída:** CI 100% verde nos dois repositórios, zero PRs pendentes.
 
 ### Fase 1 — Preparação para ambiente remoto (Claude, autônomo, só código)
