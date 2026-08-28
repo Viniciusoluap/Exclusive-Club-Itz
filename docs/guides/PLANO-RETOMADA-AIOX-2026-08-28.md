@@ -27,6 +27,8 @@ A memória enviada descrevia um estado de dois dias atrás. Ao conferir o GitHub
 
    **O que ainda falta para desbloquear a Fase 2:** a revalidação real do login com uma segunda identidade no ambiente publicado (Manus) — isso só pode ser confirmado depois do deploy da `main` atualizada, e não pode ser testado a partir do código sozinho. Até essa revalidação acontecer e ser confirmada pelo responsável, a Fase 2 continua bloqueada.
 
+9. **Aprovação condicional do responsável (28/08/2026):** autorizado seguir da Fase 2 até a Fase 5 e depois a Fase 7 diretamente pelo Manus, **condicionado** ao teste de revalidação do item 8 passar primeiro. Cada fase mantém seus próprios pontos de parada internos (GATE MANUS #2 antes de trocar `DATABASE_URL`, GATE MANUS #3 antes de `pnpm asaas:rebuild -- --apply`, GATE MANUS #4 antes do consentimento Pluggy real) — a aprovação de seguir a sequência não dispensa esses pontos de parada, que continuam exigindo confirmação explícita do responsável a cada um. A Fase 6 (corte final entre repositórios, reponte do Vercel) não faz parte desta sequência pelo Manus — continua sendo executada aqui pelo Claude/GitHub.
+
 Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS foi tocado nesta sessão — o levantamento acima foi só leitura via API do GitHub, e o disparo de CI usou apenas os secrets que o próprio GitHub Actions já injeta (nenhum valor visto ou manuseado por Claude).
 
 ## 1. Divisão de responsabilidade
@@ -65,7 +67,7 @@ Cada fase do lado Claude roda autonomamente, usando os agentes AIOX apropriados 
 
 ### Fase 2 — Migração e restauração em staging (Claude autônomo, sem dados reais até seu aval)
 
-> **Bloqueada até:** (a) a revalidação real do login com uma segunda identidade após o deploy da correção do item 8 (seção 0) confirmar que a sessão persiste, e (b) aprovação expressa do responsável para o plano de staging/restauração sanitizada. Não iniciar restauração de backup nem aplicar migrations reais enquanto isso não for resolvido — nunca importar o ZIP bruto, nunca sobrescrever a base ativa.
+> **Condicionalmente desbloqueada (item 9, seção 0):** liberada para prosseguir assim que o teste de revalidação da sessão (item 8) passar. Não iniciar restauração de backup nem aplicar migrations reais antes disso — nunca importar o ZIP bruto, nunca sobrescrever a base ativa.
 
 - `@data-engineer`: aplicar as migrations atuais na base nova e importar a cópia preparada do backup de agosto via `scripts/prepare_backup_restore.mjs` (nunca o ZIP bruto, nunca sobre base com dados).
 - `@qa`: validar contagens contra o relatório de agosto (30 tabelas — 42 clientes autorizados, 3.163 cobranças, 2.962 despesas, 625 cotas, etc.).
