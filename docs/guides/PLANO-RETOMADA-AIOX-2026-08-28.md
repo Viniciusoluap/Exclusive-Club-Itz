@@ -23,6 +23,10 @@ A memória enviada descrevia um estado de dois dias atrás. Ao conferir o GitHub
 
    **Decisão do responsável:** a Fase 2 permanece **bloqueada** até (a) esse bug de sessão ser corrigido e revalidado, e (b) aprovação expressa do responsável para o plano de staging/restauração sanitizada. `ASAAS_API_KEY`/`ASAAS_WEBHOOK_TOKEN` também já foram cadastrados como segredos do aplicativo no painel Manus — mas isso é o cofre de runtime do Manus, diferente dos Actions secrets do GitHub tratados no item 5; não usar isso como evidência de que o item 5 está resolvido.
 
+8. **Correção do bug de sessão (28/08/2026), mergeada em `main` nos dois repositórios:** causa raiz identificada em `server/_core/cookies.ts` — o cookie de sessão usava `SameSite=None`, que por especificação (RFC 6265bis) exige `Secure=true`. Quando a detecção de HTTPS atrás do proxy falha (`x-forwarded-proto` ausente/não repassado), o navegador rejeita o `Set-Cookie` inteiro em silêncio, sem erro visível — exatamente o sintoma relatado. O app é same-origin (`client/src/main.tsx` usa `/api/trpc` relativo, sem iframe), então não havia necessidade real de `SameSite=None`; trocado para `SameSite=Lax`, sem alterar validação de state/nonce. Validado localmente (`pnpm check`, `pnpm build`, testes de sessão/logout) e no CI oficial com TiDB real — [run 33197635647](https://github.com/Viniciusoluap/Exclusive-Club-Itz/actions/runs/33197635647), incluindo o job de E2E, 100% verde. PR #123 (`Exclusive-Club-Itz`) e PR #2 (`Exclusive-Club-Itz-Manus`) mergeadas.
+
+   **O que ainda falta para desbloquear a Fase 2:** a revalidação real do login com uma segunda identidade no ambiente publicado (Manus) — isso só pode ser confirmado depois do deploy da `main` atualizada, e não pode ser testado a partir do código sozinho. Até essa revalidação acontecer e ser confirmada pelo responsável, a Fase 2 continua bloqueada.
+
 Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS foi tocado nesta sessão — o levantamento acima foi só leitura via API do GitHub, e o disparo de CI usou apenas os secrets que o próprio GitHub Actions já injeta (nenhum valor visto ou manuseado por Claude).
 
 ## 1. Divisão de responsabilidade
@@ -57,11 +61,11 @@ Cada fase do lado Claude roda autonomamente, usando os agentes AIOX apropriados 
 - **Saída:** runbooks prontos, nenhuma ação em produção.
 
 > **GATE MANUS #1 (você):** provisionar banco TiDB/MySQL compatível no Manus, obter `DATABASE_URL`; configurar App ID e URLs OAuth no portal Manus; inserir os valores no Manus/Vercel.
-> **Status (28/08/2026):** aprovado parcialmente — ver item 7 da seção 0. Banco e OAuth OK; bug de sessão na segunda identidade ainda pendente de correção e revalidação.
+> **Status (28/08/2026):** aprovado parcialmente — ver itens 7 e 8 da seção 0. Banco e OAuth OK; bug de sessão já corrigido e mergeado em `main` (código), falta a revalidação real no ambiente publicado.
 
 ### Fase 2 — Migração e restauração em staging (Claude autônomo, sem dados reais até seu aval)
 
-> **Bloqueada até:** (a) o bug de sessão do item 7 (seção 0) ser corrigido e revalidado, e (b) aprovação expressa do responsável para o plano de staging/restauração sanitizada. Não iniciar restauração de backup nem aplicar migrations reais enquanto isso não for resolvido — nunca importar o ZIP bruto, nunca sobrescrever a base ativa.
+> **Bloqueada até:** (a) a revalidação real do login com uma segunda identidade após o deploy da correção do item 8 (seção 0) confirmar que a sessão persiste, e (b) aprovação expressa do responsável para o plano de staging/restauração sanitizada. Não iniciar restauração de backup nem aplicar migrations reais enquanto isso não for resolvido — nunca importar o ZIP bruto, nunca sobrescrever a base ativa.
 
 - `@data-engineer`: aplicar as migrations atuais na base nova e importar a cópia preparada do backup de agosto via `scripts/prepare_backup_restore.mjs` (nunca o ZIP bruto, nunca sobre base com dados).
 - `@qa`: validar contagens contra o relatório de agosto (30 tabelas — 42 clientes autorizados, 3.163 cobranças, 2.962 despesas, 625 cotas, etc.).
