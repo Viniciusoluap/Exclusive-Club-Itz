@@ -17,6 +17,11 @@ A memória enviada descrevia um estado de dois dias atrás. Ao conferir o GitHub
 4. **Única pendência de código aberta:** PR #121 em `Exclusive-Club-Itz` (`chore(deps): bump nanoid from 5.1.11 to 5.1.16`, dependabot), com CI **falhando** (run `33061847498`). Precisa de triagem antes de qualquer merge futuro na `main`.
 5. **Achado novo, descoberto ao abrir esta PR:** o CI nunca havia rodado em `Exclusive-Club-Itz-Manus` (0 execuções registradas antes desta sessão, mesmo com pushes anteriores para `main`). Ao disparar manualmente (`workflow_dispatch`) para diagnosticar, ele falhou em 3 testes (`server/asaas.auth.test.ts`, `server/asaas.integration.test.ts` — [run 33187301697](https://github.com/Viniciusoluap/Exclusive-Club-Itz-Manus/actions/runs/33187301697)) porque os secrets `ASAAS_API_KEY`/`ASAAS_WEBHOOK_TOKEN` nunca foram cadastrados neste repositório — diferente de `Exclusive-Club-Itz`, onde já existem e a `main` passa integralmente. Não é bug de código nem flake; é paridade de configuração faltando. Como `Exclusive-Club-Itz-Manus` foi definido como repositório definitivo (item 6 abaixo), cadastrar esses secrets lá é pré-requisito obrigatório da Fase 6, não opcional. Detalhe registrado em [comentário na PR #1](https://github.com/Viniciusoluap/Exclusive-Club-Itz-Manus/pull/1#issuecomment-5454728565).
 6. **Decisão do responsável (28/08/2026) — corrige a recomendação original deste plano:** o repositório definitivo será `Exclusive-Club-Itz-Manus`, não `Exclusive-Club-Itz`. Plano de ação: copiar tudo de `Exclusive-Club-Itz` para `Exclusive-Club-Itz-Manus` de forma idêntica, confirmar paridade completa (código, CI verde, secrets, deploy) e só então excluir `Exclusive-Club-Itz` em definitivo. Isso inverte a recomendação original das Fases 0 e 6 — ambas já corrigidas abaixo. "Cópia idêntica" aqui significa árvore de arquivos idêntica na `main` (`git diff` vazio) e paridade de configuração (secrets, integrações), não necessariamente os mesmos hashes de commit — histórico de PR (como o desta própria proposta) pode divergir sem problema, o que importa é o resultado final.
+7. **Resultado do GATE MANUS #1 (28/08/2026), registrado pelo responsável no painel Manus:** banco de dados e configuração OAuth foram **aprovados**. O banco gerenciado isolado do projeto existe, passou em checagem de saúde somente leitura, e `DATABASE_URL` está configurada no ambiente seguro do Manus. `VITE_APP_ID`, `VITE_OAUTH_PORTAL_URL` e `OAUTH_SERVER_URL` estão presentes, usam HTTPS, e o portal Manus já reconhece o aplicativo (sem mais o erro de App ID não configurado). Nenhum valor real foi exposto em nenhum momento. Nenhuma migration, DDL, DML, restauração de backup, DNS, Vercel, operação Asaas ou operação Pluggy foi executada neste gate — dentro do esperado para a Fase 1.
+
+   **Novo bloqueador, independente do App ID:** ao selecionar uma segunda identidade no fluxo OAuth, a sessão do cliente não persiste ao abrir `/reservas` — o nonce/CSRF passa sem erro de `invalid oauth state`, mas a sessão fica bloqueada mesmo assim. Isso tem características de bug de código (cookie de sessão e/ou callback OAuth, provavelmente em `server/_core`), não de configuração de plataforma, e precisa ser diagnosticado e corrigido no código antes de qualquer declaração de "login completo aprovado". A validação de state/nonce não deve ser enfraquecida para contornar isso.
+
+   **Decisão do responsável:** a Fase 2 permanece **bloqueada** até (a) esse bug de sessão ser corrigido e revalidado, e (b) aprovação expressa do responsável para o plano de staging/restauração sanitizada. `ASAAS_API_KEY`/`ASAAS_WEBHOOK_TOKEN` também já foram cadastrados como segredos do aplicativo no painel Manus — mas isso é o cofre de runtime do Manus, diferente dos Actions secrets do GitHub tratados no item 5; não usar isso como evidência de que o item 5 está resolvido.
 
 Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS foi tocado nesta sessão — o levantamento acima foi só leitura via API do GitHub, e o disparo de CI usou apenas os secrets que o próprio GitHub Actions já injeta (nenhum valor visto ou manuseado por Claude).
 
@@ -32,6 +37,8 @@ Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS
 | Consolidação/exclusão de repositório | GitHub | Claude prepara e valida; **você autoriza a exclusão** | Ação irreversível, nunca automática |
 
 Regra-chave: Claude nunca terá as credenciais reais de banco, Asaas, Pluggy ou OAuth. O trabalho do lado Claude é deixar código, scripts, migrations e CI comprovadamente prontos, para que a inserção dos valores reais no Manus/Vercel seja apenas "virar a chave", sem depuração no meio do caminho.
+
+**Nota sobre execução das Fases 2 em diante pelo Manus:** o responsável pediu para tentar avançar as fases seguintes diretamente pelo Manus, sem esperar o Claude. Isso é possível para as partes de configuração de plataforma (banco, credenciais, DNS, consentimento Pluggy, publicação), mas as partes que dependem de rodar scripts deste repositório (`scripts/prepare_backup_restore.mjs`, `drizzle-kit migrate`, `pnpm asaas:rebuild`) ou de corrigir código (o bug de sessão do item 7) só existem no código do GitHub — se o Manus não tiver acesso de execução a este repositório específico, essas partes continuam dependendo do Claude, mesmo que o responsável opere via Manus para tudo o resto.
 
 ## 2. Fases (orquestração AIOX)
 
@@ -50,8 +57,12 @@ Cada fase do lado Claude roda autonomamente, usando os agentes AIOX apropriados 
 - **Saída:** runbooks prontos, nenhuma ação em produção.
 
 > **GATE MANUS #1 (você):** provisionar banco TiDB/MySQL compatível no Manus, obter `DATABASE_URL`; configurar App ID e URLs OAuth no portal Manus; inserir os valores no Manus/Vercel.
+> **Status (28/08/2026):** aprovado parcialmente — ver item 7 da seção 0. Banco e OAuth OK; bug de sessão na segunda identidade ainda pendente de correção e revalidação.
 
 ### Fase 2 — Migração e restauração em staging (Claude autônomo, sem dados reais até seu aval)
+
+> **Bloqueada até:** (a) o bug de sessão do item 7 (seção 0) ser corrigido e revalidado, e (b) aprovação expressa do responsável para o plano de staging/restauração sanitizada. Não iniciar restauração de backup nem aplicar migrations reais enquanto isso não for resolvido — nunca importar o ZIP bruto, nunca sobrescrever a base ativa.
+
 - `@data-engineer`: aplicar as migrations atuais na base nova e importar a cópia preparada do backup de agosto via `scripts/prepare_backup_restore.mjs` (nunca o ZIP bruto, nunca sobre base com dados).
 - `@qa`: validar contagens contra o relatório de agosto (30 tabelas — 42 clientes autorizados, 3.163 cobranças, 2.962 despesas, 625 cotas, etc.).
 - **Saída:** relatório de validação de staging. Sem overwrite de produção.
@@ -100,6 +111,7 @@ Claude opera de forma autônoma em todas as fases marcadas sem `GATE MANUS`. Cas
 - Divergência relevante entre o relatório de reconciliação Asaas e o painel Asaas real.
 - Falha de CI que não se resolve em 1–2 tentativas de correção direta (evita loop de tentativa às cegas).
 - Qualquer decisão de modelagem/dados que precise de julgamento de negócio (ex.: promover cliente Asaas a `allowed_clients`).
+- Qualquer teste de sessão/autenticação que continue falhando após uma correção de código (ver item 7 da seção 0) — não declarar "login aprovado" sem revalidação real.
 
 ## 4. Prompt de continuidade
 
@@ -109,9 +121,10 @@ Cole o bloco abaixo no início de uma nova sessão (Manus ou Claude) para retoma
 Estou retomando o projeto Exclusive Club. O plano de referência está em
 docs/guides/PLANO-RETOMADA-AIOX-2026-08-28.md nos repositórios
 Viniciusoluap/Exclusive-Club-Itz e Viniciusoluap/Exclusive-Club-Itz-Manus
-(branch claude/repo-recovery-plan-lx66kz ou main, conforme o merge).
+(branch main).
 
-Leia esse documento antes de agir. Ele define:
+Leia esse documento antes de agir, especialmente a seção 0 (o que já mudou
+desde a última revisão) e a seção 3 (quando parar e perguntar). Ele define:
 - divisão de responsabilidade (Manus = banco, autenticação, publicação e
   segredos; Claude/GitHub = código, testes, CI, migrations, scripts, merges);
 - 8 fases (0 a 7) com gates explícitos onde só eu posso agir (GATE MANUS);
