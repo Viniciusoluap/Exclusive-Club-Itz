@@ -27,6 +27,16 @@ const ENV_ESPERADAS = [
   { nome: "SMTP_PASS", critica: true, nota: "Sem ela nenhum email é enviado." },
   { nome: "BACKUP_ENCRYPTION_KEY", critica: true, nota: "Sem ela o backup aborta antes de começar." },
   { nome: "JWT_SECRET", critica: true, nota: "Sem ele ninguém consegue entrar no sistema." },
+  {
+    nome: "VITE_APP_ID",
+    critica: true,
+    nota: "Usado pelo SERVIDOR como clientId na troca de código OAuth (server/_core/sdk.ts). O nome sugere variável só de build do frontend, mas o processo Node também precisa dela em runtime — se a plataforma só propaga VITE_* para o passo de build, o login completa e redireciona normalmente, mas o cookie de sessão sai com appId vazio e toda verificação subsequente falha, sem erro visível na tela.",
+  },
+  {
+    nome: "OAUTH_SERVER_URL",
+    critica: true,
+    nota: "Sem ela a troca de código OAuth não sabe para onde chamar (cai no padrão https://api.manus.im, que pode não ser o ambiente correto).",
+  },
   { nome: "ASAAS_WEBHOOK_TOKEN", critica: true, nota: "Sem ele os avisos de pagamento do Asaas são recusados." },
   {
     nome: "ASAAS_API_KEY",
