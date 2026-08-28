@@ -12,6 +12,13 @@ function getQueryParam(req: Request, key: string): string | undefined {
 
 export function registerOAuthRoutes(app: Express) {
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
+    // Resposta carrega Set-Cookie e nunca deve ser cacheada por proxy/CDN
+    // intermediário — um cache que reaproveita esta resposta (ou aplica
+    // heurística própria de cacheável-por-padrão a um 302) descarta o
+    // Set-Cookie em quem recebe o cache hit, e a sessão nunca chega a
+    // existir do lado do navegador, sem nenhum erro visível no fluxo.
+    res.setHeader("Cache-Control", "no-store, private");
+
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
 
