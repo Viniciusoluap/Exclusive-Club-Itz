@@ -37,6 +37,19 @@ class OAuthService {
         "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
       );
     }
+    // ENV.appId vem de VITE_APP_ID, um nome pensado para o build do Vite
+    // (embutido no bundle do frontend). Aqui ele é lido em runtime pelo
+    // processo do servidor para compor clientId no ExchangeToken abaixo —
+    // uma plataforma que só propaga VITE_* para o passo de build (e não
+    // para o processo Node que serve a API) deixa isso vazio sem quebrar a
+    // subida do servidor. O sintoma não aparece aqui: aparece depois, como
+    // "login completa mas app trata como não autenticado", porque
+    // verifySession() rejeita o appId vazio gravado no cookie de sessão.
+    if (!ENV.appId) {
+      console.error(
+        "[OAuth] ERROR: VITE_APP_ID is not visible to the server process! Set it as a server runtime env var, not only a frontend build var."
+      );
+    }
   }
 
   private decodeState(state: string): string {
@@ -215,6 +228,66 @@ class SDKServer {
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
       return null;
+    }
+  }
+
+  /**
+   * Diagnóstico seguro do cookie de sessão da requisição atual — nunca expõe
+   * o valor do cookie nem o segredo, só o suficiente para distinguir "o
+   * navegador não mandou o cookie" de "mandou, mas a verificação falhou" e
+   * por quê. Existe porque authenticateRequest() engole todo erro em
+   * ctx.user = null (correto para procedures públicas), o que torna o bug
+   * relatado — OAuth completa o redirecionamento, mas o app trata como não
+   * autenticado, sem erro visível — impossível de diferenciar por fora sem
+   * acesso ao log do servidor. É publicProcedure de propósito: quem está
+   * com a sessão quebrada não teria como chamar algo atrás de authz.
+   */
+  async debugSessionCookie(req: Request): Promise<{
+    cookieHeaderPresent: boolean;
+    sessionCookiePresent: boolean;
+    verify:
+      | "ok"
+      | "missing"
+      | "expired"
+      | "invalid_signature"
+      | "malformed"
+      | "unknown_error";
+  }> {
+    const cookieHeaderPresent =
+      typeof req.headers.cookie === "string" && req.headers.cookie.length > 0;
+    const cookies = this.parseCookies(req.headers.cookie);
+    const sessionCookie = cookies.get(COOKIE_NAME);
+    const sessionCookiePresent = isNonEmptyString(sessionCookie);
+
+    if (!sessionCookiePresent) {
+      return { cookieHeaderPresent, sessionCookiePresent, verify: "missing" };
+    }
+
+    try {
+      const secretKey = this.getSessionSecret();
+      const { payload } = await jwtVerify(sessionCookie, secretKey, {
+        algorithms: ["HS256"],
+      });
+      const { openId, appId, name } = payload as Record<string, unknown>;
+      if (
+        !isNonEmptyString(openId) ||
+        !isNonEmptyString(appId) ||
+        !isNonEmptyString(name)
+      ) {
+        return { cookieHeaderPresent, sessionCookiePresent, verify: "malformed" };
+      }
+      return { cookieHeaderPresent, sessionCookiePresent, verify: "ok" };
+    } catch (error) {
+      const code = (error as { code?: string } | undefined)?.code;
+      const verify =
+        code === "ERR_JWT_EXPIRED"
+          ? "expired"
+          : code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED"
+            ? "invalid_signature"
+            : code === "ERR_JWS_INVALID" || code === "ERR_JWT_INVALID"
+              ? "malformed"
+              : "unknown_error";
+      return { cookieHeaderPresent, sessionCookiePresent, verify };
     }
   }
 
