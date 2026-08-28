@@ -33,6 +33,8 @@ A memória enviada descrevia um estado de dois dias atrás. Ao conferir o GitHub
 
     **Próximo passo exato:** depois do próximo deploy, testar login com a segunda identidade de novo e checar o resultado de `system.sessionDebug` (ou `/admin/diagnostico`). Se `verify` vier `"malformed"`, confirma a hipótese — a correção final é cadastrar `VITE_APP_ID` como variável de ambiente do **processo do servidor** no Manus (não só do build do frontend). A Fase 2 continua bloqueada até essa revalidação passar de verdade.
 
+11. **Revalidação confirmada pelo responsável (28/08/2026):** cadastro de conta de teste com e-mail aleatório, seguido de um segundo acesso independente (fora do painel Admin), manteve a sessão persistida — Dashboard acessível, usuário autenticado exibido corretamente (print enviado pelo responsável a partir do ambiente publicado em `excludash-dxyaeiar.manus.space`). Isso confirma que a correção do item 10 (combinada ao `SameSite=Lax` do item 8) resolveu de fato o bug de sessão relatado no item 7 — login OAuth completo e sessão persistente em `/reservas`/Dashboard, sem enfraquecer a validação de state/nonce em nenhum momento. **Fase 2 desbloqueada por decisão do responsável.** Segue-se o plano do item 9 (Fase 2 até Fase 5, depois Fase 7, diretamente pelo Manus quando a parte for de configuração de plataforma), respeitando os gates internos de cada fase (GATE MANUS #2 antes de trocar `DATABASE_URL`, #3 antes de `--apply` no Asaas, #4 antes do consentimento Pluggy real) — essa aprovação de fase não dispensa esses pontos de parada.
+
 Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS foi tocado nesta sessão — o levantamento acima foi só leitura via API do GitHub, e o disparo de CI usou apenas os secrets que o próprio GitHub Actions já injeta (nenhum valor visto ou manuseado por Claude).
 
 ## 1. Divisão de responsabilidade
@@ -67,11 +69,11 @@ Cada fase do lado Claude roda autonomamente, usando os agentes AIOX apropriados 
 - **Saída:** runbooks prontos, nenhuma ação em produção.
 
 > **GATE MANUS #1 (você):** provisionar banco TiDB/MySQL compatível no Manus, obter `DATABASE_URL`; configurar App ID e URLs OAuth no portal Manus; inserir os valores no Manus/Vercel.
-> **Status (28/08/2026):** aprovado parcialmente — ver itens 7 e 8 da seção 0. Banco e OAuth OK; bug de sessão já corrigido e mergeado em `main` (código), falta a revalidação real no ambiente publicado.
+> **Status (28/08/2026):** aprovado — ver itens 7, 8, 10 e 11 da seção 0. Banco e OAuth OK; bug de sessão corrigido, mergeado em `main` e revalidado com sucesso no ambiente publicado.
 
 ### Fase 2 — Migração e restauração em staging (Claude autônomo, sem dados reais até seu aval)
 
-> **Bloqueada até:** (a) a revalidação real do login com uma segunda identidade após o deploy da correção do item 10 (seção 0) confirmar que a sessão persiste, e (b) aprovação expressa do responsável para o plano de staging/restauração sanitizada. Não iniciar restauração de backup nem aplicar migrations reais enquanto isso não for resolvido — nunca importar o ZIP bruto, nunca sobrescrever a base ativa.
+> **Desbloqueada (28/08/2026, item 11 da seção 0):** a revalidação real do login confirmou que a sessão persiste (print do responsável a partir do ambiente publicado), e o responsável autorizou expressamente prosseguir. Seguem valendo as regras de segurança: nunca importar o ZIP bruto, nunca sobrescrever a base ativa, sem overwrite de produção — só troca reversível de `DATABASE_URL` após o GATE MANUS #2 abaixo.
 
 - `@data-engineer`: aplicar as migrations atuais na base nova e importar a cópia preparada do backup de agosto via `scripts/prepare_backup_restore.mjs` (nunca o ZIP bruto, nunca sobre base com dados).
 - `@qa`: validar contagens contra o relatório de agosto (30 tabelas — 42 clientes autorizados, 3.163 cobranças, 2.962 despesas, 625 cotas, etc.).
@@ -121,7 +123,7 @@ Claude opera de forma autônoma em todas as fases marcadas sem `GATE MANUS`. Cas
 - Divergência relevante entre o relatório de reconciliação Asaas e o painel Asaas real.
 - Falha de CI que não se resolve em 1–2 tentativas de correção direta (evita loop de tentativa às cegas).
 - Qualquer decisão de modelagem/dados que precise de julgamento de negócio (ex.: promover cliente Asaas a `allowed_clients`).
-- Qualquer teste de sessão/autenticação que continue falhando após uma correção de código (ver itens 8 e 10 da seção 0) — não declarar "login aprovado" sem revalidação real.
+- Qualquer teste de sessão/autenticação que continue falhando após uma correção de código (ver itens 8, 10 e 11 da seção 0) — não declarar "login aprovado" sem revalidação real.
 
 ## 4. Prompt de continuidade
 
