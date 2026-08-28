@@ -39,10 +39,19 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
+  // SameSite=None exige Secure=true por especificação (RFC 6265bis); quando
+  // isSecureRequest() não detecta HTTPS de forma confiável atrás de um proxy
+  // (ex.: x-forwarded-proto ausente ou não repassado), o navegador rejeita o
+  // Set-Cookie inteiro em silêncio — sem erro visível, a sessão simplesmente
+  // nunca persiste. O app é same-origin (frontend e API servidos do mesmo
+  // domínio, ver client/src/main.tsx: url "/api/trpc" relativo, sem iframe),
+  // então não há necessidade real de SameSite=None: o callback OAuth em
+  // /api/oauth/callback já está no nosso domínio quando o Set-Cookie ocorre,
+  // e Lax cobre a navegação de topo que segue (res.redirect para "/").
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
+    sameSite: "lax",
     secure: isSecureRequest(req),
   };
 }
