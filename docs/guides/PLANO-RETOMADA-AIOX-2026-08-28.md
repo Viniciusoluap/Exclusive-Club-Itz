@@ -5,7 +5,7 @@
 **Repositórios:** `Viniciusoluap/Exclusive-Club-Itz` (fonte atual — CI e Vercel funcionando, usado só até o corte final) e `Viniciusoluap/Exclusive-Club-Itz-Manus` (**destino definitivo**, decisão do responsável em 28/08/2026 — ver seção 0, item 6). Ao final da Fase 6, só `Exclusive-Club-Itz-Manus` continuará existindo.
 **Branch de trabalho deste plano:** `claude/repo-recovery-plan-lx66kz`.
 
-> Este documento é a fonte de verdade para retomar o trabalho em qualquer sessão futura — Manus ou Claude. Antes de agir, releia a seção 0 (correções de registro) e a seção 5 (regras de segurança), que nunca deixam de valer.
+> Este documento é a fonte de verdade para retomar o trabalho em qualquer sessão futura — Manus, Claude, Codex ou outra ferramenta. Antes de agir, releia a seção 0 (correções de registro) e a seção 5 (regras de segurança), que nunca deixam de valer.
 
 ## 0. Correções de registro em relação à memória de 26–27/08
 
@@ -42,7 +42,7 @@ A memória enviada descrevia um estado de dois dias atrás. Ao conferir o GitHub
     - **(b) Alternativa — segundo cluster TiDB Cloud Serverless**, isolado do banco de produção, criado pelo responsável no console TiDB Cloud (mesmo provedor já usado para GATE MANUS #1, tem tier serverless gratuito).
     - **(c) Alternativa — MySQL 8.0 via Docker** (`utf8mb4_0900_ai_ci` é a collation padrão nativa do MySQL 8, então funciona sem ajuste): `docker run -d --name mysql8-staging -p 3306:3306 -e MYSQL_ROOT_PASSWORD=staging -e MYSQL_DATABASE=exclusive_club mysql:8.0`.
 
-    A Fase 2 permanece bloqueada até existir um staging MySQL 8/TiDB compatível — nenhuma das opções acima foi executada por Claude, é decisão e ação do Manus/responsável qual seguir. **Decisão do responsável (28/08/2026):** em vez de usar TiDB Cloud/produção como referência, foi criado um cluster TiDB Cloud Serverless novo e vazio, dedicado só a este ensaio — o staging recebeu corretamente as 9 migrations atuais da `main`.
+    A Fase 2 permanece bloqueada até existir um staging MySQL 8/TiDB compatível — nenhuma das opções acima foi executada por Claude, é decisão e ação do Manus/responsável qual seguir. **Decisão do responsável (28/08/2026):** foi criado um cluster TiDB Cloud Serverless novo e vazio, dedicado só a este ensaio — o staging recebeu corretamente as 9 migrations atuais da `main`.
 
 13. **Correção obrigatória — preservação do journal Drizzle (28/08/2026):** com o staging já migrado, o Manus identificou que o SQL sanitizado gerado por `scripts/prepare_backup_restore.mjs` ainda continha `DROP`/`CREATE`/`INSERT` para `__drizzle_migrations`. Esse journal é propriedade do **destino** (registra quais migrations já foram aplicadas ali); restaurá-lo a partir do backup de agosto sobrescreveria/invalidaria a evolução de schema que o staging (já com as 9 migrations atuais) tinha acabado de aplicar corretamente — achado correto e bloqueante, análogo em espírito ao dos itens 8/10 (nunca declarar algo pronto sem revalidação real).
 
@@ -51,6 +51,14 @@ A memória enviada descrevia um estado de dois dias atrás. Ao conferir o GitHub
     Teste automatizado adicionado (`server/backupRestoreSanitization.test.ts`): roda o script real contra um dump sintético no formato exato de `server/databaseBackup.ts`, e falha se `__drizzle_migrations` aparecer no SQL sanitizado ou se a evidência não constar do relatório — exatamente o critério de aceite pedido. Validado localmente (`node --check`, dump sintético com nomes contendo parênteses/vírgulas/aspas escapadas, `vitest run` com os 5 testes passando) e no CI oficial com TiDB — commits `6f4ec7554` (fix) e `47ebe4fe1` (teste) em `Exclusive-Club-Itz-Manus`; mesmo conteúdo replicado em `Exclusive-Club-Itz` (commits `88881b89a` e `f2dbc08a5`).
 
     **Próximo passo exato:** o Manus deve puxar a `main` atualizada (contém os commits acima), refazer a sanitização do backup de agosto num diretório temporário, validar `restore-report.json` (`excludedTables` deve mostrar `__drizzle_migrations` com `removed: true`; `sanitizedTables` deve mostrar `system_settings`/`webhook_logs` com `dataRemoved: true`), e só então importar o resultado no staging TiDB já migrado (criado no item 12). Continua valendo: nunca reaplicar migrations por cima do que já está lá, nunca sobrescrever o journal do destino, nunca tocar na base de produção.
+
+14. **GATE MANUS #2 — aprovado SOMENTE para staging (29/08/2026):** o Manus restaurou a cópia sanitizada (commit `4b56fd50afff329ae606f7f64e57b1540a3cb414`) num schema exclusivo do cluster TiDB Cloud Starter dedicado ao ensaio (`exclusive_club_staging_restore_20260829b`), com TLS obrigatório. O journal do destino manteve as 9 migrations antes e depois da importação — a correção do item 13 funcionou. Sanitização confirmada: `__drizzle_migrations` ausente do SQL importado, `system_settings`/`webhook_logs` sem dados, `users.password_hash` sem valores reais nesta cópia (nenhuma linha exigiu redação), nenhuma view/definer/procedure/trigger presente, ZIP bruto nunca usado.
+
+    **Contagens batem exatamente com o relatório de agosto:** 42 `allowed_clients`, 3.163 `bpo_charges`, 2.962 `expense_records`, 625 `client_quotas` — os quatro marcos do plano confirmados. `DATABASE_URL` do aplicativo, base ativa, Vercel, DNS, Asaas e Pluggy **não foram tocados** em nenhum momento.
+
+    **O que este gate NÃO autoriza:** troca de `DATABASE_URL` de produção, restauração em base ativa, corte de DNS, ou ativação de Asaas/Pluggy. Uma fase futura de promoção real exige autorização explícita separada do responsável e um novo plano de rollback, usando uma base de destino nova (não necessariamente reaproveitar este schema de ensaio) — `STAGING_DATABASE_URL` continua temporária até lá.
+
+    **Decisão do responsável (29/08/2026):** a partir daqui, a próxima fase será conduzida por outra ferramenta (Codex), não mais por esta sessão do Claude. O prompt de continuidade (seção 4) já é desenhado para ser retomado por qualquer ferramenta — releia a seção 0 completa e a seção 3 antes de agir, e não trate a aprovação de staging acima como autorização para tocar produção.
 
 Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS foi tocado nesta sessão — o levantamento acima foi só leitura via API do GitHub, e o disparo de CI usou apenas os secrets que o próprio GitHub Actions já injeta (nenhum valor visto ou manuseado por Claude).
 
@@ -62,24 +70,24 @@ Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS
 | Autenticação (App ID, URLs OAuth) | Manus | **Você** | Configuração sensível no portal Manus |
 | Publicação final / deploy de produção | Manus (código chega pronto do Claude) | **Você** | Decisão operacional; o código já vem validado |
 | Segredos (Asaas, Pluggy, SMTP, `BACKUP_ENCRYPTION_KEY`) | Vercel/Manus, ambiente seguro | **Você** | Nunca devem passar pelo chat ou pelo código |
-| Código, testes, CI, migrations, scripts, merges, PRs | GitHub | **Claude**, autônomo | Onde há acesso direto para validar antes de qualquer promoção |
-| Consolidação/exclusão de repositório | GitHub | Claude prepara e valida; **você autoriza a exclusão** | Ação irreversível, nunca automática |
+| Código, testes, CI, migrations, scripts, merges, PRs | GitHub | **Claude/Codex**, autônomo | Onde há acesso direto para validar antes de qualquer promoção |
+| Consolidação/exclusão de repositório | GitHub | Quem estiver operando prepara e valida; **você autoriza a exclusão** | Ação irreversível, nunca automática |
 
-Regra-chave: Claude nunca terá as credenciais reais de banco, Asaas, Pluggy ou OAuth. O trabalho do lado Claude é deixar código, scripts, migrations e CI comprovadamente prontos, para que a inserção dos valores reais no Manus/Vercel seja apenas "virar a chave", sem depuração no meio do caminho.
+Regra-chave: nenhuma ferramenta do lado GitHub terá as credenciais reais de banco, Asaas, Pluggy ou OAuth. O trabalho é deixar código, scripts, migrations e CI comprovadamente prontos, para que a inserção dos valores reais no Manus/Vercel seja apenas "virar a chave", sem depuração no meio do caminho.
 
-**Nota sobre execução das Fases 2 em diante pelo Manus:** o responsável pediu para tentar avançar as fases seguintes diretamente pelo Manus, sem esperar o Claude. Isso é possível para as partes de configuração de plataforma (banco, credenciais, DNS, consentimento Pluggy, publicação), mas as partes que dependem de rodar scripts deste repositório (`scripts/prepare_backup_restore.mjs`, `drizzle-kit migrate`, `pnpm asaas:rebuild`) ou de corrigir código (o bug de sessão do item 7) só existem no código do GitHub — se o Manus não tiver acesso de execução a este repositório específico, essas partes continuam dependendo do Claude, mesmo que o responsável opere via Manus para tudo o resto.
+**Nota sobre execução das Fases 2 em diante pelo Manus:** o responsável pediu para tentar avançar as fases seguintes diretamente pelo Manus, sem esperar o Claude/Codex. Isso é possível para as partes de configuração de plataforma (banco, credenciais, DNS, consentimento Pluggy, publicação), mas as partes que dependem de rodar scripts deste repositório (`scripts/prepare_backup_restore.mjs`, `drizzle-kit migrate`, `pnpm asaas:rebuild`) ou de corrigir código só existem no código do GitHub — se o Manus não tiver acesso de execução a este repositório específico, essas partes continuam dependendo de quem estiver operando do lado GitHub, mesmo que o responsável opere via Manus para tudo o resto.
 
 ## 2. Fases (orquestração AIOX)
 
-Cada fase do lado Claude roda autonomamente, usando os agentes AIOX apropriados (`@devops`, `@dev`, `@qa`, `@data-engineer`, `@architect`). Fases marcadas com `GATE MANUS` dependem de uma ação sua fora do Claude — Claude prepara tudo antes do gate e retoma sozinho assim que a condição for satisfeita.
+Cada fase do lado GitHub roda autonomamente, usando os agentes AIOX apropriados (`@devops`, `@dev`, `@qa`, `@data-engineer`, `@architect`). Fases marcadas com `GATE MANUS` dependem de uma ação sua fora do GitHub — quem estiver operando prepara tudo antes do gate e retoma sozinho assim que a condição for satisfeita.
 
-### Fase 0 — Saneamento do repositório (Claude, autônomo, agora)
+### Fase 0 — Saneamento do repositório (autônomo, agora)
 - `@devops`: triagem do PR #121 (nanoid bump) — investigar a falha de CI, corrigir ou fechar. Continua valendo mesmo com `Exclusive-Club-Itz` sendo desativado no final — até o corte, ele é a fonte de trabalho ativa.
 - `@architect`: **fonte de verdade durante a transição é `Exclusive-Club-Itz`** (continuar desenvolvendo/mergeando ali normalmente); **destino definitivo é `Exclusive-Club-Itz-Manus`**, por decisão do responsável (28/08/2026 — item 6 acima). `Exclusive-Club-Itz-Manus` só recebe a cópia completa no corte final (Fase 6), para não ter duas fontes divergindo em paralelo até lá.
-- **Ação sua (GitHub, não é Manus):** como `Exclusive-Club-Itz-Manus` será o repositório definitivo, cadastre `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` como Actions secrets nele (Settings → Secrets and variables → Actions), com os mesmos valores de sandbox já usados em `Exclusive-Club-Itz`. Sem isso o CI de lá não fica verde — é pré-requisito da Fase 6, pode ser feito a qualquer momento antes dela. Claude não pode fazer isso — não deve ver o valor da chave.
+- **Ação sua (GitHub, não é Manus):** como `Exclusive-Club-Itz-Manus` será o repositório definitivo, cadastre `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` como Actions secrets nele (Settings → Secrets and variables → Actions), com os mesmos valores de sandbox já usados em `Exclusive-Club-Itz`. Sem isso o CI de lá não fica verde — é pré-requisito da Fase 6, pode ser feito a qualquer momento antes dela. Quem estiver operando do lado GitHub não pode fazer isso — não deve ver o valor da chave.
 - **Saída:** CI 100% verde em `Exclusive-Club-Itz` (fonte ativa), zero PRs pendentes lá.
 
-### Fase 1 — Preparação para ambiente remoto (Claude, autônomo, só código)
+### Fase 1 — Preparação para ambiente remoto (autônomo, só código)
 - `@data-engineer`: revisar o journal de migrations (`drizzle/`), confirmar `db:migrate:ci`, preparar checklist para banco remoto real.
 - `@dev`: mapear o plano de rotação da chave Asaas (fallback em `server/_core/asaas.ts`, prioridade `process.env.ASAAS_API_KEY` → `getSetting("asaas_api_key")`) sem tocar em nenhum segredo.
 - `@qa`: montar checklist de smoke test pós-deploy (`/admin/diagnostico`, `/admin/backups`, `/admin/saas`, `/admin/open-finance`).
@@ -88,24 +96,25 @@ Cada fase do lado Claude roda autonomamente, usando os agentes AIOX apropriados 
 > **GATE MANUS #1 (você):** provisionar banco TiDB/MySQL compatível no Manus, obter `DATABASE_URL`; configurar App ID e URLs OAuth no portal Manus; inserir os valores no Manus/Vercel.
 > **Status (28/08/2026):** aprovado — ver itens 7, 8, 10 e 11 da seção 0. Banco e OAuth OK; bug de sessão corrigido, mergeado em `main` e revalidado com sucesso no ambiente publicado.
 
-### Fase 2 — Migração e restauração em staging (Claude autônomo, sem dados reais até seu aval)
+### Fase 2 — Migração e restauração em staging (sem dados reais na base ativa até seu aval)
 
-> **Desbloqueada em decisão (item 11), staging TiDB dedicado já migrado (item 12), correção do journal Drizzle mergeada (item 13):** falta só o Manus puxar a `main` atualizada, refazer a sanitização do backup de agosto e validar o `restore-report.json` antes de importar no staging já migrado. Seguem valendo as regras de segurança: nunca importar o ZIP bruto, nunca sobrescrever a base ativa, sem overwrite de produção — só troca reversível de `DATABASE_URL` após o GATE MANUS #2 abaixo.
+> **Staging validado com sucesso (29/08/2026, item 14 da seção 0):** contagens batem exatamente com o relatório de agosto, journal do destino preservado, sanitização confirmada. **Isso NÃO autoriza tocar produção** — só confirma que o processo funciona de ponta a ponta num destino isolado. Seguem valendo as regras de segurança: nunca importar o ZIP bruto, nunca sobrescrever a base ativa, sem overwrite de produção — só troca reversível de `DATABASE_URL` após o GATE MANUS #2 abaixo, com autorização explícita e novo plano de rollback.
 
-- `@data-engineer`: aplicar as migrations atuais na base nova e importar a cópia preparada do backup de agosto via `scripts/prepare_backup_restore.mjs` (nunca o ZIP bruto, nunca sobre base com dados).
-- `@qa`: validar contagens contra o relatório de agosto (30 tabelas — 42 clientes autorizados, 3.163 cobranças, 2.962 despesas, 625 cotas, etc.).
-- **Saída:** relatório de validação de staging. Sem overwrite de produção.
+- `@data-engineer`: aplicar as migrations atuais na base nova e importar a cópia preparada do backup de agosto via `scripts/prepare_backup_restore.mjs` (nunca o ZIP bruto, nunca sobre base com dados). ✅ Feito com sucesso em staging (item 14).
+- `@qa`: validar contagens contra o relatório de agosto (30 tabelas — 42 clientes autorizados, 3.163 cobranças, 2.962 despesas, 625 cotas, etc.). ✅ Confirmado (item 14).
+- **Saída:** relatório de validação de staging — entregue (item 14). Sem overwrite de produção.
 
 > **GATE MANUS #2 (você):** revisar o relatório e autorizar a troca reversível de `DATABASE_URL` (mantendo a base anterior intacta para rollback).
+> **Status (29/08/2026):** relatório entregue e aprovado **somente para staging** (item 14). A troca real de `DATABASE_URL` de produção continua exigindo autorização explícita separada + novo plano de rollback + base de destino nova — ainda não concedida.
 
-### Fase 3 — Reconciliação financeira (Claude prepara e roda dry-run; você autoriza `--apply`)
+### Fase 3 — Reconciliação financeira (prepara e roda dry-run; você autoriza `--apply`)
 - `@dev`: rodar `pnpm asaas:rebuild` (modo leitura, padrão) assim que a chave Asaas nova estiver disponível no ambiente seguro.
 - `@qa`: revisar divergências, clientes sem vínculo, totais comparados ao painel Asaas.
 - **Saída:** relatório de divergência.
 
 > **GATE MANUS #3 (você):** inserir nova chave Asaas (tratando a antiga como comprometida) e novo token de webhook; autorizar `pnpm asaas:rebuild -- --apply` só depois da revisão.
 
-### Fase 4 — Open Finance / Pluggy sandbox (Claude prepara; você faz o consentimento)
+### Fase 4 — Open Finance / Pluggy sandbox (prepara; você faz o consentimento)
 - `@dev`: confirmar webhook HTTPS (`PUBLIC_APP_URL/api/webhooks/pluggy`), variáveis Pluggy.
 - `@qa`: checklist de smoke test — criação, reconexão, expiração/revogação de consentimento, duplicata de webhook, sincronização de transações.
 - **Saída:** ambiente pronto para o primeiro consentimento real.
@@ -113,9 +122,9 @@ Cada fase do lado Claude roda autonomamente, usando os agentes AIOX apropriados 
 > **GATE MANUS #4 (você):** credenciais Pluggy no ambiente seguro + primeiro consentimento bancário real (única etapa que exige humano — autenticação/MFA ocorre no domínio da instituição financeira).
 
 ### Fase 5 — DNS e domínio próprio (você, no HostGator/Vercel)
-- Claude documenta os registros exatos a apontar na zona HostGator para `exclusiveclubitz.com` e `www`. A Vercel não expõe API para editar a zona HostGator — esta é a única dependência externa não automatizável identificada até agora.
+- Documentar os registros exatos a apontar na zona HostGator para `exclusiveclubitz.com` e `www`. A Vercel não expõe API para editar a zona HostGator — esta é a única dependência externa não automatizável identificada até agora.
 
-### Fase 6 — Corte final: copiar tudo para `Exclusive-Club-Itz-Manus` e excluir `Exclusive-Club-Itz` (Claude prepara, você aprova a exclusão)
+### Fase 6 — Corte final: copiar tudo para `Exclusive-Club-Itz-Manus` e excluir `Exclusive-Club-Itz` (prepara, você aprova a exclusão)
 
 Repositório definitivo: **`Exclusive-Club-Itz-Manus`** (decisão do responsável, 28/08/2026 — item 6 da seção 0). Checklist antes de excluir `Exclusive-Club-Itz`:
 
@@ -124,16 +133,16 @@ Repositório definitivo: **`Exclusive-Club-Itz-Manus`** (decisão do responsáve
 - [ ] `@devops`: confirmar CI 100% verde em `Exclusive-Club-Itz-Manus` com a árvore já sincronizada, no mesmo pipeline e mesmos secrets que passam em `Exclusive-Club-Itz`.
 - [ ] **Ação sua (Vercel):** repontar o projeto Vercel `exclusive-club-itz` para o GitHub `Exclusive-Club-Itz-Manus` (ou criar um novo projeto Vercel apontando para lá) — a integração Git atual está ligada a `Exclusive-Club-Itz`; sem repontar, o deploy quebra assim que o repositório antigo for excluído.
 - [ ] `@qa`: repetir o smoke test da Fase 1 (`/admin/diagnostico`, `/admin/backups`, `/admin/saas`, `/admin/open-finance`) contra o deploy já servido a partir de `Exclusive-Club-Itz-Manus`.
-- [ ] Confirmação explícita sua por escrito de que a paridade foi conferida, antes de excluir `Exclusive-Club-Itz` — Claude nunca executa essa exclusão sozinho, mesmo em modo autônomo.
+- [ ] Confirmação explícita sua por escrito de que a paridade foi conferida, antes de excluir `Exclusive-Club-Itz` — essa exclusão nunca é executada sozinha por nenhuma ferramenta, mesmo em modo autônomo.
 - **Saída:** um único repositório ativo (`Exclusive-Club-Itz-Manus`), com CI e deploy funcionando a partir dele; `Exclusive-Club-Itz` excluído com sua autorização.
 
 ### Fase 7 — Backup novo e fechamento operacional
 - `@devops` + `@data-engineer`: gerar backup novo em produção, validar o artefato, arquivar anexos, documentar rollback.
 - **Saída:** operação declarada 100% validada, com evidências em `docs/guides/`.
 
-## 3. Critérios de escalonamento (quando Claude para e chama você)
+## 3. Critérios de escalonamento (quando parar e chamar você)
 
-Claude opera de forma autônoma em todas as fases marcadas sem `GATE MANUS`. Casos extremos que sempre pausam e pedem sua decisão, mesmo em modo autônomo:
+Opera-se de forma autônoma em todas as fases marcadas sem `GATE MANUS`. Casos extremos que sempre pausam e pedem sua decisão, mesmo em modo autônomo:
 
 - Qualquer ação destrutiva ou irreversível (`DROP`, `TRUNCATE`, overwrite integral, exclusão de repositório, rotação de `BACKUP_ENCRYPTION_KEY`).
 - Qualquer necessidade de credencial, segredo ou banco que não esteja disponível no ambiente seguro.
@@ -141,12 +150,13 @@ Claude opera de forma autônoma em todas as fases marcadas sem `GATE MANUS`. Cas
 - Falha de CI que não se resolve em 1–2 tentativas de correção direta (evita loop de tentativa às cegas).
 - Qualquer decisão de modelagem/dados que precise de julgamento de negócio (ex.: promover cliente Asaas a `allowed_clients`).
 - Qualquer teste de sessão/autenticação que continue falhando após uma correção de código (ver itens 8, 10 e 11 da seção 0) — não declarar "login aprovado" sem revalidação real.
-- Qualquer bloqueio de infraestrutura que exija provisionar/trocar ambiente (ex.: item 12 — staging incompatível) — Claude orienta tecnicamente, mas não provisiona infraestrutura de nuvem nem executa dentro do ambiente Manus.
+- Qualquer bloqueio de infraestrutura que exija provisionar/trocar ambiente (ex.: item 12 — staging incompatível) — orientar tecnicamente, mas não provisionar infraestrutura de nuvem nem executar dentro do ambiente Manus.
 - Qualquer achado de que dado/estrutura de propriedade do DESTINO (ex.: item 13 — journal `__drizzle_migrations`) esteja sendo sobrescrito por um script de restauração — corrigir o script antes de qualquer importação, nunca contornar rodando por fora.
+- **Qualquer tentativa de tratar aprovação de staging (item 14) como se autorizasse produção** — troca real de `DATABASE_URL`, restauração em base ativa, corte de DNS ou ativação de Asaas/Pluggy sempre exigem autorização explícita separada, mesmo que o staging tenha passado 100%.
 
 ## 4. Prompt de continuidade
 
-Cole o bloco abaixo no início de uma nova sessão (Manus ou Claude) para retomar exatamente daqui, sem precisar reexplicar o histórico:
+Cole o bloco abaixo no início de uma nova sessão (Manus, Claude, Codex ou outra ferramenta) para retomar exatamente daqui, sem precisar reexplicar o histórico:
 
 ```
 Estou retomando o projeto Exclusive Club. O plano de referência está em
@@ -155,11 +165,13 @@ Viniciusoluap/Exclusive-Club-Itz e Viniciusoluap/Exclusive-Club-Itz-Manus
 (branch main).
 
 Leia esse documento antes de agir, especialmente a seção 0 (o que já mudou
-desde a última revisão) e a seção 3 (quando parar e perguntar). Ele define:
+desde a última revisão, sobretudo o item 14 — staging da Fase 2 aprovado,
+produção ainda intocada) e a seção 3 (quando parar e perguntar). Ele define:
 - divisão de responsabilidade (Manus = banco, autenticação, publicação e
-  segredos; Claude/GitHub = código, testes, CI, migrations, scripts, merges);
-- 8 fases (0 a 7) com gates explícitos onde só eu posso agir (GATE MANUS);
-- critérios de quando parar e me perguntar em vez de seguir sozinho.
+  segredos; GitHub = código, testes, CI, migrations, scripts, merges);
+- 8 fases (0 a 7) com gates explícitos onde só o responsável pode agir
+  (GATE MANUS);
+- critérios de quando parar e perguntar em vez de seguir sozinho.
 
 Antes de qualquer mudança: confirme o estado real do código/CI na branch
 atual (não confie cegamente neste prompt nem em documentos antigos — pode
@@ -168,11 +180,13 @@ produção ou integrações não comprovadas. Nunca receba, imprima ou commite
 senha, API key, token OAuth/Asaas/Pluggy, DATABASE_URL, BACKUP_ENCRYPTION_KEY
 ou segredo SMTP — esses valores só existem no Manus/Vercel.
 
-Continue a partir da fase em que paramos. Trabalhe de forma autônoma nas
-fases sem GATE MANUS; me avise e pare nos casos extremos listados na
-seção 3 do plano. Ao concluir uma fase do lado Claude, atualize este
-documento (ou a story/handoff AIOX correspondente) com o que foi feito e
-o que ficou pendente, e faça commit/push seguindo as regras do
+Continue a partir da fase em que paramos (Fase 3 — reconciliação Asaas —
+é a próxima na sequência, mas confira a seção 0 antes de assumir isso).
+Trabalhe de forma autônoma nas fases sem GATE MANUS; avise e pare nos casos
+extremos listados na seção 3 do plano — em especial, aprovação de staging
+NUNCA equivale a autorização de produção. Ao concluir uma fase, atualize
+este documento (ou a story/handoff AIOX correspondente) com o que foi
+feito e o que ficou pendente, e faça commit/push seguindo as regras do
 .claude/CLAUDE.md (Story-Driven Development, Quality First, No Invention).
 ```
 
@@ -182,7 +196,7 @@ o que ficou pendente, e faça commit/push seguindo as regras do
 - Nunca restaurar o ZIP de agosto (ou qualquer backup) diretamente sobre a base ativa. Nunca `DROP`, `TRUNCATE`, overwrite integral ou reimportação destrutiva em produção. Promoção sempre por troca reversível de conexão.
 - `BACKUP_ENCRYPTION_KEY` não é trocada sem aprovação explícita — perdê-la torna backups antigos ilegíveis.
 - Clientes Asaas não são promovidos automaticamente a `allowed_clients` — é decisão operacional separada.
-- Não confundir "código pronto" com "operação financeira validada em produção". Quando o ambiente não tiver credenciais, marcar como bloqueado por dependência externa — nunca simular sucesso.
+- Não confundir "código pronto" ou "staging validado" com "operação financeira validada em produção". Quando o ambiente não tiver credenciais, marcar como bloqueado por dependência externa — nunca simular sucesso.
 
 ## 6. Referências
 
