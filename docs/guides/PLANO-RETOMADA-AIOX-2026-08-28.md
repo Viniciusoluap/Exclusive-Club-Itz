@@ -60,6 +60,10 @@ A memória enviada descrevia um estado de dois dias atrás. Ao conferir o GitHub
 
     **Decisão do responsável (29/08/2026):** a partir daqui, a próxima fase será conduzida por outra ferramenta (Codex), não mais por esta sessão do Claude. O prompt de continuidade (seção 4) já é desenhado para ser retomado por qualquer ferramenta — releia a seção 0 completa e a seção 3 antes de agir, e não trate a aprovação de staging acima como autorização para tocar produção.
 
+15. **Retomada em Fase 3 / GATE MANUS #3 — setup do dry-run Asaas (29/08/2026):** responsável confirmou o estado do repositório em `main` (`3aaba9d`/`1c1ddc8`, conteúdo equivalente, sem alterações pendentes) e retomou via Claude para disparar o setup do GATE MANUS #3. Falta disponibilizar, no ambiente seguro de staging do Manus (nunca no chat), `ASAAS_API_KEY` (chave real do Asaas) e `DATABASE_URL` apontando para o schema de staging já validado no item 14 (`exclusive_club_staging_restore_20260829b`) — **nunca produção**.
+
+    `scripts/asaas_rebuild.mjs` é dry-run por padrão: as únicas escritas em banco ficam atrás de `if (APPLY && connection)`, e `APPLY` só fica verdadeiro com a flag `--apply` explícita na linha de comando. Rodar sem `--apply` é seguro mesmo com `DATABASE_URL` apresente — lê a API do Asaas e compara com o estado local (clientes vinculados/sem vínculo), mas não grava nada. **Autorização atual cobre apenas esse dry-run.** `--apply` e qualquer operação em produção continuam fora de escopo até nova autorização explícita do responsável, conforme já previsto no GATE MANUS #3 original.
+
 Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS foi tocado nesta sessão — o levantamento acima foi só leitura via API do GitHub, e o disparo de CI usou apenas os secrets que o próprio GitHub Actions já injeta (nenhum valor visto ou manuseado por Claude).
 
 ## 1. Divisão de responsabilidade
@@ -108,11 +112,15 @@ Cada fase do lado GitHub roda autonomamente, usando os agentes AIOX apropriados 
 > **Status (29/08/2026):** relatório entregue e aprovado **somente para staging** (item 14). A troca real de `DATABASE_URL` de produção continua exigindo autorização explícita separada + novo plano de rollback + base de destino nova — ainda não concedida.
 
 ### Fase 3 — Reconciliação financeira (prepara e roda dry-run; você autoriza `--apply`)
+
+> **Em andamento (29/08/2026, item 15 da seção 0):** setup do GATE MANUS #3 disparado — falta o Manus disponibilizar `ASAAS_API_KEY` e `DATABASE_URL` (staging, nunca produção) no ambiente seguro. Autorização atual cobre só o dry-run (sem `--apply`).
+
 - `@dev`: rodar `pnpm asaas:rebuild` (modo leitura, padrão) assim que a chave Asaas nova estiver disponível no ambiente seguro.
 - `@qa`: revisar divergências, clientes sem vínculo, totais comparados ao painel Asaas.
 - **Saída:** relatório de divergência.
 
 > **GATE MANUS #3 (você):** inserir nova chave Asaas (tratando a antiga como comprometida) e novo token de webhook; autorizar `pnpm asaas:rebuild -- --apply` só depois da revisão.
+> **Status (29/08/2026):** setup do dry-run em andamento (item 15) — `--apply` continua sem autorização.
 
 ### Fase 4 — Open Finance / Pluggy sandbox (prepara; você faz o consentimento)
 - `@dev`: confirmar webhook HTTPS (`PUBLIC_APP_URL/api/webhooks/pluggy`), variáveis Pluggy.
@@ -153,6 +161,7 @@ Opera-se de forma autônoma em todas as fases marcadas sem `GATE MANUS`. Casos e
 - Qualquer bloqueio de infraestrutura que exija provisionar/trocar ambiente (ex.: item 12 — staging incompatível) — orientar tecnicamente, mas não provisionar infraestrutura de nuvem nem executar dentro do ambiente Manus.
 - Qualquer achado de que dado/estrutura de propriedade do DESTINO (ex.: item 13 — journal `__drizzle_migrations`) esteja sendo sobrescrito por um script de restauração — corrigir o script antes de qualquer importação, nunca contornar rodando por fora.
 - **Qualquer tentativa de tratar aprovação de staging (item 14) como se autorizasse produção** — troca real de `DATABASE_URL`, restauração em base ativa, corte de DNS ou ativação de Asaas/Pluggy sempre exigem autorização explícita separada, mesmo que o staging tenha passado 100%.
+- **Qualquer execução de `pnpm asaas:rebuild -- --apply`** sem autorização explícita separada do GATE MANUS #3 (item 15) — dry-run não é permissão para aplicar.
 
 ## 4. Prompt de continuidade
 
@@ -165,8 +174,9 @@ Viniciusoluap/Exclusive-Club-Itz e Viniciusoluap/Exclusive-Club-Itz-Manus
 (branch main).
 
 Leia esse documento antes de agir, especialmente a seção 0 (o que já mudou
-desde a última revisão, sobretudo o item 14 — staging da Fase 2 aprovado,
-produção ainda intocada) e a seção 3 (quando parar e perguntar). Ele define:
+desde a última revisão, sobretudo os itens 14 e 15 — staging da Fase 2
+aprovado, Fase 3/GATE MANUS #3 em setup para dry-run, produção ainda
+intocada) e a seção 3 (quando parar e perguntar). Ele define:
 - divisão de responsabilidade (Manus = banco, autenticação, publicação e
   segredos; GitHub = código, testes, CI, migrations, scripts, merges);
 - 8 fases (0 a 7) com gates explícitos onde só o responsável pode agir
@@ -180,14 +190,14 @@ produção ou integrações não comprovadas. Nunca receba, imprima ou commite
 senha, API key, token OAuth/Asaas/Pluggy, DATABASE_URL, BACKUP_ENCRYPTION_KEY
 ou segredo SMTP — esses valores só existem no Manus/Vercel.
 
-Continue a partir da fase em que paramos (Fase 3 — reconciliação Asaas —
-é a próxima na sequência, mas confira a seção 0 antes de assumir isso).
-Trabalhe de forma autônoma nas fases sem GATE MANUS; avise e pare nos casos
-extremos listados na seção 3 do plano — em especial, aprovação de staging
-NUNCA equivale a autorização de produção. Ao concluir uma fase, atualize
-este documento (ou a story/handoff AIOX correspondente) com o que foi
-feito e o que ficou pendente, e faça commit/push seguindo as regras do
-.claude/CLAUDE.md (Story-Driven Development, Quality First, No Invention).
+Continue a partir da fase em que paramos (Fase 3 — reconciliação Asaas,
+dry-run em staging). Trabalhe de forma autônoma nas fases sem GATE MANUS;
+avise e pare nos casos extremos listados na seção 3 do plano — em
+especial, aprovação de staging ou de dry-run NUNCA equivale a autorização
+de --apply ou de produção. Ao concluir uma fase, atualize este documento
+(ou a story/handoff AIOX correspondente) com o que foi feito e o que
+ficou pendente, e faça commit/push seguindo as regras do .claude/CLAUDE.md
+(Story-Driven Development, Quality First, No Invention).
 ```
 
 ## 5. Regras de segurança que continuam valendo
@@ -196,7 +206,7 @@ feito e o que ficou pendente, e faça commit/push seguindo as regras do
 - Nunca restaurar o ZIP de agosto (ou qualquer backup) diretamente sobre a base ativa. Nunca `DROP`, `TRUNCATE`, overwrite integral ou reimportação destrutiva em produção. Promoção sempre por troca reversível de conexão.
 - `BACKUP_ENCRYPTION_KEY` não é trocada sem aprovação explícita — perdê-la torna backups antigos ilegíveis.
 - Clientes Asaas não são promovidos automaticamente a `allowed_clients` — é decisão operacional separada.
-- Não confundir "código pronto" ou "staging validado" com "operação financeira validada em produção". Quando o ambiente não tiver credenciais, marcar como bloqueado por dependência externa — nunca simular sucesso.
+- Não confundir "código pronto", "staging validado" ou "dry-run limpo" com "operação financeira validada em produção". Quando o ambiente não tiver credenciais, marcar como bloqueado por dependência externa — nunca simular sucesso.
 
 ## 6. Referências
 
