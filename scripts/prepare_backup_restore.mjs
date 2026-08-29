@@ -6,7 +6,10 @@
  * remove a view legada `financial_charges`, remove qualquer cláusula DEFINER
  * remanescente (defesa em profundidade — dumps novos já saem sem DEFINER, ver
  * server/databaseBackup.ts `semDefiner()`, mas o backup de agosto usado aqui é
- * anterior a essa garantia e pode não ter passado por ela), e SANITIZA dados
+ * anterior a essa garantia e pode não ter passado por ela), remove por
+ * completo a tabela `__drizzle_migrations` (journal de migrations é
+ * propriedade do DESTINO — restaurar o journal do backup sobrescreveria o
+ * controle de schema já aplicado no staging/produção), e SANITIZA dados
  * sensíveis antes de a cópia ficar disponível para importação num ambiente de
  * staging: remove por completo as linhas de `system_settings` (pode conter a
  * chave Asaas em uso e outras credenciais salvas via getSetting/setSetting) e
@@ -14,8 +17,9 @@
  * cliente), e substitui por NULL o valor de `users.password_hash` linha a
  * linha (campo legado — o login é via OAuth — mas se estiver preenchido é um
  * hash real e não deve ser replicado para um ambiente de staging). A
- * estrutura das tabelas (DROP/CREATE) é preservada; só as LINHAS sensíveis
- * saem.
+ * estrutura das tabelas de negócio (DROP/CREATE) é preservada; só as LINHAS
+ * sensíveis saem. `__drizzle_migrations` é diferente: sai por inteiro
+ * (estrutura + dados), porque não é dado de negócio.
  *
  * Preserva os nomes físicos de colunas do baseline Drizzle atual. O baseline
  * da main usa camelCase em `users`, portanto a cópia de restauração não deve
@@ -52,6 +56,19 @@ const SENSITIVE_TABLES_TO_STRIP = [
 const SENSITIVE_COLUMNS_TO_REDACT = [{ table: "users", column: "password_hash" }];
 
 /**
+ * Tabelas cuja seção INTEIRA (DROP TABLE + CREATE TABLE + dados) deve ser
+ * excluída do SQL sanitizado — não são dado de negócio do backup, são
+ * propriedade do destino (o banco que vai receber a restauração).
+ */
+const TABLES_TO_EXCLUDE_ENTIRELY = [
+  {
+    table: "__drizzle_migrations",
+    reason:
+      "journal de migrations é propriedade do destino; o backup histórico não pode recriá-lo nem preenchê-lo, pois isso invalidaria a evolução de schema já aplicada no staging/produção",
+  },
+];
+
+/**
  * Localiza o fim da seção de uma tabela/view no dump: o próximo marcador
  * `-- Table:`/`-- View:`, ou o rodapé `SET FOREIGN_KEY_CHECKS = 1;`.
  */
@@ -65,6 +82,20 @@ function findSectionEnd(source, fromIndex) {
 }
 
 /**
+ * Remove a seção inteira que começa em `marker` (linha completa), até o
+ * próximo marcador de tabela/view ou o rodapé — usado tanto para views
+ * legadas quanto para tabelas que devem sair por completo.
+ */
+function removeSection(source, marker) {
+  const start = source.indexOf(marker);
+  if (start < 0) {
+    return { source, removed: false };
+  }
+  const end = findSectionEnd(source, start);
+  return { source: source.slice(0, start) + source.slice(end), removed: true };
+}
+
+/**
  * Remove a seção de uma view específica (DROP VIEW + CREATE VIEW), com
  * escopo preciso — só até o próximo marcador de tabela/view ou o rodapé.
  *
@@ -75,13 +106,18 @@ function findSectionEnd(source, fromIndex) {
  * `findSectionEnd`, o corte é limitado à própria seção da view removida.
  */
 function removeView(source, viewName) {
-  const marker = `-- View: ${viewName}`;
-  const start = source.indexOf(marker);
-  if (start < 0) {
-    return { source, removed: false };
-  }
-  const end = findSectionEnd(source, start);
-  return { source: source.slice(0, start) + source.slice(end), removed: true };
+  return removeSection(source, `-- View: ${viewName}`);
+}
+
+/**
+ * Remove a seção INTEIRA de uma tabela (DROP TABLE + CREATE TABLE + dados),
+ * sem deixar nem a estrutura. Usado para tabelas que são propriedade do
+ * DESTINO (ex.: journal de migrations do Drizzle), nunca do backup de
+ * origem — restaurar a estrutura/dado delas por cima do destino corrompe o
+ * estado que o destino já mantém sozinho.
+ */
+function removeTableEntirely(source, tableName) {
+  return removeSection(source, `-- Table: ${tableName}`);
 }
 
 /**
@@ -295,6 +331,16 @@ const legacyViewResult = removeView(sanitized, "financial_charges");
 sanitized = legacyViewResult.source;
 const removedLegacyView = legacyViewResult.removed;
 
+// Tabelas que são propriedade do DESTINO, não do backup de origem: saem por
+// inteiro (estrutura + dados), nunca só os dados. O journal de migrations do
+// Drizzle é o caso — ver TABLES_TO_EXCLUDE_ENTIRELY acima.
+const excludedTables = [];
+for (const { table, reason } of TABLES_TO_EXCLUDE_ENTIRELY) {
+  const result = removeTableEntirely(sanitized, table);
+  sanitized = result.source;
+  excludedTables.push({ table, removed: result.removed, reason });
+}
+
 // Sanitização de segurança: remove linhas sensíveis antes de a cópia ficar
 // disponível para importação em staging. Estrutura das tabelas é preservada.
 const sanitizedTables = [];
@@ -325,8 +371,10 @@ const header = [
   "-- ATENÇÃO: importar SOMENTE em uma base NOVA/VAZIA; nunca em produção existente.",
   "-- Após o import, executar o autoMigrate atual e depois o dry-run Asaas.",
   "-- Os nomes físicos do snapshot foram preservados para compatibilidade com o baseline atual.",
-  "-- Dados de system_settings e webhook_logs foram removidos, e users.password_hash",
-  "-- foi substituído por NULL — ver restore-report.json para detalhes.",
+  "-- Dados de system_settings e webhook_logs foram removidos, users.password_hash",
+  "-- foi substituído por NULL, e o journal de migrations do destino foi",
+  "-- preservado (tabelas exclusivas do destino saíram por inteiro) —",
+  "-- ver restore-report.json para a lista completa e os detalhes.",
   "",
 ].join("\n");
 sanitized = header + sanitized;
@@ -344,6 +392,7 @@ const report = {
   missingRequiredTables: missingRequired,
   removedLegacyView,
   normalizedUserColumns,
+  excludedTables,
   sanitizedTables,
   redactedColumns,
   definerClausesRemoved: definerResult.removedCount,
