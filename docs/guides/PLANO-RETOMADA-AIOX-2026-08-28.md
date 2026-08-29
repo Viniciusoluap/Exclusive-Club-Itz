@@ -42,7 +42,15 @@ A memória enviada descrevia um estado de dois dias atrás. Ao conferir o GitHub
     - **(b) Alternativa — segundo cluster TiDB Cloud Serverless**, isolado do banco de produção, criado pelo responsável no console TiDB Cloud (mesmo provedor já usado para GATE MANUS #1, tem tier serverless gratuito).
     - **(c) Alternativa — MySQL 8.0 via Docker** (`utf8mb4_0900_ai_ci` é a collation padrão nativa do MySQL 8, então funciona sem ajuste): `docker run -d --name mysql8-staging -p 3306:3306 -e MYSQL_ROOT_PASSWORD=staging -e MYSQL_DATABASE=exclusive_club mysql:8.0`.
 
-    A Fase 2 permanece bloqueada até existir um staging MySQL 8/TiDB compatível — nenhuma das opções acima foi executada por Claude, é decisão e ação do Manus/responsável qual seguir.
+    A Fase 2 permanece bloqueada até existir um staging MySQL 8/TiDB compatível — nenhuma das opções acima foi executada por Claude, é decisão e ação do Manus/responsável qual seguir. **Decisão do responsável (28/08/2026):** em vez de usar TiDB Cloud/produção como referência, foi criado um cluster TiDB Cloud Serverless novo e vazio, dedicado só a este ensaio — o staging recebeu corretamente as 9 migrations atuais da `main`.
+
+13. **Correção obrigatória — preservação do journal Drizzle (28/08/2026):** com o staging já migrado, o Manus identificou que o SQL sanitizado gerado por `scripts/prepare_backup_restore.mjs` ainda continha `DROP`/`CREATE`/`INSERT` para `__drizzle_migrations`. Esse journal é propriedade do **destino** (registra quais migrations já foram aplicadas ali); restaurá-lo a partir do backup de agosto sobrescreveria/invalidaria a evolução de schema que o staging (já com as 9 migrations atuais) tinha acabado de aplicar corretamente — achado correto e bloqueante, análogo em espírito ao dos itens 8/10 (nunca declarar algo pronto sem revalidação real).
+
+    Corrigido em `scripts/prepare_backup_restore.mjs`: `__drizzle_migrations` agora sai **por inteiro** do SQL sanitizado (`DROP TABLE`, `CREATE TABLE` e dados — não só as linhas, diferente de `system_settings`/`webhook_logs`, onde a estrutura fica). `restore-report.json` ganhou o campo `excludedTables` como evidência estrutural da remoção (tabela, `removed: true`, motivo — sem conteúdo de linha/hash/credencial). Também corrigido de passagem: a remoção da view legada `financial_charges` usava um corte que ia até o rodapé do arquivo, o que apagaria silenciosamente qualquer outra view que viesse depois dela no dump — agora o corte é escopado só à seção da própria view/tabela removida (mesma função reutilizada para ambos os casos).
+
+    Teste automatizado adicionado (`server/backupRestoreSanitization.test.ts`): roda o script real contra um dump sintético no formato exato de `server/databaseBackup.ts`, e falha se `__drizzle_migrations` aparecer no SQL sanitizado ou se a evidência não constar do relatório — exatamente o critério de aceite pedido. Validado localmente (`node --check`, dump sintético com nomes contendo parênteses/vírgulas/aspas escapadas, `vitest run` com os 5 testes passando) e no CI oficial com TiDB — commits `6f4ec7554` (fix) e `47ebe4fe1` (teste) em `Exclusive-Club-Itz-Manus`; mesmo conteúdo replicado em `Exclusive-Club-Itz` (commits `88881b89a` e `f2dbc08a5`).
+
+    **Próximo passo exato:** o Manus deve puxar a `main` atualizada (contém os commits acima), refazer a sanitização do backup de agosto num diretório temporário, validar `restore-report.json` (`excludedTables` deve mostrar `__drizzle_migrations` com `removed: true`; `sanitizedTables` deve mostrar `system_settings`/`webhook_logs` com `dataRemoved: true`), e só então importar o resultado no staging TiDB já migrado (criado no item 12). Continua valendo: nunca reaplicar migrations por cima do que já está lá, nunca sobrescrever o journal do destino, nunca tocar na base de produção.
 
 Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS foi tocado nesta sessão — o levantamento acima foi só leitura via API do GitHub, e o disparo de CI usou apenas os secrets que o próprio GitHub Actions já injeta (nenhum valor visto ou manuseado por Claude).
 
@@ -82,7 +90,7 @@ Cada fase do lado Claude roda autonomamente, usando os agentes AIOX apropriados 
 
 ### Fase 2 — Migração e restauração em staging (Claude autônomo, sem dados reais até seu aval)
 
-> **Desbloqueada em decisão (28/08/2026, item 11 da seção 0), mas execução parada por infraestrutura (item 12 da seção 0):** a revalidação do login autorizou prosseguir, e o script de restauração já foi corrigido (sanitiza `system_settings`/`webhook_logs`/`users.password_hash` — ver histórico de commits). O que falta agora é só um staging MySQL 8/TiDB compatível (o MariaDB local do Manus não tem a collation `utf8mb4_0900_ai_ci`) — ver as 3 opções no item 12. Seguem valendo as regras de segurança: nunca importar o ZIP bruto, nunca sobrescrever a base ativa, sem overwrite de produção — só troca reversível de `DATABASE_URL` após o GATE MANUS #2 abaixo.
+> **Desbloqueada em decisão (item 11), staging TiDB dedicado já migrado (item 12), correção do journal Drizzle mergeada (item 13):** falta só o Manus puxar a `main` atualizada, refazer a sanitização do backup de agosto e validar o `restore-report.json` antes de importar no staging já migrado. Seguem valendo as regras de segurança: nunca importar o ZIP bruto, nunca sobrescrever a base ativa, sem overwrite de produção — só troca reversível de `DATABASE_URL` após o GATE MANUS #2 abaixo.
 
 - `@data-engineer`: aplicar as migrations atuais na base nova e importar a cópia preparada do backup de agosto via `scripts/prepare_backup_restore.mjs` (nunca o ZIP bruto, nunca sobre base com dados).
 - `@qa`: validar contagens contra o relatório de agosto (30 tabelas — 42 clientes autorizados, 3.163 cobranças, 2.962 despesas, 625 cotas, etc.).
@@ -134,6 +142,7 @@ Claude opera de forma autônoma em todas as fases marcadas sem `GATE MANUS`. Cas
 - Qualquer decisão de modelagem/dados que precise de julgamento de negócio (ex.: promover cliente Asaas a `allowed_clients`).
 - Qualquer teste de sessão/autenticação que continue falhando após uma correção de código (ver itens 8, 10 e 11 da seção 0) — não declarar "login aprovado" sem revalidação real.
 - Qualquer bloqueio de infraestrutura que exija provisionar/trocar ambiente (ex.: item 12 — staging incompatível) — Claude orienta tecnicamente, mas não provisiona infraestrutura de nuvem nem executa dentro do ambiente Manus.
+- Qualquer achado de que dado/estrutura de propriedade do DESTINO (ex.: item 13 — journal `__drizzle_migrations`) esteja sendo sobrescrito por um script de restauração — corrigir o script antes de qualquer importação, nunca contornar rodando por fora.
 
 ## 4. Prompt de continuidade
 
