@@ -127,7 +127,7 @@ jobs:
       # not deleted) and replaced with a single fresh baseline generated from
       # schema.ts — see drizzle/BASELINE.md for the full writeup.
       - name: Apply schema to ephemeral DB
-        run: pnpm run db:migrate:ci 2>&1 | tee /tmp/dbpush.log; exit ${PIPESTATUS[0]}
+        run: pnpm run db:migrate:ci 2>&1 | tee /tmp/db-migrate.log; exit ${PIPESTATUS[0]}
 
       # DIAGNOSTIC (always runs, even on failure above): drizzle-kit's CLI does
       # not reliably print the underlying SQL error to stdout/stderr on this
@@ -171,8 +171,8 @@ jobs:
             const install = readTail('/tmp/install.log', 30);
             body += '### pnpm install (last 30 lines)\n```\n' + (install ?? '_not run_') + '\n```\n\n';
 
-            const dbpush = readTail('/tmp/dbpush.log', 30);
-            body += '### drizzle-kit push (last 30 lines)\n```\n' + (dbpush ?? '_not run_') + '\n```\n\n';
+            const dbMigrate = readTail('/tmp/db-migrate.log', 30);
+            body += '### drizzle-kit migrate (last 30 lines)\n```\n' + (dbMigrate ?? '_not run_') + '\n```\n\n';
 
             const tidbLog = readTail('/tmp/tidb-server.log', 150);
             body += '### TiDB server log — real error/query (last 150 lines)\n```\n' + (tidbLog ?? '_not run_') + '\n```\n\n';

@@ -1,4 +1,4 @@
-# Retomada operacional — Exclusive Clube
+# Retomada operacional — Exclusive Club
 
 **Data:** 26/08/2026
 **Repositório:** `Viniciusoluap/Exclusive-Club-Itz`

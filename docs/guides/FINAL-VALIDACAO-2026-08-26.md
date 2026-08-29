@@ -1,4 +1,4 @@
-# Validação final do Exclusive Clube — 26/08/2026
+# Validação final do Exclusive Club — 26/08/2026
 
 ## Resultado executivo
 

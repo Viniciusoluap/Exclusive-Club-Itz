@@ -6,9 +6,9 @@
 
 URL: https://www.bcb.gov.br/estabilidadefinanceira/openfinance
 
-A página oficial do Banco Central define o Open Finance no Brasil dentro do ecossistema regulado e mantém links para normas, supervisão e participantes. Para o produto do Exclusive Clube, a consequência prática é que o compartilhamento de dados bancários deve ocorrer por consentimento explícito do titular, em fluxo autenticado no banco, e não por captura de senha ou tela do internet banking.
+A página oficial do Banco Central define o Open Finance no Brasil dentro do ecossistema regulado e mantém links para normas, supervisão e participantes. Para o produto do Exclusive Club, a consequência prática é que o compartilhamento de dados bancários deve ocorrer por consentimento explícito do titular, em fluxo autenticado no banco, e não por captura de senha ou tela do internet banking.
 
-A aplicação deve ser desenhada como consumidora de dados por meio de um provedor/participante habilitado ou de um agregador que opere com instituições participantes. O Exclusive Clube não deve tentar se tornar participante regulado nem implementar diretamente a malha regulatória de APIs como primeira etapa.
+A aplicação deve ser desenhada como consumidora de dados por meio de um provedor/participante habilitado ou de um agregador que opere com instituições participantes. O Exclusive Club não deve tentar se tornar participante regulado nem implementar diretamente a malha regulatória de APIs como primeira etapa.
 
 ## Implicação arquitetural preliminar
 
@@ -24,7 +24,7 @@ Fonte de sandbox: https://docs.pluggy.ai/docs/sandbox
 
 A Pluggy oferece sandbox com dados sintéticos, fluxos de teste e cenários de conexão; itens de sandbox não atualizados por mais de 30 dias podem ser excluídos. A documentação mostra estrutura de dados semelhante à produção para contas, transações, investimentos e empréstimos. Isso permite construir e testar o MVP sem conectar contas reais.
 
-Implicação: a Pluggy atende diretamente ao requisito de “Conectar conta” por um widget/fluxo hospedado e evita que o Exclusive Clube manipule credenciais bancárias. Ainda será necessário confirmar cobertura das instituições desejadas, plano comercial, limites e tratamento de consentimento para pessoa física e jurídica.
+Implicação: a Pluggy atende diretamente ao requisito de “Conectar conta” por um widget/fluxo hospedado e evita que o Exclusive Club manipule credenciais bancárias. Ainda será necessário confirmar cobertura das instituições desejadas, plano comercial, limites e tratamento de consentimento para pessoa física e jurídica.
 
 ## Belvo — evidências oficiais
 
@@ -38,7 +38,7 @@ Fonte de webhooks: https://developers.belvo.com/developer_resources/resources-we
 
 A Belvo exige webhooks para aproveitar o fluxo assíncrono. A documentação descreve eventos de atualização histórica, novas contas e novas faturas, além de erros de recurso e limites operacionais mensais do Open Finance. O endpoint pode receber autorização adicional. A aplicação deve responder de modo idempotente, registrar o evento e buscar os recursos na API; não deve depender apenas da resposta síncrona da criação do link.
 
-Implicação: Belvo também atende ao requisito de conexão simples via widget, com forte aderência ao fluxo regulado. A diferença prática para a Pluggy dependerá de cobertura institucional, preço, limites mensais, recursos contratados e qualidade do suporte para o perfil CPF/CNPJ do Exclusive Clube.
+Implicação: Belvo também atende ao requisito de conexão simples via widget, com forte aderência ao fluxo regulado. A diferença prática para a Pluggy dependerá de cobertura institucional, preço, limites mensais, recursos contratados e qualidade do suporte para o perfil CPF/CNPJ do Exclusive Club.
 
 ## Modelo comercial observado
 
@@ -76,7 +76,7 @@ Avaliação preliminar: é uma alternativa válida para uma operação mais ente
 
 Fonte: https://openfinancebrasil.org.br/onboarding/
 
-O material oficial explica que a participação direta exige autorização para funcionamento pelo Banco Central, cadastro no Diretório de Participantes, requisitos de segurança e UX, certificação/homologação e publicação das APIs/aplicações. Para o Exclusive Clube, isso reforça a decisão de começar por um provedor habilitado/agregador, em vez de tentar operar como participante direto.
+O material oficial explica que a participação direta exige autorização para funcionamento pelo Banco Central, cadastro no Diretório de Participantes, requisitos de segurança e UX, certificação/homologação e publicação das APIs/aplicações. Para o Exclusive Club, isso reforça a decisão de começar por um provedor habilitado/agregador, em vez de tentar operar como participante direto.
 
 A jornada do usuário deve preservar segurança e privacidade, agilidade, transparência e controle. Portanto, a tela do sistema deve deixar clara a finalidade, os dados solicitados, o prazo do consentimento, a instituição conectada, a possibilidade de revogar e o estado da sincronização.
 
@@ -94,7 +94,7 @@ Fonte: https://docs.pluggy.ai/docs/webhooks
 
 A Pluggy documenta eventos `item/created`, `item/updated`, `item/deleted`, `item/error`, `item/waiting_user_input`, `item/login_succeeded`, além de eventos de transações criadas, atualizadas e excluídas. O provedor informa que uma notificação pode ser reenviada até 9 vezes em caso de falha e exige resposta 2XX em até 5 segundos; o processamento deve ocorrer depois da resposta. Para eventos de Item, a recomendação é consultar `GET /items/{id}` para obter o estado mais recente, em vez de confiar apenas no payload recebido.
 
-Implicação: o backend do Exclusive Clube deve ter um endpoint HTTPS rápido, validar um segredo enviado em header, gravar uma chave idempotente do evento, responder 2XX e enfileirar/processar a sincronização em seguida. O status da conexão e do consentimento precisa ser visível ao usuário, com tratamento para erro, espera de autorização, conexão offline e reconexão.
+Implicação: o backend do Exclusive Club deve ter um endpoint HTTPS rápido, validar um segredo enviado em header, gravar uma chave idempotente do evento, responder 2XX e enfileirar/processar a sincronização em seguida. O status da conexão e do consentimento precisa ser visível ao usuário, com tratamento para erro, espera de autorização, conexão offline e reconexão.
 
 ## Pluggy — autenticação
 
@@ -102,7 +102,7 @@ Fonte: https://docs.pluggy.ai/reference/auth
 
 A documentação divide o acesso em dois tokens: API Key de backend, com validade indicada de 2 horas e capacidade de ler dados, criar Connect Tokens, configurar webhooks e gerenciar Items; e Connect Token, com validade de 30 minutos, destinado ao frontend/Connect Widget e sem permissão para recuperar dados. As credenciais permanentes do cliente devem permanecer somente no backend.
 
-Implicação: o Exclusive Clube terá variáveis privadas `PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET` ou equivalente conforme o painel, nunca expostas no bundle do navegador. O frontend receberá apenas um Connect Token efêmero criado para o usuário autenticado e o backend persistirá o `item_id`/consentimento de forma vinculada ao cliente.
+Implicação: o Exclusive Club terá variáveis privadas `PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET` ou equivalente conforme o painel, nunca expostas no bundle do navegador. O frontend receberá apenas um Connect Token efêmero criado para o usuário autenticado e o backend persistirá o `item_id`/consentimento de forma vinculada ao cliente.
 
 ## Pluggy — Connect Widget
 
@@ -116,7 +116,7 @@ Implicação: a primeira entrega pode ser implementada dentro do repositório at
 
 Fonte: https://docs.pluggy.ai/reference/connect-token-create
 
-O endpoint é `POST https://api.pluggy.ai/connect_token`, autenticado com `X-API-KEY`. O payload pode conter `itemId` para atualizar um vínculo existente e `options` com `clientUserId`, `webhookUrl`, `oauthRedirectUri` e `avoidDuplicates`. Para o Exclusive Clube, o backend deve enviar um `clientUserId` estável vinculado ao usuário e `avoidDuplicates: true`, sem enviar dados bancários ao frontend. O endpoint retorna um Connect Token limitado para o widget; esse token não pode recuperar dados.
+O endpoint é `POST https://api.pluggy.ai/connect_token`, autenticado com `X-API-KEY`. O payload pode conter `itemId` para atualizar um vínculo existente e `options` com `clientUserId`, `webhookUrl`, `oauthRedirectUri` e `avoidDuplicates`. Para o Exclusive Club, o backend deve enviar um `clientUserId` estável vinculado ao usuário e `avoidDuplicates: true`, sem enviar dados bancários ao frontend. O endpoint retorna um Connect Token limitado para o widget; esse token não pode recuperar dados.
 
 ## Pluggy — contas e transações
 
@@ -130,7 +130,7 @@ Implicação: o adaptador deve persistir `providerAccountId`, `providerTransacti
 
 Fonte: https://docs.pluggy.ai/docs/pluggy-connect-introduction
 
-A Pluggy descreve o Connect como um widget drop-in que trata validação de credenciais, MFA, erros e casos específicos das instituições. O widget funciona em navegadores e aplicações web, o que permite integrar a experiência ao painel administrativo do Exclusive Clube sem criar uma tela própria de login bancário.
+A Pluggy descreve o Connect como um widget drop-in que trata validação de credenciais, MFA, erros e casos específicos das instituições. O widget funciona em navegadores e aplicações web, o que permite integrar a experiência ao painel administrativo do Exclusive Club sem criar uma tela própria de login bancário.
 
 ## Pluggy — webhooks e widget: regras de produção
 

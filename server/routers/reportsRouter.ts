@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { bookings, fuelRecords, maintenances, allowedClients, vessels, clientQuotas, fuelBudget } from "../../drizzle/schema";
+import { bookings, fuelRecords, maintenances, allowedClients, vessels, clientQuotas, fuelBudget, expenseRecords } from "../../drizzle/schema";
 import { eq, and, gte, lte, desc, sql, count, ne } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
@@ -9,8 +9,11 @@ export const reportsRouter = router({
   // Relatório Financeiro
   financial: adminProcedure
     .input(z.object({
-      startDate: z.string(),
-      endDate: z.string(),
+      startDate: z.string().date(),
+      endDate: z.string().date(),
+    }).refine(({ startDate, endDate }) => startDate <= endDate, {
+      message: "Data inicial deve ser anterior ou igual à data final",
+      path: ["endDate"],
     }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -134,8 +137,21 @@ export const reportsRouter = router({
 
       const defaultRate = totalChargesCount > 0 ? (overdueChargesCount / totalChargesCount) * 100 : 0;
 
-      // 6. Custo de Manutenção vs Receita (placeholder - precisa de campo de custo em maintenances)
-      const maintenanceCost = 0; // TODO: adicionar campo cost em maintenances
+      // 6. Custos realizados de reparo/manutenção no contas a pagar.
+      // expense_records é a fonte financeira canônica; value já está em reais (DECIMAL).
+      const maintenanceCostResult = await db.select({
+        total: sql<number>`COALESCE(SUM(${expenseRecords.value}), 0)`.as('total'),
+      })
+      .from(expenseRecords)
+      .where(
+        and(
+          eq(expenseRecords.costCenter, 'repair'),
+          eq(expenseRecords.status, 'paid'),
+          gte(expenseRecords.dueDate, input.startDate),
+          lte(expenseRecords.dueDate, input.endDate),
+        )
+      );
+      const maintenanceCost = parseFloat(String(maintenanceCostResult[0]?.total || 0));
       const maintenanceVsRevenue = totalRevenue > 0 ? (maintenanceCost / totalRevenue) * 100 : 0;
 
       // 7. Custo de Combustível vs Receita
@@ -194,6 +210,7 @@ export const reportsRouter = router({
           half: halfQuotaRevenue,
         },
         defaultRate,
+        maintenanceCost,
         maintenanceVsRevenue,
         fuelVsRevenue,
         projections: {
