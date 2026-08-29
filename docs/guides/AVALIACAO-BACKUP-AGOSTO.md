@@ -1,4 +1,4 @@
-# Avaliação do backup de agosto — Exclusive Clube
+# Avaliação do backup de agosto — Exclusive Club
 
 **Autor:** Manus AI
 

@@ -411,7 +411,7 @@ export default function SystemSettings() {
               <CardDescription>
                 Informe as credenciais do aplicativo Pluggy e a URL pública do
                 sistema. O usuário final fará o login bancário dentro do Connect
-                Widget; o Exclusive Clube não armazena senhas bancárias.
+                Widget; o Exclusive Club não armazena senhas bancárias.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">

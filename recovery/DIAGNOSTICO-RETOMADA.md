@@ -1,4 +1,4 @@
-# Diagnóstico de retomada — Exclusive Clube
+# Diagnóstico de retomada — Exclusive Club
 
 **Data:** 26/08/2026  
 **Responsável pela análise:** Manus AI  

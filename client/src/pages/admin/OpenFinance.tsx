@@ -164,7 +164,7 @@ export default function OpenFinance() {
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
             <p>
               As credenciais bancárias são tratadas pelo Connect Widget. O
-              Exclusive Clube armazena apenas os identificadores, saldos e
+              Exclusive Club armazena apenas os identificadores, saldos e
               transações autorizados pelo consentimento Open Finance.
             </p>
           </div>

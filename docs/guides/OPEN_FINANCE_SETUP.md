@@ -1,4 +1,4 @@
-# Open Finance e retomada financeira — Exclusive Clube
+# Open Finance e retomada financeira — Exclusive Club
 
 **Status:** fundação implementada em branch isolada `manus/open-finance-foundation`
 **Provedor inicial:** Pluggy
@@ -6,7 +6,7 @@
 
 ## Decisão de arquitetura
 
-O Exclusive Clube usa o **Pluggy Connect Widget** para que a instituição bancária trate credenciais, MFA e fluxos específicos. O backend gera um Connect Token efêmero com `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET`; o frontend nunca recebe essas credenciais. A escolha é provider-first, não provider-locked: as tabelas guardam `provider`, `providerItemId`, `providerAccountId` e `providerTransactionId`, permitindo um adapter Belvo ou Celcoin no futuro sem mudar o domínio.
+O Exclusive Club usa o **Pluggy Connect Widget** para que a instituição bancária trate credenciais, MFA e fluxos específicos. O backend gera um Connect Token efêmero com `PLUGGY_CLIENT_ID` e `PLUGGY_CLIENT_SECRET`; o frontend nunca recebe essas credenciais. A escolha é provider-first, não provider-locked: as tabelas guardam `provider`, `providerItemId`, `providerAccountId` e `providerTransactionId`, permitindo um adapter Belvo ou Celcoin no futuro sem mudar o domínio.
 
 | Alternativa                                      | Vantagem                                                                                  | Limitação                                                                                                        | Decisão                    |
 | ------------------------------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------- |

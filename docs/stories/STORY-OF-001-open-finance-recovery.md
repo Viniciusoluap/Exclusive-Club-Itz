@@ -1,4 +1,4 @@
-# Story OF-001: Retomada segura e fundação Open Finance do Exclusive Clube
+# Story OF-001: Retomada segura e fundação Open Finance do Exclusive Club
 
 **Status:** Done — escopo técnico concluído; ativação externa permanece em stories operacionais
 **Story ID:** OF-001
@@ -8,7 +8,7 @@
 
 ## Objetivo
 
-Retomar o Exclusive Clube sem restaurar o backup antigo de forma destrutiva e preparar uma fundação automatizada para conectar contas bancárias por Open Finance, usando o Asaas como fonte financeira oficial das cobranças e o backup de agosto como fonte histórica seletiva.
+Retomar o Exclusive Club sem restaurar o backup antigo de forma destrutiva e preparar uma fundação automatizada para conectar contas bancárias por Open Finance, usando o Asaas como fonte financeira oficial das cobranças e o backup de agosto como fonte histórica seletiva.
 
 ## Decisões aprovadas
 

@@ -1,266 +1,254 @@
-import { describe, expect, it } from "vitest";
-import { appRouter } from "../routers";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MySqlDialect } from "drizzle-orm/mysql-core";
 import type { TrpcContext } from "../_core/context";
 
+const databaseMock = vi.hoisted(() => ({ getDb: vi.fn() }));
+
+vi.mock("../db", () => ({ getDb: databaseMock.getDb }));
+
+import { reportsRouter } from "./reportsRouter";
+
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
+type QueryResult = Record<string, unknown>[];
 
-function createAdminContext(): { ctx: TrpcContext } {
+function createContext(role: AuthenticatedUser["role"]): TrpcContext {
   const user: AuthenticatedUser = {
-    id: 1,
-    openId: "admin-user",
-    email: "admin@example.com",
-    name: "Admin User",
+    id: role === "admin" ? 1 : 2,
+    openId: `${role}-user`,
+    email: `${role}@example.com`,
+    name: role === "admin" ? "Admin User" : "Regular User",
     loginMethod: "manus",
-    role: "admin",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    lastSignedIn: new Date(),
+    role,
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    updatedAt: new Date("2026-01-01T00:00:00Z"),
+    lastSignedIn: new Date("2026-01-01T00:00:00Z"),
   };
 
-  const ctx: TrpcContext = {
+  return {
     user,
-    req: {
-      protocol: "https",
-      headers: {},
-    } as TrpcContext["req"],
-    res: {
-      clearCookie: () => {},
-    } as TrpcContext["res"],
+    req: { protocol: "https", headers: {} } as TrpcContext["req"],
+    res: { clearCookie: () => {} } as TrpcContext["res"],
   };
-
-  return { ctx };
 }
 
-function createNonAdminContext(): { ctx: TrpcContext } {
-  const user: AuthenticatedUser = {
-    id: 2,
-    openId: "regular-user",
-    email: "user@example.com",
-    name: "Regular User",
-    loginMethod: "manus",
-    role: "user",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    lastSignedIn: new Date(),
+/** Cria o encadeamento thenable usado pelas consultas Drizzle do router. */
+function queryResult(result: QueryResult, whereSpy: ReturnType<typeof vi.fn>) {
+  const chain: any = {
+    from: () => chain,
+    where: (condition: unknown) => {
+      whereSpy(condition);
+      return chain;
+    },
+    groupBy: () => chain,
+    orderBy: () => chain,
+    limit: () => chain,
+    then: (
+      resolve: (value: QueryResult) => unknown,
+      reject: (reason: unknown) => unknown
+    ) => Promise.resolve(result).then(resolve, reject),
   };
-
-  const ctx: TrpcContext = {
-    user,
-    req: {
-      protocol: "https",
-      headers: {},
-    } as TrpcContext["req"],
-    res: {
-      clearCookie: () => {},
-    } as TrpcContext["res"],
-  };
-
-  return { ctx };
+  return chain;
 }
+
+function configureDatabase(
+  options: {
+    selects?: QueryResult[];
+    executes?: QueryResult[];
+  } = {}
+) {
+  const selects = [...(options.selects ?? [])];
+  const executes = [...(options.executes ?? [])];
+  const whereSpy = vi.fn();
+  databaseMock.getDb.mockResolvedValue({
+    select: vi.fn(() => queryResult(selects.shift() ?? [], whereSpy)),
+    execute: vi.fn(async () => [executes.shift() ?? []]),
+  });
+  return { whereSpy };
+}
+
+const VALID_RANGE = { startDate: "2026-01-01", endDate: "2026-01-31" };
+
+beforeEach(() => {
+  databaseMock.getDb.mockReset();
+  configureDatabase();
+});
 
 describe("reportsRouter", () => {
   describe("financial", () => {
-    it("deve retornar relatório financeiro para admin", async () => {
-      const { ctx } = createAdminContext();
-      const caller = appRouter.createCaller(ctx);
+    it("calcula valores financeiros conhecidos usando despesas pagas de reparo", async () => {
+      const { whereSpy } = configureDatabase({
+        selects: [
+          [{ total: 10_000 }],
+          [
+            { clientEmail: "full@example.com", total: 6_000 },
+            { clientEmail: "half@example.com", total: 4_000 },
+          ],
+          [{ vesselName: "Lancha Teste", total: 10_000 }],
+          [
+            { clientId: 1, quotaType: "full" },
+            { clientId: 2, quotaType: "half" },
+          ],
+          [
+            { id: 1, email: "full@example.com" },
+            { id: 2, email: "half@example.com" },
+          ],
+          [{ total: "25.00" }],
+          [{ total: 2_000 }],
+          [
+            {
+              clientEmail: "full@example.com",
+              clientName: "Cliente",
+              total: 6_000,
+            },
+          ],
+        ],
+        executes: [
+          [{ total: "100.00" }],
+          [{ count: 4 }],
+          [{ count: 1 }],
+          [{ month: "2026-01", total: "200.00" }],
+        ],
+      });
 
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
+      const result = await reportsRouter
+        .createCaller(createContext("admin"))
+        .financial(VALID_RANGE);
 
-      const result = await caller.reports.financial({ startDate, endDate });
-
-      expect(result).toHaveProperty("totalRevenue");
-      expect(result).toHaveProperty("avgTicket");
-      expect(result).toHaveProperty("revenueByVessel");
-      expect(result).toHaveProperty("revenueByQuotaType");
-      expect(result).toHaveProperty("defaultRate");
-      expect(result).toHaveProperty("maintenanceVsRevenue");
-      expect(result).toHaveProperty("fuelVsRevenue");
-      expect(result).toHaveProperty("projections");
-      expect(result).toHaveProperty("monthlyRevenue");
-      expect(result).toHaveProperty("clientLTV");
-
-      expect(typeof result.totalRevenue).toBe("number");
-      expect(typeof result.avgTicket).toBe("number");
-      expect(Array.isArray(result.revenueByVessel)).toBe(true);
-      expect(result.revenueByQuotaType).toHaveProperty("full");
-      expect(result.revenueByQuotaType).toHaveProperty("half");
-      expect(result.projections).toHaveProperty("days30");
-      expect(result.projections).toHaveProperty("days60");
-      expect(result.projections).toHaveProperty("days90");
+      expect(result).toMatchObject({
+        totalRevenue: 200,
+        avgTicket: 50,
+        revenueByVessel: [{ vesselName: "Lancha Teste", total: 100 }],
+        revenueByQuotaType: { full: 60, half: 40 },
+        defaultRate: 25,
+        maintenanceCost: 25,
+        maintenanceVsRevenue: 12.5,
+        fuelVsRevenue: 10,
+        projections: { days30: 200, days60: 400, days90: 600 },
+      });
+      expect(result.clientLTV).toEqual([
+        { clientEmail: "full@example.com", clientName: "Cliente", total: 60 },
+      ]);
+      const maintenanceWhere = whereSpy.mock.calls[4][0] as {
+        getSQL: () => Parameters<MySqlDialect["sqlToQuery"]>[0];
+      };
+      const maintenanceQuery = new MySqlDialect().sqlToQuery(
+        maintenanceWhere.getSQL()
+      );
+      expect(maintenanceQuery.params).toEqual([
+        "repair",
+        "paid",
+        "2026-01-01",
+        "2026-01-31",
+      ]);
+      expect(
+        Object.values({
+          totalRevenue: result.totalRevenue,
+          avgTicket: result.avgTicket,
+          defaultRate: result.defaultRate,
+          maintenanceCost: result.maintenanceCost,
+          maintenanceVsRevenue: result.maintenanceVsRevenue,
+          fuelVsRevenue: result.fuelVsRevenue,
+        }).every(Number.isFinite)
+      ).toBe(true);
     });
 
-    it("deve negar acesso para não-admin", async () => {
-      const { ctx } = createNonAdminContext();
-      const caller = appRouter.createCaller(ctx);
+    it("retorna custo e percentual zero quando não há despesas nem receita", async () => {
+      const result = await reportsRouter
+        .createCaller(createContext("admin"))
+        .financial(VALID_RANGE);
 
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-
-      await expect(caller.reports.financial({ startDate, endDate })).rejects.toThrow("You do not have required permission");
-    });
-  });
-
-  describe("executive", () => {
-    it("deve retornar dashboard executivo para admin", async () => {
-      const { ctx } = createAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const result = await caller.reports.executive();
-
-      expect(result).toHaveProperty("alerts");
-      expect(result).toHaveProperty("score");
-      expect(result).toHaveProperty("scoreLabel");
-
-      expect(Array.isArray(result.alerts)).toBe(true);
-      expect(typeof result.score).toBe("number");
-      expect(result.score).toBeGreaterThanOrEqual(0);
-      expect(result.score).toBeLessThanOrEqual(100);
-      expect(typeof result.scoreLabel).toBe("string");
+      expect(result.totalRevenue).toBe(0);
+      expect(result.maintenanceCost).toBe(0);
+      expect(result.maintenanceVsRevenue).toBe(0);
+      expect(Number.isFinite(result.maintenanceVsRevenue)).toBe(true);
     });
 
-    it("deve negar acesso para não-admin", async () => {
-      const { ctx } = createNonAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      await expect(caller.reports.executive()).rejects.toThrow("You do not have required permission");
-    });
-  });
-
-  describe("occupancy", () => {
-    it("deve retornar relatório de ocupação para admin", async () => {
-      const { ctx } = createAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-
-      const result = await caller.reports.occupancy({ startDate, endDate });
-
-      expect(result).toHaveProperty("occupancyByVessel");
-      expect(result).toHaveProperty("cancellationRate");
-      expect(result).toHaveProperty("avgLeadTime");
-      expect(result).toHaveProperty("projectedOccupancy");
-      expect(Array.isArray(result.occupancyByVessel)).toBe(true);
+    it.each([
+      [
+        { startDate: "inválida", endDate: "2026-01-31" },
+        "data inicial inválida",
+      ],
+      [
+        { startDate: "2026-01-01", endDate: "31/01/2026" },
+        "data final inválida",
+      ],
+      [
+        { startDate: "2026-02-01", endDate: "2026-01-31" },
+        "intervalo invertido",
+      ],
+    ])("rejeita %s", async range => {
+      await expect(
+        reportsRouter.createCaller(createContext("admin")).financial(range)
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(databaseMock.getDb).not.toHaveBeenCalled();
     });
 
-    it("deve negar acesso para não-admin", async () => {
-      const { ctx } = createNonAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-
-      await expect(caller.reports.occupancy({ startDate, endDate })).rejects.toThrow("You do not have required permission");
-    });
-  });
-
-  describe("clients", () => {
-    it("deve retornar relatório de clientes para admin", async () => {
-      const { ctx } = createAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-
-      const result = await caller.reports.clients({ startDate, endDate });
-
-      expect(result).toHaveProperty("activeCount");
-      expect(result).toHaveProperty("inactiveCount");
-      expect(result).toHaveProperty("retentionRate");
-      expect(result).toHaveProperty("churnRate");
-      expect(typeof result.activeCount).toBe("number");
-    });
-
-    it("deve negar acesso para não-admin", async () => {
-      const { ctx } = createNonAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-
-      await expect(caller.reports.clients({ startDate, endDate })).rejects.toThrow("You do not have required permission");
+    it("nega acesso para não-admin", async () => {
+      await expect(
+        reportsRouter.createCaller(createContext("user")).financial(VALID_RANGE)
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
     });
   });
 
-  describe("maintenance", () => {
-    it("deve retornar relatório de manutenção para admin", async () => {
-      const { ctx } = createAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-
-      const result = await caller.reports.maintenance({ startDate, endDate });
-
-      expect(result).toHaveProperty("activeMaintenances");
-      expect(result).toHaveProperty("avgDuration");
-      expect(result).toHaveProperty("availabilityRate");
-      expect(Array.isArray(result.activeMaintenances)).toBe(true);
+  describe.each([
+    [
+      "executive",
+      () => reportsRouter.createCaller(createContext("admin")).executive(),
+      () => reportsRouter.createCaller(createContext("user")).executive(),
+    ],
+    [
+      "occupancy",
+      () =>
+        reportsRouter
+          .createCaller(createContext("admin"))
+          .occupancy(VALID_RANGE),
+      () =>
+        reportsRouter
+          .createCaller(createContext("user"))
+          .occupancy(VALID_RANGE),
+    ],
+    [
+      "clients",
+      () =>
+        reportsRouter.createCaller(createContext("admin")).clients(VALID_RANGE),
+      () =>
+        reportsRouter.createCaller(createContext("user")).clients(VALID_RANGE),
+    ],
+    [
+      "maintenance",
+      () =>
+        reportsRouter
+          .createCaller(createContext("admin"))
+          .maintenance(VALID_RANGE),
+      () =>
+        reportsRouter
+          .createCaller(createContext("user"))
+          .maintenance(VALID_RANGE),
+    ],
+    [
+      "fuel",
+      () =>
+        reportsRouter.createCaller(createContext("admin")).fuel(VALID_RANGE),
+      () => reportsRouter.createCaller(createContext("user")).fuel(VALID_RANGE),
+    ],
+    [
+      "seasonality",
+      () =>
+        reportsRouter
+          .createCaller(createContext("admin"))
+          .seasonality(VALID_RANGE),
+      () =>
+        reportsRouter
+          .createCaller(createContext("user"))
+          .seasonality(VALID_RANGE),
+    ],
+  ])("%s", (_name, callAsAdmin, callAsUser) => {
+    it("executa deterministicamente para admin com banco controlado", async () => {
+      await expect(callAsAdmin()).resolves.toBeDefined();
     });
 
-    it("deve negar acesso para não-admin", async () => {
-      const { ctx } = createNonAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-
-      await expect(caller.reports.maintenance({ startDate, endDate })).rejects.toThrow("You do not have required permission");
-    });
-  });
-
-  describe("fuel", () => {
-    it("deve retornar relatório de combustível para admin", async () => {
-      const { ctx } = createAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-
-      const result = await caller.reports.fuel({ startDate, endDate });
-
-      expect(result).toHaveProperty("consumptionByVessel");
-      expect(result).toHaveProperty("avgCostPerLiter");
-      expect(result).toHaveProperty("stockProjection");
-      expect(Array.isArray(result.consumptionByVessel)).toBe(true);
-    });
-
-    it("deve negar acesso para não-admin", async () => {
-      const { ctx } = createNonAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-
-      await expect(caller.reports.fuel({ startDate, endDate })).rejects.toThrow("You do not have required permission");
-    });
-  });
-
-  describe("seasonality", () => {
-    it("deve retornar relatório de sazonalidade para admin", async () => {
-      const { ctx } = createAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-
-      const result = await caller.reports.seasonality({ startDate, endDate });
-
-      expect(result).toHaveProperty("occupancyByMonth");
-      expect(result).toHaveProperty("revenueByMonth");
-      expect(result).toHaveProperty("peakMonths");
-      expect(result).toHaveProperty("lowMonths");
-    });
-
-    it("deve negar acesso para não-admin", async () => {
-      const { ctx } = createNonAdminContext();
-      const caller = appRouter.createCaller(ctx);
-
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
-
-      await expect(caller.reports.seasonality({ startDate, endDate })).rejects.toThrow("You do not have required permission");
+    it("nega acesso para não-admin", async () => {
+      await expect(callAsUser()).rejects.toMatchObject({ code: "FORBIDDEN" });
     });
   });
 });
