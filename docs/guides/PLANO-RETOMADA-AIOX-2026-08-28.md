@@ -100,6 +100,19 @@ Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS
 
     **Como usar:** cadastrar `STAGING_VALIDATION_ENABLED=true` e `STAGING_DATABASE_URL` (apontando para o schema candidato) no ambiente seguro do Manus, publicar, e chamar `system.stagingValidationReport` (via sessão admin autenticada) para conferir as contagens antes de qualquer decisão de promoção. Desligar a flag depois de conferir.
 
+20. **Domínio próprio confirmado + achado sobre o Vercel (30/08/2026):** o responsável configurou `exclusiveclubitz.com` manualmente no painel do Manus (Settings → Data controls → Custom Domains) e confirmou que resolve. Em seguida, ao investigar se o checklist da Fase 6 ("repontar Vercel") ainda era necessário, o responsável removeu o domínio pago do projeto Vercel (`exclusive-club-itz`), deixando só o domínio padrão `*.vercel.app`, e confirmou que `https://exclusiveclubitz.com` continuou carregando normalmente.
+
+    **Isso confirma:** a produção real já está servida pelo Manus, atrelado ao repositório `Exclusive-Club-Itz-Manus` (o definitivo) — não pelo Vercel, e não pelo `Exclusive-Club-Itz` antigo. O Vercel só era usado para builds de preview de Pull Request (visível nos comentários automáticos do bot Vercel nas PRs #133/#134), nunca serviu produção. **O item "repontar o projeto Vercel" da checklist da Fase 6 não se aplica — o corte de deploy já aconteceu na prática.**
+
+    **Situação real da checklist da Fase 6 agora:**
+    - [x] Secrets `ASAAS_API_KEY`/`ASAAS_WEBHOOK_TOKEN` em `Exclusive-Club-Itz-Manus` — confirmado pelo responsável (print do GitHub).
+    - [x] Árvores idênticas — confirmado agora: comparação completa de blob SHAs entre as duas `main` (`git ls-tree -r`), zero diferença.
+    - [x] CI 100% verde em `Exclusive-Club-Itz-Manus` com a árvore sincronizada — confirmado (últimos merges #11/#12, ambos verdes).
+    - [x] Domínio próprio funcionando, servido pelo Manus/`Exclusive-Club-Itz-Manus` — confirmado.
+    - [ ] Repontar Vercel — **não se aplica** (Vercel nunca serviu produção, só preview de PR).
+    - [ ] Smoke test completo (`/admin/diagnostico`, `/admin/backups`, `/admin/saas`, `/admin/open-finance`) contra o domínio final — ainda não feito nesta sessão.
+    - [ ] Confirmação explícita por escrito do responsável de que a paridade foi conferida, antes de excluir `Exclusive-Club-Itz` — ainda pendente. A exclusão nunca é executada sozinha por nenhuma ferramenta, mesmo com o restante da checklist completo.
+
 ## 1. Divisão de responsabilidade
 
 | Frente | Onde | Quem opera | Por quê |
