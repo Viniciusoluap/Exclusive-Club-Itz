@@ -17,6 +17,7 @@
 import mysql from "mysql2/promise";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const API_URL = (
   process.env.ASAAS_API_URL || "https://api.asaas.com/v3"
@@ -26,11 +27,34 @@ const API_KEY = process.env.ASAAS_API_KEY;
 const APPLY = process.argv.includes("--apply");
 const PAGE_SIZE = 100;
 const WAIT_MS = 180;
+const configuredPageTimeout = Number(process.env.ASAAS_PAGE_TIMEOUT_MS || 20_000);
+const PAGE_TIMEOUT_MS = Number.isFinite(configuredPageTimeout)
+  ? Math.min(Math.max(configuredPageTimeout, 1_000), 30_000)
+  : 20_000;
+const REPORT_PROGRESS = process.env.ASAAS_REBUILD_PROGRESS === "true";
 const outputPath =
   process.env.ASAAS_REBUILD_REPORT ||
   path.resolve("recovery/asaas-rebuild-report.json");
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+function reportProgress(resource, offset) {
+  if (!REPORT_PROGRESS) return;
+  process.stdout.write(`${JSON.stringify({ event: "page", resource, offset })}\n`);
+}
+
+function reportFailure(stage, error) {
+  if (!REPORT_PROGRESS) return;
+  const message = String(error?.message || "");
+  const kind = message.includes("tempo limite por página")
+    ? "timeout_page"
+    : message.includes("HTTP")
+      ? "http"
+      : stage === "staging"
+        ? "staging"
+        : "processo";
+  process.stdout.write(`${JSON.stringify({ event: "error", stage, kind })}\n`);
+}
 
 function normalizeStatus(status) {
   switch (String(status || "").toUpperCase()) {
@@ -84,29 +108,39 @@ async function fetchPage(resource, offset) {
   const url = new URL(`${API_URL}/${resource}`);
   url.searchParams.set("limit", String(PAGE_SIZE));
   url.searchParams.set("offset", String(offset));
-  const response = await fetch(url, { headers: buildHeaders() });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(
-      `Asaas ${resource}: HTTP ${response.status} ${String(body?.errors?.[0]?.description || body?.message || "erro desconhecido").slice(0, 240)}`
-    );
+  reportProgress(resource, offset);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PAGE_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { headers: buildHeaders(), signal: controller.signal });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        `Asaas ${resource}: HTTP ${response.status} ${String(body?.errors?.[0]?.description || body?.message || "erro desconhecido").slice(0, 240)}`
+      );
+    }
+    return body;
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(`Asaas ${resource}: tempo limite por página`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  return body;
 }
 
-async function fetchAll(resource) {
-  const rows = [];
+async function forEachPage(resource, onRows) {
   let offset = 0;
   let hasMore = true;
   while (hasMore) {
     const page = await fetchPage(resource, offset);
-    const data = Array.isArray(page.data) ? page.data : [];
-    rows.push(...data);
-    hasMore = Boolean(page.hasMore) && data.length > 0;
-    offset += data.length || PAGE_SIZE;
+    const rows = Array.isArray(page.data) ? page.data : [];
+    await onRows(rows);
+    hasMore = Boolean(page.hasMore) && rows.length > 0;
+    offset += rows.length || PAGE_SIZE;
     if (hasMore) await sleep(WAIT_MS);
   }
-  return rows;
 }
 
 function customerRecord(customer) {
@@ -141,6 +175,73 @@ function chargeRecord(charge, customer, localClient) {
     bankSlipUrl: charge.bankSlipUrl || null,
     source: "asaas_import",
   };
+}
+
+export function createReport(mode = "dry-run") {
+  return {
+    mode,
+    generatedAt: new Date().toISOString(),
+    customers: { total: 0, inserted: 0, updated: 0 },
+    payments: {
+      total: 0,
+      insertedOrUpdated: 0,
+      matchedLocalClients: 0,
+      unmatchedLocalClients: 0,
+    },
+    statuses: {},
+    warnings: [],
+  };
+}
+
+export async function processCustomerPage(
+  customers,
+  { report, customersById, applyCustomerRecord }
+) {
+  for (const customer of customers) {
+    const normalized = customerRecord(customer);
+    customersById.set(customer.id, normalized);
+    report.customers.total += 1;
+    if (applyCustomerRecord) {
+      const action = await applyCustomerRecord(normalized);
+      report.customers[action] += 1;
+    }
+  }
+}
+
+export async function processPaymentPage(
+  payments,
+  { report, customersById, localState, applyChargeRecord }
+) {
+  for (const payment of payments) {
+    const customer =
+      customersById.get(payment.customer) ||
+      localState.customersById.get(payment.customer);
+    const localClient = customer?.email
+      ? localState.clientsByEmail.get(customer.email.trim().toLowerCase())
+      : undefined;
+    const normalized = chargeRecord(payment, customer, localClient);
+    report.payments.total += 1;
+    report.statuses[normalized.status] =
+      (report.statuses[normalized.status] || 0) + 1;
+    if (localClient) report.payments.matchedLocalClients += 1;
+    else report.payments.unmatchedLocalClients += 1;
+    if (applyChargeRecord) {
+      await applyChargeRecord(normalized);
+      report.payments.insertedOrUpdated += 1;
+    }
+  }
+}
+
+export function databaseConnectionConfig(databaseUrl, env = process.env) {
+  const parsed = new URL(databaseUrl);
+  const stagingMarker = `${parsed.hostname}${parsed.pathname}${parsed.search}`;
+  const isStaging =
+    env.NODE_ENV === "staging" ||
+    env.ASAAS_REBUILD_TLS === "true" ||
+    /staging/i.test(stagingMarker);
+  return isStaging
+    ? { uri: databaseUrl, ssl: { rejectUnauthorized: true } }
+    : databaseUrl;
 }
 
 async function loadLocalState(connection) {
@@ -260,56 +361,54 @@ async function main() {
     );
   }
 
-  const customers = await fetchAll("customers");
-  const payments = await fetchAll("payments");
-  const customersById = new Map(
-    customers.map(customer => [customer.id, customerRecord(customer)])
-  );
   let connection = null;
   let localState = { clientsByEmail: new Map(), customersById: new Map() };
   if (DATABASE_URL) {
-    connection = await mysql.createConnection(DATABASE_URL);
-    localState = await loadLocalState(connection);
-  }
-
-  const report = {
-    mode: APPLY ? "apply" : "dry-run",
-    generatedAt: new Date().toISOString(),
-    customers: { total: customers.length, inserted: 0, updated: 0 },
-    payments: {
-      total: payments.length,
-      insertedOrUpdated: 0,
-      matchedLocalClients: 0,
-      unmatchedLocalClients: 0,
-    },
-    statuses: {},
-    warnings: [],
-  };
-
-  for (const customer of customers) {
-    const normalized = customerRecord(customer);
-    if (APPLY && connection) {
-      const action = await applyCustomer(connection, normalized);
-      report.customers[action] += 1;
+    try {
+      reportProgress("staging", 0);
+      const connectionConfig = databaseConnectionConfig(DATABASE_URL);
+      connection = await mysql.createConnection(connectionConfig);
+      localState = await loadLocalState(connection);
+    } catch (error) {
+      reportFailure("staging", error);
+      throw error;
     }
   }
 
-  for (const payment of payments) {
-    const customer =
-      customersById.get(payment.customer) ||
-      localState.customersById.get(payment.customer);
-    const localClient = customer?.email
-      ? localState.clientsByEmail.get(customer.email.trim().toLowerCase())
-      : undefined;
-    const normalized = chargeRecord(payment, customer, localClient);
-    report.statuses[normalized.status] =
-      (report.statuses[normalized.status] || 0) + 1;
-    if (localClient) report.payments.matchedLocalClients += 1;
-    else report.payments.unmatchedLocalClients += 1;
-    if (APPLY && connection) {
-      await applyCharge(connection, normalized);
-      report.payments.insertedOrUpdated += 1;
-    }
+  const report = createReport(APPLY ? "apply" : "dry-run");
+  const customersById = new Map();
+
+  try {
+    await forEachPage("customers", async customers => {
+      await processCustomerPage(customers, {
+        report,
+        customersById,
+        applyCustomerRecord:
+          APPLY && connection
+            ? customer => applyCustomer(connection, customer)
+            : undefined,
+      });
+    });
+  } catch (error) {
+    reportFailure("clientes", error);
+    throw error;
+  }
+
+  try {
+    await forEachPage("payments", async payments => {
+      await processPaymentPage(payments, {
+        report,
+        customersById,
+        localState,
+        applyChargeRecord:
+          APPLY && connection
+            ? charge => applyCharge(connection, charge)
+            : undefined,
+      });
+    });
+  } catch (error) {
+    reportFailure("pagamentos", error);
+    throw error;
   }
 
   if (connection) await connection.end();
@@ -327,7 +426,13 @@ async function main() {
     );
 }
 
-main().catch(error => {
-  console.error(`Falha na reconstrução Asaas: ${error.message}`);
-  process.exitCode = 1;
-});
+const invokedPath = process.argv[1];
+if (
+  invokedPath &&
+  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
+) {
+  main().catch(error => {
+    console.error(`Falha na reconstrução Asaas: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
