@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ArrowLeft, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
 import { useLocation } from "wouter";
+import { AsaasStagingDryRunCard } from "@/components/admin/AsaasStagingDryRunCard";
 
 function StatusIcon({ ok }: { ok: boolean }) {
   return ok ? (
@@ -363,6 +364,8 @@ export default function Diagnostico() {
               </CardContent>
             </Card>
           )}
+
+          <AsaasStagingDryRunCard />
 
           <Button onClick={() => refetch()} disabled={isFetching} variant="outline">
             <RefreshCw
