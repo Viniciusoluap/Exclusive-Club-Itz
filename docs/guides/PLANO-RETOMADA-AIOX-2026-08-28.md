@@ -80,6 +80,18 @@ Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS
 
     As PRs espelho foram revalidadas com blobs do CI idênticos à fonte e mescladas em ordem: #4 (CI `33323828085`, merge `30d70883f7e1cab4470c2775426a76e5e798b75c`), #5 (CI `33323863811`, merge `9e5e9daf0ea1548abbceb91cf9b6967c08803fa0`), #6 (CI `33323866728`, merge `2b73c9a592abd99c61acb9e9aba43fd7567dea38`) e #7 (CI `33323834089`, merge `05ae7e4057d461e424befdf6b918801e7841f06a`). Uma comparação integral por arquivos encontrou dez diferenças residuais anteriores a esta sessão; como `Exclusive-Club-Itz` ainda era a fonte ativa, a PR espelho #9 copiou os dez blobs canônicos, inclusive `reportsRouter` e seus testes (CI `33324352882`, merge `4de34865c0e4ad7d564aabbcee64cf4a20fd3015`). A comparação anterior não continha nenhuma outra diferença e todos os dez SHA de blob passaram a coincidir, concluindo o corte byte a byte da Fase 6. O gerador/fluxo de backup permaneceu sem regressão. Nenhuma produção, `DATABASE_URL` ativa, Asaas real, Pluggy real ou `--apply` foi tocado.
 
+18. **Correção do painel de dry-run Asaas — travava antes da primeira página (30/08/2026):** o Manus reportou que, mesmo com `ASAAS_API_KEY` cadastrada e regravada nas Configurações internas e `STAGING_DATABASE_URL` presente, o dry-run em `/admin/diagnostico` não concluía — o executor (`server/_core/asaasStagingDryRun.ts`) falhava na inicialização antes de qualquer chamada à API do Asaas.
+
+    **Causa raiz confirmada no código:** o executor fazia `spawn(process.execPath, [scriptPath], ...)`, rodando `scripts/asaas_rebuild.mjs` como subprocesso e repassando `ASAAS_API_KEY` só via variável de ambiente do processo filho. Mas o script só lia `process.env.ASAAS_API_KEY` diretamente — nunca o fallback para Configurações internas (`getSetting("asaas_api_key")`) que `resolveAsaasApiKey()` (`server/_core/asaas.ts`) já resolve, e que é o workaround documentado no próprio código para o bug conhecido do Manus que não injeta a env var no ambiente do processo. Como a chave foi cadastrada via Configurações internas (não como env var pura), o processo filho nunca a via — falha silenciosa antes da primeira página, exatamente o sintoma relatado.
+
+    **Correção (PR #133 em `Exclusive-Club-Itz`, replicada na PR #11 em `Exclusive-Club-Itz-Manus`):** o `spawn`/processo filho foi eliminado por inteiro. `scripts/asaas_rebuild.mjs` passou a expor `runReconciliation()`, uma função parametrizada que faz toda a paginação/montagem do relatório sem depender de constantes de módulo (`main()`, o CLI, virou um wrapper fino sobre ela — comportamento de linha de comando inalterado). `server/_core/asaasStagingDryRun.ts` chama essa função diretamente no processo do servidor, resolvendo a chave via `resolveAsaasApiKey()` e mantendo-a só em memória — nunca aceita nem repassa `--apply` (`apply: false` é fixo, sem parâmetro que o altere).
+
+    Uma revisão automatizada (Codex) na PR ativa encontrou mais 3 problemas reais antes do merge, todos verificados e corrigidos no mesmo commit: (a) o timeout total só cobria as chamadas HTTP — uma `resolveAsaasApiKey()`/`mysql.createConnection()` travada deixaria o status preso em "running" para sempre; corrigido para correr a operação inteira (`Promise.race`) contra o prazo; (b) a URL da API nunca era resolvida a partir da chave (`resolveAsaasApiUrl`) — uma chave sandbox usaria por padrão o endpoint de produção do script, falhando autenticação; corrigido para sempre derivar a URL da chave, como o resto do app já faz; (c) uma reconciliação que falhasse no meio pulava o fechamento da conexão de staging — inofensivo no processo filho antigo (que morria sozinho ao sair), mas um vazamento real agora que roda dentro do processo longevo do servidor; corrigido com `finally`.
+
+    Validado localmente nos dois repositórios (`tsc --noEmit` limpo, testes relacionados passando, build de produção sem erro) e no CI oficial — PR #133 mergeada em `Exclusive-Club-Itz` (squash `5f08c248ef3c821d64d5770eda22cd2b0979bd03`); PR #11 mergeada em `Exclusive-Club-Itz-Manus` (merge `cb4af96e3f2fe0ee02b6bdb184215ec091e22a33`). Nenhuma produção, `DATABASE_URL` ativa, chave real ou `--apply` foi tocado.
+
+    **Próximo passo exato:** o Manus deve publicar a `main` atualizada e repetir o dry-run em `/admin/diagnostico` — agora deve concluir de ponta a ponta e mostrar `mode: "dry-run"` com os totais agregados. `--apply` continua sem autorização (GATE MANUS #3 original).
+
 ## 1. Divisão de responsabilidade
 
 | Frente | Onde | Quem opera | Por quê |
@@ -134,7 +146,7 @@ Cada fase do lado GitHub roda autonomamente, usando os agentes AIOX apropriados 
 - **Saída:** relatório de divergência.
 
 > **GATE MANUS #3 (você):** inserir nova chave Asaas (tratando a antiga como comprometida) e novo token de webhook; autorizar `pnpm asaas:rebuild -- --apply` só depois da revisão.
-> **Status (29/08/2026):** setup do dry-run em andamento (item 15) — `--apply` continua sem autorização.
+> **Status (30/08/2026):** o bug que travava o painel de dry-run foi corrigido (item 18 da seção 0) — o executor rodava como processo filho e nunca via a chave cadastrada nas Configurações internas. Corrigido, testado e mergeado nos dois repositórios. Falta o Manus publicar a `main` atualizada e repetir o dry-run em `/admin/diagnostico`. `--apply` continua sem autorização.
 
 ### Fase 4 — Open Finance / Pluggy sandbox (prepara; você faz o consentimento)
 - `@dev`: confirmar webhook HTTPS (`PUBLIC_APP_URL/api/webhooks/pluggy`), variáveis Pluggy.
