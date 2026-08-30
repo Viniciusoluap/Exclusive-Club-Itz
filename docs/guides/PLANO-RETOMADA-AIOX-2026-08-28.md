@@ -110,8 +110,8 @@ Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS
     - [x] CI 100% verde em `Exclusive-Club-Itz-Manus` com a árvore sincronizada — confirmado (últimos merges #11/#12, ambos verdes).
     - [x] Domínio próprio funcionando, servido pelo Manus/`Exclusive-Club-Itz-Manus` — confirmado.
     - [ ] Repontar Vercel — **não se aplica** (Vercel nunca serviu produção, só preview de PR).
-    - [ ] Smoke test completo (`/admin/diagnostico`, `/admin/backups`, `/admin/saas`, `/admin/open-finance`) contra o domínio final — ainda não feito nesta sessão.
-    - [ ] Confirmação explícita por escrito do responsável de que a paridade foi conferida, antes de excluir `Exclusive-Club-Itz` — ainda pendente. A exclusão nunca é executada sozinha por nenhuma ferramenta, mesmo com o restante da checklist completo.
+    - [x] Smoke test completo (`/admin/diagnostico`, `/admin/backups`, `/admin/saas`, `/admin/open-finance`) contra o domínio final — confirmado pelo responsável (30/08/2026): as 4 páginas carregam sem erro no domínio real.
+    - [ ] Confirmação explícita por escrito do responsável de que a paridade foi conferida, **autorizando especificamente a exclusão** — ainda pendente por decisão do responsável ("não vamos excluir agora, quero tudo funcionando e testado antes"). Checklist técnica completa; a exclusão em si aguarda esse aval separado, sem prazo definido.
 
 ## 1. Divisão de responsabilidade
 
