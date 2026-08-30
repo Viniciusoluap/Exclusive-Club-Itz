@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.33.4",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --external:./vite --outfile=api/_server.js",
     "build:vercel": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --external:./vite --outfile=api/_server.js",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
