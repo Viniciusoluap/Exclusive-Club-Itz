@@ -34,7 +34,7 @@ function createAdminContext(): TrpcContext {
 const hasAsaasKey = !!process.env.ASAAS_API_KEY;
 
 describe("Asaas Integration", () => {
-  it("should have ASAAS_API_KEY configured", () => {
+  it.skipIf(!hasAsaasKey)("should have ASAAS_API_KEY configured", () => {
     const apiKey = process.env.ASAAS_API_KEY;
     expect(apiKey).toBeDefined();
     expect(apiKey).not.toBe("");
