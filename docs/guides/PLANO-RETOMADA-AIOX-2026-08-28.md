@@ -76,7 +76,7 @@ A memória enviada descrevia um estado de dois dias atrás. Ao conferir o GitHub
 
 Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS foi tocado nesta sessão — o levantamento acima foi só leitura via API do GitHub, e o disparo de CI usou apenas os secrets que o próprio GitHub Actions já injeta (nenhum valor visto ou manuseado por Claude).
 
-## 1. Divisão de responsabilidade
+17. **Desbloqueio do CI do espelho e gating integral dos testes Asaas (30/08/2026):** ao retomar a Fase 6, confirmou-se pela interface administrativa do GitHub que as permissões gerais aceitavam Actions, mas o executor estava desativado no nível do repositório `Exclusive-Club-Itz-Manus`. O Actions foi habilitado após autorização explícita do responsável, sem ler ou alterar valores de secrets. As primeiras runs reais das PRs espelho #4–#7 chegaram aos testes e revelaram que três asserções de credencial em `server/asaas.auth.test.ts` e `server/asaas.integration.test.ts` ainda exigiam `ASAAS_API_KEY`, embora os próprios comentários e demais casos prometessem `skipIf` quando o secret estivesse ausente. O gating foi aplicado também a essas asserções; chamadas reais continuam condicionadas à chave sandbox, nenhum valor falso ou segredo real foi criado, e a ausência de credencial deixa de impedir testes puramente locais. A conclusão das runs, merges ordenados e comparação final das árvores deve ser acrescentada a este item antes do corte da Fase 6.\n\n## 1. Divisão de responsabilidade
 
 | Frente | Onde | Quem opera | Por quê |
 |---|---|---|---|
