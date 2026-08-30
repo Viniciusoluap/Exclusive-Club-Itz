@@ -1,10 +1,8 @@
-import { randomUUID } from "node:crypto";
-import { spawn } from "node:child_process";
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import { runReconciliation } from "../../scripts/asaas_rebuild.mjs";
+import { resolveAsaasApiKey, resolveAsaasApiUrl } from "./asaas";
 
-const SCRIPT_TIMEOUT_MS = 900_000;
+const RUN_TIMEOUT_MS = 900_000;
+const PAGE_TIMEOUT_MS = 20_000;
 
 type DryRunReport = {
   mode: "dry-run";
@@ -107,131 +105,93 @@ export function summarizeReport(value: unknown): DryRunReport {
   };
 }
 
-async function executeDryRun(): Promise<DryRunOutcome> {
-  const reportPath = path.join(
-    os.tmpdir(),
-    `exclusive-club-asaas-dry-run-${randomUUID()}.json`
-  );
-  const scriptPath = path.resolve(process.cwd(), "scripts", "asaas_rebuild.mjs");
+function classifyErrorType(
+  stage: DryRunFailure["stage"],
+  error: unknown
+): DryRunFailure["type"] {
+  const message = String((error as Error)?.message || "");
+  if (message.includes("tempo limite total")) return "timeout_total";
+  if (message.includes("tempo limite por página")) return "timeout_page";
+  if (message.includes("HTTP")) return "http";
+  if (stage === "staging") return "staging";
+  return "processo";
+}
 
-  try {
-    const databaseUrl = stagingConnectionUrl();
-    const outcome = await new Promise<{
-      exitCode: number;
-      timedOut: boolean;
-      stage: DryRunFailure["stage"];
-      type: DryRunFailure["type"];
-      pagesStarted: number;
-      lastOffset: number | null;
-    }>(resolve => {
-      let timedOut = false;
-      let pagesStarted = 0;
-      let stage: DryRunFailure["stage"] = "inicializacao";
-      let type: DryRunFailure["type"] = "processo";
-      let lastOffset: number | null = null;
-      let stdout = "";
-      let settled = false;
-      const finish = (exitCode: number) => {
-        if (settled) return;
-        settled = true;
-        resolve({ exitCode, timedOut, stage, type, pagesStarted, lastOffset });
-      };
-      // A lista de argumentos contém apenas o script: este caminho jamais
-      // aceita ou acrescenta --apply.
-      const child = spawn(process.execPath, [scriptPath], {
-        cwd: process.cwd(),
-        env: {
-          ...process.env,
-          NODE_ENV: "staging",
-          DATABASE_URL: databaseUrl,
-          ASAAS_REBUILD_REPORT: reportPath,
-          ASAAS_REBUILD_TLS: "true",
-          ASAAS_PAGE_TIMEOUT_MS: "20000",
-          ASAAS_REBUILD_PROGRESS: "true",
-        },
-        stdio: ["ignore", "pipe", "ignore"],
-      });
-      child.stdout?.on("data", chunk => {
-        stdout += String(chunk);
-        const lines = stdout.split("\n");
-        stdout = lines.pop() ?? "";
-        for (const line of lines) {
-          try {
-            const event = JSON.parse(line) as {
-              event?: string;
-              resource?: string;
-              stage?: string;
-              kind?: DryRunFailure["type"];
-              offset?: number;
-            };
-            if (event.event === "page") {
-              pagesStarted += 1;
-              lastOffset = Number.isFinite(event.offset)
-                ? Number(event.offset)
-                : lastOffset;
-              if (event.resource === "customers") stage = "clientes";
-              if (event.resource === "payments") stage = "pagamentos";
-            }
-            if (event.event === "error") {
-              if (
-                event.stage === "clientes" ||
-                event.stage === "pagamentos" ||
-                event.stage === "staging"
-              ) {
-                stage = event.stage;
-              }
-              if (
-                event.kind === "timeout_total" ||
-                event.kind === "timeout_page" ||
-                event.kind === "http" ||
-                event.kind === "staging" ||
-                event.kind === "processo"
-              ) {
-                type = event.kind;
-              }
-            }
-          } catch {
-            // Saída não estruturada nunca é persistida nem devolvida ao painel.
-          }
-        }
-      });
-      const timeout = setTimeout(() => {
-        timedOut = true;
-        child.kill("SIGTERM");
-        setTimeout(() => finish(1), 5_000);
-      }, SCRIPT_TIMEOUT_MS);
-      child.once("error", () => {
-        clearTimeout(timeout);
-        finish(1);
-      });
-      child.once("exit", code => {
-        clearTimeout(timeout);
-        finish(code ?? 1);
-      });
-    });
+/**
+ * Roda a reconciliação diretamente no processo do servidor (sem
+ * child_process/spawn): a chave é resolvida via resolveAsaasApiKey()
+ * (env -> Configurações internas) e mantida só em memória, e a conexão
+ * usa exclusivamente STAGING_DATABASE_URL com TLS. Este caminho nunca
+ * aceita --apply — o modo dry-run é fixo, sem parâmetro que o altere.
+ */
+export async function executeDryRun(
+  timeoutMs: number = RUN_TIMEOUT_MS
+): Promise<DryRunOutcome> {
+  let pagesStarted = 0;
+  let lastOffset: number | null = null;
+  let stage: DryRunFailure["stage"] = "inicializacao";
+  let type: DryRunFailure["type"] = "processo";
 
-    if (outcome.exitCode !== 0) {
-      return {
-        completed: false,
-        failure: failed(
-          outcome.stage,
-          outcome.timedOut ? "timeout_total" : outcome.type,
-          outcome.pagesStarted,
-          outcome.lastOffset
-        ),
-      };
-    }
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
+  // Corre a operação inteira contra o prazo — não só as chamadas HTTP. Sem
+  // isso, uma resolveAsaasApiKey()/mysql.createConnection() travada nunca
+  // devolveria o controle: o AbortSignal só é consumido pelo fetch, então o
+  // status ficaria preso em "running" para sempre (diferente do processo
+  // filho anterior, que era morto à força pelo timeout).
+  const work = (async (): Promise<DryRunOutcome> => {
     try {
-      const report = JSON.parse(await fs.readFile(reportPath, "utf8"));
+      const apiKey = await resolveAsaasApiKey();
+      if (!apiKey) {
+        return { completed: false, failure: failed("inicializacao", "processo") };
+      }
+
+      const databaseUrl = stagingConnectionUrl();
+      const apiUrl = resolveAsaasApiUrl(apiKey);
+
+      const report = await runReconciliation({
+        apiKey,
+        apiUrl,
+        databaseUrl,
+        apply: false,
+        pageTimeoutMs: PAGE_TIMEOUT_MS,
+        signal: controller.signal,
+        onProgress: (resource: string, offset: number) => {
+          pagesStarted += 1;
+          lastOffset = Number.isFinite(offset) ? offset : lastOffset;
+          if (resource === "customers") stage = "clientes";
+          if (resource === "payments") stage = "pagamentos";
+        },
+        onError: (failureStage: DryRunFailure["stage"], error: Error) => {
+          stage = failureStage;
+          type = classifyErrorType(failureStage, error);
+        },
+      });
+
       return { completed: true, report: summarizeReport(report) };
     } catch {
-      return { completed: false, failure: failed("staging", "processo") };
+      return {
+        completed: false,
+        failure: failed(stage, type, pagesStarted, lastOffset),
+      };
     }
-  } catch {
-    return { completed: false, failure: failed() };
+  })();
+
+  const timeout = new Promise<DryRunOutcome>(resolve => {
+    timeoutId = setTimeout(() => {
+      controller.abort();
+      resolve({
+        completed: false,
+        failure: failed(stage, "timeout_total", pagesStarted, lastOffset),
+      });
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([work, timeout]);
   } finally {
-    await fs.unlink(reportPath).catch(() => undefined);
+    clearTimeout(timeoutId);
   }
 }
 
