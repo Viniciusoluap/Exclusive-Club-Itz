@@ -9,6 +9,10 @@ import {
   getAsaasStagingDryRunStatus,
   startAsaasStagingDryRun,
 } from "./asaasStagingDryRun";
+import {
+  StagingValidationDisabledError,
+  runStagingValidation,
+} from "./stagingValidation";
 
 export const systemRouter = router({
   /**
@@ -33,6 +37,22 @@ export const systemRouter = router({
   asaasStagingDryRunStatus: adminProcedure.query(() =>
     getAsaasStagingDryRunStatus()
   ),
+
+  /**
+   * Conferência somente leitura do schema candidato de staging (contagens
+   * já usadas na validação da Fase 2). Nunca afeta a conexão principal do
+   * app — desligar STAGING_VALIDATION_ENABLED é o rollback completo.
+   */
+  stagingValidationReport: adminProcedure.query(async () => {
+    try {
+      return await runStagingValidation();
+    } catch (error) {
+      if (error instanceof StagingValidationDisabledError) {
+        throw new TRPCError({ code: "FORBIDDEN", message: error.message });
+      }
+      throw error;
+    }
+  }),
 
   /**
    * Diagnóstico público do cookie de sessão da requisição atual. Existe para
