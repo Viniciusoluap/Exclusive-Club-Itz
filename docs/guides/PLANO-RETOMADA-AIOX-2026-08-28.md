@@ -113,6 +113,23 @@ Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS
     - [x] Smoke test completo (`/admin/diagnostico`, `/admin/backups`, `/admin/saas`, `/admin/open-finance`) contra o domínio final — confirmado pelo responsável (30/08/2026): as 4 páginas carregam sem erro no domínio real.
     - [ ] Confirmação explícita por escrito do responsável de que a paridade foi conferida, **autorizando especificamente a exclusão** — ainda pendente por decisão do responsável ("não vamos excluir agora, quero tudo funcionando e testado antes"). Checklist técnica completa; a exclusão em si aguarda esse aval separado, sem prazo definido.
 
+21. **Correção do adaptador serverless — `/api/trpc/*` respondia 404 em produção (30/08/2026):** o Manus, inspecionando diretamente o código implantado no domínio real, reportou que `/api/trpc/system.stagingValidationReport` retornava 401 sem sessão localmente, mas 404 "No procedure found" nos domínios do Manus.
+
+    **Causa raiz confirmada no código:** `api/index.ts` e `api/[...path].ts` importam `./_server.js` estaticamente — um artefato de build (gitignored, nunca versionado) gerado **somente** pelo script `build:vercel`. O script `build` padrão (o nome mais convencional, e o provável comando que o pipeline de deploy do Manus realmente invoca) só gerava `dist/index.js`, nunca `api/_server.js`. Sem esse arquivo, o adaptador serverless não consegue montar o `appRouter` corretamente.
+
+    **Correção (PR #135 em `Exclusive-Club-Itz`, replicada na PR #13 em `Exclusive-Club-Itz-Manus`):** o script `build` passou a gerar também `api/_server.js`, com os mesmos flags exatos já usados por `build:vercel`. `vercel.json`/`build:vercel` não foram alterados — o fluxo do Vercel (preview de PR) ficou idêntico. Não altera OAuth, banco, Asaas/Pluggy, DNS ou Vercel.
+
+    Novo teste de integração (`api/index.integration.test.ts`) builda o adaptador e bate via HTTP real em `/api/trpc/system.stagingValidationReport` sem cookie, provando 401 (não 404). Uma revisão automatizada (Codex) apontou que a primeira versão do teste recriava o bundle com flags fixos no próprio teste, então uma regressão no script `build` (flags divergentes, ou a geração do arquivo removida) não seria pega. Corrigido: o teste agora lê `scripts.build` do `package.json` em tempo de execução e roda exatamente esse comando via `child_process` — confirmado manualmente que, reintroduzindo o script antigo, o teste falha com mensagem explícita em vez de passar silenciosamente.
+
+    Validado localmente nos dois repositórios (`tsc --noEmit` limpo, `pnpm run build` confirmado gerando os dois artefatos, teste novo passando) e no CI oficial — PR #135 mergeada em `Exclusive-Club-Itz` (squash `7995fdd0ec94bc44d4b5c575c2ba164574c0e144`); PR #13 mergeada em `Exclusive-Club-Itz-Manus` (merge `73fb806ff7b85f35c04038ce08f49e7c471d1621`), CI 100% verde incluindo o job de E2E.
+
+    **Situação do restore/Open Finance/Pluggy, confirmada pelo Manus nesta mesma janela:**
+    - A Opção B (restauração do backup de agosto) foi concluída em 30/08/2026 **somente no schema candidato isolado** — a `DATABASE_URL` ativa de produção **não foi tocada**, permanece intacta.
+    - No candidato restaurado, as 5 tabelas do Open Finance (`open_finance_connections`, `open_finance_accounts`, `open_finance_transactions`, `open_finance_webhook_events`, `open_finance_sync_runs`) existem e foram preservadas — sem recriação manual nem auto-migração na base ativa.
+    - `PLUGGY_CLIENT_ID`, `PLUGGY_CLIENT_SECRET`, `PLUGGY_WEBHOOK_SECRET` e `PUBLIC_APP_URL` **não** estão cadastradas no cofre atual do Website/Manus.
+
+    **Próximo passo exato:** com a `main` corrigida nos dois repositórios, o Manus pode sincronizar/testar/publicar. Como o schema candidato restaurado é exatamente o cenário para o qual a rota do item 19 foi construída, o passo recomendado é: apontar `STAGING_DATABASE_URL` para esse schema candidato, ativar `STAGING_VALIDATION_ENABLED=true`, publicar, e conferir as contagens via `system.stagingValidationReport` antes de qualquer decisão de promoção para produção — que continua exigindo autorização explícita separada (nunca uma troca automática de `DATABASE_URL`). Em paralelo, as chaves Pluggy podem ser preenchidas via My Browser no navegador do responsável, agora que a validação isolada está desbloqueada.
+
 ## 1. Divisão de responsabilidade
 
 | Frente | Onde | Quem opera | Por quê |
