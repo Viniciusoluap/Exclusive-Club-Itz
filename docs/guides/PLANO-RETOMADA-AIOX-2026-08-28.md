@@ -92,6 +92,14 @@ Nenhuma credencial, banco remoto, App ID Manus, chave Asaas nova ou registro DNS
 
     **Próximo passo exato:** o Manus deve publicar a `main` atualizada e repetir o dry-run em `/admin/diagnostico` — agora deve concluir de ponta a ponta e mostrar `mode: "dry-run"` com os totais agregados. `--apply` continua sem autorização (GATE MANUS #3 original).
 
+19. **Rota isolada de conferência de staging, somente leitura (30/08/2026):** implementação mínima solicitada para permitir conferir o schema candidato de staging sem qualquer risco à conexão principal do app. Nova procedure admin `system.stagingValidationReport` (PR #134 em `Exclusive-Club-Itz`, replicada na PR #12 em `Exclusive-Club-Itz-Manus`), gated por dois portões independentes: `STAGING_VALIDATION_ENABLED` (string exata `"true"` — qualquer outro valor ou ausência desliga) e `stagingConnectionUrl()` (mesma validação já usada e testada no dry-run do Asaas — recusa `STAGING_DATABASE_URL` ausente, igual à ativa, ou schema sem "staging" no nome).
+
+    A rota só roda `SELECT COUNT(*)` nas 4 tabelas-marco já usadas na validação da Fase 2 (`allowed_clients`, `bpo_charges`, `expense_records`, `client_quotas`) — nenhum `INSERT`/`UPDATE`/`DELETE` em nenhum caminho do código. Login, reservas e qualquer tráfego real continuam sempre na conexão principal (`DATABASE_URL`); esta rota abre uma conexão efêmera à parte, fechada em `finally` mesmo se a leitura falhar. Rollback = desligar `STAGING_VALIDATION_ENABLED` — como nada é escrito, não sobra estado nenhum.
+
+    Validado localmente nos dois repositórios (`tsc --noEmit` limpo, testes cobrindo flag desligada/schema igual ao ativo/contagens/fechamento em falha, build sem erro) e no CI oficial — PR #134 mergeada (squash `bc7622a48f2263589f29aa0fc38d024ec069612b`); PR #12 mergeada no espelho (merge `8b356777cc4a7702ed99b72ad881e4c78c1cc01f`). Nenhuma produção, `DATABASE_URL` ativa ou dado real foi tocado.
+
+    **Como usar:** cadastrar `STAGING_VALIDATION_ENABLED=true` e `STAGING_DATABASE_URL` (apontando para o schema candidato) no ambiente seguro do Manus, publicar, e chamar `system.stagingValidationReport` (via sessão admin autenticada) para conferir as contagens antes de qualquer decisão de promoção. Desligar a flag depois de conferir.
+
 ## 1. Divisão de responsabilidade
 
 | Frente | Onde | Quem opera | Por quê |
