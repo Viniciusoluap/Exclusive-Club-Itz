@@ -1,10 +1,100 @@
+import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import { openFinanceWebhookEvents } from "../drizzle/schema";
+import { getDb } from "./db";
 import {
+  buildPluggyConnectTokenPayload,
+  buildPluggyTransactionsPath,
+  buildPluggyWebhookRegistration,
+  buildPluggyWebhookUrl,
+  nextCursor,
+  normalizePluggyItemStatus,
   normalizePluggyAccount,
   normalizePluggyTransaction,
+  registerPluggyWebhookEvent,
+  transactionIdsForDeletion,
   validatePluggyWebhookSecret,
   webhookEventId,
 } from "./openFinance";
+
+describe("Open Finance Pluggy configuration", () => {
+  it("builds the exact public HTTPS webhook with its server-only header", () => {
+    expect(
+      buildPluggyWebhookRegistration(
+        "https://club.example.test/",
+        "sandbox-webhook-secret"
+      )
+    ).toEqual({
+      event: "all",
+      url: "https://club.example.test/api/webhooks/pluggy",
+      headers: {
+        "x-pluggy-webhook-secret": "sandbox-webhook-secret",
+      },
+    });
+    expect(() => buildPluggyWebhookUrl("http://club.example.test")).toThrow(
+      "HTTPS público"
+    );
+    expect(() => buildPluggyWebhookUrl("https://localhost:3000")).toThrow(
+      "HTTPS público"
+    );
+  });
+
+  it("separates new consent from item reconnection payloads", () => {
+    expect(buildPluggyConnectTokenPayload(9)).toEqual({
+      options: {
+        clientUserId: "exclusive-user-9",
+        avoidDuplicates: true,
+      },
+    });
+    expect(buildPluggyConnectTokenPayload(9, "item-sandbox-1")).toEqual({
+      options: {
+        clientUserId: "exclusive-user-9",
+        avoidDuplicates: true,
+      },
+      itemId: "item-sandbox-1",
+    });
+  });
+});
+
+describe("Open Finance item lifecycle", () => {
+  it("maps successful, expired/revoked and retryable error states", () => {
+    expect(normalizePluggyItemStatus({ status: "UPDATED" })).toBe("connected");
+    expect(
+      normalizePluggyItemStatus({
+        status: "OUTDATED",
+        executionStatus: "USER_AUTHORIZATION_PENDING",
+      })
+    ).toBe("consent_expired");
+    expect(
+      normalizePluggyItemStatus({
+        status: "OUTDATED",
+        error: { code: "CONSENT_REVOKED" },
+      })
+    ).toBe("consent_expired");
+    expect(normalizePluggyItemStatus({ status: "OUTDATED" })).toBe("error");
+    expect(normalizePluggyItemStatus({ status: "UPDATING" })).toBe("pending");
+  });
+});
+
+describe("Open Finance transaction synchronization", () => {
+  it("uses Transactions V2 page size 500 and preserves the next cursor", () => {
+    expect(buildPluggyTransactionsPath("account 1", "cursor/+==")).toBe(
+      "/v2/transactions?accountId=account+1&pageSize=500&after=cursor%2F%2B%3D%3D"
+    );
+    expect(
+      nextCursor("https://api.pluggy.ai/v2/transactions?after=next-cursor")
+    ).toBe("next-cursor");
+  });
+
+  it("deduplicates and caps transaction deletions to the provider chunk limit", () => {
+    const transactionIds = Array.from({ length: 1005 }, (_, index) => `tx-${index}`);
+    transactionIds.push("tx-1");
+    const result = transactionIdsForDeletion({ transactionIds });
+    expect(result).toHaveLength(1000);
+    expect(new Set(result).size).toBe(1000);
+  });
+});
 
 describe("Open Finance normalization", () => {
   it("normalizes an account without exposing the full account number", () => {
@@ -87,4 +177,39 @@ describe("Open Finance webhook security", () => {
     );
     expect(webhookEventId({})).toBeNull();
   });
+
+  const databaseHost = (() => {
+    try {
+      return new URL(process.env.DATABASE_URL || "").hostname;
+    } catch {
+      return "";
+    }
+  })();
+  it.skipIf(!["127.0.0.1", "localhost"].includes(databaseHost))(
+    "registers the same webhook event only once on the ephemeral test database",
+    async () => {
+      const db = await getDb();
+      expect(db).toBeTruthy();
+      const eventId = `test-pluggy-${randomUUID()}`;
+      try {
+        const payload = {
+          event: "item/updated",
+          eventId,
+          itemId: "sandbox-item",
+        };
+        expect(await registerPluggyWebhookEvent(payload)).toEqual({
+          eventId,
+          duplicate: false,
+        });
+        expect(await registerPluggyWebhookEvent(payload)).toEqual({
+          eventId,
+          duplicate: true,
+        });
+      } finally {
+        await db
+          ?.delete(openFinanceWebhookEvents)
+          .where(eq(openFinanceWebhookEvents.providerEventId, eventId));
+      }
+    }
+  );
 });

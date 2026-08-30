@@ -57,6 +57,7 @@ function formatMoney(value: number): string {
 export default function OpenFinance() {
   const [, setLocation] = useLocation();
   const [connectToken, setConnectToken] = useState<string | null>(null);
+  const [updateItemId, setUpdateItemId] = useState<string | null>(null);
   const [widgetVisible, setWidgetVisible] = useState(false);
 
   const utils = trpc.useUtils();
@@ -71,12 +72,16 @@ export default function OpenFinance() {
   });
 
   const tokenMutation = trpc.openFinance.createConnectToken.useMutation({
-    onSuccess: data => {
+    onSuccess: (data, variables) => {
       if (!data.accessToken) {
         toast.error("O provedor não retornou um Connect Token válido.");
         return;
       }
       setConnectToken(data.accessToken);
+      const connection = variables.connectionId
+        ? connectionsQuery.data?.find(item => item.id === variables.connectionId)
+        : undefined;
+      setUpdateItemId(connection?.providerItemId ?? null);
       setWidgetVisible(true);
     },
     onError: error => toast.error(error.message),
@@ -112,13 +117,22 @@ export default function OpenFinance() {
 
   const openNewConnection = () => {
     setConnectToken(null);
+    setUpdateItemId(null);
     setWidgetVisible(false);
     tokenMutation.mutate({});
+  };
+
+  const reconnect = (connectionId: number) => {
+    setConnectToken(null);
+    setUpdateItemId(null);
+    setWidgetVisible(false);
+    tokenMutation.mutate({ connectionId });
   };
 
   const closeWidget = () => {
     setWidgetVisible(false);
     setConnectToken(null);
+    setUpdateItemId(null);
     void connectionsQuery.refetch();
     void accountsQuery.refetch();
     void summaryQuery.refetch();
@@ -278,6 +292,18 @@ export default function OpenFinance() {
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      {(connection.status === "error" ||
+                        connection.status === "consent_expired") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => reconnect(connection.id)}
+                          disabled={tokenMutation.isPending}
+                        >
+                          <Link2 className="mr-2 h-4 w-4" />
+                          Reconectar
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -373,7 +399,11 @@ export default function OpenFinance() {
       </main>
 
       {widgetVisible && connectToken && (
-        <PluggyConnect connectToken={connectToken} onClose={closeWidget} />
+        <PluggyConnect
+          connectToken={connectToken}
+          updateItem={updateItemId ?? undefined}
+          onClose={closeWidget}
+        />
       )}
     </div>
   );

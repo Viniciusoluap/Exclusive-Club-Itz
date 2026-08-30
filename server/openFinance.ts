@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 import * as schema from "../drizzle/schema";
 import { getDb } from "./db";
 import { getSetting } from "./systemSettings";
@@ -50,6 +50,8 @@ const CONNECTED_ITEM_STATUSES = new Set([
 export type PluggyItem = {
   id: string;
   status?: string | null;
+  executionStatus?: string | null;
+  error?: { code?: string | null; message?: string | null } | null;
   clientUserId?: string | null;
   connector?: { name?: string | null } | null;
 };
@@ -86,6 +88,7 @@ export type PluggyWebhookPayload = {
   clientUserId?: string;
   accountId?: string;
   transactionIds?: string[];
+  error?: { code?: string | null; message?: string | null } | null;
 };
 
 export type SyncResult = {
@@ -133,21 +136,105 @@ function toNumber(value: unknown): number {
   return Number.isFinite(amount) ? amount : 0;
 }
 
-function normalizeItemStatus(
-  status: string | null | undefined
+export function normalizePluggyItemStatus(
+  item: Pick<PluggyItem, "status" | "executionStatus" | "error">
 ): "pending" | "connected" | "error" | "consent_expired" {
-  const normalized = String(status || "").toUpperCase();
+  const normalized = [
+    item.status,
+    item.executionStatus,
+    item.error?.code,
+    item.error?.message,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toUpperCase();
   if (
     normalized.includes("CONSENT") ||
     normalized.includes("EXPIRED") ||
-    normalized === "USER_AUTHORIZATION_PENDING"
+    normalized.includes("USER_AUTHORIZATION_PENDING")
   ) {
     return "consent_expired";
   }
-  if (normalized.includes("ERROR") || normalized.includes("FAILED"))
+  if (
+    normalized.includes("ERROR") ||
+    normalized.includes("FAILED") ||
+    normalized.includes("OUTDATED")
+  )
     return "error";
   if (CONNECTED_ITEM_STATUSES.has(normalized)) return "connected";
   return "pending";
+}
+
+export function buildPluggyWebhookUrl(publicAppUrl: string): string {
+  let url: URL;
+  try {
+    url = new URL(publicAppUrl);
+  } catch {
+    throw new OpenFinanceError(
+      "PUBLIC_APP_URL inválida para o webhook Pluggy.",
+      "NOT_CONFIGURED",
+      503
+    );
+  }
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    url.hostname === "localhost" ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash
+  ) {
+    throw new OpenFinanceError(
+      "PUBLIC_APP_URL deve usar HTTPS público para o webhook Pluggy.",
+      "NOT_CONFIGURED",
+      503
+    );
+  }
+  return `${url.origin}/api/webhooks/pluggy`;
+}
+
+export function buildPluggyWebhookRegistration(
+  publicAppUrl: string,
+  webhookSecret: string
+) {
+  if (!webhookSecret) {
+    throw new OpenFinanceError(
+      "PLUGGY_WEBHOOK_SECRET não configurado.",
+      "NOT_CONFIGURED",
+      503
+    );
+  }
+  return {
+    event: "all",
+    url: buildPluggyWebhookUrl(publicAppUrl),
+    headers: { "x-pluggy-webhook-secret": webhookSecret },
+  };
+}
+
+export function buildPluggyConnectTokenPayload(userId: number, itemId?: string) {
+  const payload: Record<string, unknown> = {
+    options: {
+      clientUserId: `exclusive-user-${userId}`,
+      avoidDuplicates: true,
+    },
+  };
+  if (itemId) payload.itemId = itemId;
+  return payload;
+}
+
+export function buildPluggyTransactionsPath(accountId: string, after?: string) {
+  const params = new URLSearchParams({ accountId, pageSize: "500" });
+  if (after) params.set("after", after);
+  return `/v2/transactions?${params.toString()}`;
+}
+
+export function transactionIdsForDeletion(
+  payload: PluggyWebhookPayload
+): string[] {
+  return Array.from(
+    new Set((payload.transactionIds || []).filter(Boolean))
+  ).slice(0, 1000);
 }
 
 export function normalizePluggyAccount(
@@ -312,23 +399,67 @@ async function withApiKey<T>(
   return operation(apiKey);
 }
 
+let webhookSetup:
+  | { key: string; promise: Promise<void> }
+  | undefined;
+
+async function ensurePluggyWebhook(
+  apiKey: string,
+  config: PluggyConfig
+): Promise<void> {
+  const registration = buildPluggyWebhookRegistration(
+    config.publicAppUrl,
+    config.webhookSecret
+  );
+  const key = `${registration.url}\0${config.webhookSecret}`;
+  if (webhookSetup?.key === key) return webhookSetup.promise;
+
+  const promise = (async () => {
+    const response = await providerRequest("/webhooks", {}, apiKey);
+    const webhooks = Array.isArray(response)
+      ? response
+      : response.results || response.webhooks || [];
+    const existing = webhooks.find(
+      (webhook: { id?: string; event?: string; url?: string }) =>
+        webhook.event === "all" && webhook.url === registration.url
+    );
+    if (existing?.id) {
+      await providerRequest(
+        `/webhooks/${encodeURIComponent(existing.id)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            headers: registration.headers,
+            enabled: true,
+          }),
+        },
+        apiKey
+      );
+      return;
+    }
+    await providerRequest(
+      "/webhooks",
+      { method: "POST", body: JSON.stringify(registration) },
+      apiKey
+    );
+  })();
+  webhookSetup = { key, promise };
+  try {
+    await promise;
+  } catch (error) {
+    if (webhookSetup?.promise === promise) webhookSetup = undefined;
+    throw error;
+  }
+}
+
 export async function createPluggyConnectToken(
   userId: number,
   itemId?: string
 ) {
   const config = await resolvePluggyConfig();
   return withApiKey(async apiKey => {
-    const publicWebhookUrl =
-      config.publicAppUrl && config.publicAppUrl.startsWith("https://")
-        ? `${config.publicAppUrl.replace(/\/$/, "")}/api/webhooks/pluggy`
-        : undefined;
-    const options: Record<string, unknown> = {
-      clientUserId: `exclusive-user-${userId}`,
-      avoidDuplicates: true,
-    };
-    if (publicWebhookUrl) options.webhookUrl = publicWebhookUrl;
-    const payload: Record<string, unknown> = { options };
-    if (itemId) payload.itemId = itemId;
+    await ensurePluggyWebhook(apiKey, config);
+    const payload = buildPluggyConnectTokenPayload(userId, itemId);
     const result = await providerRequest(
       "/connect_token",
       {
@@ -373,10 +504,8 @@ async function getPluggyTransactionsPage(
   accountId: string,
   after?: string
 ): Promise<{ results: PluggyTransaction[]; next?: string | null }> {
-  const params = new URLSearchParams({ accountId, pageSize: "500" });
-  if (after) params.set("after", after);
   const result = await providerRequest(
-    `/v2/transactions?${params.toString()}`,
+    buildPluggyTransactionsPath(accountId, after),
     {},
     apiKey
   );
@@ -388,7 +517,7 @@ async function getPluggyTransactionsPage(
   };
 }
 
-function nextCursor(next: string | null | undefined): string | undefined {
+export function nextCursor(next: string | null | undefined): string | undefined {
   if (!next) return undefined;
   try {
     return new URL(next, apiUrl()).searchParams.get("after") || undefined;
@@ -624,7 +753,7 @@ export async function syncOpenFinanceConnection(
         } while (cursor);
       }
 
-      const itemStatus = normalizeItemStatus(item.status);
+      const itemStatus = normalizePluggyItemStatus(item);
       await db
         .update(openFinanceConnections)
         .set({
@@ -699,7 +828,7 @@ async function upsertItemConnection(
     "";
   const userId = existing[0]?.userId || userIdFromClientUserId(clientUserId);
   if (!userId) return existing[0] || null;
-  const status = normalizeItemStatus(item?.status);
+  const status = normalizePluggyItemStatus(item || {});
   if (existing[0]) {
     await db
       .update(openFinanceConnections)
@@ -803,14 +932,33 @@ export async function processPluggyWebhookEvent(
         .where(eq(openFinanceConnections.id, connection.id));
     } else if (
       connection &&
-      (event.includes("error") || event.includes("waiting_user"))
+      event === "item/error"
+    ) {
+      const consentSignal = [payload.error?.code, payload.error?.message]
+        .filter(Boolean)
+        .join(" ")
+        .toUpperCase();
+      await db
+        .update(openFinanceConnections)
+        .set({
+          status:
+            /CONSENT|EXPIRED|REVOK|USER_AUTHORIZATION_PENDING/.test(consentSignal)
+              ? "consent_expired"
+              : "error",
+          errorCode: event,
+          errorMessage: `Evento Pluggy: ${event}`,
+        })
+        .where(eq(openFinanceConnections.id, connection.id));
+    } else if (
+      connection &&
+      ["item/waiting_user_input", "item/waiting_user_action"].includes(event)
     ) {
       await db
         .update(openFinanceConnections)
         .set({
-          status: event.includes("authorization") ? "consent_expired" : "error",
+          status: "pending",
           errorCode: event,
-          errorMessage: `Evento Pluggy: ${event}`,
+          errorMessage: null,
         })
         .where(eq(openFinanceConnections.id, connection.id));
     } else if (
@@ -818,6 +966,18 @@ export async function processPluggyWebhookEvent(
       ["transactions/created", "transactions/updated"].includes(event)
     ) {
       await syncOpenFinanceConnection(connection.id, "webhook");
+    } else if (connection && event === "transactions/deleted") {
+      const transactionIds = transactionIdsForDeletion(payload);
+      if (transactionIds.length) {
+        await db
+          .delete(openFinanceTransactions)
+          .where(
+            inArray(
+              openFinanceTransactions.providerTransactionId,
+              transactionIds
+            )
+          );
+      }
     }
     await db
       .update(openFinanceWebhookEvents)
