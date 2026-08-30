@@ -40,13 +40,33 @@ PLUGGY_WEBHOOK_SECRET=
 PUBLIC_APP_URL=https://seu-dominio-publico
 ```
 
-`PUBLIC_APP_URL` precisa ser HTTPS para o sistema enviar `PUBLIC_APP_URL/api/webhooks/pluggy` ao criar o Connect Token. O `PLUGGY_WEBHOOK_SECRET` deve ser configurado como header customizado `x-pluggy-webhook-secret` no webhook da Pluggy. O endpoint rejeita chamadas sem segredo ou com segredo divergente.
+`PUBLIC_APP_URL` precisa ser a origem pública HTTPS. Antes de criar o Connect Token, o backend garante via API Pluggy um webhook global `all` em `PUBLIC_APP_URL/api/webhooks/pluggy`, com `PLUGGY_WEBHOOK_SECRET` no header customizado `x-pluggy-webhook-secret`. O Connect Token não recebe outro `webhookUrl`: isso evita uma segunda entrega sem o header secreto. O endpoint rejeita chamadas sem segredo ou com segredo divergente.
 
 ## Fluxo de conexão
 
 O administrador acessa `/admin/open-finance` e clica em **Conectar conta**. O backend cria um Connect Token com `clientUserId=exclusive-user-{id}` e `avoidDuplicates=true`; o widget conduz o consentimento bancário. Após `item/created` ou `item/updated`, o endpoint responde 2XX imediatamente, registra `eventId` com chave única e processa a sincronização de forma assíncrona. A sincronização lê as contas e percorre `/v2/transactions` por cursor, usando upsert pelos IDs externos.
 
-A remoção local marca a conexão como `disconnected`; a exclusão remota do Item é deliberadamente uma etapa separada para evitar uma ação destrutiva acidental. Para consentimento expirado, o usuário deve reconectar pelo widget.
+A remoção local marca a conexão como `disconnected`; a exclusão remota do Item é deliberadamente uma etapa separada para evitar uma ação destrutiva acidental. Em `error` ou `consent_expired`, o painel oferece **Reconectar** e cria um Connect Token preso ao `itemId`, abrindo o widget em modo `updateItem`.
+
+## Checklist de smoke test — sandbox
+
+Use apenas conectores e credenciais de sandbox. Não coloque Client ID, Client Secret ou segredo de webhook no relatório de teste.
+
+| Cenário | Procedimento | Aceite automatizado | Aceite manual em sandbox |
+| --- | --- | --- | --- |
+| Novo consentimento | Clicar **Conectar conta** | Payload contém `clientUserId`/`avoidDuplicates`, sem `itemId`; URL do webhook é HTTPS exata | Widget conclui ou informa autorização pendente; webhook cria a conexão |
+| Reconexão | Em conexão `error`/`consent_expired`, clicar **Reconectar** | Token contém o `itemId`; widget recebe `updateItem` | O mesmo Item é atualizado, sem criar conexão duplicada |
+| Expiração/revogação | Simular `OUTDATED` + `USER_AUTHORIZATION_PENDING`/`CONSENT_REVOKED`, e `item/deleted` | Mapeia para `consent_expired`; exclusão remota mapeia para `disconnected` | Badge e ação disponíveis; nenhuma credencial bancária é armazenada |
+| Webhook duplicado | Reenviar o mesmo `eventId` | Chave idempotente estável e índice único; segunda entrega retorna `duplicate` | Endpoint responde 2XX em menos de 5 s e não sincroniza duas vezes |
+| Transações | Sincronizar duas páginas e enviar created/updated/deleted | V2 usa `pageSize=500`, preserva cursor, upsert por ID e limita delete a 1.000 IDs | Totais não duplicam; updated altera; deleted remove apenas IDs informados |
+
+Checklist final do ambiente:
+
+1. `PLUGGY_CLIENT_ID`, `PLUGGY_CLIENT_SECRET`, `PLUGGY_WEBHOOK_SECRET` e `PUBLIC_APP_URL` presentes somente no backend.
+2. `PLUGGY_API_URL=https://api.pluggy.ai` salvo sem segredo embutido.
+3. `PUBLIC_APP_URL` sem caminho, query ou credenciais e com certificado HTTPS válido.
+4. Webhook `all` listado na Pluggy uma única vez, apontando para `/api/webhooks/pluggy` com o header secreto.
+5. Logs e respostas não exibem Connect Token, API key, Client Secret ou segredo do webhook.
 
 ## Retomada do financeiro
 
