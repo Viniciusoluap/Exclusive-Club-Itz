@@ -300,74 +300,81 @@ export async function runReconciliation({
   }
 
   let connection = null;
-  let localState = { clientsByEmail: new Map(), customersById: new Map() };
-  if (databaseUrl) {
+  try {
+    let localState = { clientsByEmail: new Map(), customersById: new Map() };
+    if (databaseUrl) {
+      try {
+        onProgress?.("staging", 0);
+        connection = await mysql.createConnection(
+          databaseConnectionConfig(databaseUrl)
+        );
+        localState = await loadLocalState(connection);
+      } catch (error) {
+        onError?.("staging", error);
+        throw error;
+      }
+    }
+
+    const report = createReport(apply ? "apply" : "dry-run");
+    const customersById = new Map();
+
     try {
-      onProgress?.("staging", 0);
-      connection = await mysql.createConnection(
-        databaseConnectionConfig(databaseUrl)
-      );
-      localState = await loadLocalState(connection);
+      await forEachPage({
+        apiUrl,
+        resource: "customers",
+        apiKey,
+        pageTimeoutMs,
+        onProgress,
+        signal,
+        onRows: async customers => {
+          await processCustomerPage(customers, {
+            report,
+            customersById,
+            applyCustomerRecord:
+              apply && connection
+                ? customer => applyCustomer(connection, customer)
+                : undefined,
+          });
+        },
+      });
     } catch (error) {
-      onError?.("staging", error);
+      onError?.("clientes", error);
       throw error;
     }
+
+    try {
+      await forEachPage({
+        apiUrl,
+        resource: "payments",
+        apiKey,
+        pageTimeoutMs,
+        onProgress,
+        signal,
+        onRows: async payments => {
+          await processPaymentPage(payments, {
+            report,
+            customersById,
+            localState,
+            applyChargeRecord:
+              apply && connection
+                ? charge => applyCharge(connection, charge)
+                : undefined,
+          });
+        },
+      });
+    } catch (error) {
+      onError?.("pagamentos", error);
+      throw error;
+    }
+
+    return report;
+  } finally {
+    // Roda em processo longevo (server), não em processo filho que encerra
+    // sozinho — uma reconciliação que falha no meio precisa fechar a conexão
+    // de staging do mesmo jeito que uma bem-sucedida, senão cada tentativa
+    // falha deixa uma conexão aberta até estourar o limite do TiDB.
+    if (connection) await connection.end().catch(() => undefined);
   }
-
-  const report = createReport(apply ? "apply" : "dry-run");
-  const customersById = new Map();
-
-  try {
-    await forEachPage({
-      apiUrl,
-      resource: "customers",
-      apiKey,
-      pageTimeoutMs,
-      onProgress,
-      signal,
-      onRows: async customers => {
-        await processCustomerPage(customers, {
-          report,
-          customersById,
-          applyCustomerRecord:
-            apply && connection
-              ? customer => applyCustomer(connection, customer)
-              : undefined,
-        });
-      },
-    });
-  } catch (error) {
-    onError?.("clientes", error);
-    throw error;
-  }
-
-  try {
-    await forEachPage({
-      apiUrl,
-      resource: "payments",
-      apiKey,
-      pageTimeoutMs,
-      onProgress,
-      signal,
-      onRows: async payments => {
-        await processPaymentPage(payments, {
-          report,
-          customersById,
-          localState,
-          applyChargeRecord:
-            apply && connection
-              ? charge => applyCharge(connection, charge)
-              : undefined,
-        });
-      },
-    });
-  } catch (error) {
-    onError?.("pagamentos", error);
-    throw error;
-  }
-
-  if (connection) await connection.end();
-  return report;
 }
 
 async function applyCustomer(connection, customer) {

@@ -1,5 +1,5 @@
 import { runReconciliation } from "../../scripts/asaas_rebuild.mjs";
-import { resolveAsaasApiKey } from "./asaas";
+import { resolveAsaasApiKey, resolveAsaasApiUrl } from "./asaas";
 
 const RUN_TIMEOUT_MS = 900_000;
 const PAGE_TIMEOUT_MS = 20_000;
@@ -124,49 +124,74 @@ function classifyErrorType(
  * usa exclusivamente STAGING_DATABASE_URL com TLS. Este caminho nunca
  * aceita --apply — o modo dry-run é fixo, sem parâmetro que o altere.
  */
-async function executeDryRun(): Promise<DryRunOutcome> {
+export async function executeDryRun(
+  timeoutMs: number = RUN_TIMEOUT_MS
+): Promise<DryRunOutcome> {
   let pagesStarted = 0;
   let lastOffset: number | null = null;
   let stage: DryRunFailure["stage"] = "inicializacao";
   let type: DryRunFailure["type"] = "processo";
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), RUN_TIMEOUT_MS);
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  // Corre a operação inteira contra o prazo — não só as chamadas HTTP. Sem
+  // isso, uma resolveAsaasApiKey()/mysql.createConnection() travada nunca
+  // devolveria o controle: o AbortSignal só é consumido pelo fetch, então o
+  // status ficaria preso em "running" para sempre (diferente do processo
+  // filho anterior, que era morto à força pelo timeout).
+  const work = (async (): Promise<DryRunOutcome> => {
+    try {
+      const apiKey = await resolveAsaasApiKey();
+      if (!apiKey) {
+        return { completed: false, failure: failed("inicializacao", "processo") };
+      }
+
+      const databaseUrl = stagingConnectionUrl();
+      const apiUrl = resolveAsaasApiUrl(apiKey);
+
+      const report = await runReconciliation({
+        apiKey,
+        apiUrl,
+        databaseUrl,
+        apply: false,
+        pageTimeoutMs: PAGE_TIMEOUT_MS,
+        signal: controller.signal,
+        onProgress: (resource: string, offset: number) => {
+          pagesStarted += 1;
+          lastOffset = Number.isFinite(offset) ? offset : lastOffset;
+          if (resource === "customers") stage = "clientes";
+          if (resource === "payments") stage = "pagamentos";
+        },
+        onError: (failureStage: DryRunFailure["stage"], error: Error) => {
+          stage = failureStage;
+          type = classifyErrorType(failureStage, error);
+        },
+      });
+
+      return { completed: true, report: summarizeReport(report) };
+    } catch {
+      return {
+        completed: false,
+        failure: failed(stage, type, pagesStarted, lastOffset),
+      };
+    }
+  })();
+
+  const timeout = new Promise<DryRunOutcome>(resolve => {
+    timeoutId = setTimeout(() => {
+      controller.abort();
+      resolve({
+        completed: false,
+        failure: failed(stage, "timeout_total", pagesStarted, lastOffset),
+      });
+    }, timeoutMs);
+  });
 
   try {
-    const apiKey = await resolveAsaasApiKey();
-    if (!apiKey) {
-      return { completed: false, failure: failed("inicializacao", "processo") };
-    }
-
-    const databaseUrl = stagingConnectionUrl();
-
-    const report = await runReconciliation({
-      apiKey,
-      databaseUrl,
-      apply: false,
-      pageTimeoutMs: PAGE_TIMEOUT_MS,
-      signal: controller.signal,
-      onProgress: (resource: string, offset: number) => {
-        pagesStarted += 1;
-        lastOffset = Number.isFinite(offset) ? offset : lastOffset;
-        if (resource === "customers") stage = "clientes";
-        if (resource === "payments") stage = "pagamentos";
-      },
-      onError: (failureStage: DryRunFailure["stage"], error: Error) => {
-        stage = failureStage;
-        type = classifyErrorType(failureStage, error);
-      },
-    });
-
-    return { completed: true, report: summarizeReport(report) };
-  } catch {
-    return {
-      completed: false,
-      failure: failed(stage, type, pagesStarted, lastOffset),
-    };
+    return await Promise.race([work, timeout]);
   } finally {
-    clearTimeout(timeout);
+    clearTimeout(timeoutId);
   }
 }
 
