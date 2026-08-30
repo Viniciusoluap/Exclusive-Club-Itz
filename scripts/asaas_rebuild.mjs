@@ -96,23 +96,28 @@ function safeNumber(value) {
   return Number.isFinite(number) ? number : 0;
 }
 
-function buildHeaders() {
-  if (!API_KEY)
+function buildHeaders(apiKey) {
+  if (!apiKey)
     throw new Error(
       "ASAAS_API_KEY não configurada; nenhum dado foi lido ou escrito."
     );
-  return { accept: "application/json", access_token: API_KEY };
+  return { accept: "application/json", access_token: apiKey };
 }
 
-async function fetchPage(resource, offset) {
-  const url = new URL(`${API_URL}/${resource}`);
+async function fetchPage({ apiUrl, resource, offset, apiKey, pageTimeoutMs, onProgress, signal }) {
+  const url = new URL(`${apiUrl}/${resource}`);
   url.searchParams.set("limit", String(PAGE_SIZE));
   url.searchParams.set("offset", String(offset));
-  reportProgress(resource, offset);
+  onProgress?.(resource, offset);
+  if (signal?.aborted) {
+    throw new Error(`Asaas ${resource}: tempo limite total`);
+  }
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), PAGE_TIMEOUT_MS);
+  const onParentAbort = () => controller.abort();
+  signal?.addEventListener("abort", onParentAbort);
+  const timeout = setTimeout(() => controller.abort(), pageTimeoutMs);
   try {
-    const response = await fetch(url, { headers: buildHeaders(), signal: controller.signal });
+    const response = await fetch(url, { headers: buildHeaders(apiKey), signal: controller.signal });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(
@@ -122,19 +127,24 @@ async function fetchPage(resource, offset) {
     return body;
   } catch (error) {
     if (controller.signal.aborted) {
-      throw new Error(`Asaas ${resource}: tempo limite por página`);
+      throw new Error(
+        signal?.aborted
+          ? `Asaas ${resource}: tempo limite total`
+          : `Asaas ${resource}: tempo limite por página`
+      );
     }
     throw error;
   } finally {
     clearTimeout(timeout);
+    signal?.removeEventListener("abort", onParentAbort);
   }
 }
 
-async function forEachPage(resource, onRows) {
+async function forEachPage({ apiUrl, resource, apiKey, pageTimeoutMs, onProgress, onRows, signal }) {
   let offset = 0;
   let hasMore = true;
   while (hasMore) {
-    const page = await fetchPage(resource, offset);
+    const page = await fetchPage({ apiUrl, resource, offset, apiKey, pageTimeoutMs, onProgress, signal });
     const rows = Array.isArray(page.data) ? page.data : [];
     await onRows(rows);
     hasMore = Boolean(page.hasMore) && rows.length > 0;
@@ -244,7 +254,7 @@ export function databaseConnectionConfig(databaseUrl, env = process.env) {
     : databaseUrl;
 }
 
-async function loadLocalState(connection) {
+export async function loadLocalState(connection) {
   const [allowedClients] = await connection.query(
     "SELECT id, email, name FROM allowed_clients"
   );
@@ -264,6 +274,100 @@ async function loadLocalState(connection) {
     ])
   );
   return { clientsByEmail, customersById };
+}
+
+/**
+ * Executa a reconciliação inteira em processo — sem child_process, sem
+ * arquivo temporário. Pensada para ser chamada diretamente por um painel
+ * administrativo (ex.: server/_core/asaasStagingDryRun.ts), que já resolve
+ * a chave via resolveAsaasApiKey() (env -> Configurações internas) e passa
+ * o valor aqui em memória. Nunca lê process.env.ASAAS_API_KEY diretamente.
+ */
+export async function runReconciliation({
+  apiKey,
+  apiUrl = API_URL,
+  databaseUrl,
+  apply = false,
+  pageTimeoutMs = PAGE_TIMEOUT_MS,
+  onProgress,
+  onError,
+  signal,
+} = {}) {
+  if (!apiKey) {
+    throw new Error(
+      "ASAAS_API_KEY não configurada; nenhum dado foi lido ou escrito."
+    );
+  }
+
+  let connection = null;
+  let localState = { clientsByEmail: new Map(), customersById: new Map() };
+  if (databaseUrl) {
+    try {
+      onProgress?.("staging", 0);
+      connection = await mysql.createConnection(
+        databaseConnectionConfig(databaseUrl)
+      );
+      localState = await loadLocalState(connection);
+    } catch (error) {
+      onError?.("staging", error);
+      throw error;
+    }
+  }
+
+  const report = createReport(apply ? "apply" : "dry-run");
+  const customersById = new Map();
+
+  try {
+    await forEachPage({
+      apiUrl,
+      resource: "customers",
+      apiKey,
+      pageTimeoutMs,
+      onProgress,
+      signal,
+      onRows: async customers => {
+        await processCustomerPage(customers, {
+          report,
+          customersById,
+          applyCustomerRecord:
+            apply && connection
+              ? customer => applyCustomer(connection, customer)
+              : undefined,
+        });
+      },
+    });
+  } catch (error) {
+    onError?.("clientes", error);
+    throw error;
+  }
+
+  try {
+    await forEachPage({
+      apiUrl,
+      resource: "payments",
+      apiKey,
+      pageTimeoutMs,
+      onProgress,
+      signal,
+      onRows: async payments => {
+        await processPaymentPage(payments, {
+          report,
+          customersById,
+          localState,
+          applyChargeRecord:
+            apply && connection
+              ? charge => applyCharge(connection, charge)
+              : undefined,
+        });
+      },
+    });
+  } catch (error) {
+    onError?.("pagamentos", error);
+    throw error;
+  }
+
+  if (connection) await connection.end();
+  return report;
 }
 
 async function applyCustomer(connection, customer) {
@@ -361,57 +465,16 @@ async function main() {
     );
   }
 
-  let connection = null;
-  let localState = { clientsByEmail: new Map(), customersById: new Map() };
-  if (DATABASE_URL) {
-    try {
-      reportProgress("staging", 0);
-      const connectionConfig = databaseConnectionConfig(DATABASE_URL);
-      connection = await mysql.createConnection(connectionConfig);
-      localState = await loadLocalState(connection);
-    } catch (error) {
-      reportFailure("staging", error);
-      throw error;
-    }
-  }
+  const report = await runReconciliation({
+    apiKey: API_KEY,
+    apiUrl: API_URL,
+    databaseUrl: DATABASE_URL,
+    apply: APPLY,
+    pageTimeoutMs: PAGE_TIMEOUT_MS,
+    onProgress: REPORT_PROGRESS ? reportProgress : undefined,
+    onError: REPORT_PROGRESS ? reportFailure : undefined,
+  });
 
-  const report = createReport(APPLY ? "apply" : "dry-run");
-  const customersById = new Map();
-
-  try {
-    await forEachPage("customers", async customers => {
-      await processCustomerPage(customers, {
-        report,
-        customersById,
-        applyCustomerRecord:
-          APPLY && connection
-            ? customer => applyCustomer(connection, customer)
-            : undefined,
-      });
-    });
-  } catch (error) {
-    reportFailure("clientes", error);
-    throw error;
-  }
-
-  try {
-    await forEachPage("payments", async payments => {
-      await processPaymentPage(payments, {
-        report,
-        customersById,
-        localState,
-        applyChargeRecord:
-          APPLY && connection
-            ? charge => applyCharge(connection, charge)
-            : undefined,
-      });
-    });
-  } catch (error) {
-    reportFailure("pagamentos", error);
-    throw error;
-  }
-
-  if (connection) await connection.end();
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.writeFile(
     outputPath,
