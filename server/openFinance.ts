@@ -151,7 +151,7 @@ export function normalizePluggyItemStatus(
   if (
     normalized.includes("CONSENT") ||
     normalized.includes("EXPIRED") ||
-    normalized === "USER_AUTHORIZATION_PENDING"
+    normalized.includes("USER_AUTHORIZATION_PENDING")
   ) {
     return "consent_expired";
   }
