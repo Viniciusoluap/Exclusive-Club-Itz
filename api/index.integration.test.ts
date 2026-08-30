@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
-import * as esbuild from "esbuild";
+import { execSync } from "child_process";
 import { createServer } from "http";
 import type { AddressInfo } from "net";
+import fs from "fs";
 import path from "path";
 
 /**
  * Reproduz, num teste, o mesmo caminho que a Vercel/Manus usam em produção:
- * bundle via esbuild (mesmos flags do script `build`) -> api/index.ts importa
- * o bundle -> handler recebe uma requisição HTTP real, sem cookie de sessão.
+ * roda o próprio comando configurado em package.json (não uma cópia dos
+ * flags) para gerar api/_server.js -> api/index.ts importa o bundle ->
+ * handler recebe uma requisição HTTP real, sem cookie de sessão.
  *
  * Existe porque um deploy chegou a servir esse adaptador sem o bundle
  * `api/_server.js` presente (gerado só pelo script de build, nunca versionado),
@@ -16,23 +18,36 @@ import path from "path";
  * Este teste falha se isso se repetir: local (com sessão ausente) tem que dar
  * 401, nunca 404.
  *
+ * Extrai e executa o trecho do script `build` que gera api/_server.js (em vez
+ * de recriar os flags do esbuild aqui) para que uma regressão no próprio
+ * script — flags divergentes, ou a geração do arquivo removida — quebre este
+ * teste, não só o script duplicado. Pula só o `vite build` do mesmo script,
+ * que não afeta esse artefato e só custaria tempo.
+ *
  * VERCEL=1 antes do import evita que o módulo do servidor dispare o
  * `startServer()` automático (bind de porta, cron jobs) — mesma condição que
  * o ambiente serverless real já impõe.
  */
 process.env.VERCEL = "1";
 
-await esbuild.build({
-  entryPoints: [
-    path.resolve(import.meta.dirname, "..", "server/_core/index.ts"),
-  ],
-  platform: "node",
-  packages: "external",
-  bundle: true,
-  format: "esm",
-  external: ["./vite"],
-  outfile: path.resolve(import.meta.dirname, "_server.js"),
-});
+const repoRoot = path.resolve(import.meta.dirname, "..");
+const pkg = JSON.parse(
+  fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")
+) as { scripts: Record<string, string> };
+
+const apiServerBuildCommand = pkg.scripts.build
+  .split("&&")
+  .map(segment => segment.trim())
+  .find(segment => segment.includes("api/_server.js"));
+
+if (!apiServerBuildCommand) {
+  throw new Error(
+    "O script `build` do package.json não gera mais api/_server.js — " +
+      "o adaptador serverless (api/index.ts) quebraria em produção."
+  );
+}
+
+execSync(apiServerBuildCommand, { cwd: repoRoot, stdio: "inherit" });
 
 const { default: handler } = await import("./index");
 
