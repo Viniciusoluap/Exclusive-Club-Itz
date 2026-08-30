@@ -232,7 +232,9 @@ export function buildPluggyTransactionsPath(accountId: string, after?: string) {
 export function transactionIdsForDeletion(
   payload: PluggyWebhookPayload
 ): string[] {
-  return [...new Set((payload.transactionIds || []).filter(Boolean))].slice(0, 1000);
+  return Array.from(
+    new Set((payload.transactionIds || []).filter(Boolean))
+  ).slice(0, 1000);
 }
 
 export function normalizePluggyAccount(
