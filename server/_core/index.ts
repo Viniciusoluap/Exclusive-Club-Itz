@@ -53,6 +53,7 @@ export async function initializeApp(
   app.use('/api/upload-receipt', uploadLimiter);
   app.use('/api/upload-client-document', uploadLimiter);
   app.use('/api/upload-inspection-photo', uploadLimiter);
+  app.use('/api/backup/restore-merge', uploadLimiter);
   app.use('/api/webhooks/asaas', webhookLimiter);
   app.use('/api/webhooks/pluggy', webhookLimiter);
 
@@ -336,6 +337,11 @@ export async function initializeApp(
   // Backup download route
   const { downloadBackupRoute } = await import('../downloadBackupRoute');
   app.get('/api/backup/download/:id', downloadBackupRoute);
+
+  // Mesclagem seletiva de um backup antigo (upload manual) — ver backupRestoreMerge.ts
+  const { restoreMergeDryRunRoute, restoreMergeApplyRoute } = await import('../backupRestoreMergeRoute');
+  app.post('/api/backup/restore-merge/dry-run', restoreMergeDryRunRoute);
+  app.post('/api/backup/restore-merge/apply', restoreMergeApplyRoute);
 
   app.use(
     "/api/trpc",

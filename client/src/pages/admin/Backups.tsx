@@ -24,6 +24,31 @@ function nomeDoDownload(fileName: string): string {
   return fileName.replace(/\.enc$/i, '');
 }
 
+type RelatorioTabelaMesclagem = {
+  table: string;
+  label: string;
+  hasNaturalKey: boolean;
+  rowsInBackup: number;
+  rowsCurrentlyInProduction: number;
+  rowsAlreadyExisting: number;
+  rowsToInsert: number;
+  rowsWithoutKeyValue: number;
+};
+
+type RelatorioMesclagem = {
+  generatedAt: string;
+  tables: RelatorioTabelaMesclagem[];
+  tablesInBackupNotRecognized: string[];
+  totalRowsToInsert: number;
+};
+
+type ResultadoAplicacaoMesclagem = {
+  appliedAt: string;
+  tables: { table: string; label: string; rowsInserted: number }[];
+  totalRowsInserted: number;
+  tablesNeverAutoInserted: string[];
+};
+
 export default function AdminBackups() {
   const { user, loading } = useAuth();
   const confirm = useConfirm();
@@ -88,6 +113,71 @@ export default function AdminBackups() {
     onError: (error) => toast.error(`Erro ao conferir: ${error.message}`),
   });
   const relatorio = verifyMutation.data;
+
+  // ---- Recuperação seletiva de um backup antigo (mesclagem, nunca sobrescreve) ----
+  // Upload direto (fora do tRPC, por causa do tamanho do arquivo) para
+  // /api/backup/restore-merge/*. Sempre em duas etapas: primeiro o dry-run
+  // (só lê e compara), e o "Aplicar" só fica disponível depois de um dry-run
+  // bem-sucedido do MESMO arquivo selecionado — trocar o arquivo invalida o
+  // resultado anterior, para nunca aplicar um relatório que não é deste arquivo.
+  const [mergeFile, setMergeFile] = useState<File | null>(null);
+  const [mergeDryRun, setMergeDryRun] = useState<RelatorioMesclagem | null>(null);
+  const [mergeApplyResult, setMergeApplyResult] = useState<ResultadoAplicacaoMesclagem | null>(null);
+  const [mergeDryRunLoading, setMergeDryRunLoading] = useState(false);
+  const [mergeApplyLoading, setMergeApplyLoading] = useState(false);
+
+  const handleMergeFileChange = (file: File | null) => {
+    setMergeFile(file);
+    setMergeDryRun(null);
+    setMergeApplyResult(null);
+  };
+
+  const handleMergeDryRun = async () => {
+    if (!mergeFile) return;
+    setMergeDryRunLoading(true);
+    setMergeApplyResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', mergeFile);
+      const response = await fetch('/api/backup/restore-merge/dry-run', { method: 'POST', body: formData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? 'Falha ao analisar o backup.');
+      setMergeDryRun(data);
+      toast.success(`Análise concluída: ${data.totalRowsToInsert} registro(s) seriam inseridos.`);
+    } catch (e: any) {
+      toast.error(`Erro ao analisar backup: ${e.message}`);
+    } finally {
+      setMergeDryRunLoading(false);
+    }
+  };
+
+  const handleMergeApply = async () => {
+    if (!mergeFile || !mergeDryRun) return;
+    const ok = await confirm({
+      title: 'Aplicar recuperação do backup?',
+      description:
+        `Serão inseridos até ${mergeDryRun.totalRowsToInsert} registro(s) que existem no backup e ainda não existem hoje. ` +
+        'Nenhum dado atual é alterado ou apagado — em caso de conflito, o dado atual sempre prevalece. ' +
+        'Tabelas sem uma chave de identificação segura nunca são inseridas automaticamente.',
+      confirmText: 'Aplicar',
+    });
+    if (!ok) return;
+
+    setMergeApplyLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', mergeFile);
+      const response = await fetch('/api/backup/restore-merge/apply', { method: 'POST', body: formData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? 'Falha ao aplicar a recuperação.');
+      setMergeApplyResult(data);
+      toast.success(`Recuperação aplicada: ${data.totalRowsInserted} registro(s) inserido(s).`);
+    } catch (e: any) {
+      toast.error(`Erro ao aplicar recuperação: ${e.message}`);
+    } finally {
+      setMergeApplyLoading(false);
+    }
+  };
 
   // ---- Limpeza dos backups redundantes ----
   // Um defeito disparava um backup a cada start do servidor, e a hospedagem
@@ -724,6 +814,147 @@ export default function AdminBackups() {
               </details>
             </CardContent>
           )}
+        </Card>
+
+        {/*
+          Recuperação seletiva de um backup antigo.
+
+          Diferente do "Restaurar" de cada item do histórico (que SUBSTITUI o
+          banco inteiro pelo estado congelado daquele arquivo): aqui o admin
+          sobe um arquivo qualquer (ex.: o backup de agosto) e o sistema
+          insere só os registros que existem lá e ainda não existem hoje.
+          Nada é sobrescrito nem apagado — dado atual sempre vence.
+        */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RotateCcw className="w-5 h-5 shrink-0" />
+              Recuperar registros de um backup antigo
+            </CardTitle>
+            <CardDescription>
+              Envie um arquivo de backup (.zip ou .sql) para recuperar registros que existem nele e não existem
+              mais hoje. Nunca sobrescreve nem apaga nada do banco atual.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+              <input
+                type="file"
+                accept=".zip,.sql"
+                onChange={(e) => handleMergeFileChange(e.target.files?.[0] ?? null)}
+                className="text-sm border rounded-md px-3 py-2 w-full sm:w-auto"
+              />
+              <Button
+                onClick={handleMergeDryRun}
+                disabled={!mergeFile || mergeDryRunLoading}
+                variant="outline"
+                className="w-full sm:w-auto shrink-0"
+              >
+                {mergeDryRunLoading ? (
+                  <>
+                    <Clock className="w-4 h-4 mr-2 animate-spin shrink-0" />
+                    Analisando…
+                  </>
+                ) : (
+                  'Analisar (não altera nada)'
+                )}
+              </Button>
+            </div>
+
+            {mergeDryRun && (
+              <div className="space-y-3">
+                <div
+                  className={`rounded-lg border p-4 ${
+                    mergeDryRun.totalRowsToInsert > 0 ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  <div className="font-medium text-sm mb-1">
+                    {mergeDryRun.totalRowsToInsert > 0
+                      ? `${mergeDryRun.totalRowsToInsert} registro(s) seriam inseridos.`
+                      : 'Nenhum registro novo para inserir — tudo do backup já existe hoje.'}
+                  </div>
+                  {mergeDryRun.tablesInBackupNotRecognized.length > 0 && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Tabelas do arquivo ignoradas (fora do escopo desta recuperação):{' '}
+                      {mergeDryRun.tablesInBackupNotRecognized.join(', ')}
+                    </div>
+                  )}
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="text-sm w-full min-w-[560px]">
+                    <thead>
+                      <tr className="text-left text-gray-500">
+                        <th className="py-1 pr-4 font-medium">Tabela</th>
+                        <th className="py-1 pr-4 font-medium text-right">No backup</th>
+                        <th className="py-1 pr-4 font-medium text-right">Já existem</th>
+                        <th className="py-1 pr-4 font-medium text-right">Sem chave</th>
+                        <th className="py-1 font-medium text-right">Seriam inseridos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mergeDryRun.tables
+                        .filter(t => t.rowsInBackup > 0)
+                        .map(t => (
+                          <tr key={t.table} className={t.rowsToInsert > 0 ? 'text-blue-700' : ''}>
+                            <td className="py-1 pr-4 break-all">
+                              {t.label}
+                              {!t.hasNaturalKey && (
+                                <span className="ml-1 text-xs text-gray-500" title="Sem chave de identificação segura — nunca inserido automaticamente">
+                                  (só contagem)
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-1 pr-4 text-right tabular-nums">{t.rowsInBackup.toLocaleString('pt-BR')}</td>
+                            <td className="py-1 pr-4 text-right tabular-nums">
+                              {t.hasNaturalKey ? t.rowsAlreadyExisting.toLocaleString('pt-BR') : '—'}
+                            </td>
+                            <td className="py-1 pr-4 text-right tabular-nums">
+                              {t.hasNaturalKey && t.rowsWithoutKeyValue > 0 ? t.rowsWithoutKeyValue.toLocaleString('pt-BR') : '—'}
+                            </td>
+                            <td className="py-1 text-right tabular-nums font-medium">
+                              {t.hasNaturalKey ? t.rowsToInsert.toLocaleString('pt-BR') : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <Button
+                  onClick={handleMergeApply}
+                  disabled={mergeApplyLoading || mergeDryRun.totalRowsToInsert === 0}
+                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+                >
+                  {mergeApplyLoading ? (
+                    <>
+                      <Clock className="w-4 h-4 mr-2 animate-spin shrink-0" />
+                      Aplicando…
+                    </>
+                  ) : (
+                    `Aplicar (inserir ${mergeDryRun.totalRowsToInsert} registro(s))`
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {mergeApplyResult && (
+              <div className="rounded-lg border p-4 bg-green-50 border-green-200">
+                <div className="font-medium text-green-900 text-sm mb-1">
+                  {mergeApplyResult.totalRowsInserted} registro(s) inserido(s) com sucesso.
+                </div>
+                <div className="text-xs text-green-800 space-y-0.5">
+                  {mergeApplyResult.tables
+                    .filter(t => t.rowsInserted > 0)
+                    .map(t => (
+                      <div key={t.table}>
+                        {t.label}: {t.rowsInserted.toLocaleString('pt-BR')}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         {/* Último Backup */}
