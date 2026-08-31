@@ -20,6 +20,22 @@ vi.mock("./db", () => ({
     throw new Error("getDb não deveria ser chamado por testPluggyConnection()");
   }),
 }));
+// resolvePluggyConfig() prioriza ENV sobre o valor mockado de getSetting
+// (`ENV.pluggyClientId || fromDb || ""`). Sem isolar ENV, este arquivo passa
+// hoje só porque a máquina de validação não tem PLUGGY_CLIENT_ID/SECRET no
+// ambiente — mas quebraria (dois testes) numa máquina/CI que os tivesse,
+// como apontado em revisão automatizada na PR original. ENV é um objeto
+// congelado no import de "./_core/env" a partir de process.env, então a
+// única forma confiável de isolar é mockar o módulo inteiro.
+vi.mock("./_core/env", () => ({
+  ENV: {
+    pluggyClientId: "",
+    pluggyClientSecret: "",
+    pluggyApiUrl: "https://api.pluggy.ai",
+    pluggyWebhookSecret: "",
+    publicAppUrl: "",
+  },
+}));
 
 import { getSetting } from "./systemSettings";
 import { testPluggyConnection } from "./openFinance";
@@ -120,11 +136,27 @@ describe("testPluggyConnection — ação administrativa segura", () => {
   });
 
   it("com credenciais inválidas, devolve falha sanitizada sem vazar o client secret", async () => {
-    mockCredentials("bad-id", "bad-secret");
+    // Cenário adversarial: a própria Pluggy ecoa o valor submetido no corpo
+    // do erro (algumas APIs fazem isso para depuração). Sem redação no
+    // código, isso vazaria a credencial direto pro admin. As credenciais
+    // aqui precisam aparecer LITERALMENTE no corpo mockado — um erro
+    // genérico sem o valor provaria só que a mensagem fixa não continha a
+    // credencial, não que o código a remove quando ela está presente.
+    mockCredentials(
+      "sandbox-client-id-real",
+      "sandbox-client-secret-real-xyz"
+    );
 
     const { fetchMock } = trackedFetch(url => {
       if (url.endsWith("/auth")) {
-        return { ok: false, status: 401, json: async () => ({ message: "Invalid credentials" }) };
+        return {
+          ok: false,
+          status: 401,
+          json: async () => ({
+            message:
+              "Invalid credentials for clientId sandbox-client-id-real and clientSecret sandbox-client-secret-real-xyz",
+          }),
+        };
       }
       throw new Error(`chamada inesperada: ${url}`);
     });
@@ -133,8 +165,10 @@ describe("testPluggyConnection — ação administrativa segura", () => {
     const result = await testPluggyConnection();
 
     expect(result.success).toBe(false);
-    expect(result.message).not.toContain("bad-secret");
-    expect(result.message).not.toContain("bad-id");
+    expect(result.message).not.toContain("sandbox-client-id-real");
+    expect(result.message).not.toContain("sandbox-client-secret-real-xyz");
+    // A mensagem continua útil pro admin (não é apagada por completo).
+    expect(result.message).toContain("Invalid credentials");
   });
 
   it("com Client ID/Secret vazios, falha sem chamar a rede", async () => {

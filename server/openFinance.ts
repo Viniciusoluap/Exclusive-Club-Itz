@@ -526,7 +526,25 @@ export function nextCursor(next: string | null | undefined): string | undefined 
   }
 }
 
+/**
+ * Remove qualquer ocorrência literal do client id/secret configurados de uma
+ * mensagem de erro antes de devolvê-la ao admin. `parseResponse()` repassa o
+ * texto de erro da Pluggy verbatim — nada garante que a API nunca ecoe de
+ * volta um valor submetido (ex.: "client_secret inválido: xxxx"), então a
+ * redação acontece aqui, no ponto de saída para o admin, não na origem.
+ */
+function redactPluggyCredentials(message: string, config: PluggyConfig): string {
+  let sanitized = message;
+  for (const secret of [config.clientId, config.clientSecret]) {
+    if (secret && secret.length >= 4) {
+      sanitized = sanitized.split(secret).join("[credencial removida]");
+    }
+  }
+  return sanitized;
+}
+
 export async function testPluggyConnection() {
+  const config = await resolvePluggyConfig();
   try {
     await withApiKey(async apiKey => {
       await providerRequest("/connectors?countries=BR", {}, apiKey);
@@ -537,12 +555,13 @@ export async function testPluggyConnection() {
         "API Pluggy conectada. Credenciais válidas para consultar conectores brasileiros.",
     };
   } catch (error) {
+    const rawMessage =
+      error instanceof Error
+        ? error.message
+        : "Não foi possível validar a API Pluggy.";
     return {
       success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Não foi possível validar a API Pluggy.",
+      message: redactPluggyCredentials(rawMessage, config),
     };
   }
 }
