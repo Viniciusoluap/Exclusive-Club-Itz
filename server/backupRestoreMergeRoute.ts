@@ -13,7 +13,7 @@ import { Request, Response } from 'express';
 import { sdk } from './_core/sdk';
 import { getDb } from './db';
 import { extrairSqlDoZip } from './backupVerify';
-import { dryRunRestoreMerge, applyRestoreMerge } from './backupRestoreMerge';
+import { dryRunRestoreMerge, applyRestoreMerge, forceRestoreTablesWithoutNaturalKey } from './backupRestoreMerge';
 
 async function requireAdmin(req: Request, res: Response): Promise<boolean> {
   try {
@@ -91,6 +91,25 @@ export async function restoreMergeApplyRoute(req: Request, res: Response) {
       return;
     }
     const resultado = await applyRestoreMerge(db, dump);
+    res.json(resultado);
+  });
+}
+
+/**
+ * POST /api/backup/restore-merge/force-no-key — insere por id nas tabelas
+ * SEM chave natural (vistorias, abastecimentos, reservas, despesas etc.).
+ * Só pula ids que já existem; nunca sobrescreve. Risco residual de duplicata
+ * por conteúdo (não por id) — ver comentário em `forceRestoreTablesWithoutNaturalKey`.
+ */
+export async function restoreMergeForceNoKeyRoute(req: Request, res: Response) {
+  if (!(await requireAdmin(req, res))) return;
+  await withUploadedDump(req, res, async dump => {
+    const db = await getDb();
+    if (!db) {
+      res.status(500).json({ error: 'Banco de dados indisponível' });
+      return;
+    }
+    const resultado = await forceRestoreTablesWithoutNaturalKey(db, dump);
     res.json(resultado);
   });
 }
