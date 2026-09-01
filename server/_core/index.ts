@@ -339,9 +339,10 @@ export async function initializeApp(
   app.get('/api/backup/download/:id', downloadBackupRoute);
 
   // Mesclagem seletiva de um backup antigo (upload manual) — ver backupRestoreMerge.ts
-  const { restoreMergeDryRunRoute, restoreMergeApplyRoute } = await import('../backupRestoreMergeRoute');
+  const { restoreMergeDryRunRoute, restoreMergeApplyRoute, restoreMergeForceNoKeyRoute } = await import('../backupRestoreMergeRoute');
   app.post('/api/backup/restore-merge/dry-run', restoreMergeDryRunRoute);
   app.post('/api/backup/restore-merge/apply', restoreMergeApplyRoute);
+  app.post('/api/backup/restore-merge/force-no-key', restoreMergeForceNoKeyRoute);
 
   app.use(
     "/api/trpc",

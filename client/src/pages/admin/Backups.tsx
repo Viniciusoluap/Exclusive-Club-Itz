@@ -61,6 +61,25 @@ type ResultadoAplicacaoMesclagem = {
   tablesNeverAutoInserted: string[];
 };
 
+type ResultadoTabelaRecuperacaoForcada = {
+  table: string;
+  label: string;
+  rowsInBackup: number;
+  rowsSkippedExistingId: number;
+  rowsAttempted: number;
+  rowsInserted: number;
+  rowsVerified: number;
+  success: boolean;
+  error?: string;
+};
+
+type ResultadoRecuperacaoForcada = {
+  appliedAt: string;
+  tables: ResultadoTabelaRecuperacaoForcada[];
+  totalRowsInserted: number;
+  allSucceeded: boolean;
+};
+
 export default function AdminBackups() {
   const { user, loading } = useAuth();
   const confirm = useConfirm();
@@ -137,6 +156,8 @@ export default function AdminBackups() {
   const [mergeApplyResult, setMergeApplyResult] = useState<ResultadoAplicacaoMesclagem | null>(null);
   const [mergeDryRunLoading, setMergeDryRunLoading] = useState(false);
   const [mergeApplyLoading, setMergeApplyLoading] = useState(false);
+  const [forceRestoreResult, setForceRestoreResult] = useState<ResultadoRecuperacaoForcada | null>(null);
+  const [forceRestoreLoading, setForceRestoreLoading] = useState(false);
 
   /**
    * `response.json()` direto quebra com "Unexpected token <" quando o
@@ -161,6 +182,7 @@ export default function AdminBackups() {
     setMergeFile(file);
     setMergeDryRun(null);
     setMergeApplyResult(null);
+    setForceRestoreResult(null);
   };
 
   const handleMergeDryRun = async () => {
@@ -211,6 +233,50 @@ export default function AdminBackups() {
       toast.error(`Erro ao aplicar recuperação: ${e.message}`);
     } finally {
       setMergeApplyLoading(false);
+    }
+  };
+
+  /**
+   * Recuperação forçada das tabelas SEM chave natural (vistorias,
+   * abastecimentos, reservas, despesas etc.) — insere por id, pulando só o
+   * que já existe com o MESMO id. Diferente do "Aplicar" de cima, aqui pode
+   * haver duplicata de CONTEÚDO (o mesmo evento recadastrado depois com outro
+   * id) — risco aceito explicitamente pelo responsável para priorizar
+   * recuperar o dado, inclusive porque os anexos (fotos/documentos) só voltam
+   * a ser arquiváveis quando estas tabelas tiverem os registros de volta.
+   */
+  const handleForceRestore = async () => {
+    if (!mergeFile) return;
+    const ok = await confirm({
+      title: 'Recuperar tabelas sem chave mesmo assim?',
+      description:
+        'Estas tabelas (vistorias, abastecimentos, reservas, cotas, manutenções, avaliações, despesas etc.) não têm ' +
+        'um jeito seguro de saber se um registro do backup já existe hoje sob outro id. A ferramenta só evita colidir ' +
+        'com um id que já existe — nunca sobrescreve — mas PODE duplicar um evento que foi recadastrado manualmente ' +
+        'depois do backup. Use quando recuperar o dado (inclusive para os anexos voltarem a ser encontráveis) for mais ' +
+        'importante do que esse risco.',
+      variant: 'destructive',
+      confirmText: 'Recuperar mesmo assim',
+    });
+    if (!ok) return;
+
+    setForceRestoreLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', mergeFile);
+      const response = await fetch('/api/backup/restore-merge/force-no-key', { method: 'POST', body: formData });
+      const data = await parseJsonResponse(response);
+      if (!response.ok) throw new Error(data.error ?? 'Falha ao recuperar as tabelas sem chave.');
+      setForceRestoreResult(data);
+      if (data.allSucceeded) {
+        toast.success(`Recuperação forçada concluída e confirmada: ${data.totalRowsInserted} registro(s) inserido(s).`);
+      } else {
+        toast.warning('Concluído com pendência: pelo menos uma tabela não confirmou. Veja o detalhe na tela.');
+      }
+    } catch (e: any) {
+      toast.error(`Erro na recuperação forçada: ${e.message}`);
+    } finally {
+      setForceRestoreLoading(false);
     }
   };
 
@@ -1047,6 +1113,131 @@ export default function AdminBackups() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/*
+              Tabelas sem chave natural: o "Aplicar" de cima nunca toca nelas
+              (não tem como saber com segurança se um registro do backup já
+              existe hoje). Esta seção deixa isso explícito e oferece uma
+              recuperação por id — pula só o que já existe com o MESMO id,
+              nunca sobrescreve, mas pode duplicar um evento recadastrado
+              manualmente depois do backup. Só aparece depois de um dry-run,
+              e só faz sentido usar se essas contagens (fotos de vistoria,
+              abastecimento etc.) estiverem muito abaixo do esperado — é
+              também o que faz os anexos (fotos/documentos) voltarem a ser
+              encontráveis pelo "Arquivar anexos" acima, já que ele procura
+              as URLs dentro destas tabelas.
+            */}
+            {mergeDryRun && (
+              <div className="pt-2 border-t space-y-3">
+                <div>
+                  <div className="font-medium text-sm">Tabelas sem chave de identificação segura</div>
+                  <div className="text-xs text-gray-500">
+                    O "Aplicar" acima nunca insere aqui sozinho. Reveja "Em produção hoje" antes de decidir — se já
+                    estiver em zero, não há risco de duplicata.
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="text-sm w-full min-w-[500px]">
+                    <thead>
+                      <tr className="text-left text-gray-500">
+                        <th className="py-1 pr-4 font-medium">Tabela</th>
+                        <th className="py-1 pr-4 font-medium text-right">No backup</th>
+                        <th className="py-1 font-medium text-right">Em produção hoje</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mergeDryRun.tables
+                        .filter(t => !t.hasNaturalKey)
+                        .map(t => (
+                          <tr key={t.table}>
+                            <td className="py-1 pr-4 break-all">{t.label}</td>
+                            <td className="py-1 pr-4 text-right tabular-nums">{t.rowsInBackup.toLocaleString('pt-BR')}</td>
+                            <td className="py-1 text-right tabular-nums">{t.rowsCurrentlyInProduction.toLocaleString('pt-BR')}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <Button
+                  onClick={handleForceRestore}
+                  disabled={forceRestoreLoading}
+                  variant="outline"
+                  className="w-full sm:w-auto text-red-600 hover:text-red-700 border-red-200"
+                >
+                  {forceRestoreLoading ? (
+                    <>
+                      <Clock className="w-4 h-4 mr-2 animate-spin shrink-0" />
+                      Recuperando…
+                    </>
+                  ) : (
+                    'Recuperar tabelas sem chave mesmo assim (risco de duplicata)'
+                  )}
+                </Button>
+
+                {forceRestoreResult && (
+                  <div className="space-y-3">
+                    <div
+                      className={`rounded-lg border p-4 ${
+                        forceRestoreResult.allSucceeded ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                      }`}
+                    >
+                      <div className={`font-medium text-sm flex items-center gap-2 ${forceRestoreResult.allSucceeded ? 'text-green-900' : 'text-red-900'}`}>
+                        {forceRestoreResult.allSucceeded ? (
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                        )}
+                        {forceRestoreResult.allSucceeded
+                          ? `${forceRestoreResult.totalRowsInserted} registro(s) inserido(s) e confirmado(s) no banco.`
+                          : `Concluído com problema: ${forceRestoreResult.totalRowsInserted} inserido(s), mas pelo menos uma tabela não confirmou.`}
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="text-sm w-full min-w-[640px]">
+                        <thead>
+                          <tr className="text-left text-gray-500">
+                            <th className="py-1 pr-4 font-medium">Tabela</th>
+                            <th className="py-1 pr-4 font-medium text-right">No backup</th>
+                            <th className="py-1 pr-4 font-medium text-right">Já tinham o id</th>
+                            <th className="py-1 pr-4 font-medium text-right">Inseridos</th>
+                            <th className="py-1 pr-4 font-medium text-right">Confirmados</th>
+                            <th className="py-1 font-medium">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {forceRestoreResult.tables.map(t => (
+                            <tr key={t.table} className={!t.success ? 'text-red-700' : t.rowsInserted > 0 ? 'text-green-700' : ''}>
+                              <td className="py-1 pr-4 break-all">
+                                {t.label}
+                                {t.error && <div className="text-xs text-red-600 mt-0.5 break-words">{t.error}</div>}
+                              </td>
+                              <td className="py-1 pr-4 text-right tabular-nums">{t.rowsInBackup.toLocaleString('pt-BR')}</td>
+                              <td className="py-1 pr-4 text-right tabular-nums">{t.rowsSkippedExistingId.toLocaleString('pt-BR')}</td>
+                              <td className="py-1 pr-4 text-right tabular-nums">{t.rowsInserted.toLocaleString('pt-BR')}</td>
+                              <td className="py-1 pr-4 text-right tabular-nums">{t.rowsVerified.toLocaleString('pt-BR')}</td>
+                              <td className="py-1">
+                                {t.success ? (
+                                  t.rowsInserted > 0 ? (
+                                    <span className="inline-flex items-center gap-1 text-green-700"><CheckCircle2 className="w-3.5 h-3.5" /> Confirmado</span>
+                                  ) : (
+                                    <span className="text-gray-500">Nada a inserir</span>
+                                  )
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-red-700"><XCircle className="w-3.5 h-3.5" /> Falhou</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

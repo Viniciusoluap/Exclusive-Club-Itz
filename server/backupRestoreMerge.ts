@@ -213,7 +213,11 @@ type TableWithNaturalKey = MergeableTableBase & {
   keyColumn: AnyColumn;
 };
 
-type TableWithoutNaturalKey = MergeableTableBase & { hasNaturalKey: false };
+type TableWithoutNaturalKey = MergeableTableBase & {
+  hasNaturalKey: false;
+  /** Coluna `id` (PK autoincrement) — usada só pela recuperação forçada (por ID), nunca pelo dry-run/apply normal. */
+  idColumn: AnyColumn;
+};
 
 type MergeableTable = TableWithNaturalKey | TableWithoutNaturalKey;
 
@@ -280,20 +284,25 @@ const TABLES_WITH_NATURAL_KEY: TableWithNaturalKey[] = [
  * financeiro/operacional é maior que o valor de automatizar.
  */
 const TABLES_WITHOUT_NATURAL_KEY: TableWithoutNaturalKey[] = [
-  { sqlTableName: 'expense_records', label: 'Despesas', drizzleTable: expenseRecords, hasNaturalKey: false },
-  { sqlTableName: 'bookings', label: 'Reservas', drizzleTable: bookings, hasNaturalKey: false },
-  { sqlTableName: 'client_quotas', label: 'Cotas de clientes', drizzleTable: clientQuotas, hasNaturalKey: false },
-  { sqlTableName: 'due_date_change_requests', label: 'Solicitações de alteração de vencimento', drizzleTable: dueDateChangeRequests, hasNaturalKey: false },
-  { sqlTableName: 'fuel_records', label: 'Abastecimentos', drizzleTable: fuelRecords, hasNaturalKey: false },
-  { sqlTableName: 'fuel_record_containers', label: 'Galões de abastecimento', drizzleTable: fuelRecordContainers, hasNaturalKey: false },
-  { sqlTableName: 'fuel_purchases', label: 'Compras de combustível', drizzleTable: fuelPurchases, hasNaturalKey: false },
-  { sqlTableName: 'fuel_budget', label: 'Orçamento de combustível', drizzleTable: fuelBudget, hasNaturalKey: false },
-  { sqlTableName: 'gallon_stock', label: 'Estoque de galões', drizzleTable: gallonStock, hasNaturalKey: false },
-  { sqlTableName: 'inspections', label: 'Vistorias', drizzleTable: inspections, hasNaturalKey: false },
-  { sqlTableName: 'inspection_charges', label: 'Cobranças de vistoria', drizzleTable: inspectionCharges, hasNaturalKey: false },
-  { sqlTableName: 'maintenances', label: 'Manutenções', drizzleTable: maintenances, hasNaturalKey: false },
-  { sqlTableName: 'reviews', label: 'Avaliações', drizzleTable: reviews, hasNaturalKey: false },
-  { sqlTableName: 'vessels', label: 'Embarcações', drizzleTable: vessels, hasNaturalKey: false },
+  // Embarcações e reservas primeiro: são referenciadas (por convenção de
+  // aplicação, sem FK real no banco) por quase todas as outras — inserir
+  // nessa ordem deixa o dado consistente mais cedo, embora não seja
+  // estritamente exigido pelo schema (só `fuel_purchases.purchased_by` tem
+  // uma FK de verdade, para `users`, já restaurado antes deste grupo).
+  { sqlTableName: 'vessels', label: 'Embarcações', drizzleTable: vessels, hasNaturalKey: false, idColumn: vessels.id },
+  { sqlTableName: 'bookings', label: 'Reservas', drizzleTable: bookings, hasNaturalKey: false, idColumn: bookings.id },
+  { sqlTableName: 'client_quotas', label: 'Cotas de clientes', drizzleTable: clientQuotas, hasNaturalKey: false, idColumn: clientQuotas.id },
+  { sqlTableName: 'inspections', label: 'Vistorias', drizzleTable: inspections, hasNaturalKey: false, idColumn: inspections.id },
+  { sqlTableName: 'inspection_charges', label: 'Cobranças de vistoria', drizzleTable: inspectionCharges, hasNaturalKey: false, idColumn: inspectionCharges.id },
+  { sqlTableName: 'maintenances', label: 'Manutenções', drizzleTable: maintenances, hasNaturalKey: false, idColumn: maintenances.id },
+  { sqlTableName: 'reviews', label: 'Avaliações', drizzleTable: reviews, hasNaturalKey: false, idColumn: reviews.id },
+  { sqlTableName: 'fuel_records', label: 'Abastecimentos', drizzleTable: fuelRecords, hasNaturalKey: false, idColumn: fuelRecords.id },
+  { sqlTableName: 'fuel_record_containers', label: 'Galões de abastecimento', drizzleTable: fuelRecordContainers, hasNaturalKey: false, idColumn: fuelRecordContainers.id },
+  { sqlTableName: 'fuel_purchases', label: 'Compras de combustível', drizzleTable: fuelPurchases, hasNaturalKey: false, idColumn: fuelPurchases.id },
+  { sqlTableName: 'fuel_budget', label: 'Orçamento de combustível', drizzleTable: fuelBudget, hasNaturalKey: false, idColumn: fuelBudget.id },
+  { sqlTableName: 'gallon_stock', label: 'Estoque de galões', drizzleTable: gallonStock, hasNaturalKey: false, idColumn: gallonStock.id },
+  { sqlTableName: 'due_date_change_requests', label: 'Solicitações de alteração de vencimento', drizzleTable: dueDateChangeRequests, hasNaturalKey: false, idColumn: dueDateChangeRequests.id },
+  { sqlTableName: 'expense_records', label: 'Despesas', drizzleTable: expenseRecords, hasNaturalKey: false, idColumn: expenseRecords.id },
 ];
 
 const ALL_MERGEABLE_TABLES = [...TABLES_WITH_NATURAL_KEY, ...TABLES_WITHOUT_NATURAL_KEY];
@@ -578,5 +587,155 @@ export async function applyRestoreMerge(db: any, dump: string): Promise<MergeApp
     totalRowsInserted: results.reduce((sum, t) => sum + t.rowsInserted, 0),
     allSucceeded: results.every(t => t.success),
     tablesNeverAutoInserted: TABLES_WITHOUT_NATURAL_KEY.map(t => t.sqlTableName),
+  };
+}
+
+// ──────────────────────────────────── recuperação forçada (tabelas sem chave)
+
+export type ForceRestoreTableResult = {
+  table: string;
+  label: string;
+  rowsInBackup: number;
+  /** Linhas cujo id já existe hoje — nunca sobrepostas, sempre puladas. */
+  rowsSkippedExistingId: number;
+  rowsAttempted: number;
+  rowsInserted: number;
+  rowsVerified: number;
+  success: boolean;
+  error?: string;
+};
+
+export type ForceRestoreResult = {
+  appliedAt: string;
+  tables: ForceRestoreTableResult[];
+  totalRowsInserted: number;
+  allSucceeded: boolean;
+};
+
+/**
+ * Última linha de defesa contra duplicata nas tabelas SEM chave natural:
+ * insere pelo próprio `id` (a PK autoincrement do backup), só quando aquele
+ * id ainda não existe hoje. NUNCA sobrescreve uma linha existente.
+ *
+ * ISTO NÃO É EQUIVALENTE à dedup por chave natural do `applyRestoreMerge`:
+ * comparar por id só evita colidir com uma linha que já tem o MESMO id —
+ * não detecta "o mesmo evento operacional foi recadastrado depois com outro
+ * id". Por isso só roda quando o dono do produto aceita explicitamente esse
+ * risco residual de duplicata para priorizar recuperar o dado (decisão de
+ * 31/08 a 01/09/2026, depois de confirmado que os anexos — fotos e
+ * documentos — só voltam a ser arquiváveis quando as tabelas que referenciam
+ * suas URLs, como `inspections`/`fuel_records`, tiverem os registros de
+ * volta).
+ *
+ * IDs originais são preservados de propósito: `bookings.vessel_id`,
+ * `inspections.booking_id` etc. apontam para outras linhas do MESMO backup
+ * por id — trocar os ids quebraria esses vínculos. `fuel_purchases.
+ * purchased_by` é a única FK de banco real do schema, e aponta para `users`,
+ * já restaurado antes deste grupo.
+ */
+export async function forceRestoreTablesWithoutNaturalKey(
+  db: any,
+  dump: string,
+  onlyTables?: string[],
+): Promise<ForceRestoreResult> {
+  assertValidBackupDump(dump);
+
+  const targets = onlyTables
+    ? TABLES_WITHOUT_NATURAL_KEY.filter(t => onlyTables.includes(t.sqlTableName))
+    : TABLES_WITHOUT_NATURAL_KEY;
+
+  const results: ForceRestoreTableResult[] = [];
+
+  for (const cfg of targets) {
+    try {
+      const extracted = extractTableInserts(dump, cfg.sqlTableName);
+      if (!extracted || extracted.rows.length === 0) {
+        results.push({
+          table: cfg.sqlTableName,
+          label: cfg.label,
+          rowsInBackup: 0,
+          rowsSkippedExistingId: 0,
+          rowsAttempted: 0,
+          rowsInserted: 0,
+          rowsVerified: 0,
+          success: true,
+        });
+        continue;
+      }
+
+      const { columns, rows } = extracted;
+      const idIdx = columns.indexOf('id');
+      if (idIdx < 0) {
+        throw new Error('Backup sem coluna `id` reconhecível para esta tabela — recuperação por id não é possível.');
+      }
+
+      const BATCH = 500;
+      const idOf = (row: string[]) => sqlLiteralToJsForComparison(row[idIdx]);
+
+      const idValues = rows.map(idOf).filter((v): v is string => v !== null);
+      const existingIds = new Set<string>();
+      for (let i = 0; i < idValues.length; i += BATCH) {
+        const batch = idValues.slice(i, i + BATCH);
+        if (batch.length === 0) continue;
+        const found = await db.select({ id: cfg.idColumn }).from(cfg.drizzleTable).where(inArray(cfg.idColumn, batch));
+        for (const r of found) existingIds.add(String(r.id));
+      }
+
+      const rowsToInsert = rows.filter(row => {
+        const idVal = idOf(row);
+        return idVal !== null && !existingIds.has(idVal);
+      });
+      const skipped = rows.length - rowsToInsert.length;
+
+      let inserted = 0;
+      const INSERT_BATCH = 200;
+      const columnList = columns.map(c => `\`${c}\``).join(', ');
+      for (let i = 0; i < rowsToInsert.length; i += INSERT_BATCH) {
+        const batch = rowsToInsert.slice(i, i + INSERT_BATCH);
+        if (batch.length === 0) continue;
+        const valuesSql = batch.map(row => `(${row.join(', ')})`).join(',\n');
+        await db.execute(sql.raw(`INSERT INTO \`${cfg.sqlTableName}\` (${columnList}) VALUES\n${valuesSql};`));
+        inserted += batch.length;
+      }
+
+      const attemptedIds = rowsToInsert.map(idOf).filter((v): v is string => v !== null);
+      let verified = 0;
+      for (let i = 0; i < attemptedIds.length; i += BATCH) {
+        const batch = attemptedIds.slice(i, i + BATCH);
+        if (batch.length === 0) continue;
+        const found = await db.select({ id: cfg.idColumn }).from(cfg.drizzleTable).where(inArray(cfg.idColumn, batch));
+        verified += found.length;
+      }
+
+      results.push({
+        table: cfg.sqlTableName,
+        label: cfg.label,
+        rowsInBackup: rows.length,
+        rowsSkippedExistingId: skipped,
+        rowsAttempted: rowsToInsert.length,
+        rowsInserted: inserted,
+        rowsVerified: verified,
+        success: verified === rowsToInsert.length,
+      });
+    } catch (error: any) {
+      results.push({
+        table: cfg.sqlTableName,
+        label: cfg.label,
+        rowsInBackup: 0,
+        rowsSkippedExistingId: 0,
+        rowsAttempted: 0,
+        rowsInserted: 0,
+        rowsVerified: 0,
+        success: false,
+        error: error?.message ?? String(error),
+      });
+    }
+  }
+
+  return {
+    appliedAt: new Date().toISOString(),
+    tables: results,
+    totalRowsInserted: results.reduce((sum, t) => sum + t.rowsInserted, 0),
+    allSucceeded: results.every(t => t.success),
   };
 }

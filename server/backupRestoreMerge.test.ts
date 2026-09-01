@@ -8,8 +8,8 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { getDb } from './db';
-import { allowedClients, employees, bookings } from '../drizzle/schema';
-import { dryRunRestoreMerge, applyRestoreMerge } from './backupRestoreMerge';
+import { allowedClients, employees, bookings, vessels } from '../drizzle/schema';
+import { dryRunRestoreMerge, applyRestoreMerge, forceRestoreTablesWithoutNaturalKey } from './backupRestoreMerge';
 
 const db = await getDb();
 
@@ -250,6 +250,78 @@ describe.skipIf(!db)('backupRestoreMerge — mesclagem seletiva de backup antigo
     expect(novo.length).toBe(1);
 
     await db!.delete(employees).where(eq(employees.email, emailFuncionario));
+  });
+
+  it('recuperação forçada (sem chave): insere por id, pula id já existente, nunca sobrescreve', async () => {
+    const idNovo = 9401001;
+    const idJaExistente = 9401002;
+    await db!.delete(vessels).where(eq(vessels.id, idNovo));
+    await db!.delete(vessels).where(eq(vessels.id, idJaExistente));
+    await db!.insert(vessels).values({ id: idJaExistente, name: 'Embarcação já existente', type: 'lancha' });
+
+    try {
+      const dump = buildDump([
+        sqlTable(
+          'vessels',
+          "CREATE TABLE `vessels` (`id` int NOT NULL AUTO_INCREMENT, `name` text NOT NULL, `type` varchar(20) NOT NULL, PRIMARY KEY (`id`))",
+          ['id', 'name', 'type'],
+          [
+            { id: idNovo, name: 'Embarcação nova (do backup)', type: 'lancha' },
+            // Mesmo id de uma linha que já existe hoje, com nome DIFERENTE — não deve substituir.
+            { id: idJaExistente, name: 'NOME DIFERENTE DO BACKUP — NÃO DEVE PREVALECER', type: 'jetski' },
+          ],
+        ),
+      ]);
+
+      const resultado = await forceRestoreTablesWithoutNaturalKey(db, dump, ['vessels']);
+      const linha = resultado.tables.find(t => t.table === 'vessels')!;
+
+      expect(linha.rowsInBackup).toBe(2);
+      expect(linha.rowsSkippedExistingId).toBe(1);
+      expect(linha.rowsAttempted).toBe(1);
+      expect(linha.rowsInserted).toBe(1);
+      expect(linha.rowsVerified).toBe(1);
+      expect(linha.success).toBe(true);
+      expect(resultado.allSucceeded).toBe(true);
+
+      const nova = await db!.select().from(vessels).where(eq(vessels.id, idNovo));
+      expect(nova.length).toBe(1);
+      expect(nova[0]!.name).toBe('Embarcação nova (do backup)');
+
+      const existente = await db!.select().from(vessels).where(eq(vessels.id, idJaExistente));
+      expect(existente[0]!.name).toBe('Embarcação já existente'); // preservada, nunca sobrescrita
+      expect(existente[0]!.type).toBe('lancha');
+    } finally {
+      await db!.delete(vessels).where(eq(vessels.id, idNovo));
+      await db!.delete(vessels).where(eq(vessels.id, idJaExistente));
+    }
+  });
+
+  it('recuperação forçada: aceita o parâmetro onlyTables para restringir o escopo', async () => {
+    const idBooking = 9402001;
+    await db!.execute(sql`DELETE FROM bookings WHERE id = ${idBooking}`);
+
+    try {
+      const dump = buildDump([
+        sqlTable(
+          'bookings',
+          "CREATE TABLE `bookings` (`id` int NOT NULL AUTO_INCREMENT, `client_email` varchar(320) NOT NULL, `client_name` text NOT NULL, `vessel_id` int NOT NULL, `vessel_name` text NOT NULL, `booking_date` bigint NOT NULL, PRIMARY KEY (`id`))",
+          ['id', 'client_email', 'client_name', 'vessel_id', 'vessel_name', 'booking_date'],
+          [{ id: idBooking, client_email: 'x@example.com', client_name: 'X', vessel_id: 1, vessel_name: 'V', booking_date: 1723000000000 }],
+        ),
+      ]);
+
+      const resultado = await forceRestoreTablesWithoutNaturalKey(db, dump, ['bookings']);
+      expect(resultado.tables.length).toBe(1);
+      expect(resultado.tables[0]!.table).toBe('bookings');
+      expect(resultado.tables[0]!.rowsInserted).toBe(1);
+
+      const linhas = (await db!.execute(sql`SELECT id FROM bookings WHERE id = ${idBooking}`)) as any;
+      const rows = Array.isArray(linhas[0]) ? linhas[0] : linhas;
+      expect(rows.length).toBe(1);
+    } finally {
+      await db!.execute(sql`DELETE FROM bookings WHERE id = ${idBooking}`);
+    }
   });
 
   it('rejeita um arquivo que não é um backup válido (sem marcador de conclusão)', async () => {
