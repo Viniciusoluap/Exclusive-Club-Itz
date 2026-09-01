@@ -8,7 +8,7 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { getDb } from './db';
-import { allowedClients, bookings } from '../drizzle/schema';
+import { allowedClients, employees, bookings } from '../drizzle/schema';
 import { dryRunRestoreMerge, applyRestoreMerge } from './backupRestoreMerge';
 
 const db = await getDb();
@@ -114,6 +114,12 @@ describe.skipIf(!db)('backupRestoreMerge — mesclagem seletiva de backup antigo
     const resultado = await applyRestoreMerge(db, dump);
     const linha = resultado.tables.find(t => t.table === 'allowed_clients')!;
     expect(linha.rowsInserted).toBe(1);
+    // Auto-verificação: não basta o INSERT não ter lançado erro — relê o
+    // banco e confirma que a linha está mesmo lá.
+    expect(linha.rowsVerified).toBe(1);
+    expect(linha.success).toBe(true);
+    expect(linha.error).toBeUndefined();
+    expect(resultado.allSucceeded).toBe(true);
 
     const existente = await db!.select().from(allowedClients).where(eq(allowedClients.email, emailJaExistente));
     expect(existente[0]!.name).toBe('Cliente já existente'); // valor de produção preservado
@@ -201,6 +207,49 @@ describe.skipIf(!db)('backupRestoreMerge — mesclagem seletiva de backup antigo
     const relatorio = await dryRunRestoreMerge(db, dump);
     expect(relatorio.tablesInBackupNotRecognized).not.toContain('system_settings');
     expect(relatorio.tables.some(t => t.table === 'system_settings')).toBe(false);
+  });
+
+  it('uma tabela com erro no INSERT não impede as demais, e o erro fica visível no relatório', async () => {
+    const emailFuncionario = `${PREFIXO}-funcionario@example.com`;
+    await db!.delete(employees).where(eq(employees.email, emailFuncionario));
+
+    const dump = buildDump([
+      sqlTable(
+        // Coluna inexistente na tabela real (`employees` não tem `coluna_inexistente`)
+        // força o INSERT a lançar — simula uma falha real de gravação numa
+        // tabela específica, sem depender de derrubar o banco de teste.
+        'employees',
+        "CREATE TABLE `employees` (`id` int NOT NULL AUTO_INCREMENT, `email` varchar(320) NOT NULL, PRIMARY KEY (`id`))",
+        ['id', 'email', 'coluna_inexistente'],
+        [{ id: 9301, email: emailFuncionario, coluna_inexistente: 'x' }],
+      ),
+      sqlTable(
+        'allowed_clients',
+        "CREATE TABLE `allowed_clients` (`id` int NOT NULL AUTO_INCREMENT, `email` varchar(320) NOT NULL, `name` text NOT NULL, PRIMARY KEY (`id`))",
+        ['id', 'email', 'name'],
+        [{ id: 9002, email: emailNovo, name: 'Cliente novo (do backup)' }],
+      ),
+    ]);
+
+    const resultado = await applyRestoreMerge(db, dump);
+
+    const linhaFuncionarios = resultado.tables.find(t => t.table === 'employees')!;
+    expect(linhaFuncionarios.success).toBe(false);
+    expect(linhaFuncionarios.rowsInserted).toBe(0);
+    expect(linhaFuncionarios.error).toBeTruthy();
+
+    // A falha em `employees` (que vem antes na ordem de processamento) não
+    // pode impedir `allowed_clients` de ser processada.
+    const linhaClientes = resultado.tables.find(t => t.table === 'allowed_clients')!;
+    expect(linhaClientes.success).toBe(true);
+    expect(linhaClientes.rowsInserted).toBe(1);
+
+    expect(resultado.allSucceeded).toBe(false);
+
+    const novo = await db!.select().from(allowedClients).where(eq(allowedClients.email, emailNovo));
+    expect(novo.length).toBe(1);
+
+    await db!.delete(employees).where(eq(employees.email, emailFuncionario));
   });
 
   it('rejeita um arquivo que não é um backup válido (sem marcador de conclusão)', async () => {

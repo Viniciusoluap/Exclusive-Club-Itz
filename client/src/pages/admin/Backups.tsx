@@ -33,6 +33,7 @@ type RelatorioTabelaMesclagem = {
   rowsAlreadyExisting: number;
   rowsToInsert: number;
   rowsWithoutKeyValue: number;
+  error?: string;
 };
 
 type RelatorioMesclagem = {
@@ -42,10 +43,21 @@ type RelatorioMesclagem = {
   totalRowsToInsert: number;
 };
 
+type ResultadoTabelaAplicacaoMesclagem = {
+  table: string;
+  label: string;
+  rowsAttempted: number;
+  rowsInserted: number;
+  rowsVerified: number;
+  success: boolean;
+  error?: string;
+};
+
 type ResultadoAplicacaoMesclagem = {
   appliedAt: string;
-  tables: { table: string; label: string; rowsInserted: number }[];
+  tables: ResultadoTabelaAplicacaoMesclagem[];
   totalRowsInserted: number;
+  allSucceeded: boolean;
   tablesNeverAutoInserted: string[];
 };
 
@@ -126,6 +138,25 @@ export default function AdminBackups() {
   const [mergeDryRunLoading, setMergeDryRunLoading] = useState(false);
   const [mergeApplyLoading, setMergeApplyLoading] = useState(false);
 
+  /**
+   * `response.json()` direto quebra com "Unexpected token <" quando o
+   * servidor responde algo que não é JSON (erro 502/504 de proxy, timeout,
+   * payload grande demais) — e essa mensagem crua é exatamente o tipo de
+   * "log confuso" que a tela não pode deixar vazar. Lê como texto primeiro e
+   * só then tenta interpretar como JSON, com uma mensagem clara se falhar.
+   */
+  async function parseJsonResponse(response: Response): Promise<any> {
+    const texto = await response.text();
+    try {
+      return JSON.parse(texto);
+    } catch {
+      throw new Error(
+        `O servidor respondeu algo inesperado (HTTP ${response.status}). ` +
+          'Provavelmente o arquivo é grande demais para o tempo do proxy, ou a conexão caiu no meio. Tente novamente.',
+      );
+    }
+  }
+
   const handleMergeFileChange = (file: File | null) => {
     setMergeFile(file);
     setMergeDryRun(null);
@@ -140,7 +171,7 @@ export default function AdminBackups() {
       const formData = new FormData();
       formData.append('file', mergeFile);
       const response = await fetch('/api/backup/restore-merge/dry-run', { method: 'POST', body: formData });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       if (!response.ok) throw new Error(data.error ?? 'Falha ao analisar o backup.');
       setMergeDryRun(data);
       toast.success(`Análise concluída: ${data.totalRowsToInsert} registro(s) seriam inseridos.`);
@@ -168,10 +199,14 @@ export default function AdminBackups() {
       const formData = new FormData();
       formData.append('file', mergeFile);
       const response = await fetch('/api/backup/restore-merge/apply', { method: 'POST', body: formData });
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
       if (!response.ok) throw new Error(data.error ?? 'Falha ao aplicar a recuperação.');
       setMergeApplyResult(data);
-      toast.success(`Recuperação aplicada: ${data.totalRowsInserted} registro(s) inserido(s).`);
+      if (data.allSucceeded) {
+        toast.success(`Recuperação aplicada e confirmada: ${data.totalRowsInserted} registro(s) inserido(s).`);
+      } else {
+        toast.warning('Aplicado com pendência: pelo menos uma tabela não confirmou. Veja o detalhe na tela.');
+      }
     } catch (e: any) {
       toast.error(`Erro ao aplicar recuperação: ${e.message}`);
     } finally {
@@ -881,42 +916,52 @@ export default function AdminBackups() {
                   )}
                 </div>
 
+                {/*
+                  Sem filtro: toda tabela em escopo aparece, mesmo com 0 em
+                  todas as colunas ou com erro na análise. Esconder linhas
+                  "sem novidade" foi justamente o que tornou o resultado
+                  anterior confuso — "não apareceu" virava "não sei o que
+                  aconteceu".
+                */}
                 <div className="overflow-x-auto">
-                  <table className="text-sm w-full min-w-[560px]">
+                  <table className="text-sm w-full min-w-[680px]">
                     <thead>
                       <tr className="text-left text-gray-500">
                         <th className="py-1 pr-4 font-medium">Tabela</th>
                         <th className="py-1 pr-4 font-medium text-right">No backup</th>
+                        <th className="py-1 pr-4 font-medium text-right">Em produção hoje</th>
                         <th className="py-1 pr-4 font-medium text-right">Já existem</th>
                         <th className="py-1 pr-4 font-medium text-right">Sem chave</th>
                         <th className="py-1 font-medium text-right">Seriam inseridos</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {mergeDryRun.tables
-                        .filter(t => t.rowsInBackup > 0)
-                        .map(t => (
-                          <tr key={t.table} className={t.rowsToInsert > 0 ? 'text-blue-700' : ''}>
-                            <td className="py-1 pr-4 break-all">
-                              {t.label}
-                              {!t.hasNaturalKey && (
-                                <span className="ml-1 text-xs text-gray-500" title="Sem chave de identificação segura — nunca inserido automaticamente">
-                                  (só contagem)
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-1 pr-4 text-right tabular-nums">{t.rowsInBackup.toLocaleString('pt-BR')}</td>
-                            <td className="py-1 pr-4 text-right tabular-nums">
-                              {t.hasNaturalKey ? t.rowsAlreadyExisting.toLocaleString('pt-BR') : '—'}
-                            </td>
-                            <td className="py-1 pr-4 text-right tabular-nums">
-                              {t.hasNaturalKey && t.rowsWithoutKeyValue > 0 ? t.rowsWithoutKeyValue.toLocaleString('pt-BR') : '—'}
-                            </td>
-                            <td className="py-1 text-right tabular-nums font-medium">
-                              {t.hasNaturalKey ? t.rowsToInsert.toLocaleString('pt-BR') : '—'}
-                            </td>
-                          </tr>
-                        ))}
+                      {mergeDryRun.tables.map(t => (
+                        <tr key={t.table} className={t.error ? 'text-red-700' : t.rowsToInsert > 0 ? 'text-blue-700' : ''}>
+                          <td className="py-1 pr-4 break-all">
+                            {t.label}
+                            {!t.hasNaturalKey && (
+                              <span className="ml-1 text-xs text-gray-500" title="Sem chave de identificação segura — nunca inserido automaticamente">
+                                (só contagem)
+                              </span>
+                            )}
+                            {t.error && (
+                              <div className="text-xs text-red-600 mt-0.5 break-words">Erro ao analisar: {t.error}</div>
+                            )}
+                          </td>
+                          <td className="py-1 pr-4 text-right tabular-nums">{t.rowsInBackup.toLocaleString('pt-BR')}</td>
+                          <td className="py-1 pr-4 text-right tabular-nums">{t.rowsCurrentlyInProduction.toLocaleString('pt-BR')}</td>
+                          <td className="py-1 pr-4 text-right tabular-nums">
+                            {t.hasNaturalKey ? t.rowsAlreadyExisting.toLocaleString('pt-BR') : '—'}
+                          </td>
+                          <td className="py-1 pr-4 text-right tabular-nums">
+                            {t.hasNaturalKey && t.rowsWithoutKeyValue > 0 ? t.rowsWithoutKeyValue.toLocaleString('pt-BR') : '—'}
+                          </td>
+                          <td className="py-1 text-right tabular-nums font-medium">
+                            {t.hasNaturalKey ? t.rowsToInsert.toLocaleString('pt-BR') : '—'}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -938,19 +983,69 @@ export default function AdminBackups() {
               </div>
             )}
 
+            {/*
+              Resultado do Aplicar, tabela por tabela, sem filtro.
+              `success` não é "o INSERT não lançou erro" — é "reli o banco
+              logo depois e as linhas estão realmente lá" (ver rowsVerified
+              no backend). É essa diferença que corrige o caso de 31/08/2026:
+              uma tabela podia "dizer" que inseriu sem ter persistido de
+              verdade, e a tela não deixava isso rastreável.
+            */}
             {mergeApplyResult && (
-              <div className="rounded-lg border p-4 bg-green-50 border-green-200">
-                <div className="font-medium text-green-900 text-sm mb-1">
-                  {mergeApplyResult.totalRowsInserted} registro(s) inserido(s) com sucesso.
+              <div className="space-y-3">
+                <div
+                  className={`rounded-lg border p-4 ${
+                    mergeApplyResult.allSucceeded ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                  }`}
+                >
+                  <div className={`font-medium text-sm mb-1 flex items-center gap-2 ${mergeApplyResult.allSucceeded ? 'text-green-900' : 'text-red-900'}`}>
+                    {mergeApplyResult.allSucceeded ? (
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                    )}
+                    {mergeApplyResult.allSucceeded
+                      ? `${mergeApplyResult.totalRowsInserted} registro(s) inserido(s) e confirmado(s) no banco.`
+                      : `Concluído com problema: ${mergeApplyResult.totalRowsInserted} inserido(s), mas pelo menos uma tabela não confirmou. Veja o detalhe abaixo.`}
+                  </div>
                 </div>
-                <div className="text-xs text-green-800 space-y-0.5">
-                  {mergeApplyResult.tables
-                    .filter(t => t.rowsInserted > 0)
-                    .map(t => (
-                      <div key={t.table}>
-                        {t.label}: {t.rowsInserted.toLocaleString('pt-BR')}
-                      </div>
-                    ))}
+
+                <div className="overflow-x-auto">
+                  <table className="text-sm w-full min-w-[560px]">
+                    <thead>
+                      <tr className="text-left text-gray-500">
+                        <th className="py-1 pr-4 font-medium">Tabela</th>
+                        <th className="py-1 pr-4 font-medium text-right">Tentados</th>
+                        <th className="py-1 pr-4 font-medium text-right">Inseridos</th>
+                        <th className="py-1 pr-4 font-medium text-right">Confirmados no banco</th>
+                        <th className="py-1 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mergeApplyResult.tables.map(t => (
+                        <tr key={t.table} className={!t.success ? 'text-red-700' : t.rowsInserted > 0 ? 'text-green-700' : ''}>
+                          <td className="py-1 pr-4 break-all">
+                            {t.label}
+                            {t.error && <div className="text-xs text-red-600 mt-0.5 break-words">{t.error}</div>}
+                          </td>
+                          <td className="py-1 pr-4 text-right tabular-nums">{t.rowsAttempted.toLocaleString('pt-BR')}</td>
+                          <td className="py-1 pr-4 text-right tabular-nums">{t.rowsInserted.toLocaleString('pt-BR')}</td>
+                          <td className="py-1 pr-4 text-right tabular-nums">{t.rowsVerified.toLocaleString('pt-BR')}</td>
+                          <td className="py-1">
+                            {t.success ? (
+                              t.rowsInserted > 0 ? (
+                                <span className="inline-flex items-center gap-1 text-green-700"><CheckCircle2 className="w-3.5 h-3.5" /> Confirmado</span>
+                              ) : (
+                                <span className="text-gray-500">Nada a inserir</span>
+                              )
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-red-700"><XCircle className="w-3.5 h-3.5" /> Falhou</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
