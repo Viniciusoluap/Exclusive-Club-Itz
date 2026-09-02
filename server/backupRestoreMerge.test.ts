@@ -168,30 +168,41 @@ describe.skipIf(!db)('backupRestoreMerge — mesclagem seletiva de backup antigo
     expect(resultado.tables.find(t => t.table === 'bpo_charges')!.rowsInserted).toBe(0);
   });
 
-  it('tabelas sem chave natural (ex.: bookings): dry-run só conta, apply nunca insere', async () => {
-    const dump = buildDump([
-      sqlTable(
-        'bookings',
-        "CREATE TABLE `bookings` (`id` int NOT NULL AUTO_INCREMENT, `client_email` varchar(320) NOT NULL, `client_name` text NOT NULL, `vessel_id` int NOT NULL, `vessel_name` text NOT NULL, `booking_date` bigint NOT NULL, PRIMARY KEY (`id`))",
-        ['id', 'client_email', 'client_name', 'vessel_id', 'vessel_name', 'booking_date'],
-        [{ id: 9201, client_email: 'x@example.com', client_name: 'X', vessel_id: 1, vessel_name: 'V', booking_date: 1723000000000 }],
-      ),
-    ]);
+  it('tabelas sem chave natural (ex.: bookings): dry-run prevê por id, apply nunca insere sozinho', async () => {
+    const idBooking = 9201;
+    await db!.execute(sql`DELETE FROM bookings WHERE id = ${idBooking}`);
 
-    const relatorio = await dryRunRestoreMerge(db, dump);
-    const linha = relatorio.tables.find(t => t.table === 'bookings')!;
-    expect(linha.hasNaturalKey).toBe(false);
-    expect(linha.rowsInBackup).toBe(1);
-    expect(linha.rowsToInsert).toBe(0);
-    expect(relatorio.totalRowsToInsert).toBe(0);
+    try {
+      const dump = buildDump([
+        sqlTable(
+          'bookings',
+          "CREATE TABLE `bookings` (`id` int NOT NULL AUTO_INCREMENT, `client_email` varchar(320) NOT NULL, `client_name` text NOT NULL, `vessel_id` int NOT NULL, `vessel_name` text NOT NULL, `booking_date` bigint NOT NULL, PRIMARY KEY (`id`))",
+          ['id', 'client_email', 'client_name', 'vessel_id', 'vessel_name', 'booking_date'],
+          [{ id: idBooking, client_email: 'x@example.com', client_name: 'X', vessel_id: 1, vessel_name: 'V', booking_date: 1723000000000 }],
+        ),
+      ]);
 
-    const resultado = await applyRestoreMerge(db, dump);
-    expect(resultado.tables.some(t => t.table === 'bookings')).toBe(false); // nem tentado
-    expect(resultado.tablesNeverAutoInserted).toContain('bookings');
+      const relatorio = await dryRunRestoreMerge(db, dump);
+      const linha = relatorio.tables.find(t => t.table === 'bookings')!;
+      expect(linha.hasNaturalKey).toBe(false);
+      expect(linha.rowsInBackup).toBe(1);
+      expect(linha.rowsToInsert).toBe(0);
+      expect(relatorio.totalRowsToInsert).toBe(0);
+      // Novo: o dry-run agora prevê quantos SERIAM inseridos por id pelo
+      // "Recuperar mesmo assim" — sem isso a seção "sem chave" não mostrava
+      // nenhum número (a lacuna reportada em 01-02/09/2026).
+      expect(linha.rowsInsertableById).toBe(1);
 
-    const contagem = (await db!.execute(sql`SELECT COUNT(*) AS total FROM ${bookings} WHERE id = 9201`)) as any;
-    const linhaContagem = (Array.isArray(contagem[0]) ? contagem[0] : contagem)[0];
-    expect(Number(linhaContagem?.total ?? 0)).toBe(0);
+      const resultado = await applyRestoreMerge(db, dump);
+      expect(resultado.tables.some(t => t.table === 'bookings')).toBe(false); // nem tentado
+      expect(resultado.tablesNeverAutoInserted).toContain('bookings');
+
+      const contagem = (await db!.execute(sql`SELECT COUNT(*) AS total FROM ${bookings} WHERE id = ${idBooking}`)) as any;
+      const linhaContagem = (Array.isArray(contagem[0]) ? contagem[0] : contagem)[0];
+      expect(Number(linhaContagem?.total ?? 0)).toBe(0);
+    } finally {
+      await db!.execute(sql`DELETE FROM bookings WHERE id = ${idBooking}`);
+    }
   });
 
   it('tabelas nunca processadas (ex.: system_settings) não aparecem nem como "não reconhecidas"', async () => {
@@ -250,6 +261,49 @@ describe.skipIf(!db)('backupRestoreMerge — mesclagem seletiva de backup antigo
     expect(novo.length).toBe(1);
 
     await db!.delete(employees).where(eq(employees.email, emailFuncionario));
+  });
+
+  it('apply nunca falha por colisão de id com uma linha DIFERENTE — insere com id novo (reproduz o bug de produção de 01-02/09/2026)', async () => {
+    const idOcupado = 9501001;
+    const emailOcupante = `${PREFIXO}-ocupante-do-id@example.com`;
+    await db!.delete(allowedClients).where(eq(allowedClients.email, emailOcupante));
+    await db!.delete(allowedClients).where(eq(allowedClients.email, emailNovo));
+    // Simula: depois do backup, o autoincrement reaproveitou este id para um
+    // cliente TOTALMENTE diferente (ex.: tabela zerada/reconstruída).
+    await db!.insert(allowedClients).values({ id: idOcupado, email: emailOcupante, name: 'Cliente que hoje ocupa este id' });
+
+    try {
+      const dump = buildDump([
+        sqlTable(
+          'allowed_clients',
+          "CREATE TABLE `allowed_clients` (`id` int NOT NULL AUTO_INCREMENT, `email` varchar(320) NOT NULL, `name` text NOT NULL, PRIMARY KEY (`id`))",
+          ['id', 'email', 'name'],
+          // Mesmo id do backup, mas é OUTRA pessoa (email diferente) — exatamente
+          // o cenário que antes derrubava o INSERT inteiro com "Failed query".
+          [{ id: idOcupado, email: emailNovo, name: 'Cliente novo (do backup, id colide)' }],
+        ),
+      ]);
+
+      const resultado = await applyRestoreMerge(db, dump);
+      const linha = resultado.tables.find(t => t.table === 'allowed_clients')!;
+
+      expect(linha.error).toBeUndefined();
+      expect(linha.success).toBe(true);
+      expect(linha.rowsInserted).toBe(1);
+      expect(linha.rowsVerified).toBe(1);
+
+      const novo = await db!.select().from(allowedClients).where(eq(allowedClients.email, emailNovo));
+      expect(novo.length).toBe(1);
+      expect(novo[0]!.name).toBe('Cliente novo (do backup, id colide)');
+
+      // A linha que já ocupava o id não pode ter sido tocada.
+      const ocupante = await db!.select().from(allowedClients).where(eq(allowedClients.email, emailOcupante));
+      expect(ocupante.length).toBe(1);
+      expect(ocupante[0]!.id).toBe(idOcupado);
+    } finally {
+      await db!.delete(allowedClients).where(eq(allowedClients.email, emailOcupante));
+      await db!.delete(allowedClients).where(eq(allowedClients.email, emailNovo));
+    }
   });
 
   it('recuperação forçada (sem chave): insere por id, pula id já existente, nunca sobrescreve', async () => {

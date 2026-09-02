@@ -211,6 +211,12 @@ type TableWithNaturalKey = MergeableTableBase & {
   keySqlName: string;
   /** Coluna Drizzle correspondente, para consultar o que já existe. */
   keyColumn: AnyColumn;
+  /**
+   * Coluna `id` (PK autoincrement). Usada só para checar colisão de id antes
+   * de inserir — ver `resolveIdCollisions` — nunca para decidir se a linha
+   * já existe (isso é sempre pela `keyColumn`).
+   */
+  idColumn: AnyColumn;
 };
 
 type TableWithoutNaturalKey = MergeableTableBase & {
@@ -233,6 +239,7 @@ const TABLES_WITH_NATURAL_KEY: TableWithNaturalKey[] = [
     hasNaturalKey: true,
     keySqlName: 'email',
     keyColumn: allowedClients.email,
+    idColumn: allowedClients.id,
   },
   {
     // Nomes físicos camelCase preservados de propósito — ver AVALIACAO-BACKUP-AGOSTO.md.
@@ -242,6 +249,7 @@ const TABLES_WITH_NATURAL_KEY: TableWithNaturalKey[] = [
     hasNaturalKey: true,
     keySqlName: 'openId',
     keyColumn: users.openId,
+    idColumn: users.id,
   },
   {
     sqlTableName: 'employees',
@@ -250,6 +258,7 @@ const TABLES_WITH_NATURAL_KEY: TableWithNaturalKey[] = [
     hasNaturalKey: true,
     keySqlName: 'email',
     keyColumn: employees.email,
+    idColumn: employees.id,
   },
   {
     sqlTableName: 'asaas_customers',
@@ -258,6 +267,7 @@ const TABLES_WITH_NATURAL_KEY: TableWithNaturalKey[] = [
     hasNaturalKey: true,
     keySqlName: 'asaas_customer_id',
     keyColumn: asaasCustomers.asaasCustomerId,
+    idColumn: asaasCustomers.id,
   },
   {
     sqlTableName: 'bpo_charges',
@@ -266,6 +276,7 @@ const TABLES_WITH_NATURAL_KEY: TableWithNaturalKey[] = [
     hasNaturalKey: true,
     keySqlName: 'asaas_charge_id',
     keyColumn: bpoCharges.asaasChargeId,
+    idColumn: bpoCharges.id,
   },
   {
     sqlTableName: 'backup_attachments',
@@ -274,6 +285,7 @@ const TABLES_WITH_NATURAL_KEY: TableWithNaturalKey[] = [
     hasNaturalKey: true,
     keySqlName: 'source_url',
     keyColumn: backupAttachments.sourceUrl,
+    idColumn: backupAttachments.id,
   },
 ];
 
@@ -334,6 +346,19 @@ async function currentRowCount(db: any, table: Table): Promise<number> {
   return Number(row?.total ?? 0);
 }
 
+/** Quais destes valores já existem hoje na coluna informada — em lotes, para não estourar o `IN (...)`. */
+async function findExistingValues(db: any, table: Table, column: AnyColumn, values: string[]): Promise<Set<string>> {
+  const existing = new Set<string>();
+  const BATCH = 500;
+  for (let i = 0; i < values.length; i += BATCH) {
+    const batch = values.slice(i, i + BATCH);
+    if (batch.length === 0) continue;
+    const found = await db.select({ v: column }).from(table).where(inArray(column, batch));
+    for (const r of found) existing.add(String(r.v));
+  }
+  return existing;
+}
+
 // ──────────────────────────────────────────────────────────────── dry-run
 
 export type MergeTableReport = {
@@ -347,6 +372,13 @@ export type MergeTableReport = {
   rowsToInsert: number;
   /** Linhas cuja chave natural está NULL no backup (ex.: cobrança manual sem asaas_charge_id) — nunca inseridas automaticamente. */
   rowsWithoutKeyValue: number;
+  /**
+   * Só para tabelas SEM chave natural: quantas linhas teriam um id ainda
+   * livre hoje (candidatas à recuperação forçada por id). É uma PREVISÃO —
+   * o número real pode ser um pouco menor se outra operação inserir/gravar
+   * entre o dry-run e o "Recuperar mesmo assim".
+   */
+  rowsInsertableById?: number;
   /** Presente só se a análise desta tabela falhou — as demais tabelas continuam com resultado normal. */
   error?: string;
 };
@@ -367,12 +399,35 @@ async function analyzeTable(
   const rowsInBackup = extracted?.rows.length ?? 0;
   const rowsCurrentlyInProduction = await currentRowCount(db, cfg.drizzleTable);
 
-  if (!cfg.hasNaturalKey || !extracted) {
+  if (!cfg.hasNaturalKey) {
+    let rowsInsertableById: number | undefined;
+    if (extracted) {
+      const idIdx = extracted.columns.indexOf('id');
+      if (idIdx >= 0) {
+        const ids = extracted.rows.map(row => sqlLiteralToJsForComparison(row[idIdx])).filter((v): v is string => v !== null);
+        const existingIds = await findExistingValues(db, cfg.drizzleTable, cfg.idColumn, ids);
+        rowsInsertableById = ids.filter(id => !existingIds.has(id)).length;
+      }
+    }
     return {
       table: cfg.sqlTableName,
       label: cfg.label,
       hasNaturalKey: cfg.hasNaturalKey,
       rowsInBackup,
+      rowsCurrentlyInProduction,
+      rowsAlreadyExisting: 0,
+      rowsToInsert: 0,
+      rowsWithoutKeyValue: 0,
+      rowsInsertableById,
+    };
+  }
+
+  if (!extracted) {
+    return {
+      table: cfg.sqlTableName,
+      label: cfg.label,
+      hasNaturalKey: true,
+      rowsInBackup: 0,
       rowsCurrentlyInProduction,
       rowsAlreadyExisting: 0,
       rowsToInsert: 0,
@@ -536,15 +591,44 @@ export async function applyRestoreMerge(db: any, dump: string): Promise<MergeApp
         .map(row => sqlLiteralToJsForComparison(row[keyIdx]))
         .filter((v): v is string => v !== null);
 
+      // O `id` do backup pode já pertencer HOJE a uma linha totalmente
+      // diferente — ex.: a tabela foi zerada/reconstruída em algum momento e
+      // o autoincrement reaproveitou ids baixos para contas/cobranças novas.
+      // A chave natural não detecta esse caso (é outra linha, com outra
+      // chave). Sem isto, o INSERT inteiro falhava por violação de PK — foi
+      // exatamente o que aconteceu em produção com `users`/`bpo_charges` em
+      // 01-02/09/2026. Em vez de falhar, deixa o autoincrement escolher um id
+      // novo só para as linhas que colidem; as demais mantêm o id original.
+      const idIdx = columns.indexOf('id');
+      let preparedRows = rowsToInsert;
+      if (idIdx >= 0) {
+        const idsToInsert = rowsToInsert
+          .map(row => sqlLiteralToJsForComparison(row[idIdx]))
+          .filter((v): v is string => v !== null);
+        const collidingIds = await findExistingValues(db, cfg.drizzleTable, cfg.idColumn, idsToInsert);
+        if (collidingIds.size > 0) {
+          preparedRows = rowsToInsert.map(row => {
+            const idVal = sqlLiteralToJsForComparison(row[idIdx]);
+            if (idVal !== null && collidingIds.has(idVal)) {
+              const copy = row.slice();
+              copy[idIdx] = 'NULL';
+              return copy;
+            }
+            return row;
+          });
+        }
+      }
+
       let inserted = 0;
       const INSERT_BATCH = 200;
       const columnList = columns.map(c => `\`${c}\``).join(', ');
-      for (let i = 0; i < rowsToInsert.length; i += INSERT_BATCH) {
-        const batch = rowsToInsert.slice(i, i + INSERT_BATCH);
+      for (let i = 0; i < preparedRows.length; i += INSERT_BATCH) {
+        const batch = preparedRows.slice(i, i + INSERT_BATCH);
         if (batch.length === 0) continue;
         // Reconstrói exatamente os literais originais do dump — não há
         // reserialização de valores JS, então não há risco de perda de
-        // precisão em datas/decimais/JSON.
+        // precisão em datas/decimais/JSON (exceto o `id`, deliberadamente
+        // trocado por NULL acima quando colide).
         const valuesSql = batch.map(row => `(${row.join(', ')})`).join(',\n');
         await db.execute(sql.raw(`INSERT INTO \`${cfg.sqlTableName}\` (${columnList}) VALUES\n${valuesSql};`));
         inserted += batch.length;
