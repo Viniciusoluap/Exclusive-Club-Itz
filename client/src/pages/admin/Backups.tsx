@@ -33,6 +33,7 @@ type RelatorioTabelaMesclagem = {
   rowsAlreadyExisting: number;
   rowsToInsert: number;
   rowsWithoutKeyValue: number;
+  rowsInsertableById?: number;
   error?: string;
 };
 
@@ -1134,28 +1135,32 @@ export default function AdminBackups() {
                 <div>
                   <div className="font-medium text-sm">Tabelas sem chave de identificação segura</div>
                   <div className="text-xs text-gray-500">
-                    O "Aplicar" acima nunca insere aqui sozinho. Reveja "Em produção hoje" antes de decidir — se já
-                    estiver em zero, não há risco de duplicata.
+                    O "Aplicar" acima nunca insere aqui sozinho. "Seriam inseridos" conta por id (nunca detecta o
+                    mesmo evento recadastrado com outro id) — é só o que o "Recuperar mesmo assim" abaixo faria.
                   </div>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="text-sm w-full min-w-[500px]">
+                  <table className="text-sm w-full min-w-[560px]">
                     <thead>
                       <tr className="text-left text-gray-500">
                         <th className="py-1 pr-4 font-medium">Tabela</th>
                         <th className="py-1 pr-4 font-medium text-right">No backup</th>
-                        <th className="py-1 font-medium text-right">Em produção hoje</th>
+                        <th className="py-1 pr-4 font-medium text-right">Em produção hoje</th>
+                        <th className="py-1 font-medium text-right">Seriam inseridos</th>
                       </tr>
                     </thead>
                     <tbody>
                       {mergeDryRun.tables
                         .filter(t => !t.hasNaturalKey)
                         .map(t => (
-                          <tr key={t.table}>
+                          <tr key={t.table} className={(t.rowsInsertableById ?? 0) > 0 ? 'text-blue-700' : ''}>
                             <td className="py-1 pr-4 break-all">{t.label}</td>
                             <td className="py-1 pr-4 text-right tabular-nums">{t.rowsInBackup.toLocaleString('pt-BR')}</td>
-                            <td className="py-1 text-right tabular-nums">{t.rowsCurrentlyInProduction.toLocaleString('pt-BR')}</td>
+                            <td className="py-1 pr-4 text-right tabular-nums">{t.rowsCurrentlyInProduction.toLocaleString('pt-BR')}</td>
+                            <td className="py-1 text-right tabular-nums font-medium">
+                              {t.rowsInsertableById !== undefined ? t.rowsInsertableById.toLocaleString('pt-BR') : '—'}
+                            </td>
                           </tr>
                         ))}
                     </tbody>
