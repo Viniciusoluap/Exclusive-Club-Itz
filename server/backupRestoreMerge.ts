@@ -142,6 +142,31 @@ function parseValuesStatement(source: string, startIndex: number): { tuples: str
   return { tuples, endIndex: i };
 }
 
+/**
+ * Descreve um erro incluindo toda a cadeia de `cause`.
+ *
+ * POR QUE ISTO EXISTE: o driver mysql2/drizzle relata falha de INSERT como
+ * `error.message = "Failed query: INSERT INTO ... params: [...]"` — é só o
+ * comando que foi tentado, não o motivo pelo qual o banco recusou. O motivo
+ * real (ex.: `ER_DUP_ENTRY: Duplicate entry 'x@mail.com' for key
+ * 'users_email_uq'`) vem em `error.cause`, que ficava descartado: a tela
+ * mostrava o SQL inteiro e nunca por que ele falhou (relatado em produção,
+ * 05/09/2026 — `users`, `bpo_charges` e `fuel_purchases` "falharam" sem
+ * nenhuma pista visível do motivo).
+ */
+export function describeError(error: unknown): string {
+  const parts: string[] = [];
+  let current: unknown = error;
+  const seen = new Set<unknown>();
+  while (current && typeof current === 'object' && !seen.has(current)) {
+    seen.add(current);
+    const err = current as { message?: unknown; cause?: unknown };
+    parts.push(typeof err.message === 'string' ? err.message : String(current));
+    current = err.cause;
+  }
+  return parts.length > 0 ? parts.join(' | causa: ') : String(error);
+}
+
 /** Converte um literal SQL (já extraído por `parseRowValues`) para JS, só para comparação — nunca para reinserção. */
 function sqlLiteralToJsForComparison(raw: string | undefined): string | null {
   if (raw === undefined || raw === 'NULL') return null;
@@ -495,7 +520,7 @@ export async function dryRunRestoreMerge(db: any, dump: string): Promise<MergeDr
         rowsAlreadyExisting: 0,
         rowsToInsert: 0,
         rowsWithoutKeyValue: 0,
-        error: error?.message ?? String(error),
+        error: describeError(error),
       });
     }
   }
@@ -660,7 +685,7 @@ export async function applyRestoreMerge(db: any, dump: string): Promise<MergeApp
         rowsInserted: 0,
         rowsVerified: 0,
         success: false,
-        error: error?.message ?? String(error),
+        error: describeError(error),
       });
     }
   }
@@ -811,7 +836,7 @@ export async function forceRestoreTablesWithoutNaturalKey(
         rowsInserted: 0,
         rowsVerified: 0,
         success: false,
-        error: error?.message ?? String(error),
+        error: describeError(error),
       });
     }
   }

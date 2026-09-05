@@ -5,7 +5,8 @@ import { PageLoader } from "@/components/PageLoader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle2, XCircle, Clock, HardDrive, Calendar, Download, AlertTriangle, Play, Trash2, RotateCcw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, CheckCircle2, XCircle, Clock, HardDrive, Calendar, Download, AlertTriangle, Play, Trash2, RotateCcw, Search } from "lucide-react";
 import { useLocation } from "wouter";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -135,6 +136,44 @@ export default function AdminBackups() {
     } finally {
       setBaixandoIndice(false);
     }
+  };
+
+  /**
+   * Busca e recuperação individual de um anexo arquivado.
+   *
+   * POR QUE EXISTE: até 05/09/2026 o índice só podia ser CONSULTADO (CSV) —
+   * não havia como pegar de volta o arquivo em si. Um administrador com uma
+   * URL de foto/documento quebrada (ex.: documento pessoal de um cliente após
+   * a recuperação seletiva do backup) não tinha nenhuma forma de recuperar o
+   * arquivo. Esta busca simples resolve o caso de "preciso deste aqui, agora".
+   */
+  const [buscaAnexo, setBuscaAnexo] = useState('');
+  const [buscandoAnexo, setBuscandoAnexo] = useState(false);
+  const [anexosEncontrados, setAnexosEncontrados] = useState<
+    Awaited<ReturnType<typeof utilsIndice.backup.listArchivedAttachments.fetch>> | null
+  >(null);
+
+  const handleBuscarAnexos = async () => {
+    setBuscandoAnexo(true);
+    try {
+      const linhas = await utilsIndice.backup.listArchivedAttachments.fetch();
+      const termo = buscaAnexo.trim().toLowerCase();
+      const filtradas = termo
+        ? linhas.filter((l) =>
+            [l.categoria, l.arquivo, l.origem].some((v) => String(v ?? '').toLowerCase().includes(termo)),
+          )
+        : linhas;
+      setAnexosEncontrados(filtradas);
+      if (filtradas.length === 0) toast.info('Nenhum anexo encontrado com esse termo.');
+    } catch (e: any) {
+      toast.error(`Erro ao buscar anexos: ${e.message}`);
+    } finally {
+      setBuscandoAnexo(false);
+    }
+  };
+
+  const handleBaixarAnexo = (id: number) => {
+    window.open(`/api/backup/attachments/${id}/download`, '_blank');
   };
 
   // ---- Conferência do conteúdo do backup ----
@@ -786,6 +825,78 @@ export default function AdminBackups() {
                 <Download className="w-4 h-4 mr-2 shrink-0" />
                 {baixandoIndice ? 'Gerando…' : 'Baixar índice dos anexos'}
               </Button>
+
+              {/*
+                Recuperar um anexo específico.
+
+                POR QUE EXISTE: o índice (acima) só diz ONDE cada anexo está —
+                até 05/09/2026 não havia como trazer o arquivo de volta.
+                Busca simples por categoria/nome/URL de origem, com um botão
+                de baixar por linha (só quando realmente foi arquivado).
+              */}
+              <div className="mt-6 pt-6 border-t">
+                <div className="text-sm font-medium mb-2">Recuperar um anexo específico</div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    value={buscaAnexo}
+                    onChange={(e) => setBuscaAnexo(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleBuscarAnexos(); }}
+                    placeholder="Nome do cliente, categoria (ex.: clientes) ou parte da URL..."
+                    className="sm:max-w-sm"
+                  />
+                  <Button
+                    onClick={handleBuscarAnexos}
+                    disabled={buscandoAnexo}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Search className="w-4 h-4 mr-2 shrink-0" />
+                    {buscandoAnexo ? 'Buscando…' : 'Buscar'}
+                  </Button>
+                </div>
+
+                {anexosEncontrados && anexosEncontrados.length > 0 && (
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-gray-600 border-b">
+                          <th className="py-2 pr-4">Categoria</th>
+                          <th className="py-2 pr-4">Arquivo</th>
+                          <th className="py-2 pr-4">Situação</th>
+                          <th className="py-2 pr-4">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {anexosEncontrados.map((a) => (
+                          <tr key={a.id} className="border-b last:border-0">
+                            <td className="py-2 pr-4">{a.categoria}</td>
+                            <td className="py-2 pr-4 break-all">{a.arquivo}</td>
+                            <td className="py-2 pr-4">
+                              {a.situacao === 'archived' ? (
+                                <span className="inline-flex items-center gap-1 text-green-700">
+                                  <CheckCircle2 className="w-4 h-4 shrink-0" /> Arquivado
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-red-600" title={a.erro ?? undefined}>
+                                  <XCircle className="w-4 h-4 shrink-0" /> Falhou{a.erro ? `: ${a.erro}` : ''}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2 pr-4">
+                              {a.situacao === 'archived' && (
+                                <Button onClick={() => handleBaixarAnexo(a.id)} variant="outline" size="sm">
+                                  <Download className="w-4 h-4 mr-2 shrink-0" />
+                                  Baixar
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
