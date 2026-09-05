@@ -486,6 +486,189 @@ export function adaptToCurrentSchema(
   return { columns: newColumns, rows: newRows, adjustments };
 }
 
+// ─────────────────────── integridade: unicidade e chaves estrangeiras
+//
+// POR QUE ISTO EXISTE: a dedução por chave natural olha UMA coluna (email,
+// openId, asaas_charge_id). Mas a tabela pode ter OUTRAS restrições UNIQUE, e
+// basta uma delas para o INSERT inteiro morrer. Em produção (05/09/2026) foi
+// exatamente isso: `users` era comparado por `openId`, mas o e-mail de uma
+// linha do backup já pertencia a outra conta ativa — "Duplicate entry for key
+// 'users.users_email_uq'" derrubava as 37 linhas de uma vez.
+//
+// Em vez de tratar mais um caso específico, a verificação passa a ser genérica:
+// o banco é perguntado quais restrições ele realmente tem, e as linhas que
+// violariam qualquer uma delas são puladas — produção sempre vence.
+
+/** Índices UNIQUE da tabela, exceto a PK (que tem tratamento próprio: id novo em vez de descarte). */
+async function describeUniqueIndexes(db: any, sqlTableName: string): Promise<Array<{ name: string; columns: string[] }>> {
+  const raw = (await db.execute(sql.raw(`SHOW INDEX FROM \`${sqlTableName}\``))) as any;
+  const rows = Array.isArray(raw[0]) ? raw[0] : raw;
+  const porNome = new Map<string, string[]>();
+
+  for (const r of Array.isArray(rows) ? rows : []) {
+    if (Number(r?.Non_unique ?? r?.non_unique ?? 1) !== 0) continue;
+    const nome = String(r?.Key_name ?? r?.key_name ?? '');
+    if (!nome || nome.toUpperCase() === 'PRIMARY') continue;
+    const coluna = String(r?.Column_name ?? r?.column_name ?? '');
+    if (!coluna) continue;
+    porNome.set(nome, [...(porNome.get(nome) ?? []), coluna]);
+  }
+
+  return Array.from(porNome, ([name, columns]) => ({ name, columns }));
+}
+
+/** Chaves estrangeiras reais da tabela (o schema tem só uma: fuel_purchases.purchased_by → users.id). */
+async function describeForeignKeys(
+  db: any,
+  sqlTableName: string,
+): Promise<Array<{ column: string; refTable: string; refColumn: string }>> {
+  const raw = (await db.execute(sql`
+    SELECT COLUMN_NAME AS col, REFERENCED_TABLE_NAME AS refTable, REFERENCED_COLUMN_NAME AS refColumn
+    FROM information_schema.KEY_COLUMN_USAGE
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ${sqlTableName}
+      AND REFERENCED_TABLE_NAME IS NOT NULL
+  `)) as any;
+  const rows = Array.isArray(raw[0]) ? raw[0] : raw;
+  return (Array.isArray(rows) ? rows : [])
+    .map((r: any) => ({
+      column: String(r?.col ?? ''),
+      refTable: String(r?.refTable ?? ''),
+      refColumn: String(r?.refColumn ?? ''),
+    }))
+    .filter(fk => fk.column && fk.refTable && fk.refColumn);
+}
+
+function chaveComposta(valores: Array<string | null>): string | null {
+  // UNIQUE no MySQL não se aplica quando há NULL: várias linhas podem repetir.
+  if (valores.some(v => v === null)) return null;
+  return valores.map(v => `${v!.length}:${v}`).join('|');
+}
+
+/**
+ * Remove as linhas que violariam alguma restrição UNIQUE — seja contra o que
+ * já existe em produção, seja contra outra linha do próprio backup.
+ *
+ * Produção sempre vence: a linha do backup é descartada, nunca sobrescreve.
+ */
+async function removerColisoesDeUnicidade(
+  db: any,
+  sqlTableName: string,
+  columns: string[],
+  rows: string[][],
+): Promise<{ rows: string[][]; adjustments: string[] }> {
+  const indices = await describeUniqueIndexes(db, sqlTableName);
+  const adjustments: string[] = [];
+  let restantes = rows;
+
+  for (const indice of indices) {
+    const posicoes = indice.columns.map(c => columns.indexOf(c));
+    if (posicoes.some(p => p < 0)) continue; // o backup não traz essa coluna
+
+    const existentes = new Set<string>();
+    const listaColunas = indice.columns.map(c => `\`${c}\``).join(', ');
+    const raw = (await db.execute(sql.raw(`SELECT ${listaColunas} FROM \`${sqlTableName}\``))) as any;
+    const atuais = Array.isArray(raw[0]) ? raw[0] : raw;
+    for (const r of Array.isArray(atuais) ? atuais : []) {
+      const chave = chaveComposta(indice.columns.map(c => (r?.[c] == null ? null : String(r[c]))));
+      if (chave !== null) existentes.add(chave);
+    }
+
+    const vistasNoLote = new Set<string>();
+    let descartadas = 0;
+
+    restantes = restantes.filter(row => {
+      const chave = chaveComposta(posicoes.map(p => sqlLiteralToJsForComparison(row[p])));
+      if (chave === null) return true; // NULL não colide
+      if (existentes.has(chave) || vistasNoLote.has(chave)) {
+        descartadas++;
+        return false;
+      }
+      vistasNoLote.add(chave);
+      return true;
+    });
+
+    if (descartadas > 0) {
+      adjustments.push(
+        `${descartadas} linha(s) puladas por já existir registro com o mesmo ${indice.columns.join(' + ')} ` +
+          `(restrição ${indice.name}) — o registro de produção foi mantido.`,
+      );
+    }
+  }
+
+  return { rows: restantes, adjustments };
+}
+
+/**
+ * Anula referências que apontam para linhas inexistentes.
+ *
+ * POR QUE: `fuel_purchases.purchased_by` referencia `users.id`. Quando a
+ * restauração de `users` falha (ou aquele usuário não voltou), o banco recusa
+ * a compra inteira com "foreign key constraint fails" — e o histórico de
+ * compras de combustível, que é o que fecha a conta do abastecimento, se perde
+ * por causa da atribuição de quem comprou.
+ *
+ * A coluna é anulável, então a escolha é preservar a compra sem o comprador em
+ * vez de descartar a compra. Sempre relatado — a informação perdida fica
+ * visível, não sumida.
+ */
+async function anularReferenciasQuebradas(
+  db: any,
+  sqlTableName: string,
+  columns: string[],
+  rows: string[][],
+  schema: Map<string, ColumnInfo>,
+): Promise<{ rows: string[][]; adjustments: string[] }> {
+  const fks = await describeForeignKeys(db, sqlTableName);
+  const adjustments: string[] = [];
+  let resultado = rows;
+
+  for (const fk of fks) {
+    const idx = columns.indexOf(fk.column);
+    if (idx < 0) continue;
+
+    const info = schema.get(fk.column);
+    if (!info?.nullable) continue; // não dá para anular; deixa o banco decidir
+
+    const valores = Array.from(
+      new Set(
+        resultado
+          .map(row => sqlLiteralToJsForComparison(row[idx]))
+          .filter((v): v is string => v !== null),
+      ),
+    );
+    if (valores.length === 0) continue;
+
+    const existentes = new Set<string>();
+    const raw = (await db.execute(
+      sql.raw(`SELECT \`${fk.refColumn}\` AS v FROM \`${fk.refTable}\``),
+    )) as any;
+    const atuais = Array.isArray(raw[0]) ? raw[0] : raw;
+    for (const r of Array.isArray(atuais) ? atuais : []) {
+      if (r?.v != null) existentes.add(String(r.v));
+    }
+
+    let anuladas = 0;
+    resultado = resultado.map(row => {
+      const valor = sqlLiteralToJsForComparison(row[idx]);
+      if (valor === null || existentes.has(valor)) return row;
+      const copia = row.slice();
+      copia[idx] = 'NULL';
+      anuladas++;
+      return copia;
+    });
+
+    if (anuladas > 0) {
+      adjustments.push(
+        `${anuladas} linha(s) com ${fk.column} apontando para ${fk.refTable} inexistente — ` +
+          `o registro foi mantido e a referência ficou em branco.`,
+      );
+    }
+  }
+
+  return { rows: resultado, adjustments };
+}
+
 /** Quais destes valores já existem hoje na coluna informada — em lotes, para não estourar o `IN (...)`. */
 async function findExistingValues(db: any, table: Table, column: AnyColumn, values: string[]): Promise<Set<string>> {
   const existing = new Set<string>();
@@ -713,13 +896,10 @@ export async function applyRestoreMerge(db: any, dump: string): Promise<MergeApp
       // O backup é de agosto; o schema mudou desde então. Adapta antes de
       // qualquer indexOf, para que todo o resto trabalhe já sobre as colunas
       // que existem hoje.
-      const adaptado = adaptToCurrentSchema(
-        extracted.columns,
-        extracted.rows,
-        await describeTable(db, cfg.sqlTableName),
-      );
+      const schemaAtual = await describeTable(db, cfg.sqlTableName);
+      const adaptado = adaptToCurrentSchema(extracted.columns, extracted.rows, schemaAtual);
       const { columns, rows } = adaptado;
-      const adjustments = adaptado.adjustments;
+      const adjustments = [...adaptado.adjustments];
       const keyIdx = columns.indexOf(cfg.keySqlName);
 
       const keyValues: string[] = [];
@@ -737,11 +917,25 @@ export async function applyRestoreMerge(db: any, dump: string): Promise<MergeApp
         for (const r of found) existingKeys.add(String(r.key));
       }
 
-      const rowsToInsert = rows.filter(row => {
+      let rowsToInsert = rows.filter(row => {
         if (keyIdx < 0) return false;
         const value = sqlLiteralToJsForComparison(row[keyIdx]);
         return value !== null && !existingKeys.has(value);
       });
+      // A chave natural olha uma coluna só. A tabela pode ter outras
+      // restrições UNIQUE, e basta uma para derrubar o lote inteiro — foi o
+      // caso de `users.users_email_uq` em 05/09/2026.
+      const semColisao = await removerColisoesDeUnicidade(db, cfg.sqlTableName, columns, rowsToInsert);
+      const semReferenciaQuebrada = await anularReferenciasQuebradas(
+        db,
+        cfg.sqlTableName,
+        columns,
+        semColisao.rows,
+        schemaAtual,
+      );
+      rowsToInsert = semReferenciaQuebrada.rows;
+      adjustments.push(...semColisao.adjustments, ...semReferenciaQuebrada.adjustments);
+
       const keysAttempted = rowsToInsert
         .map(row => sqlLiteralToJsForComparison(row[keyIdx]))
         .filter((v): v is string => v !== null);
@@ -905,13 +1099,10 @@ export async function forceRestoreTablesWithoutNaturalKey(
         continue;
       }
 
-      const adaptado = adaptToCurrentSchema(
-        extracted.columns,
-        extracted.rows,
-        await describeTable(db, cfg.sqlTableName),
-      );
+      const schemaAtual = await describeTable(db, cfg.sqlTableName);
+      const adaptado = adaptToCurrentSchema(extracted.columns, extracted.rows, schemaAtual);
       const { columns, rows } = adaptado;
-      const adjustments = adaptado.adjustments;
+      const adjustments = [...adaptado.adjustments];
       const idIdx = columns.indexOf('id');
       if (idIdx < 0) {
         throw new Error('Backup sem coluna `id` reconhecível para esta tabela — recuperação por id não é possível.');
@@ -929,11 +1120,26 @@ export async function forceRestoreTablesWithoutNaturalKey(
         for (const r of found) existingIds.add(String(r.id));
       }
 
-      const rowsToInsert = rows.filter(row => {
+      let rowsToInsert = rows.filter(row => {
         const idVal = idOf(row);
         return idVal !== null && !existingIds.has(idVal);
       });
       const skipped = rows.length - rowsToInsert.length;
+
+      // `fuel_purchases.purchased_by` → `users.id` é a única FK real do
+      // schema, e derrubava as 51 compras de combustível sempre que o usuário
+      // referenciado não voltava. Preservar a compra sem o comprador é melhor
+      // do que perder a compra: é ela que fecha a conta do abastecimento.
+      const semColisao = await removerColisoesDeUnicidade(db, cfg.sqlTableName, columns, rowsToInsert);
+      const semReferenciaQuebrada = await anularReferenciasQuebradas(
+        db,
+        cfg.sqlTableName,
+        columns,
+        semColisao.rows,
+        schemaAtual,
+      );
+      rowsToInsert = semReferenciaQuebrada.rows;
+      adjustments.push(...semColisao.adjustments, ...semReferenciaQuebrada.adjustments);
 
       let inserted = 0;
       const INSERT_BATCH = 200;
