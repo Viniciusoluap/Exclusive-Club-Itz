@@ -53,6 +53,8 @@ type ResultadoTabelaAplicacaoMesclagem = {
   rowsVerified: number;
   success: boolean;
   error?: string;
+  /** Ajustes para o backup caber no schema atual (coluna removida, enum fora do domínio). */
+  adjustments?: string[];
 };
 
 type ResultadoAplicacaoMesclagem = {
@@ -73,6 +75,8 @@ type ResultadoTabelaRecuperacaoForcada = {
   rowsVerified: number;
   success: boolean;
   error?: string;
+  /** Ajustes para o backup caber no schema atual (coluna removida, enum fora do domínio). */
+  adjustments?: string[];
 };
 
 type ResultadoRecuperacaoForcada = {
@@ -174,6 +178,90 @@ export default function AdminBackups() {
 
   const handleBaixarAnexo = (id: number) => {
     window.open(`/api/backup/attachments/${id}/download`, '_blank');
+  };
+
+  /**
+   * Recolocar os anexos recuperados de volta nos registros.
+   *
+   * Baixar um arquivo avulso não conserta a tela do cliente: enquanto a coluna
+   * apontar para a URL morta, a ficha continua dizendo "Erro ao carregar
+   * documento pessoal". Este laço percorre os anexos arquivados, e para cada um
+   * cuja URL original não responde mais, sobe a cópia guardada e reaponta o
+   * registro.
+   */
+  const reattachMutation = trpc.backup.reattachAttachmentsBatch.useMutation();
+  const [reattaching, setReattaching] = useState(false);
+  const [reattachStatus, setReattachStatus] = useState<string | null>(null);
+
+  const handleReattachAttachments = async () => {
+    setReattaching(true);
+    setReattachStatus(null);
+    const MAX_LOTES = 400;
+
+    let recolocados = 0;
+    let funcionando = 0;
+    let semReferencia = 0;
+    const falhas: string[] = [];
+    // Se as URLs do storage expiram, recolocar é paliativo (o link volta a
+    // apodrecer) e o sistema precisa passar a servir anexos por rota própria.
+    // Coletado automaticamente para ninguém precisar inspecionar URL na mão.
+    let urlComExpiracao: boolean | undefined;
+
+    try {
+      for (let i = 0; i < MAX_LOTES; i++) {
+        const p = await reattachMutation.mutateAsync();
+        recolocados += p.reattachedNow;
+        funcionando += p.stillWorkingNow;
+        semReferencia += p.notReferencedNow;
+        for (const f of p.failures) falhas.push(`${f.arquivo}: ${f.motivo}`);
+        if (urlComExpiracao === undefined && p.storageUrlComExpiracao !== undefined) {
+          urlComExpiracao = p.storageUrlComExpiracao;
+        }
+
+        setReattachStatus(
+          p.done ? null : `Recolocando… ${recolocados} recolocado(s), faltam ${p.remaining}`,
+        );
+
+        if (p.done) {
+          const resumo =
+            `${recolocados} anexo(s) recolocado(s) nos registros. ` +
+            `${funcionando} já funcionavam e não foram tocados` +
+            (semReferencia > 0 ? `, ${semReferencia} sem registro que os use` : '') +
+            (falhas.length > 0 ? `. ${falhas.length} falha(s).` : '.');
+          if (falhas.length > 0) toast.warning(resumo);
+          else toast.success(resumo);
+          if (falhas.length > 0) console.warn('[recolocar-anexos] Falhas:', falhas);
+
+          // O veredito que decide o próximo passo do plano.
+          if (urlComExpiracao === true) {
+            toast.warning(
+              'Atenção: o storage devolve links com prazo de validade. Isso significa que os anexos vão voltar a dar "acesso negado" com o tempo — ' +
+                'recolocar resolve agora, mas a correção definitiva é servir os anexos por uma rota própria do sistema.',
+              { duration: 20000 },
+            );
+          } else if (urlComExpiracao === false) {
+            toast.info('Os links do storage não têm prazo de validade — a recolocação é definitiva para estes arquivos.', {
+              duration: 12000,
+            });
+          }
+          return;
+        }
+
+        if (p.processedNow === 0) {
+          toast.warning(`Nenhum anexo pôde ser processado. Restam ${p.remaining}.`);
+          return;
+        }
+      }
+      toast.warning('Pausado por segurança. Clique novamente para continuar.');
+    } catch (e: any) {
+      toast.error(
+        `Interrompido: ${e.message} — o que já foi recolocado está salvo. Pode clicar de novo para continuar.`,
+      );
+    } finally {
+      setReattaching(false);
+      setReattachStatus(null);
+      utils.backup.getAttachmentsProgress.invalidate();
+    }
   };
 
   // ---- Conferência do conteúdo do backup ----
@@ -827,6 +915,33 @@ export default function AdminBackups() {
               </Button>
 
               {/*
+                Recolocar tudo de volta nos registros.
+
+                É o que efetivamente conserta a tela: baixar um arquivo avulso
+                não faz a ficha do cliente voltar a exibir o documento.
+              */}
+              <Button
+                onClick={handleReattachAttachments}
+                disabled={reattaching}
+                variant="outline"
+                size="sm"
+                className="w-full sm:w-auto sm:ml-2"
+                title="Para cada anexo cuja URL original não responde mais, sobe a cópia arquivada e reaponta o registro. Não toca no que está funcionando."
+              >
+                {reattaching ? (
+                  <>
+                    <Clock className="w-4 h-4 mr-2 animate-spin shrink-0" />
+                    {reattachStatus ?? 'Recolocando…'}
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4 mr-2 shrink-0" />
+                    Recolocar anexos nos registros
+                  </>
+                )}
+              </Button>
+
+              {/*
                 Recuperar um anexo específico.
 
                 POR QUE EXISTE: o índice (acima) só diz ONDE cada anexo está —
@@ -1205,6 +1320,10 @@ export default function AdminBackups() {
                           <td className="py-1 pr-4 break-all">
                             {t.label}
                             {t.error && <div className="text-xs text-red-600 mt-0.5 break-words">{t.error}</div>}
+                            {/* Ajustes de schema: nada é alterado em silêncio. */}
+                            {t.adjustments?.map((a, i) => (
+                              <div key={i} className="text-xs text-amber-700 mt-0.5 break-words">{a}</div>
+                            ))}
                           </td>
                           <td className="py-1 pr-4 text-right tabular-nums">{t.rowsAttempted.toLocaleString('pt-BR')}</td>
                           <td className="py-1 pr-4 text-right tabular-nums">{t.rowsInserted.toLocaleString('pt-BR')}</td>
@@ -1331,6 +1450,9 @@ export default function AdminBackups() {
                               <td className="py-1 pr-4 break-all">
                                 {t.label}
                                 {t.error && <div className="text-xs text-red-600 mt-0.5 break-words">{t.error}</div>}
+                                {t.adjustments?.map((a, i) => (
+                                  <div key={i} className="text-xs text-amber-700 mt-0.5 break-words">{a}</div>
+                                ))}
                               </td>
                               <td className="py-1 pr-4 text-right tabular-nums">{t.rowsInBackup.toLocaleString('pt-BR')}</td>
                               <td className="py-1 pr-4 text-right tabular-nums">{t.rowsSkippedExistingId.toLocaleString('pt-BR')}</td>

@@ -25,7 +25,7 @@ import axios from "axios";
 import { sql } from "drizzle-orm";
 import { assertSafeExternalUrl } from "./_core/urlSafety";
 import { collectAttachments, type Attachment } from "./backupFiles";
-import { getBackupEncryptionKey, encryptBackupBuffer, decryptBackupBuffer } from "./backup";
+import { getBackupEncryptionKey, encryptBackupBuffer, decryptBackupBuffer, isEncryptedBackup } from "./backup";
 import { storagePut, storageGet } from "./storage";
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -348,7 +348,7 @@ export async function downloadArchivedAttachment(
   id: number,
 ): Promise<{ ok: true; file: ArchivedAttachmentFile } | { ok: false; error: string }> {
   const raw = (await db.execute(
-    sql`SELECT category, file_name, status, error_message FROM backup_attachments WHERE id = ${id}`,
+    sql`SELECT category, file_name, storage_url, status, error_message FROM backup_attachments WHERE id = ${id}`,
   )) as any;
   const rows = Array.isArray(raw[0]) ? raw[0] : raw;
   const row = (Array.isArray(rows) ? rows : [])[0];
@@ -365,12 +365,52 @@ export async function downloadArchivedAttachment(
 
   const category = String(row.category);
   const fileName = String(row.file_name);
+
+  const bruto = await baixarArquivoArquivado(category, fileName, row.storage_url ? String(row.storage_url) : null);
+
+  // Todo anexo é criptografado antes de subir, mas conferir o marcador em vez
+  // de assumir evita transformar um arquivo íntegro em erro de descriptografia
+  // caso algum item tenha sido gravado antes dessa regra.
+  const conteudo = isEncryptedBackup(bruto) ? decryptBackupBuffer(bruto, getBackupEncryptionKey()) : bruto;
+
+  return { ok: true, file: { fileName, contentType: inferContentType(fileName), buffer: conteudo } };
+}
+
+/**
+ * Busca os bytes (ainda criptografados) de um anexo arquivado.
+ *
+ * Tenta primeiro a `storage_url` gravada no índice — é o localizador oficial
+ * de recuperação, o motivo de essa coluna existir e entrar no dump do banco.
+ * Só se ela falhar (URL expirada, por exemplo) reconstrói a chave a partir de
+ * categoria/nome e pede uma URL nova ao storage. Se os dois caminhos falharem,
+ * o erro diz o que foi tentado — em vez do "download.json" mudo que a primeira
+ * versão produzia em produção (05/09/2026).
+ */
+async function baixarArquivoArquivado(
+  category: string,
+  fileName: string,
+  storageUrl: string | null,
+): Promise<Buffer> {
+  const falhas: string[] = [];
+
+  if (storageUrl) {
+    try {
+      assertSafeExternalUrl(storageUrl);
+      const resposta = await axios.get(storageUrl, { responseType: "arraybuffer", timeout: 20000 });
+      return Buffer.from(resposta.data);
+    } catch (error: any) {
+      falhas.push(`URL gravada no índice: ${error?.message ?? error}`);
+    }
+  }
+
   const storageKey = `backups/anexos/${category}/${fileName}.enc`;
+  try {
+    const { url } = await storageGet(storageKey);
+    const resposta = await axios.get(url, { responseType: "arraybuffer", timeout: 20000 });
+    return Buffer.from(resposta.data);
+  } catch (error: any) {
+    falhas.push(`chave reconstruída "${storageKey}": ${error?.message ?? error}`);
+  }
 
-  const { url } = await storageGet(storageKey);
-  const response = await axios.get(url, { responseType: "arraybuffer", timeout: 20000 });
-  const encrypted = Buffer.from(response.data);
-  const decrypted = decryptBackupBuffer(encrypted, getBackupEncryptionKey());
-
-  return { ok: true, file: { fileName, contentType: inferContentType(fileName), buffer: decrypted } };
+  throw new Error(`Não foi possível baixar o arquivo arquivado. Tentativas — ${falhas.join(" | ")}`);
 }
