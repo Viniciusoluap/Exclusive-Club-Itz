@@ -251,6 +251,16 @@ export default function AdminBackups() {
   const reattachMutation = trpc.backup.reattachAttachmentsBatch.useMutation();
   const [reattaching, setReattaching] = useState(false);
   const [reattachStatus, setReattachStatus] = useState<string | null>(null);
+  /**
+   * Motivos reais das falhas, para exibir na tela.
+   *
+   * POR QUE ISTO EXISTE: até aqui só a CONTAGEM de falhas ia para o toast — o
+   * motivo de cada uma só ia para `console.warn`, que ninguém vê num celular.
+   * Quando as 243 recolocações falharam de uma vez em produção (05/09/2026), a
+   * tela disse "243 falha(s)" e nada mais — impossível saber se era problema
+   * de rede, de credencial do storage, ou outra coisa.
+   */
+  const [reattachFailures, setReattachFailures] = useState<Array<{ arquivo: string; motivo: string }>>([]);
 
   const handleReattachAttachments = async () => {
     setReattaching(true);
@@ -261,6 +271,8 @@ export default function AdminBackups() {
     let funcionando = 0;
     let semReferencia = 0;
     const falhas: string[] = [];
+    const falhasDetalhadas: Array<{ arquivo: string; motivo: string }> = [];
+    setReattachFailures([]);
     // Se as URLs do storage expiram, recolocar é paliativo (o link volta a
     // apodrecer) e o sistema precisa passar a servir anexos por rota própria.
     // Coletado automaticamente para ninguém precisar inspecionar URL na mão.
@@ -274,7 +286,10 @@ export default function AdminBackups() {
         recolocados += p.reattachedNow;
         funcionando += p.stillWorkingNow;
         semReferencia += p.notReferencedNow;
-        for (const f of p.failures) falhas.push(`${f.arquivo}: ${f.motivo}`);
+        for (const f of p.failures) {
+          falhas.push(`${f.arquivo}: ${f.motivo}`);
+          falhasDetalhadas.push(f);
+        }
         if (urlComExpiracao === undefined && p.storageUrlComExpiracao !== undefined) {
           urlComExpiracao = p.storageUrlComExpiracao;
         }
@@ -291,7 +306,10 @@ export default function AdminBackups() {
             (falhas.length > 0 ? `. ${falhas.length} falha(s).` : '.');
           if (falhas.length > 0) toast.warning(resumo);
           else toast.success(resumo);
-          if (falhas.length > 0) console.warn('[recolocar-anexos] Falhas:', falhas);
+          if (falhas.length > 0) {
+            console.warn('[recolocar-anexos] Falhas:', falhas);
+            setReattachFailures(falhasDetalhadas);
+          }
 
           // O veredito que decide o próximo passo do plano.
           if (urlComExpiracao === true) {
@@ -310,11 +328,14 @@ export default function AdminBackups() {
 
         if (p.processedNow === 0) {
           toast.warning(`Nenhum anexo pôde ser processado. Restam ${p.remaining}.`);
+          if (falhasDetalhadas.length > 0) setReattachFailures(falhasDetalhadas);
           return;
         }
       }
       toast.warning('Pausado por segurança. Clique novamente para continuar.');
+      if (falhasDetalhadas.length > 0) setReattachFailures(falhasDetalhadas);
     } catch (e: any) {
+      if (falhasDetalhadas.length > 0) setReattachFailures(falhasDetalhadas);
       toast.error(
         `Interrompido: ${e.message} — o que já foi recolocado está salvo. Pode clicar de novo para continuar.`,
       );
@@ -1001,6 +1022,38 @@ export default function AdminBackups() {
                   </>
                 )}
               </Button>
+
+              {/*
+                Motivo real das falhas de recolocação — agrupado, porque
+                centenas de linhas repetindo o mesmo erro escondem a causa em
+                vez de revelar. Foi exatamente isso que aconteceu quando as
+                243 recolocações falharam de uma vez (05/09/2026): a tela só
+                dizia "243 falha(s)", sem nenhuma pista do motivo real.
+              */}
+              {reattachFailures.length > 0 && (() => {
+                const porMotivo = new Map<string, number>();
+                for (const f of reattachFailures) {
+                  porMotivo.set(f.motivo, (porMotivo.get(f.motivo) ?? 0) + 1);
+                }
+                const agrupadas = Array.from(porMotivo, ([motivo, total]) => ({ motivo, total })).sort(
+                  (a, b) => b.total - a.total,
+                );
+                return (
+                  <div className="mt-3 w-full rounded-md border border-red-200 bg-red-50 p-3">
+                    <div className="text-sm font-medium text-red-900 mb-1">
+                      Motivo das {reattachFailures.length} falha(s):
+                    </div>
+                    <ul className="space-y-1">
+                      {agrupadas.map((a, i) => (
+                        <li key={i} className="text-xs text-red-800 break-words">
+                          {a.total > 1 ? `${a.total}× — ` : ''}
+                          {a.motivo}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
 
               {/*
                 Recuperar um anexo específico.
