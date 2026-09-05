@@ -29,6 +29,25 @@ if (!process.env.SMTP_PASS) {
  */
 const ESPERA_SMTP_MS = 10_000;
 
+/**
+ * Validação do certificado TLS do servidor SMTP.
+ *
+ * POR QUE ISTO EXISTE: estava fixo em `rejectUnauthorized: false`, ou seja,
+ * qualquer certificado era aceito — inclusive o de alguém no meio do caminho se
+ * passando pelo servidor. Por essa conexão passam a senha da caixa e o conteúdo
+ * dos emails (dados de clientes, cobranças, contratos). O Titan tem certificado
+ * válido, então validar é simplesmente o comportamento correto; o `false` era
+ * herança de "hospedagem compartilhada", que não é o caso aqui.
+ *
+ * SMTP_TLS_INSECURE fica como saída de emergência: se algum dia o ambiente
+ * subir sem a cadeia de certificados raiz e o envio parar, dá para destravar
+ * sem depender de um deploy novo. O padrão é seguro — afrouxar exige um ato
+ * explícito e deixa rastro na configuração.
+ */
+export function opcoesTlsSmtp(): { rejectUnauthorized: boolean } {
+  return { rejectUnauthorized: process.env.SMTP_TLS_INSECURE !== 'true' };
+}
+
 // Criar transportador SMTP
 const transporter = nodemailer.createTransport({
   host: 'smtp.titan.email',
@@ -41,10 +60,7 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: ESPERA_SMTP_MS,
   greetingTimeout: ESPERA_SMTP_MS,
   socketTimeout: ESPERA_SMTP_MS,
-  tls: {
-    // Não falhar em certificados inválidos (comum em hospedagens compartilhadas)
-    rejectUnauthorized: false,
-  },
+  tls: opcoesTlsSmtp(),
 });
 
 // Verificar conexão SMTP (não bloqueia a inicialização)

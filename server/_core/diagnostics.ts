@@ -9,6 +9,7 @@
 
 import nodemailer from "nodemailer";
 import { BUILD_MARKER, PROCESS_STARTED_AT } from "./buildInfo";
+import { opcoesTlsSmtp } from "./emailService";
 
 /**
  * Variáveis do ambiente e o que a ausência de cada uma REALMENTE significa.
@@ -112,7 +113,9 @@ export async function checkSmtp(): Promise<{ ok: boolean; detail: string }> {
       user: process.env.SMTP_USER || "atendimento@exclusiveclubitz.com",
       pass,
     },
-    tls: { rejectUnauthorized: false },
+    // Mesma política do envio real — senão o diagnóstico aprovaria uma conexão
+    // que o envio recusa, ou o contrário.
+    tls: opcoesTlsSmtp(),
     connectionTimeout: 10000,
     greetingTimeout: 10000,
   });
