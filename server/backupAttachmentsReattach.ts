@@ -68,7 +68,26 @@ export type ReattachProgress = {
   done: boolean;
   /** Quantos ainda faltam depois desta chamada. */
   remaining: number;
+  /**
+   * A URL que o storage devolve ao subir um arquivo carrega parâmetros de
+   * expiração?
+   *
+   * POR QUE IMPORTA: se carrega, guardar essa URL no banco como referência
+   * permanente é o que faz os anexos virarem "AccessDenied" com o tempo — e
+   * recolocar seria um paliativo que precisa ser repetido, não a solução. Se
+   * não carrega, o link é estável e recolocar resolve de vez. Esta resposta
+   * decide o próximo passo do plano, então o sistema a coleta sozinho em vez
+   * de depender de alguém inspecionar uma URL a olho nu.
+   *
+   * `undefined` quando nenhum arquivo foi enviado nesta chamada.
+   */
+  storageUrlComExpiracao?: boolean;
 };
+
+/** Marcadores usuais de URL assinada com prazo (S3/CloudFront). */
+function urlTemExpiracao(url: string): boolean {
+  return /[?&](Expires|Signature|X-Amz-Expires|X-Amz-Signature|X-Amz-Date|X-Amz-Credential)=/i.test(url);
+}
 
 type LinhaArquivada = { id: number; category: string; file_name: string; source_url: string; storage_url: string | null };
 
@@ -266,6 +285,7 @@ export async function reattachAttachmentsBatch(
   let notReferencedNow = 0;
   const failures: ReattachProgress["failures"] = [];
   let pendentes = 0;
+  let storageUrlComExpiracao: boolean | undefined;
 
   for (const linha of arquivados) {
     // O teste de tempo vem depois do primeiro item para toda chamada avançar
@@ -293,6 +313,7 @@ export async function reattachAttachmentsBatch(
       const conteudo = await obterConteudoArquivado(linha);
       const chaveNova = `recuperados/${linha.category}/${Date.now()}-${linha.file_name}`;
       const { url: urlNova } = await storagePut(chaveNova, conteudo, tipoPorExtensao(linha.file_name));
+      if (storageUrlComExpiracao === undefined) storageUrlComExpiracao = urlTemExpiracao(urlNova);
 
       await reapontarRegistros(db, linha.source_url, urlNova);
       reattachedNow++;
@@ -312,5 +333,6 @@ export async function reattachAttachmentsBatch(
     failures,
     remaining: pendentes,
     done: pendentes === 0,
+    storageUrlComExpiracao,
   };
 }

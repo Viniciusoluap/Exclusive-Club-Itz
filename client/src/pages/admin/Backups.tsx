@@ -202,6 +202,10 @@ export default function AdminBackups() {
     let funcionando = 0;
     let semReferencia = 0;
     const falhas: string[] = [];
+    // Se as URLs do storage expiram, recolocar é paliativo (o link volta a
+    // apodrecer) e o sistema precisa passar a servir anexos por rota própria.
+    // Coletado automaticamente para ninguém precisar inspecionar URL na mão.
+    let urlComExpiracao: boolean | undefined;
 
     try {
       for (let i = 0; i < MAX_LOTES; i++) {
@@ -210,6 +214,9 @@ export default function AdminBackups() {
         funcionando += p.stillWorkingNow;
         semReferencia += p.notReferencedNow;
         for (const f of p.failures) falhas.push(`${f.arquivo}: ${f.motivo}`);
+        if (urlComExpiracao === undefined && p.storageUrlComExpiracao !== undefined) {
+          urlComExpiracao = p.storageUrlComExpiracao;
+        }
 
         setReattachStatus(
           p.done ? null : `Recolocando… ${recolocados} recolocado(s), faltam ${p.remaining}`,
@@ -224,6 +231,19 @@ export default function AdminBackups() {
           if (falhas.length > 0) toast.warning(resumo);
           else toast.success(resumo);
           if (falhas.length > 0) console.warn('[recolocar-anexos] Falhas:', falhas);
+
+          // O veredito que decide o próximo passo do plano.
+          if (urlComExpiracao === true) {
+            toast.warning(
+              'Atenção: o storage devolve links com prazo de validade. Isso significa que os anexos vão voltar a dar "acesso negado" com o tempo — ' +
+                'recolocar resolve agora, mas a correção definitiva é servir os anexos por uma rota própria do sistema.',
+              { duration: 20000 },
+            );
+          } else if (urlComExpiracao === false) {
+            toast.info('Os links do storage não têm prazo de validade — a recolocação é definitiva para estes arquivos.', {
+              duration: 12000,
+            });
+          }
           return;
         }
 
