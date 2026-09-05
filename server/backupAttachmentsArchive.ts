@@ -25,8 +25,8 @@ import axios from "axios";
 import { sql } from "drizzle-orm";
 import { assertSafeExternalUrl } from "./_core/urlSafety";
 import { collectAttachments, type Attachment } from "./backupFiles";
-import { getBackupEncryptionKey, encryptBackupBuffer } from "./backup";
-import { storagePut } from "./storage";
+import { getBackupEncryptionKey, encryptBackupBuffer, decryptBackupBuffer } from "./backup";
+import { storagePut, storageGet } from "./storage";
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
@@ -275,6 +275,7 @@ export async function getArchiveProgress(db: any): Promise<ArchiveProgress> {
  */
 export async function listArchivedAttachments(db: any): Promise<
   Array<{
+    id: number;
     categoria: string;
     arquivo: string;
     origem: string;
@@ -286,13 +287,14 @@ export async function listArchivedAttachments(db: any): Promise<
   }>
 > {
   const raw = (await db.execute(sql`
-    SELECT category, file_name, source_url, storage_url, size_bytes, status, error_message, archived_at
+    SELECT id, category, file_name, source_url, storage_url, size_bytes, status, error_message, archived_at
     FROM backup_attachments
     ORDER BY category, file_name
   `)) as any;
   const rows = Array.isArray(raw[0]) ? raw[0] : raw;
 
   return (Array.isArray(rows) ? rows : []).map((r: any) => ({
+    id: Number(r.id),
     categoria: String(r.category ?? ""),
     arquivo: String(r.file_name ?? ""),
     origem: String(r.source_url ?? ""),
@@ -302,4 +304,73 @@ export async function listArchivedAttachments(db: any): Promise<
     erro: r.error_message ? String(r.error_message) : null,
     arquivadoEm: r.archived_at ? String(r.archived_at) : null,
   }));
+}
+
+/** Tipo de conteúdo inferido pela extensão do nome — o arquivamento não guarda o content-type original. */
+function inferContentType(fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    case "pdf":
+      return "application/pdf";
+    default:
+      return "application/octet-stream";
+  }
+}
+
+export type ArchivedAttachmentFile = { fileName: string; contentType: string; buffer: Buffer };
+
+/**
+ * Recupera de volta UM anexo arquivado: descriptografa o que está no storage
+ * e devolve os bytes originais (foto/documento), prontos para download.
+ *
+ * POR QUE ISTO EXISTE: até 05/09/2026 o sistema só sabia ARQUIVAR anexos
+ * (`archiveAttachmentsBatch`) e LISTAR o índice (`listArchivedAttachments`) —
+ * via de mão única. Um administrador com o índice em mãos não tinha como
+ * pegar de volta nem um único arquivo específico (ex.: o documento pessoal
+ * de um cliente cuja URL original morreu). Esta função fecha essa lacuna.
+ *
+ * A chave no storage é reconstruída a partir de `category`/`file_name` (o
+ * mesmo padrão usado por `archiveOne`) — o banco guarda a URL assinada de
+ * quando o arquivo foi enviado, que pode ter expirado, então pedimos uma
+ * nova via `storageGet` em vez de usar `storage_url` diretamente.
+ */
+export async function downloadArchivedAttachment(
+  db: any,
+  id: number,
+): Promise<{ ok: true; file: ArchivedAttachmentFile } | { ok: false; error: string }> {
+  const raw = (await db.execute(
+    sql`SELECT category, file_name, status, error_message FROM backup_attachments WHERE id = ${id}`,
+  )) as any;
+  const rows = Array.isArray(raw[0]) ? raw[0] : raw;
+  const row = (Array.isArray(rows) ? rows : [])[0];
+
+  if (!row) return { ok: false, error: "Anexo não encontrado no índice." };
+  if (row.status !== "archived") {
+    return {
+      ok: false,
+      error: `Este anexo não foi arquivado com sucesso — nunca existiu uma cópia recuperável dele (motivo: ${
+        row.error_message ?? "desconhecido"
+      }).`,
+    };
+  }
+
+  const category = String(row.category);
+  const fileName = String(row.file_name);
+  const storageKey = `backups/anexos/${category}/${fileName}.enc`;
+
+  const { url } = await storageGet(storageKey);
+  const response = await axios.get(url, { responseType: "arraybuffer", timeout: 20000 });
+  const encrypted = Buffer.from(response.data);
+  const decrypted = decryptBackupBuffer(encrypted, getBackupEncryptionKey());
+
+  return { ok: true, file: { fileName, contentType: inferContentType(fileName), buffer: decrypted } };
 }

@@ -338,6 +338,10 @@ export async function initializeApp(
   const { downloadBackupRoute } = await import('../downloadBackupRoute');
   app.get('/api/backup/download/:id', downloadBackupRoute);
 
+  // Recuperar de volta UM anexo arquivado (foto/documento) — ver backupAttachmentsArchive.ts
+  const { downloadAttachmentRoute } = await import('../downloadAttachmentRoute');
+  app.get('/api/backup/attachments/:id/download', downloadAttachmentRoute);
+
   // Mesclagem seletiva de um backup antigo (upload manual) — ver backupRestoreMerge.ts
   const { restoreMergeDryRunRoute, restoreMergeApplyRoute, restoreMergeForceNoKeyRoute } = await import('../backupRestoreMergeRoute');
   app.post('/api/backup/restore-merge/dry-run', restoreMergeDryRunRoute);
