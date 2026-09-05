@@ -381,4 +381,162 @@ describe.skipIf(!db)('backupRestoreMerge — mesclagem seletiva de backup antigo
   it('rejeita um arquivo que não é um backup válido (sem marcador de conclusão)', async () => {
     await expect(dryRunRestoreMerge(db, 'SELECT 1;')).rejects.toThrow(/marcador de conclusão/);
   });
+
+  /**
+   * Relatado em produção (05/09/2026): `users` é comparado por `openId`, mas a
+   * tabela também tem UNIQUE em `email`. Uma linha do backup com openId novo e
+   * e-mail que já pertencia a outra conta ativa derrubava as 37 linhas de uma
+   * vez com "Duplicate entry for key 'users.users_email_uq'".
+   */
+  it('pula a linha que violaria OUTRA restrição UNIQUE, sem derrubar o lote', async () => {
+    const emailDisputado = `${PREFIXO}-disputado@example.com`;
+    const openIdProducao = `${PREFIXO}-openid-producao`;
+    const openIdBackup = `${PREFIXO}-openid-backup`;
+
+    const limpar = async () => {
+      await db!.execute(sql`DELETE FROM users WHERE email = ${emailDisputado}`);
+      await db!.execute(sql`DELETE FROM users WHERE openId = ${openIdBackup}`);
+    };
+    await limpar();
+
+    try {
+      await db!.execute(sql`
+        INSERT INTO users (openId, name, email, loginMethod, role)
+        VALUES (${openIdProducao}, 'Conta ativa em produção', ${emailDisputado}, 'email', 'user')
+      `);
+
+      const dump = buildDump([
+        sqlTable(
+          'users',
+          "CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT, `openId` varchar(255) NOT NULL, `name` text, `email` varchar(320), `loginMethod` varchar(50), `role` enum('user','admin','employee') NOT NULL DEFAULT 'user', PRIMARY KEY (`id`))",
+          ['openId', 'name', 'email', 'loginMethod', 'role'],
+          // openId novo (passaria pela chave natural), mas e-mail já ocupado.
+          [{ openId: openIdBackup, name: 'Conta do backup', email: emailDisputado, loginMethod: 'email', role: 'user' }],
+        ),
+      ]);
+
+      const resultado = await applyRestoreMerge(db, dump);
+      const usuarios = resultado.tables.find(t => t.table === 'users')!;
+
+      // O lote não pode falhar por causa dessa linha.
+      expect(usuarios.error).toBeUndefined();
+      expect(usuarios.success).toBe(true);
+      // E o motivo do descarte precisa estar visível, não silencioso.
+      expect(usuarios.adjustments?.join(' ')).toContain('email');
+
+      // A conta de produção continua intacta e sozinha com aquele e-mail.
+      const raw = (await db!.execute(sql`SELECT openId FROM users WHERE email = ${emailDisputado}`)) as any;
+      const linhas = Array.isArray(raw[0]) ? raw[0] : raw;
+      expect(linhas.length).toBe(1);
+      expect(String(linhas[0].openId)).toBe(openIdProducao);
+    } finally {
+      await limpar();
+    }
+  });
+
+  /**
+   * A vinculação de quem fez o quê precisa sobreviver à recuperação.
+   *
+   * POR QUE ISTO É CRÍTICO: os ids de usuário foram reatribuídos quando as
+   * tabelas foram reconstruídas, e quem voltou a entrar por outro provedor
+   * ganhou id novo. Reinserir a compra com o id do backup ou perde o vínculo
+   * ou — muito pior — credita a compra a OUTRA pessoa, sem nenhum aviso. A
+   * identidade estável é o e-mail.
+   */
+  it('re-vincula a compra ao id que o usuário tem hoje, identificando pelo e-mail', async () => {
+    const idCompra = 9404001;
+    const idAntigo = 987654322; // id que o usuário tinha no backup
+    const email = `${PREFIXO}-revinculo@example.com`;
+    const openIdAntigo = `${PREFIXO}-openid-antigo`;
+    const openIdAtual = `${PREFIXO}-openid-atual`;
+
+    const limpar = async () => {
+      await db!.execute(sql`DELETE FROM fuel_purchases WHERE id = ${idCompra}`);
+      await db!.execute(sql`DELETE FROM users WHERE email = ${email}`);
+    };
+    await limpar();
+
+    try {
+      // A pessoa existe hoje, com OUTRO id e OUTRO openId — só o e-mail é o mesmo.
+      await db!.execute(sql`
+        INSERT INTO users (openId, name, email, loginMethod, role)
+        VALUES (${openIdAtual}, 'Mesma pessoa, id novo', ${email}, 'google', 'user')
+      `);
+      const rawUser = (await db!.execute(sql`SELECT id FROM users WHERE email = ${email}`)) as any;
+      const idAtual = Number((Array.isArray(rawUser[0]) ? rawUser[0] : rawUser)[0].id);
+
+      const dump = buildDump([
+        sqlTable(
+          'users',
+          "CREATE TABLE `users` (`id` int NOT NULL AUTO_INCREMENT, `openId` varchar(255) NOT NULL, `name` text, `email` varchar(320), `loginMethod` varchar(50), `role` enum('user','admin','employee') NOT NULL DEFAULT 'user', PRIMARY KEY (`id`))",
+          ['id', 'openId', 'name', 'email', 'loginMethod', 'role'],
+          [{ id: idAntigo, openId: openIdAntigo, name: 'Mesma pessoa, id antigo', email, loginMethod: 'apple', role: 'user' }],
+        ),
+        sqlTable(
+          'fuel_purchases',
+          "CREATE TABLE `fuel_purchases` (`id` int NOT NULL AUTO_INCREMENT, `month_year` varchar(7) NOT NULL, `liters_purchased` int NOT NULL, `amount_paid` int NOT NULL, `price_per_liter` int NOT NULL, `purchased_by` int, `gallon_number` int NOT NULL DEFAULT 1, PRIMARY KEY (`id`))",
+          ['id', 'month_year', 'liters_purchased', 'amount_paid', 'price_per_liter', 'purchased_by', 'gallon_number'],
+          [{ id: idCompra, month_year: '2026-02', liters_purchased: 5000, amount_paid: 31450, price_per_liter: 629, purchased_by: idAntigo, gallon_number: 1 }],
+        ),
+      ]);
+
+      const resultado = await forceRestoreTablesWithoutNaturalKey(db, dump, ['fuel_purchases']);
+      expect(resultado.tables[0]!.rowsInserted).toBe(1);
+
+      const raw = (await db!.execute(sql`SELECT purchased_by FROM fuel_purchases WHERE id = ${idCompra}`)) as any;
+      const linhas = Array.isArray(raw[0]) ? raw[0] : raw;
+
+      // O essencial: a compra ficou ligada à pessoa certa, não ao id de agosto
+      // (que hoje pode ser de outra pessoa) nem em branco.
+      expect(Number(linhas[0].purchased_by)).toBe(idAtual);
+      expect(Number(linhas[0].purchased_by)).not.toBe(idAntigo);
+    } finally {
+      await limpar();
+    }
+  });
+
+  /**
+   * `fuel_purchases.purchased_by` → `users.id` é a única FK real do schema.
+   * Quando o usuário referenciado não voltou, o banco recusava a compra
+   * inteira — e é justamente o histórico de compras que fecha a conta do
+   * abastecimento. Preservar a compra sem o comprador é a escolha certa.
+   */
+  it('preserva a compra de combustível anulando a referência a um usuário inexistente', async () => {
+    const idCompra = 9403001;
+    const idUsuarioInexistente = 987654321;
+
+    const limpar = async () => {
+      await db!.execute(sql`DELETE FROM fuel_purchases WHERE id = ${idCompra}`);
+    };
+    await limpar();
+
+    try {
+      const dump = buildDump([
+        sqlTable(
+          'fuel_purchases',
+          "CREATE TABLE `fuel_purchases` (`id` int NOT NULL AUTO_INCREMENT, `month_year` varchar(7) NOT NULL, `liters_purchased` int NOT NULL, `amount_paid` int NOT NULL, `price_per_liter` int NOT NULL, `purchased_by` int, `gallon_number` int NOT NULL DEFAULT 1, PRIMARY KEY (`id`))",
+          ['id', 'month_year', 'liters_purchased', 'amount_paid', 'price_per_liter', 'purchased_by', 'gallon_number'],
+          [{ id: idCompra, month_year: '2026-01', liters_purchased: 5000, amount_paid: 31450, price_per_liter: 629, purchased_by: idUsuarioInexistente, gallon_number: 1 }],
+        ),
+      ]);
+
+      const resultado = await forceRestoreTablesWithoutNaturalKey(db, dump, ['fuel_purchases']);
+      const compras = resultado.tables[0]!;
+
+      expect(compras.error).toBeUndefined();
+      expect(compras.rowsInserted).toBe(1);
+      expect(compras.adjustments?.join(' ')).toContain('purchased_by');
+
+      const raw = (await db!.execute(
+        sql`SELECT purchased_by, liters_purchased FROM fuel_purchases WHERE id = ${idCompra}`,
+      )) as any;
+      const linhas = Array.isArray(raw[0]) ? raw[0] : raw;
+      expect(linhas.length).toBe(1);
+      // A compra existe — é ela que fecha a conta — mas sem comprador atribuído.
+      expect(linhas[0].purchased_by).toBeNull();
+      expect(Number(linhas[0].liters_purchased)).toBe(5000);
+    } finally {
+      await limpar();
+    }
+  });
 });

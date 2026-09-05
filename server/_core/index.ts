@@ -440,4 +440,13 @@ import("../jobs/scheduledBackup").then(({ scheduleDailyBackup }) => {
 import("../jobs/archiveAttachments").then(({ scheduleArchiveAttachments }) => {
   scheduleArchiveAttachments();
   }).catch(err => console.error("[archiveAttachments] Falha ao registrar job:", err));
+
+// Recolocação dos anexos: mesma razão do arquivamento. Fazer isso pelo botão
+// exigia dezenas de requisições seguidas, cada anexo custando uma verificação
+// de rede — a tela ficou seis minutos sem avançar e terminou em "Load failed".
+// Roda às 05:00 de domingo, depois do arquivamento (04:00), porque recolocar
+// depende de existir cópia arquivada.
+import("../jobs/reattachAttachments").then(({ scheduleReattachAttachments }) => {
+  scheduleReattachAttachments();
+  }).catch(err => console.error("[reattachAttachments] Falha ao registrar job:", err));
 }

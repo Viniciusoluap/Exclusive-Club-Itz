@@ -32,8 +32,17 @@ import { getBackupEncryptionKey, decryptBackupBuffer, isEncryptedBackup } from "
 import { storagePut, storageGet } from "./storage";
 
 const BUDGET_MS = 12000;
-const LIVENESS_TIMEOUT_MS = 6000;
-const DOWNLOAD_TIMEOUT_MS = 15000;
+/**
+ * Prazos curtos de propósito.
+ *
+ * POR QUE: o orçamento só é conferido ENTRE arquivos. Um único item lento
+ * (6s de verificação + 15s de download + upload) estourava a janela da
+ * requisição sozinho, e o proxy derrubava tudo com "Load failed" — relatado em
+ * produção em 05/09/2026. Com prazos curtos, o pior caso de um item cabe
+ * dentro do orçamento.
+ */
+const LIVENESS_TIMEOUT_MS = 4000;
+const DOWNLOAD_TIMEOUT_MS = 10000;
 
 /**
  * Onde cada tipo de anexo mora. Espelha `collectAttachments` — é a mesma lista
@@ -69,6 +78,16 @@ export type ReattachProgress = {
   /** Quantos ainda faltam depois desta chamada. */
   remaining: number;
   /**
+   * Maior id de anexo examinado nesta chamada — o ponto de retomada.
+   *
+   * POR QUE ISTO EXISTE: sem cursor, cada chamada recomeçava do primeiro
+   * anexo. Os que já haviam sido examinados e estão saudáveis continuam
+   * referenciados, então eram re-examinados sempre, o orçamento se esgotava
+   * no mesmo prefixo e o processo nunca avançava — travou em "0 recolocado(s),
+   * faltam 164" por mais de seis minutos em produção (05/09/2026).
+   */
+  lastId: number;
+  /**
    * A URL que o storage devolve ao subir um arquivo carrega parâmetros de
    * expiração?
    *
@@ -97,13 +116,13 @@ async function consultar(db: any, statement: any): Promise<any[]> {
   return Array.isArray(rows) ? rows : [];
 }
 
-/** Anexos arquivados com sucesso, na ordem do índice. */
-async function listarArquivados(db: any): Promise<LinhaArquivada[]> {
+/** Anexos arquivados com sucesso, a partir do ponto de retomada. */
+async function listarArquivados(db: any, afterId: number): Promise<LinhaArquivada[]> {
   const rows = await consultar(
     db,
     sql`SELECT id, category, file_name, source_url, storage_url
         FROM backup_attachments
-        WHERE status = 'archived'
+        WHERE status = 'archived' AND id > ${afterId}
         ORDER BY id`,
   );
   return rows.map((r: any) => ({
@@ -274,10 +293,12 @@ async function reapontarRegistros(db: any, urlAntiga: string, urlNova: string): 
  */
 export async function reattachAttachmentsBatch(
   db: any,
+  afterId = 0,
   budgetMs = BUDGET_MS,
 ): Promise<ReattachProgress> {
   const iniciouEm = Date.now();
-  const arquivados = await listarArquivados(db);
+  const arquivados = await listarArquivados(db, afterId);
+  let lastId = afterId;
 
   let processedNow = 0;
   let reattachedNow = 0;
@@ -301,12 +322,14 @@ export async function reattachAttachmentsBatch(
       if (referencias === 0) {
         notReferencedNow++;
         processedNow++;
+        lastId = linha.id;
         continue;
       }
 
       if (await urlAindaResponde(linha.source_url)) {
         stillWorkingNow++;
         processedNow++;
+        lastId = linha.id;
         continue;
       }
 
@@ -318,14 +341,21 @@ export async function reattachAttachmentsBatch(
       await reapontarRegistros(db, linha.source_url, urlNova);
       reattachedNow++;
       processedNow++;
+      lastId = linha.id;
     } catch (error: any) {
       failures.push({ arquivo: linha.file_name, motivo: error?.message ?? String(error) });
       processedNow++;
+      // Avança mesmo em falha: sem isso, um anexo problemático prenderia o
+      // processo nele para sempre.
+      lastId = linha.id;
     }
   }
 
+  // Total real do acervo, não só a fatia desta chamada — é o que a tela mostra.
+  const totalRaw = await consultar(db, sql`SELECT COUNT(*) AS total FROM backup_attachments WHERE status = 'archived'`);
+
   return {
-    total: arquivados.length,
+    total: Number(totalRaw[0]?.total ?? arquivados.length),
     processedNow,
     reattachedNow,
     stillWorkingNow,
@@ -334,5 +364,6 @@ export async function reattachAttachmentsBatch(
     remaining: pendentes,
     done: pendentes === 0,
     storageUrlComExpiracao,
+    lastId,
   };
 }
