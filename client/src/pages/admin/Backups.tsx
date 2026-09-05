@@ -25,6 +25,65 @@ function nomeDoDownload(fileName: string): string {
   return fileName.replace(/\.enc$/i, '');
 }
 
+/**
+ * Traduz o erro do banco para uma frase que se entende sem ser programador.
+ *
+ * POR QUE ISTO EXISTE: a tela despejava o INSERT inteiro em vermelho — dezenas
+ * de milhares de caracteres de SQL, com a causa real escondida no fim. Para
+ * quem precisa decidir o que fazer, isso não é informação, é ruído. O detalhe
+ * técnico continua disponível, mas recolhido: quem precisa dele abre.
+ */
+function explicarErro(bruto: string): string {
+  const duplicado = /Duplicate entry .*? for key '([^']+)'/i.exec(bruto);
+  if (duplicado) {
+    const chave = duplicado[1].split('.').pop() ?? duplicado[1];
+    return `Já existe um registro no sistema com esse mesmo dado único (${chave}). O registro atual foi mantido e o do backup foi descartado.`;
+  }
+
+  if (/foreign key constraint fails/i.test(bruto)) {
+    return 'O registro depende de outro que não existe mais no sistema (por exemplo, uma compra que aponta para um usuário removido).';
+  }
+
+  const longo = /Data too long for column '([^']+)'/i.exec(bruto);
+  if (longo) {
+    return `O valor da coluna "${longo[1]}" não é mais aceito no formato atual — provavelmente uma opção que deixou de existir.`;
+  }
+
+  const desconhecida = /Unknown column '([^']+)'/i.exec(bruto);
+  if (desconhecida) {
+    return `O backup tem uma coluna ("${desconhecida[1]}") que não existe mais no banco.`;
+  }
+
+  if (/Load failed|Failed to fetch|NetworkError|ECONNRESET|socket hang up/i.test(bruto)) {
+    return 'A conexão caiu no meio do processo. O que já foi feito está salvo — basta clicar de novo para continuar de onde parou.';
+  }
+
+  if (/timeout|ETIMEDOUT/i.test(bruto)) {
+    return 'O servidor demorou demais para responder. O que já foi feito está salvo.';
+  }
+
+  // Sem tradução conhecida: mostra só o começo, não o dump inteiro.
+  const limpo = bruto.replace(/\s+/g, ' ').trim();
+  return limpo.length > 200 ? `${limpo.slice(0, 200)}…` : limpo;
+}
+
+/** Erro em linguagem clara, com o texto técnico recolhido para quem quiser. */
+function ErroDaTabela({ erro }: { erro: string }) {
+  return (
+    <div className="mt-1">
+      <div className="text-xs text-red-700 break-words">{explicarErro(erro)}</div>
+      <details className="mt-1">
+        <summary className="text-[11px] text-gray-500 cursor-pointer hover:text-gray-700">
+          Ver detalhe técnico
+        </summary>
+        <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded bg-gray-50 p-2 text-[10px] text-gray-600">
+          {erro}
+        </pre>
+      </details>
+    </div>
+  );
+}
+
 type RelatorioTabelaMesclagem = {
   table: string;
   label: string;
@@ -208,8 +267,10 @@ export default function AdminBackups() {
     let urlComExpiracao: boolean | undefined;
 
     try {
+      let cursor = 0;
       for (let i = 0; i < MAX_LOTES; i++) {
-        const p = await reattachMutation.mutateAsync();
+        const p = await reattachMutation.mutateAsync({ afterId: cursor });
+        cursor = p.lastId;
         recolocados += p.reattachedNow;
         funcionando += p.stillWorkingNow;
         semReferencia += p.notReferencedNow;
@@ -1239,7 +1300,7 @@ export default function AdminBackups() {
                               </span>
                             )}
                             {t.error && (
-                              <div className="text-xs text-red-600 mt-0.5 break-words">Erro ao analisar: {t.error}</div>
+                              <ErroDaTabela erro={t.error} />
                             )}
                           </td>
                           <td className="py-1 pr-4 text-right tabular-nums">{t.rowsInBackup.toLocaleString('pt-BR')}</td>
@@ -1291,6 +1352,12 @@ export default function AdminBackups() {
                     mergeApplyResult.allSucceeded ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
                   }`}
                 >
+                  {/*
+                    Confirmação do que aconteceu, em vez de um aviso genérico.
+                    Antes a tela dizia "pelo menos uma tabela não confirmou" e
+                    despejava o SQL — não dava para saber o que foi recuperado
+                    nem o que ficou pendente sem ler milhares de caracteres.
+                  */}
                   <div className={`font-medium text-sm mb-1 flex items-center gap-2 ${mergeApplyResult.allSucceeded ? 'text-green-900' : 'text-red-900'}`}>
                     {mergeApplyResult.allSucceeded ? (
                       <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -1298,9 +1365,37 @@ export default function AdminBackups() {
                       <AlertTriangle className="w-4 h-4 shrink-0" />
                     )}
                     {mergeApplyResult.allSucceeded
-                      ? `${mergeApplyResult.totalRowsInserted} registro(s) inserido(s) e confirmado(s) no banco.`
-                      : `Concluído com problema: ${mergeApplyResult.totalRowsInserted} inserido(s), mas pelo menos uma tabela não confirmou. Veja o detalhe abaixo.`}
+                      ? `Tudo certo: ${mergeApplyResult.totalRowsInserted} registro(s) recuperado(s) e conferido(s) no banco.`
+                      : `${mergeApplyResult.totalRowsInserted} registro(s) recuperado(s) e conferido(s).`}
                   </div>
+
+                  {(() => {
+                    const ok = mergeApplyResult.tables.filter(t => t.success && t.rowsInserted > 0);
+                    const pendentes = mergeApplyResult.tables.filter(t => !t.success);
+                    const ajustadas = mergeApplyResult.tables.filter(t => (t.adjustments?.length ?? 0) > 0);
+                    return (
+                      <ul className="mt-2 space-y-1 text-xs">
+                        {ok.length > 0 && (
+                          <li className="text-green-800">
+                            ✅ Recuperado: {ok.map(t => `${t.label} (${t.rowsInserted})`).join(', ')}
+                          </li>
+                        )}
+                        {ajustadas.length > 0 && (
+                          <li className="text-amber-800">
+                            ⚠️ Ajustes automáticos em: {ajustadas.map(t => t.label).join(', ')} — detalhe na tabela abaixo
+                          </li>
+                        )}
+                        {pendentes.length > 0 && (
+                          <li className="text-red-800">
+                            ❌ Não concluiu: {pendentes.map(t => t.label).join(', ')} — o motivo está abaixo, em português
+                          </li>
+                        )}
+                        {ok.length === 0 && pendentes.length === 0 && (
+                          <li className="text-gray-600">Nada novo a recuperar — o banco já está em dia com este backup.</li>
+                        )}
+                      </ul>
+                    );
+                  })()}
                 </div>
 
                 <div className="overflow-x-auto">
@@ -1319,7 +1414,7 @@ export default function AdminBackups() {
                         <tr key={t.table} className={!t.success ? 'text-red-700' : t.rowsInserted > 0 ? 'text-green-700' : ''}>
                           <td className="py-1 pr-4 break-all">
                             {t.label}
-                            {t.error && <div className="text-xs text-red-600 mt-0.5 break-words">{t.error}</div>}
+                            {t.error && <ErroDaTabela erro={t.error} />}
                             {/* Ajustes de schema: nada é alterado em silêncio. */}
                             {t.adjustments?.map((a, i) => (
                               <div key={i} className="text-xs text-amber-700 mt-0.5 break-words">{a}</div>
@@ -1449,7 +1544,7 @@ export default function AdminBackups() {
                             <tr key={t.table} className={!t.success ? 'text-red-700' : t.rowsInserted > 0 ? 'text-green-700' : ''}>
                               <td className="py-1 pr-4 break-all">
                                 {t.label}
-                                {t.error && <div className="text-xs text-red-600 mt-0.5 break-words">{t.error}</div>}
+                                {t.error && <ErroDaTabela erro={t.error} />}
                                 {t.adjustments?.map((a, i) => (
                                   <div key={i} className="text-xs text-amber-700 mt-0.5 break-words">{a}</div>
                                 ))}

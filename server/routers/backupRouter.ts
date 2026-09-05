@@ -221,12 +221,17 @@ export const backupRouter = router({
    * Lotes curtos pela mesma razão do arquivamento: a requisição não sobrevive
    * a centenas de arquivos nesta hospedagem.
    */
-  reattachAttachmentsBatch: adminProcedure.mutation(async () => {
-    const db = await getDb();
-    if (!db) throw new Error('Database not available');
-    const { reattachAttachmentsBatch } = await import('../backupAttachmentsReattach');
-    return reattachAttachmentsBatch(db);
-  }),
+  reattachAttachmentsBatch: adminProcedure
+    // `afterId` é o ponto de retomada. Sem ele cada chamada recomeçava do
+    // primeiro anexo, re-examinava os que já estavam saudáveis e nunca
+    // avançava — a tela travou em "0 recolocado(s)" por seis minutos.
+    .input(z.object({ afterId: z.number().min(0).default(0) }).optional())
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database not available');
+      const { reattachAttachmentsBatch } = await import('../backupAttachmentsReattach');
+      return reattachAttachmentsBatch(db, input?.afterId ?? 0);
+    }),
 
   /**
    * Índice dos anexos arquivados — o mapa de recuperação.
