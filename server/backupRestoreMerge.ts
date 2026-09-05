@@ -371,6 +371,121 @@ async function currentRowCount(db: any, table: Table): Promise<number> {
   return Number(row?.total ?? 0);
 }
 
+// ────────────────────────────────── adaptação do backup ao schema de HOJE
+//
+// O backup é uma fotografia do schema de agosto. Desde então colunas foram
+// removidas e domínios de enum mudaram. Reinserir os literais originais sem
+// conferir isso faz o INSERT INTEIRO falhar — foi o que aconteceu em produção
+// (05/09/2026): `bpo_charges` morreu com "Unknown column 'ignored' in 'field
+// list'" e `users` com "Data too long for column 'role'" (valor fora do enum
+// atual). E como `fuel_purchases.purchased_by` tem FK para `users`, a falha de
+// `users` derrubava junto a recuperação das compras de combustível.
+
+type ColumnInfo = {
+  type: string;
+  /** Valores aceitos, quando a coluna é um enum. `null` para os demais tipos. */
+  enumValues: string[] | null;
+  nullable: boolean;
+  defaultValue: string | null;
+};
+
+/** Mesmo formato de `ColumnInfo`, exportado para os testes montarem um schema sem banco. */
+export type ColumnInfoForTests = ColumnInfo;
+
+function parseEnumValues(type: string): string[] | null {
+  const match = /^enum\((.*)\)$/i.exec(type.trim());
+  if (!match) return null;
+  return match[1]
+    .split(',')
+    .map(v => v.trim().replace(/^'/, '').replace(/'$/, '').replace(/''/g, "'"));
+}
+
+/** Colunas que a tabela REALMENTE tem hoje, com tipo/enum/default. */
+async function describeTable(db: any, sqlTableName: string): Promise<Map<string, ColumnInfo>> {
+  const raw = (await db.execute(sql.raw(`SHOW COLUMNS FROM \`${sqlTableName}\``))) as any;
+  const rows = Array.isArray(raw[0]) ? raw[0] : raw;
+  const schema = new Map<string, ColumnInfo>();
+  for (const r of Array.isArray(rows) ? rows : []) {
+    const name = String(r?.Field ?? r?.field ?? '');
+    if (!name) continue;
+    const type = String(r?.Type ?? r?.type ?? '');
+    schema.set(name, {
+      type,
+      enumValues: parseEnumValues(type),
+      nullable: String(r?.Null ?? r?.null ?? 'YES').toUpperCase() === 'YES',
+      defaultValue: r?.Default == null ? null : String(r.Default),
+    });
+  }
+  return schema;
+}
+
+function quoteSqlLiteral(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
+/**
+ * Ajusta colunas e valores do backup ao schema atual, preservando tudo que
+ * ainda cabe:
+ *   - coluna que não existe mais hoje → descartada (o dado dela não tem para
+ *     onde ir; insistir derruba a tabela inteira);
+ *   - valor de enum fora do domínio atual → trocado pelo DEFAULT da coluna
+ *     (ou NULL, quando permitido). Nunca inventa um valor: usa o que o próprio
+ *     banco declara como padrão.
+ *
+ * Todo ajuste é relatado, para nada ser alterado silenciosamente.
+ */
+export function adaptToCurrentSchema(
+  columns: string[],
+  rows: string[][],
+  schema: Map<string, ColumnInfo>,
+): { columns: string[]; rows: string[][]; adjustments: string[] } {
+  const adjustments: string[] = [];
+
+  const keepIdx: number[] = [];
+  const dropped: string[] = [];
+  columns.forEach((name, i) => {
+    if (schema.has(name)) keepIdx.push(i);
+    else dropped.push(name);
+  });
+  if (dropped.length > 0) {
+    adjustments.push(`Coluna(s) que não existem mais no banco, ignoradas: ${dropped.join(', ')}`);
+  }
+
+  const newColumns = keepIdx.map(i => columns[i]);
+  let newRows = keepIdx.length === columns.length ? rows : rows.map(row => keepIdx.map(i => row[i]));
+
+  newColumns.forEach((name, ci) => {
+    const info = schema.get(name);
+    if (!info?.enumValues) return;
+    const allowed = new Set(info.enumValues);
+    const contagem = new Map<string, number>();
+
+    newRows = newRows.map(row => {
+      const valor = sqlLiteralToJsForComparison(row[ci]);
+      if (valor === null || allowed.has(valor)) return row;
+
+      const substituto =
+        info.defaultValue !== null
+          ? quoteSqlLiteral(info.defaultValue)
+          : info.nullable
+            ? 'NULL'
+            : quoteSqlLiteral(info.enumValues![0]);
+
+      const copia = row.slice();
+      copia[ci] = substituto;
+      const chave = `${name}: "${valor}" → ${substituto}`;
+      contagem.set(chave, (contagem.get(chave) ?? 0) + 1);
+      return copia;
+    });
+
+    contagem.forEach((total, chave) => {
+      adjustments.push(`Valor fora do domínio atual, ajustado — ${chave} (${total} linha(s))`);
+    });
+  });
+
+  return { columns: newColumns, rows: newRows, adjustments };
+}
+
 /** Quais destes valores já existem hoje na coluna informada — em lotes, para não estourar o `IN (...)`. */
 async function findExistingValues(db: any, table: Table, column: AnyColumn, values: string[]): Promise<Set<string>> {
   const existing = new Set<string>();
@@ -554,6 +669,12 @@ export type MergeApplyTableResult = {
   success: boolean;
   /** Presente quando o INSERT desta tabela lançou uma exceção — as demais tabelas continuam sendo tentadas. */
   error?: string;
+  /**
+   * O que precisou ser ajustado para o backup de agosto caber no schema de
+   * hoje (coluna removida do banco, valor de enum fora do domínio atual).
+   * Fica visível para nenhuma alteração acontecer em silêncio.
+   */
+  adjustments?: string[];
 };
 
 export type MergeApplyResult = {
@@ -589,7 +710,16 @@ export async function applyRestoreMerge(db: any, dump: string): Promise<MergeApp
         results.push({ table: cfg.sqlTableName, label: cfg.label, rowsAttempted: 0, rowsInserted: 0, rowsVerified: 0, success: true });
         continue;
       }
-      const { columns, rows } = extracted;
+      // O backup é de agosto; o schema mudou desde então. Adapta antes de
+      // qualquer indexOf, para que todo o resto trabalhe já sobre as colunas
+      // que existem hoje.
+      const adaptado = adaptToCurrentSchema(
+        extracted.columns,
+        extracted.rows,
+        await describeTable(db, cfg.sqlTableName),
+      );
+      const { columns, rows } = adaptado;
+      const adjustments = adaptado.adjustments;
       const keyIdx = columns.indexOf(cfg.keySqlName);
 
       const keyValues: string[] = [];
@@ -676,6 +806,7 @@ export async function applyRestoreMerge(db: any, dump: string): Promise<MergeApp
         rowsInserted: inserted,
         rowsVerified: verified,
         success: verified === rowsToInsert.length,
+        adjustments: adjustments.length > 0 ? adjustments : undefined,
       });
     } catch (error: any) {
       results.push({
@@ -712,6 +843,8 @@ export type ForceRestoreTableResult = {
   rowsVerified: number;
   success: boolean;
   error?: string;
+  /** Ajustes feitos para o backup caber no schema atual — ver `adaptToCurrentSchema`. */
+  adjustments?: string[];
 };
 
 export type ForceRestoreResult = {
@@ -772,7 +905,13 @@ export async function forceRestoreTablesWithoutNaturalKey(
         continue;
       }
 
-      const { columns, rows } = extracted;
+      const adaptado = adaptToCurrentSchema(
+        extracted.columns,
+        extracted.rows,
+        await describeTable(db, cfg.sqlTableName),
+      );
+      const { columns, rows } = adaptado;
+      const adjustments = adaptado.adjustments;
       const idIdx = columns.indexOf('id');
       if (idIdx < 0) {
         throw new Error('Backup sem coluna `id` reconhecível para esta tabela — recuperação por id não é possível.');
@@ -825,6 +964,7 @@ export async function forceRestoreTablesWithoutNaturalKey(
         rowsInserted: inserted,
         rowsVerified: verified,
         success: verified === rowsToInsert.length,
+        adjustments: adjustments.length > 0 ? adjustments : undefined,
       });
     } catch (error: any) {
       results.push({

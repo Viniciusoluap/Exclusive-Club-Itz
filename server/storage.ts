@@ -38,7 +38,22 @@ async function buildDownloadUrl(
     method: "GET",
     headers: buildAuthHeaders(apiKey),
   });
-  return (await response.json()).url;
+
+  // Sem esta checagem, um erro do storage virava `url = undefined` e só
+  // estourava adiante, no consumidor, com uma mensagem que não tem nada a ver
+  // com a causa real.
+  if (!response.ok) {
+    const detalhe = await response.text().catch(() => response.statusText);
+    throw new Error(
+      `Storage download URL failed (${response.status} ${response.statusText}) para "${normalizeKey(relKey)}": ${detalhe}`
+    );
+  }
+
+  const { url } = (await response.json()) as { url?: string };
+  if (!url) {
+    throw new Error(`Storage não devolveu URL de download para "${normalizeKey(relKey)}".`);
+  }
+  return url;
 }
 
 function ensureTrailingSlash(value: string): string {

@@ -211,6 +211,24 @@ export const backupRouter = router({
     }),
 
   /**
+   * Recoloca UM LOTE de anexos recuperados de volta nos registros.
+   *
+   * Arquivar e baixar resolvem "tenho o arquivo"; isto resolve "o sistema
+   * voltou a mostrar o arquivo" — reescreve a coluna (documento do cliente,
+   * foto de abastecimento, etc.) para uma cópia que responde. Só age quando a
+   * URL original está fora do ar; o que funciona não é tocado.
+   *
+   * Lotes curtos pela mesma razão do arquivamento: a requisição não sobrevive
+   * a centenas de arquivos nesta hospedagem.
+   */
+  reattachAttachmentsBatch: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) throw new Error('Database not available');
+    const { reattachAttachmentsBatch } = await import('../backupAttachmentsReattach');
+    return reattachAttachmentsBatch(db);
+  }),
+
+  /**
    * Índice dos anexos arquivados — o mapa de recuperação.
    *
    * O zip do backup tem ~320 KB porque contém só o banco; os anexos ficam
